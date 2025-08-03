@@ -1,0 +1,38 @@
+{
+  "category": "project",
+  "spec_version": "1.0.0",
+  "data": {
+    "project_info": {
+      "name": "payment-api",
+      "type": "backend_api",
+      "domain": "fintech",
+      "team_size": 4
+    },
+    "architecture": {
+      "pattern": "microservices",
+      "database_pattern": "repository",
+      "api_style": "rest",
+      "auth_method": "jwt"
+    },
+    "tech_stack": {
+      "runtime": "node.js",
+      "language": "typescript",
+      "framework": "nestjs",
+      "database": "postgresql",
+      "orm": "typeorm",
+      "testing": ["jest", "supertest"],
+      "deployment": "docker"
+    },
+    "conventions": {
+      "file_naming": "kebab-case",
+      "folder_structure": "feature_based",
+      "commit_convention": "conventional_commits",
+      "branch_strategy": "git_flow"
+    },
+    "constraints": {
+      "performance_requirements": "sub_100ms_response",
+      "security_level": "high",
+      "compliance": ["pci_dss", "gdpr"]
+    }
+  }
+}

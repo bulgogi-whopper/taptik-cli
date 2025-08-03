@@ -1,0 +1,30 @@
+{
+  "category": "personal",
+  "spec_version": "1.0.0",
+  "data": {
+    "developer_profile": {
+      "experience_years": 5,
+      "primary_role": "backend",
+      "secondary_roles": ["fullstack", "devops"],
+      "tech_stack": {
+        "languages": ["typescript", "python", "go"],
+        "frameworks": ["nestjs", "fastapi"],
+        "databases": ["postgresql", "redis"],
+        "cloud": ["aws", "docker"]
+      }
+    },
+    "coding_preferences": {
+      "style": "clean_code",
+      "naming_convention": "camelCase",
+      "comment_style": "minimal_but_clear",
+      "error_handling": "explicit",
+      "testing_approach": "tdd"
+    },
+    "domain_knowledge": ["fintech", "payment_systems", "microservices"],
+    "communication_style": {
+      "explanation_level": "senior",
+      "code_review_tone": "constructive",
+      "preferred_language": "korean"
+    }
+  }
+}
