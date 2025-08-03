@@ -1,7 +1,7 @@
 {
-  "name": "nestjs-health-check",
+  "name": "@bulgogi-whopper/taptik-cli",
   "version": "0.0.1",
-  "description": "NestJS project with health check controller",
+  "description": "A CLI tool that enables easy migration and synchronization of settings and environments between various AI development tools",
   "author": "Team of 3",
   "private": true,
   "license": "UNLICENSED",
