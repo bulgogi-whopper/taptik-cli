@@ -25,9 +25,11 @@
   },
   "dependencies": {
     "@nestjs/common": "^11.1.5",
+    "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.5",
     "@nestjs/platform-express": "^11.1.5",
     "@nestjs/terminus": "^11.0.0",
+    "@supabase/supabase-js": "^2.53.0",
     "nest-commander": "^3.18.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
