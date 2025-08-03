@@ -14,6 +14,6 @@
   },
   "then": {
     "type": "askAgent",
-    "prompt": "Run `npm run lint` to check the code style and fix any linting issues in the modified files. If there are linting errors, provide a summary of the issues found and suggest fixes. Make sure all TypeScript/JavaScript files follow the project's ESLint configuration before the commit proceeds."
+    "prompt": "Run `pnpm run lint` to check the code style and fix any linting issues in the modified files. If there are linting errors, provide a summary of the issues found and suggest fixes. Make sure all TypeScript/JavaScript files follow the project's ESLint configuration before the commit proceeds."
   }
 }
