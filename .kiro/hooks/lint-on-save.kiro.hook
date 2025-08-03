@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Lint on Save",
+  "description": "Run ESLint when TypeScript files are saved",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.ts"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A TypeScript file has been saved. Please run `npm run lint` to check for code style issues and provide feedback on any linting errors or warnings found."
+  }
+}
