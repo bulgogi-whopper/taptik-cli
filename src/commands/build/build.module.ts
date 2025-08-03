@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 
 import { BuildCommand } from './build.command';
 import {
-  PlatformSelectorService,
   CategorySelectorService,
   SettingsCollectorService,
   FormatConverterService,
@@ -15,21 +14,14 @@ import {
   BuildResult,
   BuildMetadata
 } from './interfaces';
+import { PlatformSelectorServiceImpl, CategorySelectorServiceImpl } from './services';
 
 // Placeholder implementations for dependency injection setup
 // These will be replaced with actual implementations in subsequent tasks
 
-class PlaceholderPlatformSelectorService implements PlatformSelectorService {
-  async selectPlatform(): Promise<SupportedPlatform> {
-    throw new Error('PlatformSelectorService not implemented yet');
-  }
-}
 
-class PlaceholderCategorySelectorService implements CategorySelectorService {
-  async selectCategories(): Promise<BuildCategory[]> {
-    throw new Error('CategorySelectorService not implemented yet');
-  }
-}
+
+
 
 class PlaceholderSettingsCollectorService implements SettingsCollectorService {
   async collectSettings(_platform: SupportedPlatform, _categories: BuildCategory[]): Promise<CollectedSettings> {
@@ -81,11 +73,11 @@ class PlaceholderLoggerService implements LoggerService {
     BuildCommand,
     {
       provide: 'PlatformSelectorService',
-      useClass: PlaceholderPlatformSelectorService,
+      useClass: PlatformSelectorServiceImpl,
     },
     {
       provide: 'CategorySelectorService',
-      useClass: PlaceholderCategorySelectorService,
+      useClass: CategorySelectorServiceImpl,
     },
     {
       provide: 'SettingsCollectorService',

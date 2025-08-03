@@ -6,7 +6,7 @@ import { stat } from 'fs-extra';
  * Generate a unique build ID with timestamp and random component
  */
 export function generateBuildId(): string {
-  const timestamp = new Date().toISOString().replaceAll(/[.:]/g, '-');
+  const timestamp = new Date().toISOString().replace(/[.:]/g, '-');
   const random = Math.random().toString(36).slice(2, 8);
   return `build-${timestamp}-${random}`;
 }
@@ -48,7 +48,7 @@ export function createTimestampedDirectoryName(prefix: string = 'taptik-build'):
   const now = new Date();
   const timestamp = now.toISOString()
     .replace(/T/, '-')
-    .replaceAll(':', '')
+    .replace(/:/g, '')
     .replace(/\..+/, '');
   return `${prefix}-${timestamp}`;
 }
@@ -75,5 +75,8 @@ export function parseCategories(categoriesString: string): string[] {
  * Sanitize filename for cross-platform compatibility
  */
 export function sanitizeFilename(filename: string): string {
-  return filename.replaceAll(/["*/:<>?\\|]/g, '_');
+  return filename.replace(/["*/:<>?\\|]/g, '_');
 }
+
+// Export PathResolverUtil
+export { PathResolverUtil } from './path-resolver.util';

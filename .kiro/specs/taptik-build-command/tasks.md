@@ -24,21 +24,21 @@
   - Set up proper module structure and exports
   - _Requirements: 1.1_
 
-- [ ] 5. Implement platform selection service
+- [x] 5. Implement platform selection service
   - Create PlatformSelectorService with interactive inquirer prompts
   - Implement platform enum and selection logic for Kiro, Cursor, Claude Code
   - Add "coming soon" message handling for unsupported platforms
   - Write unit tests for platform selection scenarios
   - _Requirements: 1.1, 1.2_
 
-- [ ] 6. Implement category selection service
+- [x] 6. Implement category selection service
   - Create CategorySelectorService with multi-select inquirer prompts
   - Implement BuildCategory enum and selection validation
   - Add handling for empty category selection with helpful messages
   - Write unit tests for category selection scenarios
   - _Requirements: 1.4, 1.5_
 
-- [ ] 7. Implement cross-platform path resolution utilities
+- [x] 7. Implement cross-platform path resolution utilities
   - Create PathResolverUtil for handling Windows, macOS, and Linux paths
   - Implement home directory detection and Kiro configuration path resolution
   - Add platform-specific error handling and messaging

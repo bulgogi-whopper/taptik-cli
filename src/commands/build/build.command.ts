@@ -189,7 +189,7 @@ export class BuildCommand extends CommandRunner {
   }
 
   private generateBuildId(): string {
-    const timestamp = new Date().toISOString().replaceAll(/[.:]/g, '-');
+    const timestamp = new Date().toISOString().replace(/[.:]/g, '-');
     const random = Math.random().toString(36).slice(2, 8);
     return `build-${timestamp}-${random}`;
   }
