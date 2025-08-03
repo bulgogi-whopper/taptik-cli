@@ -1,0 +1,131 @@
+# Development files
+src/
+test/
+coverage/
+.nyc_output/
+
+# Configuration files
+.env
+.env.*
+!.env.example
+tsconfig.json
+nest-cli.json
+vitest.config.ts
+vitest.e2e.config.ts
+eslint.config.mjs
+.prettierrc
+.prettierignore
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output/
+
+# Dependency directories
+node_modules/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+
+# Nuxt.js build / generate output
+.nuxt
+
+# Gatsby files
+.cache/
+public
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+tmp/
+temp/
+
+# Build artifacts that shouldn't be published
+dist/test/
+dist/vitest.config.*
+dist/tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# Git files
+.git/
+.gitignore
+
+# CI/CD files
+.github/
+.travis.yml
+.circleci/
+
+# Documentation that's not needed in package
+docs/
+*.md
+!README.md
+
+# Kiro specific files
+.kiro/
+.serena/
+.claude/
+
+# Scripts directory (build scripts not needed in package)
+scripts/
+
+# Template files
+templates/
