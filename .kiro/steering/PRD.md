@@ -43,7 +43,7 @@ development environments across multiple AI tools.
 - `@supabase/supabase-js` (Supabase client)
 - `chalk` (CLI styling)
 - `ora` (Loading spinner)
-- `inquirer` (Interactive prompts)
+- `@inquirer/prompts` (Interactive prompts)
 
 ## Feature Specifications
 
