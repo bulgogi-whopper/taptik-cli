@@ -24,6 +24,7 @@ npm run start:prod
 ## Health Check
 
 The health check endpoint is available at:
+
 - `GET /health` - Returns application health status
 
 ## Test
@@ -42,6 +43,7 @@ npm run test:cov
 ## Team Development
 
 This project is set up for a 3-person team with:
+
 - TypeScript configuration
 - ESLint and Prettier for code formatting
 - Jest for testing

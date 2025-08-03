@@ -1,0 +1,49 @@
+# Build outputs
+dist/
+build/
+out/
+.next/
+.nuxt/
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Logs
+*.log
+
+# Coverage directory
+coverage/
+.nyc_output/
+
+# Generated files
+*.d.ts.map
+*.js.map
+
+# Lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# IDE files
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Temporary folders
+tmp/
+temp/
+
+# Environment files
+.env*
+
+# Specific file types that shouldn't be formatted
+*.min.js
+*.min.css
+
+# Documentation that should preserve formatting
+CHANGELOG.md
+LICENSE

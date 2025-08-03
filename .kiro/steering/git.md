@@ -8,24 +8,25 @@ inclusion: always
 
 **Required Format**: `<gitmoji> <English commit message>`
 
-All commit messages must use gitmoji followed by English description in present tense, under 50 characters.
+All commit messages must use gitmoji followed by English description in present tense, under 50
+characters.
 
 ## Essential Gitmoji Reference
 
-| Gitmoji | Usage | Example |
-|---------|-------|---------|
-| 🎉 | Project/feature initialization | `🎉 Initialize health check module` |
-| ✨ | New features | `✨ Add user authentication API` |
-| 🐛 | Bug fixes | `🐛 Fix health check response error` |
-| 📝 | Documentation | `📝 Update API documentation` |
-| 🎨 | Code structure/formatting | `🎨 Refactor controller code` |
-| ⚡ | Performance improvements | `⚡ Optimize database queries` |
-| ✅ | Tests | `✅ Add health check unit tests` |
-| 🔧 | Configuration | `🔧 Update ESLint configuration` |
-| 🔒 | Security fixes | `🔒 Fix authentication vulnerability` |
-| ⬆️ | Dependency upgrades | `⬆️ Upgrade NestJS version` |
-| 🔥 | Code removal | `🔥 Remove unused service` |
-| 🚀 | Deployment | `🚀 Add production deployment config` |
+| Gitmoji | Usage                          | Example                               |
+| ------- | ------------------------------ | ------------------------------------- |
+| 🎉      | Project/feature initialization | `🎉 Initialize health check module`   |
+| ✨      | New features                   | `✨ Add user authentication API`      |
+| 🐛      | Bug fixes                      | `🐛 Fix health check response error`  |
+| 📝      | Documentation                  | `📝 Update API documentation`         |
+| 🎨      | Code structure/formatting      | `🎨 Refactor controller code`         |
+| ⚡      | Performance improvements       | `⚡ Optimize database queries`        |
+| ✅      | Tests                          | `✅ Add health check unit tests`      |
+| 🔧      | Configuration                  | `🔧 Update ESLint configuration`      |
+| 🔒      | Security fixes                 | `🔒 Fix authentication vulnerability` |
+| ⬆️      | Dependency upgrades            | `⬆️ Upgrade NestJS version`           |
+| 🔥      | Code removal                   | `🔥 Remove unused service`            |
+| 🚀      | Deployment                     | `🚀 Add production deployment config` |
 
 ## NestJS-Specific Commit Patterns
 
@@ -57,6 +58,7 @@ All commit messages must use gitmoji followed by English description in present 
 - **Refactoring**: `refactor/[module]-[improvement]`
 
 Examples:
+
 ```
 feature/health-check-endpoint
 fix/auth-token-validation
