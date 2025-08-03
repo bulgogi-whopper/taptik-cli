@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "name": "Commit Lint Checker",
+  "description": "Automatically runs ESLint checks on TypeScript and JavaScript files when they are staged for commit to ensure code quality and consistency",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "src/**/*.ts",
+      "src/**/*.js",
+      "*.ts",
+      "*.js"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Run `npm run lint` to check the code style and fix any linting issues in the modified files. If there are linting errors, provide a summary of the issues found and suggest fixes. Make sure all TypeScript/JavaScript files follow the project's ESLint configuration before the commit proceeds."
+  }
+}
