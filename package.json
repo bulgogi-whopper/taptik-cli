@@ -4,7 +4,7 @@
   "description": "A CLI tool that enables easy migration and synchronization of settings and environments between various AI development tools",
   "author": "Team of 3",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "Beerware",
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
