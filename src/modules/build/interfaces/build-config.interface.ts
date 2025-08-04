@@ -1,9 +1,27 @@
 /**
+ * Supported platforms for taptik builds
+ */
+export enum BuildPlatform {
+  KIRO = 'kiro',
+  CURSOR = 'cursor',
+  CLAUDE_CODE = 'claude-code'
+}
+
+/**
+ * Available category types for build data
+ */
+export enum BuildCategoryName {
+  PERSONAL_CONTEXT = 'personal-context',
+  PROJECT_CONTEXT = 'project-context',
+  PROMPT_TEMPLATES = 'prompt-templates'
+}
+
+/**
  * Configuration for a taptik build process
  */
 export interface BuildConfig {
   /** Target platform for the build (currently only 'kiro' is supported) */
-  platform: 'kiro' | 'cursor' | 'claude-code';
+  platform: BuildPlatform;
   /** Categories of data to include in the build */
   categories: BuildCategory[];
   /** Directory where build output will be generated */
@@ -19,7 +37,7 @@ export interface BuildConfig {
  */
 export interface BuildCategory {
   /** Type of context data */
-  name: 'personal-context' | 'project-context' | 'prompt-templates';
+  name: BuildCategoryName;
   /** Whether this category should be included in the build */
   enabled: boolean;
 }
