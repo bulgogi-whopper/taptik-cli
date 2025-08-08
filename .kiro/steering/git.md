@@ -8,8 +8,7 @@ inclusion: always
 
 **Required Format**: `<gitmoji> <English commit message>`
 
-All commit messages must use gitmoji followed by English description in present tense, under 50
-characters.
+All commit messages must use gitmoji followed by English description in present tense, under 50 characters.
 
 ## Essential Gitmoji Reference
 

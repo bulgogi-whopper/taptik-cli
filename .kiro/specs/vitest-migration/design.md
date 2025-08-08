@@ -2,10 +2,7 @@
 
 ## Overview
 
-This design outlines the complete migration from Jest to Vitest for the Taptik CLI project. Vitest
-provides faster test execution, better TypeScript support, and Vite ecosystem integration while
-maintaining Jest API compatibility. The migration will preserve all existing test functionality
-while improving performance and developer experience.
+This design outlines the complete migration from Jest to Vitest for the Taptik CLI project. Vitest provides faster test execution, better TypeScript support, and Vite ecosystem integration while maintaining Jest API compatibility. The migration will preserve all existing test functionality while improving performance and developer experience.
 
 ## Architecture
 
@@ -68,8 +65,7 @@ Source Changes → Vitest (with Vite) → Fast Compilation → Test Execution
 
 ### 5. Test File Structure
 
-**Current Jest Pattern**: `*.spec.ts`, `*.test.ts` **Vitest Pattern**: Same file patterns, updated
-imports
+**Current Jest Pattern**: `*.spec.ts`, `*.test.ts` **Vitest Pattern**: Same file patterns, updated imports
 
 ## Data Models
 

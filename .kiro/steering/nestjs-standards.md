@@ -7,8 +7,7 @@ inclusion: always
 ## Code Style & Structure
 
 - Use TypeScript strict mode and proper typing
-- Follow NestJS naming conventions (controllers end with `.controller.ts`, services with
-  `.service.ts`)
+- Follow NestJS naming conventions (controllers end with `.controller.ts`, services with `.service.ts`)
 - Use dependency injection properly with constructor injection
 - Implement proper error handling with NestJS exception filters
 - Use DTOs for request/response validation with class-validator

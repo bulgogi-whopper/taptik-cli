@@ -2,9 +2,7 @@
 
 ## Overview
 
-This project uses a modern ESLint v9 flat configuration with comprehensive TypeScript support,
-optimized for NestJS development patterns. The setup includes powerful plugins for code quality,
-import organization, and consistent formatting.
+This project uses a modern ESLint v9 flat configuration with comprehensive TypeScript support, optimized for NestJS development patterns. The setup includes powerful plugins for code quality, import organization, and consistent formatting.
 
 ## Configuration Files
 
@@ -74,8 +72,7 @@ Prettier is configured with sensible defaults for TypeScript/NestJS projects:
 ### 2. ESLint Plugin Import-X (`eslint-plugin-import-x`)
 
 **Version**: v4.16.1  
-**Purpose**: Enhanced import/export linting with better performance than the original
-`eslint-plugin-import`
+**Purpose**: Enhanced import/export linting with better performance than the original `eslint-plugin-import`
 
 **Key Rules Enabled**:
 
@@ -259,8 +256,7 @@ To customize rules for your specific needs:
 
 ## Migration Notes
 
-This configuration uses ESLint v9's flat config format. If migrating from legacy `.eslintrc.*`
-files:
+This configuration uses ESLint v9's flat config format. If migrating from legacy `.eslintrc.*` files:
 
 1. The `ignores` property replaces `.eslintignore`
 2. Plugin imports use ES modules
@@ -288,5 +284,4 @@ The following packages are required for this configuration:
 }
 ```
 
-This setup provides a robust, modern linting and formatting solution optimized for NestJS
-development with TypeScript.
+This setup provides a robust, modern linting and formatting solution optimized for NestJS development with TypeScript.

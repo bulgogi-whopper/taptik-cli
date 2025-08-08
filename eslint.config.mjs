@@ -385,6 +385,18 @@ export default [
     },
   },
 
+  // CLI command files configuration
+  {
+    files: [
+      '**/commands/**/*.ts',
+      'src/commands/**/*.ts',
+      'src/**/commands/**/*.ts',
+    ],
+    rules: {
+      'no-console': 'off', // Allow console statements in CLI commands for user interaction
+    },
+  },
+
   // Configuration files
   {
     files: [

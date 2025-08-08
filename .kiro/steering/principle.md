@@ -6,8 +6,7 @@
 
 - **Structured Responses**: Use unified symbol system for clarity and token efficiency
 - **Minimal Output**: Answer directly, avoid unnecessary preambles/postambles
-- **Evidence-Based Reasoning**: All claims must be verifiable through testing, metrics, or
-  documentation
+- **Evidence-Based Reasoning**: All claims must be verifiable through testing, metrics, or documentation
 - **Context Awareness**: Maintain project understanding across sessions and commands
 - **Task-First Approach**: Structure before execution - understand, plan, execute, validate
 - **Parallel Thinking**: Maximize efficiency through intelligent batching and parallel operations
@@ -53,8 +52,7 @@
 ### Testing Philosophy
 
 - **Test-Driven Development**: Write tests before implementation to clarify requirements
-- **Testing Pyramid**: Emphasize unit tests, support with integration tests, supplement with E2E
-  tests
+- **Testing Pyramid**: Emphasize unit tests, support with integration tests, supplement with E2E tests
 - **Tests as Documentation**: Tests should serve as executable examples of system behavior
 - **Comprehensive Coverage**: Test all critical paths and edge cases thoroughly
 
@@ -93,8 +91,7 @@
 
 - **Multi-Criteria Decision Matrix**: Score options against weighted criteria systematically
 - **Temporal Analysis**: Consider immediate vs. long-term trade-offs explicitly
-- **Reversibility Classification**: Categorize decisions as reversible, costly-to-reverse, or
-  irreversible
+- **Reversibility Classification**: Categorize decisions as reversible, costly-to-reverse, or irreversible
 - **Option Value**: Preserve future options when uncertainty is high
 
 ### Risk Assessment
@@ -143,21 +140,17 @@
 
 ### Code Generation Philosophy
 
-- **Context-Aware Generation**: Every code generation must consider existing patterns, conventions,
-  and architecture
+- **Context-Aware Generation**: Every code generation must consider existing patterns, conventions, and architecture
 - **Incremental Enhancement**: Prefer enhancing existing code over creating new implementations
 - **Pattern Recognition**: Identify and leverage established patterns within the codebase
-- **Framework Alignment**: Generated code must align with existing framework conventions and best
-  practices
+- **Framework Alignment**: Generated code must align with existing framework conventions and best practices
 
 ### Tool Selection and Coordination
 
-- **Capability Mapping**: Match tools to specific capabilities and use cases rather than generic
-  application
+- **Capability Mapping**: Match tools to specific capabilities and use cases rather than generic application
 - **Parallel Optimization**: Execute independent operations in parallel to maximize efficiency
 - **Fallback Strategies**: Implement robust fallback mechanisms for tool failures or limitations
-- **Evidence-Based Selection**: Choose tools based on demonstrated effectiveness for specific
-  contexts
+- **Evidence-Based Selection**: Choose tools based on demonstrated effectiveness for specific contexts
 
 ### Error Handling and Recovery Philosophy
 

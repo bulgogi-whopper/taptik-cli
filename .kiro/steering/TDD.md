@@ -8,9 +8,7 @@ AI development guidelines based on Kent Beck's Test-Driven Development and Tidy 
 
 ## Overview
 
-A systematic approach to ensure quality and maintainability in AI development. Through TDD's
-step-by-step thinking and Tidy First's incremental improvement philosophy, we achieve safe and
-predictable code changes.
+A systematic approach to ensure quality and maintainability in AI development. Through TDD's step-by-step thinking and Tidy First's incremental improvement philosophy, we achieve safe and predictable code changes.
 
 **Core Philosophy**: "Small steps safely, confidence through tests, continuous improvement"
 
@@ -78,9 +76,7 @@ validation_criteria:
 #### AI Execution Strategy
 
 ```yaml
-code_generation_order:
-  1. Write test (describe, it, expect) 2. Run test and verify failure 3. Write minimal
-  implementation code 4. Run test and verify pass 5. Refactor (if needed) 6. Run entire test suite
+code_generation_order: 1. Write test (describe, it, expect) 2. Run test and verify failure 3. Write minimal implementation code 4. Run test and verify pass 5. Refactor (if needed) 6. Run entire test suite
 
 prohibited_actions:
   - Writing code without tests
@@ -98,9 +94,7 @@ prohibited_actions:
 #### Tidy Behavior Patterns
 
 ```yaml
-pre_change_cleanup:
-  1. Read and understand code 2. Identify elements that make change difficult 3. Perform cleanup
-  work (without changing behavior) 4. Verify safety through tests 5. Perform actual change work
+pre_change_cleanup: 1. Read and understand code 2. Identify elements that make change difficult 3. Perform cleanup work (without changing behavior) 4. Verify safety through tests 5. Perform actual change work
 
 cleanup_targets:
   - Long functions → Split into smaller functions
@@ -145,8 +139,7 @@ identification_criteria:
   - Unreachable code
   - Commented code
 
-removal_procedure:
-  1. Search for usage 2. Remove from tests 3. Remove from production code 4. Run entire test suite
+removal_procedure: 1. Search for usage 2. Remove from tests 3. Remove from production code 4. Run entire test suite
 ```
 
 ##### 3. Normalize Symmetries
@@ -248,9 +241,7 @@ deliverables:
 #### 3. Implementation Phase
 
 ```yaml
-procedure:
-  1. Write test (Red) 2. Minimal implementation (Green) 3. Refactor (Refactor) 4. Repeat with next
-  test
+procedure: 1. Write test (Red) 2. Minimal implementation (Green) 3. Refactor (Refactor) 4. Repeat with next test
 
 validation_points:
   - Run entire test suite each cycle
@@ -263,10 +254,7 @@ validation_points:
 #### Applying Tidy First
 
 ```yaml
-improvement_order:
-  1. Understand current code 2. Clarify change goals 3. Identify elements making change difficult 4.
-  Cleanup work (Tidy) 5. Verify safety through tests 6. Perform actual change work 7. Additional
-  cleanup (if needed)
+improvement_order: 1. Understand current code 2. Clarify change goals 3. Identify elements making change difficult 4. Cleanup work (Tidy) 5. Verify safety through tests 6. Perform actual change work 7. Additional cleanup (if needed)
 
 cleanup_priority:
   - High: Readability, testability
@@ -388,9 +376,7 @@ decision_rules:
 #### Priority Principles
 
 ```yaml
-priority_order:
-  1. Safety (tests pass) 2. Correctness (meets requirements) 3. Readability (ease of understanding)
-  4. Performance (only when needed) 5. Beauty (last)
+priority_order: 1. Safety (tests pass) 2. Correctness (meets requirements) 3. Readability (ease of understanding) 4. Performance (only when needed) 5. Beauty (last)
 ```
 
 ### Automation Guidelines
