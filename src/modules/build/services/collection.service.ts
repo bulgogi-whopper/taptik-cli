@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { promises as fs } from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 
 /**
  * Interface for collected settings data from local Kiro configuration
@@ -28,6 +29,34 @@ export interface LocalSettingsData {
   sourcePath: string;
   /** Timestamp when data was collected */
   collectedAt: string;
+}
+
+/**
+ * Interface for collected settings data from global Kiro configuration
+ */
+export interface GlobalSettingsData {
+  /** Global user configuration content */
+  userConfig?: string;
+  /** Global preferences content */
+  globalPreferences?: string;
+  /** Array of global prompt template files */
+  promptTemplates: Array<{
+    filename: string;
+    content: string;
+    path: string;
+  }>;
+  /** Array of global configuration files */
+  configFiles: Array<{
+    filename: string;
+    content: string;
+    path: string;
+  }>;
+  /** Source directory path where data was collected */
+  sourcePath: string;
+  /** Timestamp when data was collected */
+  collectedAt: string;
+  /** Flag indicating if security filtering was applied */
+  securityFiltered: boolean;
 }
 
 /**
@@ -189,6 +218,214 @@ export class CollectionService {
     } catch (error) {
       this.logger.error(`Error reading hooks directory: ${error.message}`);
     }
+  }
+
+  /**
+   * Scans and collects data from global ~/.kiro/ directory
+   * @returns Promise resolving to collected global settings data
+   */
+  async collectGlobalSettings(): Promise<GlobalSettingsData> {
+    const homeDir = os.homedir();
+    const globalKiroPath = path.join(homeDir, '.kiro');
+
+    this.logger.log(`Scanning global Kiro settings in: ${globalKiroPath}`);
+
+    // Check if ~/.kiro directory exists
+    try {
+      await fs.access(globalKiroPath);
+    } catch (error) {
+      this.logger.warn(`No global .kiro directory found at: ${globalKiroPath}`);
+      throw new Error(`No global .kiro directory found at: ${globalKiroPath}`);
+    }
+
+    const globalSettingsData: GlobalSettingsData = {
+      promptTemplates: [],
+      configFiles: [],
+      sourcePath: globalKiroPath,
+      collectedAt: new Date().toISOString(),
+      securityFiltered: false,
+    };
+
+    // Collect global configuration files
+    await this.collectGlobalConfigFiles(globalKiroPath, globalSettingsData);
+
+    // Collect prompt templates
+    await this.collectPromptTemplates(globalKiroPath, globalSettingsData);
+
+    // Collect other configuration files
+    await this.collectOtherConfigFiles(globalKiroPath, globalSettingsData);
+
+    this.logger.log(`Successfully collected global data from ${globalKiroPath}`);
+    return globalSettingsData;
+  }
+
+  /**
+   * Collects global configuration files from ~/.kiro/
+   * @private
+   */
+  private async collectGlobalConfigFiles(globalKiroPath: string, globalData: GlobalSettingsData): Promise<void> {
+    // Collect user-config.md
+    await this.collectFileWithSecurity(
+      path.join(globalKiroPath, 'user-config.md'),
+      'user-config.md',
+      (content, filtered) => {
+        globalData.userConfig = content;
+        if (filtered) globalData.securityFiltered = true;
+      }
+    );
+
+    // Collect global-preferences.md
+    await this.collectFileWithSecurity(
+      path.join(globalKiroPath, 'global-preferences.md'),
+      'global-preferences.md',
+      (content, filtered) => {
+        globalData.globalPreferences = content;
+        if (filtered) globalData.securityFiltered = true;
+      }
+    );
+  }
+
+  /**
+   * Collects prompt template files from ~/.kiro/templates/
+   * @private
+   */
+  private async collectPromptTemplates(globalKiroPath: string, globalData: GlobalSettingsData): Promise<void> {
+    const templatesPath = path.join(globalKiroPath, 'templates');
+
+    try {
+      await fs.access(templatesPath);
+      this.logger.debug(`Found templates directory: ${templatesPath}`);
+    } catch (error) {
+      this.logger.warn(`Templates directory not found: ${templatesPath}`);
+      return;
+    }
+
+    try {
+      const files = await fs.readdir(templatesPath);
+      const templateFiles = files.filter(file => file.endsWith('.md') || file.endsWith('.txt'));
+
+      for (const filename of templateFiles) {
+        const filePath = path.join(templatesPath, filename);
+        await this.collectFileWithSecurity(filePath, filename, (content, filtered) => {
+          globalData.promptTemplates.push({
+            filename,
+            content,
+            path: filePath,
+          });
+          if (filtered) globalData.securityFiltered = true;
+        });
+      }
+
+      this.logger.debug(`Collected ${globalData.promptTemplates.length} prompt template files`);
+    } catch (error) {
+      this.logger.error(`Error reading templates directory: ${error.message}`);
+    }
+  }
+
+  /**
+   * Collects other configuration files from ~/.kiro/config/
+   * @private
+   */
+  private async collectOtherConfigFiles(globalKiroPath: string, globalData: GlobalSettingsData): Promise<void> {
+    const configPath = path.join(globalKiroPath, 'config');
+
+    try {
+      await fs.access(configPath);
+      this.logger.debug(`Found config directory: ${configPath}`);
+    } catch (error) {
+      this.logger.warn(`Config directory not found: ${configPath}`);
+      return;
+    }
+
+    try {
+      const files = await fs.readdir(configPath);
+      const configFiles = files.filter(file => 
+        file.endsWith('.json') || 
+        file.endsWith('.yaml') || 
+        file.endsWith('.yml') || 
+        file.endsWith('.md')
+      );
+
+      for (const filename of configFiles) {
+        const filePath = path.join(configPath, filename);
+        await this.collectFileWithSecurity(filePath, filename, (content, filtered) => {
+          globalData.configFiles.push({
+            filename,
+            content,
+            path: filePath,
+          });
+          if (filtered) globalData.securityFiltered = true;
+        });
+      }
+
+      this.logger.debug(`Collected ${globalData.configFiles.length} config files`);
+    } catch (error) {
+      this.logger.error(`Error reading config directory: ${error.message}`);
+    }
+  }
+
+  /**
+   * Safely reads a file with security filtering and executes callback with content
+   * @private
+   */
+  private async collectFileWithSecurity(
+    filePath: string,
+    filename: string,
+    onSuccess: (content: string, securityFiltered: boolean) => void
+  ): Promise<void> {
+    try {
+      const content = await fs.readFile(filePath, 'utf8');
+      const { filteredContent, wasFiltered } = this.applySecurityFilter(content);
+      onSuccess(filteredContent, wasFiltered);
+      
+      if (wasFiltered) {
+        this.logger.warn(`Security filtering applied to file: ${filename}`);
+      }
+      this.logger.debug(`Successfully read file: ${filename}`);
+    } catch (error) {
+      this.logger.warn(`Could not read file ${filename}: ${error.message}`);
+    }
+  }
+
+  /**
+   * Applies security filtering to remove sensitive information
+   * @private
+   */
+  private applySecurityFilter(content: string): { filteredContent: string; wasFiltered: boolean } {
+    let filteredContent = content;
+    let wasFiltered = false;
+
+    // Define patterns for sensitive information with simpler approach
+    const sensitivePatterns = [
+      // API keys - match common API key patterns
+      { pattern: /(["']?(?:api[_-]?key|apikey|api_key)["']?)\s*[=:]\s*["']?([a-zA-Z0-9_-]{6,})["']?/gi, name: 'API key' },
+      // Tokens - match various token types
+      { pattern: /(["']?(?:token|access_token|auth_token)["']?)\s*[=:]\s*["']?([a-zA-Z0-9_.-]{6,})["']?/gi, name: 'Token' },
+      // Secrets - match secret patterns
+      { pattern: /(["']?(?:secret|client_secret|app_secret)["']?)\s*[=:]\s*["']?([a-zA-Z0-9_.-]{6,})["']?/gi, name: 'Secret' },
+      // Passwords - match password patterns
+      { pattern: /(["']?(?:password|passwd|pwd)["']?)\s*[=:]\s*["']?([^\s"']{6,})["']?/gi, name: 'Password' },
+      // Database URLs - match database connection strings with credentials
+      { pattern: /(["']?(?:database_url|db_url)["']?)\s*[=:]\s*["']?[^"'\s]*:\/\/[^"'\s@]*:[^"'\s@]*@[^"'\s]*["']?/gi, name: 'Database URL' },
+    ];
+
+    for (const { pattern, name } of sensitivePatterns) {
+      if (pattern.test(filteredContent)) {
+        filteredContent = filteredContent.replace(pattern, (match, key) => {
+          const equalIndex = match.indexOf('=');
+          const colonIndex = match.indexOf(':');
+          const separatorIndex = equalIndex !== -1 ? equalIndex : colonIndex;
+          
+          if (separatorIndex !== -1) {
+            return match.substring(0, separatorIndex + 1) + '[REDACTED]';
+          }
+          return '[REDACTED]';
+        });
+        wasFiltered = true;
+      }
+    }
+
+    return { filteredContent, wasFiltered };
   }
 
   /**
