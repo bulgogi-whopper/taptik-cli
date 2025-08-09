@@ -21,7 +21,7 @@
     - Write unit tests for category selection and validation
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
 
-- [ ] 3. Implement data collection service
+- [x] 3. Implement data collection service
   - [x] 3.1 Create CollectionService with local settings scanning
     - Implement scanning of `.kiro/` directory for project settings
     - Collect `settings/context.md`, `settings/user-preferences.md`, `settings/project-spec.md`
@@ -30,7 +30,7 @@
     - Write unit tests with mocked file system operations
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
 
-  - [ ] 3.2 Implement global settings scanning functionality
+  - [x] 3.2 Implement global settings scanning functionality
     - Add scanning of `~/.kiro/` directory for user-wide settings
     - Collect user configuration files, global prompt templates, and preferences
     - Implement security filtering to exclude API keys and sensitive tokens
