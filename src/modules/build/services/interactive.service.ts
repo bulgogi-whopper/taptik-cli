@@ -46,12 +46,14 @@ export class InteractiveService {
 
   /**
    * Prompts user to select categories to include in the build
+   * Uses multi-select interface with spacebar toggle and 'a' key for toggle all
    * @returns Promise resolving to array of selected categories
    * @throws Error if timeout occurs or no categories selected
    */
   async selectCategories(): Promise<BuildCategory[]> {
     const selectedCategoryNames = await checkbox<BuildCategoryName>({
       message: '📁 Select categories to include in your build:',
+      instructions: 'Use spacebar to select, arrow keys to navigate, \'a\' to toggle all, enter to confirm',
       choices: [
         {
           name: 'Personal Context',

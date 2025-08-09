@@ -19,9 +19,9 @@ inclusion: always
 
 ## Development Workflow
 
-- Use `npm run start:dev` for development
-- Run `npm run test` before committing
-- Use `npm run lint` to check code style
+- Use `pnpm run start:dev` for development
+- Run `pnpm run test` before committing
+- Use `pnpm run lint` to check code style
 - Health check available at `/health` endpoint
 
 ## Key Dependencies
@@ -33,6 +33,6 @@ inclusion: always
 
 ## Build & Deployment
 
-- Build command: `npm run build`
-- Production start: `npm run start:prod`
+- Build command: `pnpm run build`
+- Production start: `pnpm run start:prod`
 - Application runs on port 3000 by default

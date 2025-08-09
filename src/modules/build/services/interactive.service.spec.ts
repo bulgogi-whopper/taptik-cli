@@ -91,7 +91,7 @@ describe('InteractiveService', () => {
       expect(result[1].enabled).toBe(true);
     });
 
-    it('should call checkbox with correct configuration', async () => {
+    it('should call checkbox with correct configuration including multi-select instructions', async () => {
       const { checkbox } = await import('@inquirer/prompts');
       (checkbox as any).mockResolvedValue([BuildCategoryName.PERSONAL_CONTEXT]);
 
@@ -99,6 +99,7 @@ describe('InteractiveService', () => {
 
       expect(checkbox).toHaveBeenCalledWith({
         message: '📁 Select categories to include in your build:',
+        instructions: 'Use spacebar to select, arrow keys to navigate, \'a\' to toggle all, enter to confirm',
         choices: expect.arrayContaining([
           expect.objectContaining({ 
             value: BuildCategoryName.PERSONAL_CONTEXT,
@@ -129,6 +130,61 @@ describe('InteractiveService', () => {
       
       expect(validateFn([])).toBe('At least one category must be selected.');
       expect(validateFn([BuildCategoryName.PERSONAL_CONTEXT])).toBe(true);
+    });
+
+    it('should handle selection of all categories', async () => {
+      const { checkbox } = await import('@inquirer/prompts');
+      const allCategories = [
+        BuildCategoryName.PERSONAL_CONTEXT,
+        BuildCategoryName.PROJECT_CONTEXT,
+        BuildCategoryName.PROMPT_TEMPLATES
+      ];
+      (checkbox as any).mockResolvedValue(allCategories);
+      
+      const result = await service.selectCategories();
+
+      expect(result).toHaveLength(3);
+      expect(result.map(cat => cat.name)).toEqual(allCategories);
+      expect(result.every(cat => cat.enabled)).toBe(true);
+    });
+
+    it('should handle single category selection', async () => {
+      const { checkbox } = await import('@inquirer/prompts');
+      (checkbox as any).mockResolvedValue([BuildCategoryName.PROMPT_TEMPLATES]);
+      
+      const result = await service.selectCategories();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].name).toBe(BuildCategoryName.PROMPT_TEMPLATES);
+      expect(result[0].enabled).toBe(true);
+    });
+
+    it('should include descriptions for each category choice', async () => {
+      const { checkbox } = await import('@inquirer/prompts');
+      (checkbox as any).mockResolvedValue([BuildCategoryName.PERSONAL_CONTEXT]);
+
+      await service.selectCategories();
+
+      const checkboxCall = (checkbox as any).mock.calls[0][0];
+      const choices = checkboxCall.choices;
+      
+      expect(choices).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          name: 'Personal Context',
+          value: BuildCategoryName.PERSONAL_CONTEXT,
+          description: 'User preferences, work style, and communication settings'
+        }),
+        expect.objectContaining({
+          name: 'Project Context',
+          value: BuildCategoryName.PROJECT_CONTEXT,
+          description: 'Project information, technical stack, and development guidelines'
+        }),
+        expect.objectContaining({
+          name: 'Prompt Templates',
+          value: BuildCategoryName.PROMPT_TEMPLATES,
+          description: 'Reusable prompt templates for AI interactions'
+        })
+      ]));
     });
   });
 });
