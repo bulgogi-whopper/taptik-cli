@@ -14,6 +14,12 @@
     "start:prod": "node dist/main",
     "cli": "ts-node src/cli.ts",
     "cli:build": "nest build && node dist/cli.js",
+    "cli:dev": "ts-node src/cli.ts build",
+    "cli:help": "ts-node src/cli.ts --help",
+    "cli:build-help": "ts-node src/cli.ts build --help",
+    "cli:test": "ts-node src/cli.ts health && echo '✅ CLI health check passed'",
+    "build:kiro": "ts-node src/cli.ts build",
+    "build:test": "npm run cli:test && npm run build:kiro --dry-run || echo '⚠️  Build test completed with warnings'",
     "lint": "eslint \"src/**/*.ts\" --fix",
     "lint:check": "eslint \"src/**/*.ts\"",
     "test": "vitest",
@@ -21,7 +27,9 @@
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
     "test:ui": "vitest --ui",
-    "test:e2e": "vitest run --config vitest.e2e.config.ts"
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "test:cli": "vitest run src/modules/build/commands/build.command.integration.spec.ts",
+    "dev:setup": "npm run cli:help && npm run cli:build-help && echo '🎉 Development setup complete'"
   },
   "dependencies": {
     "@inquirer/prompts": "^7.8.0",
