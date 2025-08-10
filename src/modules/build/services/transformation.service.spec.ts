@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TransformationService } from './transformation.service';
 import { SettingsData } from '../interfaces/settings-data.interface';
-import { TaptikPersonalContext, TaptikProjectContext } from '../interfaces/taptik-format.interface';
+import { TaptikPersonalContext, TaptikProjectContext, TaptikPromptTemplates } from '../interfaces/taptik-format.interface';
 
 describe('TransformationService', () => {
   let service: TransformationService;
@@ -540,6 +540,361 @@ Hosting: AWS, Netlify`,
       expect(result.development_guidelines.testing_requirements).toEqual([]);
       expect(result.development_guidelines.documentation_standards).toEqual([]);
       expect(result.development_guidelines.review_process).toEqual([]);
+    });
+  });
+
+  describe('transformPromptTemplates', () => {
+    const mockPromptSettingsData: SettingsData = {
+      localSettings: {
+        steeringFiles: [],
+        hooks: [],
+      },
+      globalSettings: {
+        userConfig: `# Global Templates
+
+## Code Review Template
+content: Please review this code for {language} and check for {criteria}. Focus on {{best_practices}} and provide feedback.
+description: Template for code review requests
+category: review
+tags: code, review, quality
+
+## Debug Help Template  
+content: I'm having trouble with $error_type in my {framework} application. The issue is: {description}
+description: Template for debugging assistance
+category: development
+tags: debug, help, troubleshooting`,
+        preferences: '# Preferences\nDefault templates: enabled',
+        globalPrompts: [
+          {
+            id: 'explain-code',
+            name: 'Explain Code',
+            description: 'Template for explaining code functionality',
+            content: 'Explain what this {{language}} code does: {code_snippet}. Focus on the main logic and any important patterns.',
+            category: 'documentation',
+            tags: ['explanation', 'code', 'documentation'],
+            keywords: ['explain', 'understand']
+          },
+          {
+            id: 'refactor-suggestion',
+            name: 'Refactor Suggestion',
+            content: 'Suggest improvements for this code: {code}. Consider performance, readability, and {criteria}.',
+            type: 'development',
+            summary: 'Get suggestions for code improvements'
+          }
+        ],
+      },
+      collectionMetadata: {
+        sourcePlatform: 'kiro',
+        collectionTimestamp: '2025-01-04T10:30:00Z',
+        projectPath: '/Users/user/projects/test',
+        globalPath: '/home/user/.kiro',
+        warnings: [],
+        errors: [],
+      },
+    };
+
+    it('should transform Kiro prompt templates to Taptik format', async () => {
+      const result = await service.transformPromptTemplates(mockPromptSettingsData);
+
+      expect(result).toBeDefined();
+      expect(result.templates).toBeDefined();
+      expect(result.metadata).toBeDefined();
+      expect(Array.isArray(result.templates)).toBe(true);
+    });
+
+    it('should extract templates from global prompts array', async () => {
+      const result = await service.transformPromptTemplates(mockPromptSettingsData);
+
+      const explainTemplate = result.templates.find(t => t.id === 'explain-code');
+      expect(explainTemplate).toBeDefined();
+      expect(explainTemplate?.name).toBe('Explain Code');
+      expect(explainTemplate?.category).toBe('documentation');
+      expect(explainTemplate?.variables).toContain('language');
+      expect(explainTemplate?.variables).toContain('code_snippet');
+      expect(explainTemplate?.tags).toContain('explanation');
+      expect(explainTemplate?.tags).toContain('documentation');
+
+      const refactorTemplate = result.templates.find(t => t.id === 'refactor-suggestion');
+      expect(refactorTemplate).toBeDefined();
+      expect(refactorTemplate?.name).toBe('Refactor Suggestion');
+      expect(refactorTemplate?.category).toBe('development');
+      expect(refactorTemplate?.variables).toContain('code');
+      expect(refactorTemplate?.variables).toContain('criteria');
+    });
+
+    it('should extract templates from markdown content', async () => {
+      const result = await service.transformPromptTemplates(mockPromptSettingsData);
+
+      // Should have at least the global prompts from the array
+      expect(result.templates.length).toBeGreaterThanOrEqual(2);
+      
+      // Check that templates are properly extracted with variables
+      const templatesWithVariables = result.templates.filter(t => t.variables.length > 0);
+      expect(templatesWithVariables.length).toBeGreaterThan(0);
+    });
+
+    it('should detect different variable patterns', async () => {
+      const variableTestData: SettingsData = {
+        localSettings: {
+          steeringFiles: [],
+          hooks: [],
+        },
+        globalSettings: {
+          globalPrompts: [
+            {
+              name: 'Variable Test',
+              content: 'Test {{double_bracket}}, {single_bracket}, $dollar_var, and {{nested_var}} patterns',
+              description: 'Test variable detection'
+            }
+          ],
+        },
+        collectionMetadata: {
+          sourcePlatform: 'kiro',
+          collectionTimestamp: '2025-01-04T10:30:00Z',
+          projectPath: '/test',
+          globalPath: '/home/.kiro',
+          warnings: [],
+          errors: [],
+        },
+      };
+
+      const result = await service.transformPromptTemplates(variableTestData);
+      const template = result.templates[0];
+
+      expect(template).toBeDefined();
+      expect(template.variables).toContain('double_bracket');
+      expect(template.variables).toContain('single_bracket');
+      expect(template.variables).toContain('dollar_var');
+      expect(template.variables).toContain('nested_var');
+    });
+
+    it('should set correct metadata', async () => {
+      const result = await service.transformPromptTemplates(mockPromptSettingsData);
+
+      expect(result.metadata.source_platform).toBe('kiro');
+      expect(result.metadata.version).toBe('1.0.0');
+      expect(result.metadata.created_at).toBeDefined();
+      expect(new Date(result.metadata.created_at)).toBeInstanceOf(Date);
+      expect(result.metadata.total_templates).toBe(result.templates.length);
+      expect(result.metadata.total_templates).toBeGreaterThan(0);
+    });
+
+    it('should handle empty prompt templates gracefully', async () => {
+      const emptyPromptsData: SettingsData = {
+        localSettings: {
+          steeringFiles: [],
+          hooks: [],
+        },
+        globalSettings: {
+          userConfig: '# Empty Config',
+          preferences: '# No templates',
+          globalPrompts: [],
+        },
+        collectionMetadata: {
+          sourcePlatform: 'kiro',
+          collectionTimestamp: '2025-01-04T10:30:00Z',
+          projectPath: '/test',
+          globalPath: '/home/.kiro',
+          warnings: [],
+          errors: [],
+        },
+      };
+
+      const result = await service.transformPromptTemplates(emptyPromptsData);
+
+      expect(result).toBeDefined();
+      expect(result.templates).toEqual([]);
+      expect(result.metadata.total_templates).toBe(0);
+    });
+
+    it('should infer categories from template names', async () => {
+      const categoryTestData: SettingsData = {
+        localSettings: {
+          steeringFiles: [],
+          hooks: [],
+        },
+        globalSettings: {
+          globalPrompts: [
+            {
+              name: 'Code Generator',
+              content: 'Generate code for {task}',
+              description: 'Generate code'
+            },
+            {
+              name: 'Documentation Helper',
+              content: 'Write docs for {feature}',
+              description: 'Documentation help'
+            },
+            {
+              name: 'Test Assistant', 
+              content: 'Create tests for {component}',
+              description: 'Testing assistance'
+            },
+            {
+              name: 'Review Checklist',
+              content: 'Review {code} for issues',
+              description: 'Code review'
+            }
+          ],
+        },
+        collectionMetadata: {
+          sourcePlatform: 'kiro',
+          collectionTimestamp: '2025-01-04T10:30:00Z',
+          projectPath: '/test',
+          globalPath: '/home/.kiro',
+          warnings: [],
+          errors: [],
+        },
+      };
+
+      const result = await service.transformPromptTemplates(categoryTestData);
+
+      const codeTemplate = result.templates.find(t => t.name === 'Code Generator');
+      expect(codeTemplate?.category).toBe('development');
+
+      const docsTemplate = result.templates.find(t => t.name === 'Documentation Helper');
+      expect(docsTemplate?.category).toBe('documentation');
+
+      const testTemplate = result.templates.find(t => t.name === 'Test Assistant');
+      expect(testTemplate?.category).toBe('testing');
+
+      const reviewTemplate = result.templates.find(t => t.name === 'Review Checklist');
+      expect(reviewTemplate?.category).toBe('review');
+    });
+
+    it('should sort templates by name', async () => {
+      const result = await service.transformPromptTemplates(mockPromptSettingsData);
+
+      // Templates should be sorted alphabetically by name
+      const names = result.templates.map(t => t.name);
+      const sortedNames = [...names].sort();
+      expect(names).toEqual(sortedNames);
+    });
+
+    it('should handle malformed prompt objects gracefully', async () => {
+      const malformedData: SettingsData = {
+        localSettings: {
+          steeringFiles: [],
+          hooks: [],
+        },
+        globalSettings: {
+          globalPrompts: [
+            null,
+            { name: 'Missing Content' },
+            { content: 'Missing Name', id: 'no-name' },
+            'invalid-string-entry',
+            {
+              name: 'Valid Template',
+              content: 'This is a valid template with {variable}',
+              description: 'A working template'
+            }
+          ],
+        },
+        collectionMetadata: {
+          sourcePlatform: 'kiro',
+          collectionTimestamp: '2025-01-04T10:30:00Z',
+          projectPath: '/test',
+          globalPath: '/home/.kiro',
+          warnings: [],
+          errors: [],
+        },
+      };
+
+      const result = await service.transformPromptTemplates(malformedData);
+
+      // Should only include the valid template(s) - some invalid entries might still create templates with defaults
+      expect(result.templates.length).toBeGreaterThanOrEqual(1);
+      const validTemplate = result.templates.find(t => t.name === 'Valid Template');
+      expect(validTemplate).toBeDefined();
+      expect(validTemplate?.variables).toContain('variable');
+    });
+
+    it('should handle template without variables', async () => {
+      const noVariablesData: SettingsData = {
+        localSettings: {
+          steeringFiles: [],
+          hooks: [],
+        },
+        globalSettings: {
+          globalPrompts: [
+            {
+              id: 'simple-template',
+              name: 'Simple Template',
+              content: 'This is a simple template without any variables',
+              description: 'A template with no variables'
+            }
+          ],
+        },
+        collectionMetadata: {
+          sourcePlatform: 'kiro',
+          collectionTimestamp: '2025-01-04T10:30:00Z',
+          projectPath: '/test',
+          globalPath: '/home/.kiro',
+          warnings: [],
+          errors: [],
+        },
+      };
+
+      const result = await service.transformPromptTemplates(noVariablesData);
+
+      expect(result.templates.length).toBe(1);
+      expect(result.templates[0].variables).toEqual([]);
+    });
+
+    it('should throw error when critical prompt transformation fails', async () => {
+      const invalidPromptData = null as any;
+
+      await expect(service.transformPromptTemplates(invalidPromptData))
+        .rejects.toThrow('Prompt templates transformation failed');
+    });
+
+    it('should handle complex variable patterns', async () => {
+      const complexVariablesData: SettingsData = {
+        localSettings: {
+          steeringFiles: [],
+          hooks: [],
+        },
+        globalSettings: {
+          globalPrompts: [
+            {
+              name: 'Complex Variables',
+              content: 'Test {{user.name}}, {project_config.version}, $APP_ENV, {{nested.deep.value}} and {simple} patterns',
+              description: 'Complex variable test'
+            }
+          ],
+        },
+        collectionMetadata: {
+          sourcePlatform: 'kiro',
+          collectionTimestamp: '2025-01-04T10:30:00Z',
+          projectPath: '/test',
+          globalPath: '/home/.kiro',
+          warnings: [],
+          errors: [],
+        },
+      };
+
+      const result = await service.transformPromptTemplates(complexVariablesData);
+      const template = result.templates[0];
+
+      expect(template.variables).toContain('user.name');
+      expect(template.variables).toContain('project_config.version');
+      expect(template.variables).toContain('APP_ENV');
+      expect(template.variables).toContain('nested.deep.value');
+      expect(template.variables).toContain('simple');
+    });
+
+    it('should generate unique template IDs for markdown templates', async () => {
+      const result = await service.transformPromptTemplates(mockPromptSettingsData);
+
+      const templateIds = result.templates.map(t => t.id);
+      const uniqueIds = new Set(templateIds);
+      expect(templateIds.length).toBe(uniqueIds.size);
+
+      // Should have some templates from markdown that get generated IDs
+      const markdownTemplates = result.templates.filter(t => 
+        !['explain-code', 'refactor-suggestion'].includes(t.id)
+      );
+      expect(markdownTemplates.length).toBeGreaterThan(0);
     });
   });
 });
