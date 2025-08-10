@@ -6,9 +6,10 @@ import { CollectionService } from './services/collection.service';
 import { TransformationService } from './services/transformation.service';
 import { OutputService } from './services/output.service';
 import { ProgressService } from './services/progress.service';
+import { ErrorHandlerService } from './services/error-handler.service';
 
 @Module({
-  providers: [BuildCommand, InteractiveService, CollectionService, TransformationService, OutputService, ProgressService],
-  exports: [BuildCommand, InteractiveService, CollectionService, TransformationService, OutputService, ProgressService],
+  providers: [BuildCommand, InteractiveService, CollectionService, TransformationService, OutputService, ProgressService, ErrorHandlerService],
+  exports: [BuildCommand, InteractiveService, CollectionService, TransformationService, OutputService, ProgressService, ErrorHandlerService],
 })
 export class BuildModule {}
