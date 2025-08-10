@@ -48,6 +48,10 @@ export default [
         module: 'readonly',
         require: 'readonly',
         exports: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
       },
     },
     linterOptions: {
@@ -391,9 +395,21 @@ export default [
       '**/commands/**/*.ts',
       'src/commands/**/*.ts',
       'src/**/commands/**/*.ts',
+      'src/cli.ts', // Main CLI entry point
     ],
     rules: {
       'no-console': 'off', // Allow console statements in CLI commands for user interaction
+      'unicorn/no-process-exit': 'off', // Allow process.exit() in CLI apps
+    },
+  },
+
+  // Auth service files configuration - allow console for user feedback
+  {
+    files: [
+      'src/modules/auth/**/*.ts',
+    ],
+    rules: {
+      'no-console': 'off', // Allow console statements in auth services for user feedback during OAuth flow
     },
   },
 

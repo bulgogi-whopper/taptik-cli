@@ -1,20 +1,20 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Controller, Get, Module, Query, Res, Logger  } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { Controller, Get, Module, Query, Res, Logger } from '@nestjs/common';
-import { Response } from 'express';
+
+import type { Response } from 'express';
 
 @Controller()
 class CallbackController {
   private readonly logger = new Logger(CallbackController.name);
-  private callbackData: any = null;
+  private callbackData: Record<string, string> | null = null;
   private callbackPromise: {
-    resolve: (value: any) => void;
-    reject: (error: any) => void;
+    resolve: (value: Record<string, string>) => void;
+    reject: (error: Error) => void;
   } | null = null;
 
   @Get('/auth/callback')
   async handleCallback(
-    @Query() query: any,
+    @Query() query: Record<string, string>,
     @Res() res: Response,
   ): Promise<void> {
     this.logger.log('OAuth callback received with query params:', query);
@@ -140,7 +140,7 @@ class CallbackController {
   }
 
   // Method to wait for callback
-  waitForCallback(): Promise<any> {
+  waitForCallback(): Promise<Record<string, string>> {
     return new Promise((resolve, reject) => {
       // If we already have callback data, resolve immediately
       if (this.callbackData) {
@@ -159,7 +159,7 @@ class CallbackController {
           this.callbackPromise.reject(new Error('OAuth callback timeout'));
           this.callbackPromise = null;
         }
-      }, 120000); // 2 minutes
+      }, 120_000); // 2 minutes
     });
   }
 
@@ -181,14 +181,14 @@ class CallbackModule {}
 @Injectable()
 export class OAuthCallbackServer {
   private readonly logger = new Logger(OAuthCallbackServer.name);
-  private app: any = null;
-  private server: any = null;
+  private app: unknown = null;
+  private server: unknown = null;
   private controller: CallbackController | null = null;
 
   /**
    * Start the OAuth callback server on specified port
    */
-  async start(port: number = 54321): Promise<string> {
+  async start(port: number = 54_321): Promise<string> {
     try {
       this.logger.log(`Starting OAuth callback server on port ${port}...`);
 
@@ -224,7 +224,7 @@ export class OAuthCallbackServer {
   /**
    * Wait for OAuth callback to be received
    */
-  async waitForCallback(): Promise<any> {
+  async waitForCallback(): Promise<Record<string, string>> {
     if (!this.controller) {
       throw new Error('Callback server not started');
     }
@@ -243,7 +243,7 @@ export class OAuthCallbackServer {
 
       if (this.server) {
         await new Promise<void>((resolve, reject) => {
-          this.server.close((error: any) => {
+          (this.server as { close: (callback: (error?: Error) => void) => void }).close((error?: Error) => {
             if (error) {
               reject(error);
             } else {
@@ -255,7 +255,7 @@ export class OAuthCallbackServer {
       }
 
       if (this.app) {
-        await this.app.close();
+        await (this.app as { close: () => Promise<void> }).close();
         this.app = null;
       }
 

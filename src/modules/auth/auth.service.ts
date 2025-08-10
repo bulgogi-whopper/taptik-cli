@@ -5,6 +5,7 @@ import open from 'open';
 
 import { User, UserSession, fromSupabaseUser } from '../../models/user.model';
 import { getSupabaseClient } from '../../supabase/supabase-client';
+
 import { OAuthCallbackServer } from './oauth-callback-server';
 import { SessionStorage } from './session-storage';
 
@@ -133,7 +134,7 @@ export class AuthService {
 
       // Start the callback server
       console.log('🚀 Starting temporary callback server...');
-      callbackUrl = await this.callbackServer.start(54321);
+      callbackUrl = await this.callbackServer.start(54_321);
 
       // Use Supabase's signInWithOAuth method with our callback server
       const { data, error } = await this.supabase.auth.signInWithOAuth({
@@ -197,7 +198,7 @@ export class AuthService {
         console.log('🛑 Stopping callback server...');
         try {
           await this.callbackServer.stop();
-        } catch (stopError) {
+        } catch {
           console.warn('Warning: Failed to stop callback server cleanly');
         }
       }
@@ -219,11 +220,11 @@ export class AuthService {
       }
 
       const fragment = urlParts[1];
-      const params = new URLSearchParams(fragment);
+      const parameters = new URLSearchParams(fragment);
 
-      const accessToken = params.get('access_token');
-      const refreshToken = params.get('refresh_token');
-      const expiresAt = params.get('expires_at');
+      const accessToken = parameters.get('access_token');
+      const refreshToken = parameters.get('refresh_token');
+      const expiresAt = parameters.get('expires_at');
 
       if (!accessToken) {
         throw new Error('No access token found in callback URL');
@@ -242,8 +243,8 @@ export class AuthService {
         });
         sessionData = data;
         sessionError = error;
-      } catch (err) {
-        sessionError = err;
+      } catch (error) {
+        sessionError = error;
       }
 
       // If setSession fails (e.g., refresh token expired), try alternative approach
@@ -285,7 +286,7 @@ export class AuthService {
           const mockSession = {
             access_token: accessToken,
             refresh_token: refreshToken || '',
-            expires_at: expiresAt ? parseInt(expiresAt) : payload.exp,
+            expires_at: expiresAt ? Number.parseInt(expiresAt) : payload.exp,
             expires_in: 3600,
             token_type: 'bearer',
             user: mockUser,

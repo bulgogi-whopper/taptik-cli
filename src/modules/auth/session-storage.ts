@@ -1,7 +1,8 @@
+import { promises as fs } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+
 import { Injectable } from '@nestjs/common';
-import { promises as fs } from 'fs';
-import { join } from 'path';
-import { homedir } from 'os';
 
 import { UserSession } from '../../models/user.model';
 
