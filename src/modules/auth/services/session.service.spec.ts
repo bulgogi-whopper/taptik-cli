@@ -2,6 +2,8 @@ import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { Logger } from '@nestjs/common';
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import { UserSession } from '../../../models/user.model';
@@ -19,6 +21,11 @@ vi.mock('node:fs', () => ({
     access: vi.fn(),
   },
 }));
+
+// Mock Logger to suppress error logs during tests
+vi.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
+vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => {});
+vi.spyOn(Logger.prototype, 'log').mockImplementation(() => {});
 
 const mockFs = fs as any;
 
