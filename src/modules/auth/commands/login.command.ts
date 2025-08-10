@@ -104,8 +104,10 @@ export class LoginCommand extends CommandRunner {
       );
       console.log('\n💡 Tip: Use "taptik logout" to sign out when done');
 
-      // Force process exit to ensure CLI terminates properly
-      process.exit(0);
+      // Exit immediately after successful login
+      setTimeout(() => {
+        process.exit(0);
+      }, 50); // Very short delay just to ensure console output is flushed
     } catch (error) {
       console.error('\n❌ OAuth login failed:');
       if (error instanceof Error) {

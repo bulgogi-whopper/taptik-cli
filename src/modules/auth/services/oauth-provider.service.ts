@@ -76,6 +76,9 @@ export class OAuthProviderService implements IOAuthProviderService {
 
       return callbackUrl;
     } catch (error) {
+      // Log the actual error for debugging
+      this.logger.error('OAuth flow failed with error:', error);
+      
       // Clean up callback server if it was started
       if (this.callbackServer.isRunning()) {
         await this.stopCallbackServer();
@@ -175,7 +178,7 @@ export class OAuthProviderService implements IOAuthProviderService {
    */
   async startCallbackServer(config?: Partial<CallbackServerConfig>): Promise<string> {
     try {
-      const port = config?.port || 54_321;
+      const port = config?.port;
 
       return await this.callbackServer.start(port);
     } catch (error) {

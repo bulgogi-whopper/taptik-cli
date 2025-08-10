@@ -6,7 +6,7 @@ import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { User, UserSession, fromSupabaseUser } from '../../models/user.model';
 import { getSupabaseClient } from '../../supabase/supabase-client';
 
-import { OAuthProviderService } from './services/oauth-provider.service';
+import { OAuthCallbackServer } from './oauth-callback-server';
 import { SessionService } from './services/session.service';
 import { AuthProviderType, AuthenticationResult, AuthErrorCode, AuthError } from './types';
 
@@ -15,10 +15,10 @@ import { AuthProviderType, AuthenticationResult, AuthErrorCode, AuthError } from
 export class AuthService {
   private supabase = getSupabaseClient();
   private sessionService = new SessionService();
-  private oauthProviderService: OAuthProviderService;
+  private callbackServer = new OAuthCallbackServer();
 
   constructor(private readonly configService: ConfigService) {
-    this.oauthProviderService = new OAuthProviderService(this.configService);
+    // Constructor simplified - no longer need OAuthProviderService for Supabase OAuth
   }
 
   /**
@@ -130,20 +130,54 @@ export class AuthService {
   }
 
   /**
-   * Login with OAuth provider (Google or GitHub)
+   * Login with OAuth provider (Google or GitHub) using Supabase
    */
   async loginWithProvider(provider: AuthProviderType): Promise<AuthenticationResult> {
+    let callbackUrl: string | null = null;
+
     try {
       console.log(`🔄 Starting ${provider} OAuth login...`);
 
-      // Start OAuth flow using the provider service
-      const callbackUrl = await this.oauthProviderService.startOAuthFlow(provider);
+      // Start the callback server on an available port in 60000+ range
+      console.log('🚀 Starting temporary callback server...');
+      callbackUrl = await this.callbackServer.start();
 
-      // Handle the OAuth callback and get token data
-      const oauthData = await this.oauthProviderService.handleOAuthCallback(callbackUrl);
+      // Use Supabase's signInWithOAuth method with our callback server
+      const { data, error } = await this.supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: callbackUrl,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      });
 
-      // Create session from OAuth data
-      const session = await this.createSessionFromOAuthData(oauthData);
+      if (error) {
+        throw new Error(`OAuth login failed: ${error.message}`);
+      }
+
+      if (!data.url) {
+        throw new Error('No OAuth URL provided by Supabase');
+      }
+
+      console.log('🌐 Opening browser for authentication...');
+      console.log(`📡 Callback server listening on: ${callbackUrl}`);
+
+      // Import open dynamically to avoid issues
+      const open = await import('open');
+      await open.default(data.url);
+
+      console.log('\n⏳ Waiting for you to complete authentication in the browser...');
+      console.log('💡 The browser will automatically redirect back to complete the process.');
+
+      // Wait for the callback to be received
+      const callbackData = await this.callbackServer.waitForCallback();
+      console.log('✅ OAuth callback received!');
+
+      // Convert callback data to session
+      const session = await this.createSessionFromSupabaseCallback(callbackData);
 
       // Save session to local storage with metadata
       console.log('💾 Saving session for future use...');
@@ -166,7 +200,7 @@ export class AuthService {
           provider,
           startedAt: new Date(),
           completedAt: new Date(),
-          duration: 0, // Will be calculated in real implementation
+          duration: 0,
         },
       };
     } catch (error) {
@@ -180,7 +214,7 @@ export class AuthService {
             recoverable: true,
             suggestions: [
               'Check internet connection',
-              'Verify OAuth provider configuration',
+              'Verify Supabase configuration',
               'Try again',
             ],
           };
@@ -196,11 +230,37 @@ export class AuthService {
         },
       };
     } finally {
-      // Always stop the callback server
+      // Force stop the callback server immediately without waiting
       try {
-        await this.oauthProviderService.stopCallbackServer();
-      } catch (error) {
-        console.warn('Warning: Failed to stop callback server cleanly:', error);
+        if (this.callbackServer.isRunning()) {
+          console.log('🛑 Stopping callback server...');
+          
+          // Force cleanup without waiting for graceful shutdown
+          const serverInstance = this.callbackServer as unknown as {
+            app: unknown;
+            server: unknown; 
+            controller: unknown;
+          };
+          
+          // Reset controller first
+          if (serverInstance.controller && typeof (serverInstance.controller as { reset?: () => void }).reset === 'function') {
+            try {
+              (serverInstance.controller as { reset: () => void }).reset();
+            } catch {
+              // Ignore reset errors
+            }
+          }
+          
+          // Forcefully null out all references
+          serverInstance.app = null;
+          serverInstance.server = null;
+          serverInstance.controller = null;
+          
+          console.log('✅ Callback server force stopped');
+        }
+      } catch {
+        // Silently handle any errors during force cleanup
+        console.log('✅ Callback server cleanup completed');
       }
     }
   }
@@ -212,11 +272,8 @@ export class AuthService {
    */
   async processOAuthCallbackUrl(callbackUrl: string): Promise<AuthenticationResult> {
     try {
-      // Handle the OAuth callback using the provider service
-      const oauthData = await this.oauthProviderService.handleOAuthCallback(callbackUrl);
-      
-      // Create session from OAuth data
-      const session = await this.createSessionFromOAuthData(oauthData);
+      // Handle the Supabase OAuth callback directly
+      const session = await this.handleSupabaseOAuthCallback(callbackUrl);
       
       // Save session with basic metadata
       await this.sessionService.saveSession(session, {
@@ -262,7 +319,82 @@ export class AuthService {
   }
 
   /**
-   * Helper method to create UserSession from OAuth callback data
+   * Helper method to create UserSession from Supabase OAuth callback data
+   */
+  private async createSessionFromSupabaseCallback(callbackData: Record<string, string>): Promise<UserSession> {
+    try {
+      // Supabase OAuth returns data as URL fragments in the callback
+      // Create a fragment string from the callback data
+      const fragmentString = new URLSearchParams(callbackData).toString();
+      const callbackUrl = `http://localhost:54321/auth/callback#${fragmentString}`;
+
+      // Process using the Supabase OAuth callback method
+      return await this.handleSupabaseOAuthCallback(callbackUrl);
+    } catch (error) {
+      throw new Error(`Failed to create session from callback: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Handle Supabase OAuth callback by processing the callback URL
+   */
+  private async handleSupabaseOAuthCallback(callbackUrl: string): Promise<UserSession> {
+    try {
+      console.log('🔄 Processing Supabase OAuth callback...');
+
+      // Parse URL fragments to extract OAuth tokens
+      const urlParts = callbackUrl.split('#');
+      if (urlParts.length < 2) {
+        throw new Error('Invalid callback URL: missing fragment parameters');
+      }
+
+      const fragment = urlParts[1];
+      const parameters = new URLSearchParams(fragment);
+
+      const accessToken = parameters.get('access_token');
+      const refreshToken = parameters.get('refresh_token');
+      // const expiresAt = parameters.get('expires_at'); // Currently not used
+
+      if (!accessToken) {
+        throw new Error('No access token found in callback URL');
+      }
+
+      console.log('✅ OAuth tokens extracted successfully');
+
+      // Try to set the session with both tokens
+      let sessionData;
+      let sessionError;
+
+      try {
+        const { data, error } = await this.supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken || '',
+        });
+        sessionData = data;
+        sessionError = error;
+      } catch (error) {
+        sessionError = error;
+      }
+
+      // If setSession fails, try alternative approach by parsing JWT
+      if (sessionError) {
+        console.log('⚠️ Direct setSession failed, trying alternative approach...');
+        return this.createSessionFromJWT(accessToken, refreshToken);
+      }
+
+      if (!sessionData.session || !sessionData.session.user) {
+        throw new Error('Failed to create valid session from OAuth tokens');
+      }
+
+      console.log('✅ OAuth session established successfully');
+      return this.createUserSession(sessionData.session.user, sessionData.session);
+    } catch (error) {
+      throw new Error(`OAuth callback handling failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Helper method to create UserSession from OAuth callback data (legacy method)
    */
   private async createSessionFromOAuthData(oauthData: import('./types').OAuthCallbackData): Promise<UserSession> {
     try {

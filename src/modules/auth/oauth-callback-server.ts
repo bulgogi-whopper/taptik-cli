@@ -2,6 +2,8 @@ import { Injectable, Controller, Get, Module, Query, Res, Logger  } from '@nestj
 import type { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 
+import { findAvailablePort } from '../../utils/port-utilities';
+
 import type { Response } from 'express';
 
 @Controller()
@@ -187,10 +189,13 @@ export class OAuthCallbackServer {
   private controller: CallbackController | null = null;
 
   /**
-   * Start the OAuth callback server on specified port
+   * Start the OAuth callback server on an available port in the 60000+ range
    */
-  async start(port: number = 54_321): Promise<string> {
+  async start(preferredPort?: number): Promise<string> {
     try {
+      // Find an available port in the 60000-65535 range
+      const port = preferredPort || await findAvailablePort(60_000, 65_535);
+      
       this.logger.log(`Starting OAuth callback server on port ${port}...`);
 
       // Create NestJS application
@@ -240,30 +245,23 @@ export class OAuthCallbackServer {
     try {
       if (this.controller) {
         this.controller.reset();
-      }
-
-      if (this.server) {
-        await new Promise<void>((resolve, reject) => {
-          (this.server as { close: (callback: (error?: Error) => void) => void }).close((error?: Error) => {
-            if (error) {
-              reject(error);
-            } else {
-              resolve();
-            }
-          });
-        });
-        this.server = null;
+        this.controller = null;
       }
 
       if (this.app) {
-        await (this.app as { close: () => Promise<void> }).close();
+        // Close the NestJS application first, which will handle the underlying server
+        await this.app.close();
         this.app = null;
+        this.server = null; // Set to null after app is closed
       }
 
-      this.controller = null;
-      this.logger.log('OAuth callback server stopped');
+      this.logger.log('OAuth callback server stopped successfully');
     } catch (error) {
       this.logger.error('Error stopping OAuth callback server', error);
+      // Reset state even if there's an error to prevent hanging
+      this.controller = null;
+      this.app = null;
+      this.server = null;
       throw error;
     }
   }
