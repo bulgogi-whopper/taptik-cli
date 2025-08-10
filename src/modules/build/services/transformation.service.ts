@@ -1291,11 +1291,6 @@ export class TransformationService {
         category: 'general',
         variables: [],
         tags: ['default', 'fallback'],
-        metadata: {
-          created_at: new Date().toISOString(),
-          source: 'fallback',
-          version: '1.0.0',
-        },
       });
     }
     
