@@ -375,6 +375,17 @@ export class CollectionService {
   ): Promise<void> {
     try {
       const content = await fs.readFile(filePath, 'utf8');
+      
+      // Handle JSON files with special parsing validation
+      if (filename.endsWith('.json')) {
+        try {
+          JSON.parse(content); // Validate JSON structure
+        } catch (jsonError) {
+          this.logger.warn(`Invalid JSON structure in ${filename}: ${jsonError.message}`);
+          // Continue with the content anyway - let transformation service handle it
+        }
+      }
+      
       const { filteredContent, wasFiltered } = this.applySecurityFilter(content);
       onSuccess(filteredContent, wasFiltered);
       

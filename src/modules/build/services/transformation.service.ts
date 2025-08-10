@@ -17,6 +17,11 @@ import {
   PromptMetadata,
 } from '../interfaces/taptik-format.interface';
 import { randomUUID } from 'crypto';
+import { 
+  DataProcessingErrorHandler, 
+  DataProcessingErrorType,
+  DataProcessingErrorResult 
+} from '../utils/data-processing-error-handler';
 
 /**
  * Service responsible for transforming collected Kiro settings data
@@ -51,8 +56,24 @@ export class TransformationService {
       this.logger.log('Personal context transformation completed successfully');
       return personalContext;
     } catch (error) {
-      this.logger.error('Failed to transform personal context', error.stack);
-      throw new Error(`Personal context transformation failed: ${error.message}`);
+      const errorResult = DataProcessingErrorHandler.handleError(
+        error,
+        DataProcessingErrorType.TRANSFORMATION,
+        {
+          category: 'personal-context',
+          operation: 'transforming personal context',
+          filePath: settingsData.collectionMetadata.projectPath,
+        }
+      );
+      
+      DataProcessingErrorHandler.logErrorResult(errorResult);
+      
+      if (errorResult.isCritical) {
+        throw new Error(errorResult.userMessage);
+      } else {
+        // Return minimal personal context with available data
+        return this.createFallbackPersonalContext(settingsData, errorResult.partialData);
+      }
     }
   }
 
@@ -81,8 +102,24 @@ export class TransformationService {
       this.logger.log('Project context transformation completed successfully');
       return projectContext;
     } catch (error) {
-      this.logger.error('Failed to transform project context', error.stack);
-      throw new Error(`Project context transformation failed: ${error.message}`);
+      const errorResult = DataProcessingErrorHandler.handleError(
+        error,
+        DataProcessingErrorType.TRANSFORMATION,
+        {
+          category: 'project-context',
+          operation: 'transforming project context',
+          filePath: settingsData.collectionMetadata.projectPath,
+        }
+      );
+      
+      DataProcessingErrorHandler.logErrorResult(errorResult);
+      
+      if (errorResult.isCritical) {
+        throw new Error(errorResult.userMessage);
+      } else {
+        // Return minimal project context with available data
+        return this.createFallbackProjectContext(settingsData, errorResult.partialData);
+      }
     }
   }
 
@@ -106,8 +143,24 @@ export class TransformationService {
       this.logger.log(`Prompt templates transformation completed successfully with ${templates.length} templates`);
       return promptTemplates;
     } catch (error) {
-      this.logger.error('Failed to transform prompt templates', error.stack);
-      throw new Error(`Prompt templates transformation failed: ${error.message}`);
+      const errorResult = DataProcessingErrorHandler.handleError(
+        error,
+        DataProcessingErrorType.TRANSFORMATION,
+        {
+          category: 'prompt-templates',
+          operation: 'transforming prompt templates',
+          filePath: settingsData.collectionMetadata.globalPath,
+        }
+      );
+      
+      DataProcessingErrorHandler.logErrorResult(errorResult);
+      
+      if (errorResult.isCritical) {
+        throw new Error(errorResult.userMessage);
+      } else {
+        // Return minimal prompt templates with available data
+        return this.createFallbackPromptTemplates(settingsData, errorResult.partialData);
+      }
     }
   }
 
@@ -245,8 +298,19 @@ export class TransformationService {
 
       return parsed;
     } catch (error) {
-      this.logger.warn('Failed to parse Kiro preferences, using defaults', error.message);
-      return {};
+      const errorResult = DataProcessingErrorHandler.handleError(
+        error,
+        DataProcessingErrorType.MARKDOWN_PARSING,
+        {
+          operation: 'parsing Kiro preferences markdown',
+          rawData: content,
+        }
+      );
+      
+      DataProcessingErrorHandler.logErrorResult(errorResult);
+      
+      // Return partial data if available, otherwise empty object
+      return errorResult.partialData || {};
     }
   }
 
@@ -733,19 +797,48 @@ export class TransformationService {
   private async extractPromptTemplates(settingsData: SettingsData): Promise<PromptTemplateEntry[]> {
     const templates: PromptTemplateEntry[] = [];
 
-    // Extract from global prompts
+    // Extract from global prompts with error handling
     if (settingsData.globalSettings.globalPrompts && Array.isArray(settingsData.globalSettings.globalPrompts)) {
-      settingsData.globalSettings.globalPrompts.forEach((prompt, index) => {
-        const template = this.convertKiroPromptToTaptik(prompt, index);
-        if (template) {
-          templates.push(template);
-        }
-      });
+      const { results, errors } = this.processArrayWithErrorHandling(
+        settingsData.globalSettings.globalPrompts,
+        (prompt, index) => this.convertKiroPromptToTaptik(prompt, index),
+        { operation: 'converting Kiro prompts to Taptik format', category: 'prompt-templates' }
+      );
+      
+      // Add successfully converted templates
+      templates.push(...results.filter(template => template !== null));
+      
+      // Log summary if there were errors
+      if (errors.length > 0) {
+        const summary = DataProcessingErrorHandler.createPartialSuccessSummary(
+          settingsData.globalSettings.globalPrompts.length,
+          results.length,
+          errors
+        );
+        this.logger.warn(`Prompt conversion summary: ${summary.summary}`);
+      }
     }
 
-    // Extract from global settings content (markdown format)
-    const additionalTemplates = this.extractTemplatesFromMarkdown(settingsData.globalSettings.userConfig);
-    templates.push(...additionalTemplates);
+    // Extract from global settings content (markdown format) with error handling
+    try {
+      const additionalTemplates = this.extractTemplatesFromMarkdown(settingsData.globalSettings.userConfig);
+      templates.push(...additionalTemplates);
+    } catch (error) {
+      const errorResult = DataProcessingErrorHandler.handleError(
+        error,
+        DataProcessingErrorType.MARKDOWN_PARSING,
+        {
+          operation: 'extracting templates from markdown',
+          category: 'prompt-templates',
+          rawData: settingsData.globalSettings.userConfig,
+        }
+      );
+      
+      DataProcessingErrorHandler.logErrorResult(errorResult);
+      
+      // Continue without additional templates if markdown parsing fails
+      this.logger.warn('Skipping markdown template extraction due to parsing errors');
+    }
 
     // Sort templates by name for consistent ordering
     return templates.sort((a, b) => a.name.localeCompare(b.name));
@@ -756,6 +849,16 @@ export class TransformationService {
    */
   private convertKiroPromptToTaptik(kiroPrompt: any, index: number): PromptTemplateEntry | null {
     if (!kiroPrompt || typeof kiroPrompt !== 'object') {
+      const errorResult = DataProcessingErrorHandler.handleError(
+        new Error('Invalid prompt data structure'),
+        DataProcessingErrorType.INVALID_DATA_FORMAT,
+        {
+          operation: `converting prompt ${index + 1}`,
+          category: 'prompt-templates',
+        }
+      );
+      
+      DataProcessingErrorHandler.logErrorResult(errorResult);
       return null;
     }
 
@@ -767,7 +870,16 @@ export class TransformationService {
       const category = kiroPrompt.category || kiroPrompt.type || this.inferCategoryFromName(name);
 
       if (!content) {
-        this.logger.warn(`Skipping prompt template ${name} - no content found`);
+        const errorResult = DataProcessingErrorHandler.handleError(
+          new Error('Template content is empty or missing'),
+          DataProcessingErrorType.MISSING_REQUIRED_FIELD,
+          {
+            operation: `processing template "${name}"`,
+            category: 'prompt-templates',
+          }
+        );
+        
+        DataProcessingErrorHandler.logErrorResult(errorResult);
         return null;
       }
 
@@ -1077,5 +1189,188 @@ export class TransformationService {
       this.logger.error('Template validation failed', error.message);
       return false;
     }
+  }
+
+  /**
+   * Create fallback personal context when transformation fails
+   */
+  private createFallbackPersonalContext(settingsData: SettingsData, partialData?: any): TaptikPersonalContext {
+    this.logger.warn('Creating fallback personal context due to transformation errors');
+    
+    return {
+      user_id: this.generateUserId(settingsData),
+      preferences: {
+        preferred_languages: partialData?.languages || ['typescript'],
+        coding_style: {
+          indentation: '2 spaces',
+          naming_convention: 'camelCase',
+          comment_style: 'minimal',
+          code_organization: 'feature-based',
+        },
+        tools_and_frameworks: partialData?.tools || [],
+        development_environment: partialData?.environment || [],
+      },
+      work_style: {
+        preferred_workflow: 'agile',
+        problem_solving_approach: 'incremental',
+        documentation_level: 'minimal',
+        testing_approach: 'unit-first',
+      },
+      communication: {
+        preferred_explanation_style: 'concise',
+        technical_depth: 'intermediate',
+        feedback_style: 'direct',
+      },
+      metadata: {
+        source_platform: settingsData.collectionMetadata.sourcePlatform,
+        created_at: new Date().toISOString(),
+        version: '1.0.0',
+      },
+    };
+  }
+
+  /**
+   * Create fallback project context when transformation fails
+   */
+  private createFallbackProjectContext(settingsData: SettingsData, partialData?: any): TaptikProjectContext {
+    this.logger.warn('Creating fallback project context due to transformation errors');
+    
+    const projectPath = settingsData.collectionMetadata.projectPath;
+    const projectName = projectPath.split('/').pop() || 'untitled-project';
+    
+    return {
+      project_id: this.generateProjectId(settingsData),
+      project_info: {
+        name: partialData?.name || projectName,
+        description: partialData?.description || 'No description available',
+        version: partialData?.version || '1.0.0',
+        repository: partialData?.repository || '',
+      },
+      technical_stack: {
+        primary_language: partialData?.language || 'typescript',
+        frameworks: partialData?.frameworks || [],
+        databases: partialData?.databases || [],
+        tools: partialData?.tools || [],
+        deployment: partialData?.deployment || [],
+      },
+      development_guidelines: {
+        coding_standards: partialData?.standards || [],
+        testing_requirements: partialData?.testing || [],
+        documentation_standards: partialData?.documentation || [],
+        review_process: partialData?.review || [],
+      },
+      metadata: {
+        source_platform: settingsData.collectionMetadata.sourcePlatform,
+        source_path: settingsData.collectionMetadata.projectPath,
+        created_at: new Date().toISOString(),
+        version: '1.0.0',
+      },
+    };
+  }
+
+  /**
+   * Create fallback prompt templates when transformation fails
+   */
+  private createFallbackPromptTemplates(settingsData: SettingsData, partialData?: any): TaptikPromptTemplates {
+    this.logger.warn('Creating fallback prompt templates due to transformation errors');
+    
+    const fallbackTemplates: PromptTemplateEntry[] = [];
+    
+    // Add any partial templates that were successfully processed
+    if (partialData?.templates && Array.isArray(partialData.templates)) {
+      fallbackTemplates.push(...partialData.templates);
+    }
+    
+    // Add a basic default template if no templates were recovered
+    if (fallbackTemplates.length === 0) {
+      fallbackTemplates.push({
+        id: 'default-template',
+        name: 'Default Template',
+        description: 'Default template created due to processing errors',
+        content: 'This is a default template created when original templates could not be processed.',
+        category: 'general',
+        variables: [],
+        tags: ['default', 'fallback'],
+        metadata: {
+          created_at: new Date().toISOString(),
+          source: 'fallback',
+          version: '1.0.0',
+        },
+      });
+    }
+    
+    return {
+      templates: fallbackTemplates,
+      metadata: {
+        source_platform: settingsData.collectionMetadata.sourcePlatform,
+        created_at: new Date().toISOString(),
+        version: '1.0.0',
+        total_templates: fallbackTemplates.length,
+      },
+    };
+  }
+
+  /**
+   * Parse JSON content with enhanced error handling
+   */
+  private parseJsonWithErrorHandling(content: string, filePath?: string): any {
+    try {
+      return JSON.parse(content);
+    } catch (error) {
+      const errorResult = DataProcessingErrorHandler.handleError(
+        error,
+        DataProcessingErrorType.JSON_PARSING,
+        {
+          operation: 'parsing JSON content',
+          filePath,
+          rawData: content,
+        }
+      );
+      
+      DataProcessingErrorHandler.logErrorResult(errorResult);
+      
+      // Try to extract partial data from malformed JSON
+      if (errorResult.partialData) {
+        return errorResult.partialData;
+      }
+      
+      // Return empty object as fallback
+      return {};
+    }
+  }
+
+  /**
+   * Process array of items with individual error handling
+   */
+  private processArrayWithErrorHandling<T, R>(
+    items: T[],
+    processor: (item: T, index: number) => R,
+    context: { operation: string; category?: string }
+  ): { results: R[]; errors: any[] } {
+    const results: R[] = [];
+    const errors: unknown[] = [];
+    
+    for (let i = 0; i < items.length; i++) {
+      try {
+        const result = processor(items[i], i);
+        results.push(result);
+      } catch (error) {
+        const errorResult = DataProcessingErrorHandler.handleError(
+          error,
+          DataProcessingErrorType.DATA_VALIDATION,
+          {
+            operation: `${context.operation} (item ${i + 1})`,
+            category: context.category,
+          }
+        );
+        
+        errors.push(errorResult);
+        
+        // Log but continue processing other items
+        DataProcessingErrorHandler.logErrorResult(errorResult);
+      }
+    }
+    
+    return { results, errors };
   }
 }
