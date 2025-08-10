@@ -26,11 +26,32 @@ npx taptik-cli --help
 ### Basic Usage
 
 ```bash
-# Login with Google or GitHub
-taptik login
+# Check CLI health and available commands
+npm run cli -- --help
+
+# Build taptik-compatible files from your current Kiro setup
+npm run build:kiro
+
+# Interactive build with all options
+npm run cli -- build
+
+# Build with specific options
+npm run cli -- build --platform kiro --categories personal,project --verbose
 
 # Build your current configuration
 taptik build
+
+# Preview build without creating files (dry run)
+npm run cli -- build --dry-run
+
+# Build with custom output directory
+npm run cli -- build --output ./my-taptik-config
+
+# Build specific categories only
+npm run cli -- build --categories personal,project
+
+# Silent build (suppress non-essential output)
+npm run cli -- build --quiet
 
 # Push configuration to cloud
 taptik push --name "My Setup" --description "Full stack dev config"
@@ -71,6 +92,95 @@ taptik info
 - **Claude Code** - Anthropic's AI coding assistant
 
 ## 🛠️ Commands
+
+### Build Command
+
+The `build` command converts your Kiro configuration files into taptik-compatible format for use with various AI development tools.
+
+#### Interactive Mode (Default)
+
+```bash
+# Run interactive build with prompts
+npm run cli -- build
+```
+
+The interactive mode will guide you through:
+1. **Platform Selection**: Choose your source platform (Kiro, Cursor, Claude Code)
+2. **Category Selection**: Select which types of context to build:
+   - **Personal Context**: User preferences, development environment, coding style
+   - **Project Context**: Project info, tech stack, architecture patterns, guidelines
+   - **Prompt Templates**: Reusable prompt templates for various development tasks
+
+#### Command-Line Options
+
+```bash
+# Dry run - preview what would be built without creating files
+npm run cli -- build --dry-run
+
+# Specify custom output directory
+npm run cli -- build --output ./my-custom-path
+
+# Skip platform selection (use Kiro)
+npm run cli -- build --platform kiro
+
+# Build specific categories only
+npm run cli -- build --categories personal,project
+npm run cli -- build --categories prompts
+
+# Show detailed progress information
+npm run cli -- build --verbose
+
+# Suppress non-essential output
+npm run cli -- build --quiet
+
+# Combine multiple options
+npm run cli -- build --platform kiro --categories personal --output ./output --dry-run
+```
+
+#### Build Options Reference
+
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--dry-run` | Preview build without creating files | `--dry-run` |
+| `--output <path>` | Custom output directory path | `--output ./my-config` |
+| `--platform <platform>` | Skip platform selection | `--platform kiro` |
+| `--categories <list>` | Comma-separated category list | `--categories personal,project` |
+| `--verbose` | Show detailed progress info | `--verbose` |
+| `--quiet` | Suppress non-essential output | `--quiet` |
+
+#### Output Structure
+
+The build command creates a timestamped directory with the following structure:
+
+```
+taptik-build-20240115-103000/
+├── personal-context.json    # User preferences and environment
+├── project-context.json     # Project info and guidelines  
+├── prompt-templates.json    # Reusable prompt templates
+└── manifest.json           # Build metadata and file info
+```
+
+#### Supported Categories
+
+- **Personal Context**: Development environment, coding preferences, workflow practices, AI interaction preferences
+- **Project Context**: Technical stack, architecture patterns, development guidelines, security requirements
+- **Prompt Templates**: Code review templates, debugging guides, architecture reviews, performance analysis
+
+#### Examples
+
+```bash
+# Build everything interactively
+npm run cli -- build
+
+# Quick build for personal context only
+npm run cli -- build --platform kiro --categories personal --quiet
+
+# Preview full build
+npm run cli -- build --dry-run --verbose
+
+# Build for specific output location
+npm run cli -- build --output ~/my-taptik-configs/project-x
+```
 
 ### Authentication
 
