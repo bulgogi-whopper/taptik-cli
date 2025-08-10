@@ -111,7 +111,7 @@
     - Write unit tests for interruption and critical error handling
     - _Requirements: 8.4, 8.6_
 
-- [ ] 8. Create build command integration
+- [x] 8. Create build command integration
   - [x] 8.1 Implement BuildCommand class with nest-commander integration
     - Create command class that orchestrates all services
     - Implement proper dependency injection for all services
@@ -119,7 +119,7 @@
     - Write unit tests for command orchestration
     - _Requirements: 1.1, 2.1_
 
-  - [ ] 8.2 Wire up complete build workflow
+  - [x] 8.2 Wire up complete build workflow
     - Integrate interactive selection, data collection, transformation, and output services
     - Implement proper error propagation and handling across services
     - Add logging and monitoring throughout the build process
