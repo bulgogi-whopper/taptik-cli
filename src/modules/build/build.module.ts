@@ -5,9 +5,10 @@ import { InteractiveService } from './services/interactive.service';
 import { CollectionService } from './services/collection.service';
 import { TransformationService } from './services/transformation.service';
 import { OutputService } from './services/output.service';
+import { ProgressService } from './services/progress.service';
 
 @Module({
-  providers: [BuildCommand, InteractiveService, CollectionService, TransformationService, OutputService],
-  exports: [BuildCommand, InteractiveService, CollectionService, TransformationService, OutputService],
+  providers: [BuildCommand, InteractiveService, CollectionService, TransformationService, OutputService, ProgressService],
+  exports: [BuildCommand, InteractiveService, CollectionService, TransformationService, OutputService, ProgressService],
 })
 export class BuildModule {}
