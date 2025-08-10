@@ -92,6 +92,9 @@ export class BuildCommand extends CommandRunner {
       }
       this.progressService.completeStep('Data transformation');
 
+      // Log transformation results for monitoring
+      this.logTransformationResults(transformedData, buildConfig);
+
       // Step 4: Output generation
       this.progressService.startStep('Output generation');
       const outputPath = await this.generateOutput(transformedData, buildConfig, settingsData);
@@ -386,5 +389,57 @@ export class BuildCommand extends CommandRunner {
     }
 
     return outputFiles;
+  }
+
+  /**
+   * Log transformation results for monitoring
+   */
+  private logTransformationResults(
+    transformedData: {
+      personalContext?: TaptikPersonalContext;
+      projectContext?: TaptikProjectContext;
+      promptTemplates?: TaptikPromptTemplates;
+    },
+    buildConfig: BuildConfig
+  ): void {
+    const enabledCategories = buildConfig.categories.filter(cat => cat.enabled);
+    const successfulTransformations = [];
+    const failedTransformations = [];
+
+    for (const category of enabledCategories) {
+      switch (category.name) {
+        case BuildCategoryName.PERSONAL_CONTEXT:
+          if (transformedData.personalContext) {
+            successfulTransformations.push('personal-context');
+          } else {
+            failedTransformations.push('personal-context');
+          }
+          break;
+        case BuildCategoryName.PROJECT_CONTEXT:
+          if (transformedData.projectContext) {
+            successfulTransformations.push('project-context');
+          } else {
+            failedTransformations.push('project-context');
+          }
+          break;
+        case BuildCategoryName.PROMPT_TEMPLATES:
+          if (transformedData.promptTemplates) {
+            successfulTransformations.push('prompt-templates');
+          } else {
+            failedTransformations.push('prompt-templates');
+          }
+          break;
+      }
+    }
+
+    this.logger.log(`Transformation completed: ${successfulTransformations.length} successful, ${failedTransformations.length} failed`);
+    
+    if (successfulTransformations.length > 0) {
+      this.logger.debug(`Successful transformations: ${successfulTransformations.join(', ')}`);
+    }
+    
+    if (failedTransformations.length > 0) {
+      this.logger.warn(`Failed transformations: ${failedTransformations.join(', ')}`);
+    }
   }
 }
