@@ -219,7 +219,10 @@ export class BuildCommand extends CommandRunner {
     }
 
     // Add warnings to error handler
-    warnings.forEach(warning => this.errorHandler.addWarning(warning));
+    warnings.forEach(warning => this.errorHandler.addWarning({
+      type: 'missing_file',
+      message: warning,
+    }));
 
     return {
       localSettings,
@@ -271,7 +274,11 @@ export class BuildCommand extends CommandRunner {
 
         this.progressService.completeTransformation(category.name);
       } catch (error) {
-        this.errorHandler.addWarning(`Failed to transform ${category.name}: ${error.message}`);
+        this.errorHandler.addWarning({
+          type: 'partial_conversion',
+          message: `Failed to transform ${category.name}`,
+          details: error.message,
+        });
         this.progressService.failStep(`Failed to transform ${category.name}`, error);
       }
     }
@@ -325,10 +332,13 @@ export class BuildCommand extends CommandRunner {
     // Display detailed output summary
     try {
       const outputFiles = await this.getOutputFiles(outputPath);
-      const warnings = this.errorHandler.getWarnings();
-      const errors = this.errorHandler.getErrors();
+      const errorSummary = this.errorHandler.getErrorSummary();
+      const warnings = errorSummary.warnings;
+      const errors = errorSummary.criticalErrors;
 
-      await this.outputService.displayBuildSummary(outputPath, outputFiles, warnings, errors, buildTime);
+      const warningMessages = warnings.map(w => w.message);
+      const errorMessages = errors.map(e => e.message);
+      await this.outputService.displayBuildSummary(outputPath, outputFiles, warningMessages, errorMessages, buildTime);
     } catch (error) {
       this.logger.warn('Failed to display detailed build summary', error.message);
       // Continue without detailed summary

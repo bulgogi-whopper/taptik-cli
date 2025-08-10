@@ -116,8 +116,9 @@ export class OutputService {
     projectContext?: TaptikProjectContext,
     promptTemplates?: TaptikPromptTemplates,
   ): Promise<OutputFile[]> {
+    const outputFiles: OutputFile[] = [];
+    
     try {
-      const outputFiles: OutputFile[] = [];
 
       // Write personal context file
       if (personalContext) {
