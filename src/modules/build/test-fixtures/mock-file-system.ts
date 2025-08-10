@@ -2,7 +2,7 @@ import { promises as fs } from 'fs';
 import { join } from 'path';
 
 /**
- * Mock file system utilities for testing
+ * Mock file system utilities for testing with advanced error scenarios
  */
 
 export interface MockFileSystemConfig {
