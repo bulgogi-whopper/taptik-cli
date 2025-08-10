@@ -1,5 +1,8 @@
 /**
  * Mock Kiro configuration data for testing
+ * 
+ * @deprecated Use realistic-project-scenarios.ts for comprehensive testing
+ * This file is kept for backward compatibility with existing tests
  */
 
 export const mockKiroLocalSettings = {
