@@ -1,4 +1,4 @@
-import { Command, CommandRunner } from 'nest-commander';
+import { Command, CommandRunner, Option } from 'nest-commander';
 import { Logger } from '@nestjs/common';
 
 import { InteractiveService } from '../services/interactive.service';
@@ -14,6 +14,14 @@ import { TaptikPersonalContext, TaptikProjectContext, TaptikPromptTemplates } fr
 @Command({
   name: 'build',
   description: 'Build taptik-compatible context files from Kiro settings',
+  examples: [
+    'build                           # Interactive build with prompts',
+    'build --dry-run                 # Preview what would be built without creating files',
+    'build --output ./my-output      # Specify custom output directory',
+    'build --verbose                 # Show detailed progress information',
+    'build --platform kiro           # Skip platform selection (use "kiro")',
+    'build --categories personal,project  # Build only specific categories',
+  ],
 })
 export class BuildCommand extends CommandRunner {
   private readonly logger = new Logger(BuildCommand.name);
@@ -29,10 +37,83 @@ export class BuildCommand extends CommandRunner {
     super();
   }
 
+  @Option({
+    flags: '--dry-run',
+    description: 'Preview what would be built without creating actual files',
+  })
+  parseDryRun(): boolean {
+    return true;
+  }
+
+  @Option({
+    flags: '--output <path>',
+    description: 'Specify custom output directory path',
+  })
+  parseOutputPath(val: string): string {
+    return val;
+  }
+
+  @Option({
+    flags: '--verbose',
+    description: 'Show detailed progress and debugging information',
+  })
+  parseVerbose(): boolean {
+    return true;
+  }
+
+  @Option({
+    flags: '--platform <platform>',
+    description: 'Skip platform selection and use specified platform (kiro, cursor, claude-code)',
+  })
+  parsePlatform(val: string): BuildPlatform {
+    const platform = val.toLowerCase();
+    if (platform === 'kiro') return BuildPlatform.KIRO;
+    if (platform === 'cursor') return BuildPlatform.CURSOR;
+    if (platform === 'claude-code') return BuildPlatform.CLAUDE_CODE;
+    throw new Error(`Invalid platform: ${val}. Must be one of: kiro, cursor, claude-code`);
+  }
+
+  @Option({
+    flags: '--categories <categories>',
+    description: 'Comma-separated list of categories to build (personal, project, prompts)',
+  })
+  parseCategories(val: string): string[] {
+    return val.split(',').map(cat => cat.trim().toLowerCase());
+  }
+
+  @Option({
+    flags: '--quiet',
+    description: 'Suppress non-essential output (opposite of --verbose)',
+  })
+  parseQuiet(): boolean {
+    return true;
+  }
+
   async run(passedParams: string[], options?: Record<string, unknown>): Promise<void> {
     const startTime = Date.now();
+    const isDryRun = options?.dryRun as boolean;
+    const customOutputPath = options?.output as string;
+    const isVerbose = options?.verbose as boolean;
+    const isQuiet = options?.quiet as boolean;
+    const presetPlatform = options?.platform as BuildPlatform;
+    const presetCategories = options?.categories as string[];
     
     try {
+      // Configure logging based on options
+      if (isVerbose) {
+        this.logger.log('🔍 Verbose mode enabled - showing detailed information');
+        this.logger.log(`CLI options: ${JSON.stringify(options, null, 2)}`);
+      }
+
+      if (isDryRun) {
+        this.logger.log('🔍 Dry run mode - no files will be created');
+      }
+
+      if (isQuiet) {
+        // Suppress non-essential logger output
+        this.logger.log = () => {}; // Override log method for quiet mode
+      }
+
       // Check for interruption before starting
       if (this.errorHandler.isProcessInterrupted()) {
         return;
@@ -48,31 +129,77 @@ export class BuildCommand extends CommandRunner {
         'Build completion'
       ]);
 
-      // Step 1: Interactive platform and category selection
-      this.progressService.startStep('Platform selection');
-      const platform = await this.interactiveService.selectPlatform();
+      // Step 1: Platform selection (skip if preset)
+      let platform: BuildPlatform;
+      if (presetPlatform) {
+        if (isVerbose) {
+          this.logger.log(`📋 Using preset platform: ${presetPlatform}`);
+        }
+        platform = presetPlatform;
+        this.progressService.startStep('Platform selection');
+        this.progressService.completeStep('Platform selection');
+      } else {
+        this.progressService.startStep('Platform selection');
+        platform = await this.interactiveService.selectPlatform();
+        
+        if (this.errorHandler.isProcessInterrupted()) {
+          return;
+        }
+        this.progressService.completeStep('Platform selection');
+      }
       
       if (this.errorHandler.isProcessInterrupted()) {
         return;
       }
       this.progressService.completeStep('Platform selection');
 
-      this.progressService.startStep('Category selection');
-      const categories = await this.interactiveService.selectCategories();
-      
-      if (this.errorHandler.isProcessInterrupted()) {
-        return;
+      // Step 2: Category selection (skip if preset)
+      let categories;
+      if (presetCategories && presetCategories.length > 0) {
+        if (isVerbose) {
+          this.logger.log(`📋 Using preset categories: ${presetCategories.join(', ')}`);
+        }
+        
+        // Convert preset categories to proper format
+        categories = presetCategories.map(cat => {
+          const categoryMap: Record<string, BuildCategoryName> = {
+            'personal': BuildCategoryName.PERSONAL_CONTEXT,
+            'project': BuildCategoryName.PROJECT_CONTEXT, 
+            'prompts': BuildCategoryName.PROMPT_TEMPLATES,
+          };
+          
+          const categoryName = categoryMap[cat];
+          if (!categoryName) {
+            throw new Error(`Invalid category: ${cat}. Must be one of: personal, project, prompts`);
+          }
+          
+          return { name: categoryName, enabled: true };
+        });
+        
+        this.progressService.startStep('Category selection');
+        this.progressService.completeStep('Category selection');
+      } else {
+        this.progressService.startStep('Category selection');
+        categories = await this.interactiveService.selectCategories();
+        
+        if (this.errorHandler.isProcessInterrupted()) {
+          return;
+        }
+        this.progressService.completeStep('Category selection');
       }
-      this.progressService.completeStep('Category selection');
 
       // Create build configuration
       const buildConfig: BuildConfig = {
         platform: platform as BuildPlatform,
         categories: categories,
-        outputDirectory: '', // Will be set by output service
+        outputDirectory: customOutputPath || '', // Will be set by output service
         timestamp: new Date().toISOString(),
         buildId: this.generateBuildId(),
       };
+
+      if (isVerbose) {
+        this.logger.log(`🔧 Build configuration: ${JSON.stringify(buildConfig, null, 2)}`);
+      }
 
       // Step 2: Data collection
       this.progressService.startStep('Data collection');
@@ -97,7 +224,20 @@ export class BuildCommand extends CommandRunner {
 
       // Step 4: Output generation
       this.progressService.startStep('Output generation');
-      const outputPath = await this.generateOutput(transformedData, buildConfig, settingsData);
+      
+      if (isDryRun) {
+        this.logger.log('📋 Dry run - showing what would be generated:');
+        this.previewBuildOutput(transformedData, buildConfig);
+        this.progressService.completeStep('Output generation');
+        
+        // Skip actual file generation and completion for dry run
+        this.progressService.startStep('Build completion');
+        this.logger.log('✅ Dry run completed successfully');
+        this.progressService.completeStep('Build completion');
+        return;
+      }
+      
+      const outputPath = await this.generateOutput(transformedData, buildConfig, settingsData, customOutputPath);
       
       if (this.errorHandler.isProcessInterrupted()) {
         return;
@@ -287,6 +427,59 @@ export class BuildCommand extends CommandRunner {
   }
 
   /**
+   * Preview what would be generated in dry run mode
+   */
+  private previewBuildOutput(
+    transformedData: {
+      personalContext?: TaptikPersonalContext;
+      projectContext?: TaptikProjectContext;
+      promptTemplates?: TaptikPromptTemplates;
+    },
+    buildConfig: BuildConfig
+  ): void {
+    const enabledCategories = buildConfig.categories.filter(cat => cat.enabled);
+    
+    this.logger.log(`🎯 Platform: ${buildConfig.platform}`);
+    this.logger.log(`📂 Output would be created in: ${buildConfig.outputDirectory || './taptik-build-[timestamp]'}`);
+    this.logger.log(`📋 Categories to build: ${enabledCategories.map(c => c.name).join(', ')}`);
+    
+    const filesToGenerate = [];
+    if (transformedData.personalContext) filesToGenerate.push('personal-context.json');
+    if (transformedData.projectContext) filesToGenerate.push('project-context.json');
+    if (transformedData.promptTemplates) filesToGenerate.push('prompt-templates.json');
+    filesToGenerate.push('manifest.json');
+    
+    this.logger.log(`📄 Files that would be generated: ${filesToGenerate.join(', ')}`);
+    
+    // Show estimated sizes
+    const estimatedSizes = {
+      'personal-context.json': transformedData.personalContext ? JSON.stringify(transformedData.personalContext).length : 0,
+      'project-context.json': transformedData.projectContext ? JSON.stringify(transformedData.projectContext).length : 0,
+      'prompt-templates.json': transformedData.promptTemplates ? JSON.stringify(transformedData.promptTemplates).length : 0,
+    };
+    
+    let totalSize = 0;
+    filesToGenerate.forEach(file => {
+      const size = estimatedSizes[file as keyof typeof estimatedSizes] || 1024; // Default manifest size
+      totalSize += size;
+      this.logger.log(`  📄 ${file}: ~${this.formatBytes(size)}`);
+    });
+    
+    this.logger.log(`💾 Total estimated size: ~${this.formatBytes(totalSize)}`);
+  }
+
+  /**
+   * Format bytes to human readable string
+   */
+  private formatBytes(bytes: number): string {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  /**
    * Generate output files and manifest
    */
   private async generateOutput(
@@ -296,11 +489,14 @@ export class BuildCommand extends CommandRunner {
       promptTemplates?: TaptikPromptTemplates;
     },
     buildConfig: BuildConfig,
-    settingsData: SettingsData
+    settingsData: SettingsData,
+    customOutputPath?: string
   ): Promise<string> {
     // Create output directory
     this.progressService.startOutput();
-    const outputPath = await this.outputService.createOutputDirectory();
+    const outputPath = customOutputPath 
+      ? await this.outputService.createOutputDirectory(customOutputPath)
+      : await this.outputService.createOutputDirectory();
     buildConfig.outputDirectory = outputPath;
 
     // Write output files
