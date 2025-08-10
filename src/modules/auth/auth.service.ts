@@ -7,13 +7,13 @@ import { User, UserSession, fromSupabaseUser } from '../../models/user.model';
 import { getSupabaseClient } from '../../supabase/supabase-client';
 
 import { OAuthCallbackServer } from './oauth-callback-server';
-import { SessionStorage } from './session-storage';
+import { SessionService } from './services/session.service';
 
 @Injectable()
 export class AuthService {
   private supabase = getSupabaseClient();
   private callbackServer = new OAuthCallbackServer();
-  private sessionStorage = new SessionStorage();
+  private sessionService = new SessionService();
 
   /**
    * Logout the current user
@@ -27,7 +27,7 @@ export class AuthService {
       }
 
       // Clear stored session
-      await this.sessionStorage.clearSession();
+      await this.sessionService.clearSession();
     } catch (error) {
       if (error instanceof Error) {
         throw error;
@@ -42,9 +42,9 @@ export class AuthService {
   async getCurrentUser(): Promise<User | null> {
     try {
       // First check if we have a stored session
-      const storedSession = await this.sessionStorage.loadSession();
+      const storedSession = await this.sessionService.loadSession();
       if (storedSession) {
-        return storedSession.user;
+        return storedSession.userSession.user;
       }
 
       // If no stored session, check Supabase
@@ -183,7 +183,7 @@ export class AuthService {
 
       // Save session to local storage
       console.log('💾 Saving session for future use...');
-      await this.sessionStorage.saveSession(session);
+      await this.sessionService.saveSession(session);
 
       console.log('🎉 OAuth login completed successfully!');
       return session;

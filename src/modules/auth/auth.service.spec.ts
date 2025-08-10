@@ -16,6 +16,23 @@ vi.mock('../../supabase/supabase-client', () => ({
   })),
 }));
 
+// Mock the SessionService
+const mockSessionService = {
+  loadSession: vi.fn(),
+  saveSession: vi.fn(),
+  clearSession: vi.fn(),
+  hasSession: vi.fn(),
+  isSessionValid: vi.fn(),
+  getSessionPath: vi.fn(),
+  getConfiguration: vi.fn(),
+  extendSession: vi.fn(),
+  getSessionStats: vi.fn(),
+};
+
+vi.mock('./services/session.service', () => ({
+  SessionService: vi.fn(() => mockSessionService),
+}));
+
 describe('AuthService', () => {
   let authService: AuthService;
 
@@ -36,12 +53,14 @@ describe('AuthService', () => {
       mockAuth.signOut.mockResolvedValue({
         error: null,
       });
+      mockSessionService.clearSession.mockResolvedValue(undefined);
 
       // Act
       await authService.logout();
 
       // Assert
       expect(mockAuth.signOut).toHaveBeenCalled();
+      expect(mockSessionService.clearSession).toHaveBeenCalled();
     });
 
     it('should throw error when logout fails', async () => {
@@ -68,9 +87,20 @@ describe('AuthService', () => {
         user_metadata: { username: 'testuser' },
       };
 
-      mockAuth.getUser.mockResolvedValue({
-        data: { user: mockUser },
-        error: null,
+      // Mock stored session
+      mockSessionService.loadSession.mockResolvedValue({
+        userSession: {
+          user: {
+            id: '123',
+            email: 'test@example.com',
+            createdAt: new Date('2023-01-01T00:00:00Z'),
+            updatedAt: new Date('2023-01-01T00:00:00Z'),
+          },
+          accessToken: 'token',
+          refreshToken: 'refresh',
+          expiresAt: new Date(),
+        },
+        storedAt: '2023-01-01T00:00:00Z',
       });
 
       // Act
@@ -81,10 +111,12 @@ describe('AuthService', () => {
         id: '123',
         email: 'test@example.com',
       });
+      expect(mockSessionService.loadSession).toHaveBeenCalled();
     });
 
     it('should return null when not authenticated', async () => {
       // Arrange
+      mockSessionService.loadSession.mockResolvedValue(null);
       mockAuth.getUser.mockResolvedValue({
         data: { user: null },
         error: { message: 'User not authenticated' },
@@ -95,10 +127,12 @@ describe('AuthService', () => {
 
       // Assert
       expect(result).toBeNull();
+      expect(mockSessionService.loadSession).toHaveBeenCalled();
     });
 
     it('should return null when no user found', async () => {
       // Arrange
+      mockSessionService.loadSession.mockResolvedValue(null);
       mockAuth.getUser.mockResolvedValue({
         data: { user: null },
         error: null,
@@ -109,6 +143,7 @@ describe('AuthService', () => {
 
       // Assert
       expect(result).toBeNull();
+      expect(mockSessionService.loadSession).toHaveBeenCalled();
     });
   });
 
