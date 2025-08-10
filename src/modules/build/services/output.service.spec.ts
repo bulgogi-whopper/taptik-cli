@@ -99,7 +99,7 @@ describe('OutputService', () => {
       vi.spyOn(fs.promises, 'mkdir').mockImplementation(mockMkdir);
 
       await expect(service.createOutputDirectory()).rejects.toThrow(
-        'Output directory creation failed: Permission denied'
+        'File system error when creating output directory'
       );
     });
   });

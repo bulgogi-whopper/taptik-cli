@@ -12,6 +12,7 @@ import {
   OutputFile,
 } from '../interfaces/taptik-format.interface';
 import { BuildConfig, BuildCategoryName } from '../interfaces/build-config.interface';
+import { FileSystemErrorHandler } from '../utils/file-system-error-handler';
 
 /**
  * Service responsible for generating output files and directory structure
@@ -49,8 +50,41 @@ export class OutputService {
 
       return resolve(outputPath);
     } catch (error) {
-      this.logger.error('Failed to create output directory', error.stack);
-      throw new Error(`Output directory creation failed: ${error.message}`);
+      const errorResult = FileSystemErrorHandler.handleError(
+        error,
+        'creating output directory',
+        basePath || process.cwd()
+      );
+      
+      FileSystemErrorHandler.logErrorResult(errorResult);
+      
+      if (errorResult.isCritical) {
+        throw new Error(`${errorResult.userMessage}. ${errorResult.suggestions.join(' ')}`);
+      } else {
+        this.logger.warn(`Non-critical error during directory creation: ${errorResult.userMessage}`);
+        // Try to continue with a fallback directory
+        return this.createFallbackDirectory();
+      }
+    }
+  }
+
+  /**
+   * Create fallback directory in system temp location
+   * @returns Path to fallback directory
+   */
+  private async createFallbackDirectory(): Promise<string> {
+    try {
+      const tmpdir = require('os').tmpdir();
+      const timestamp = this.generateTimestamp();
+      const fallbackPath = join(tmpdir, `taptik-build-${timestamp}`);
+      
+      await fs.mkdir(fallbackPath, { recursive: true });
+      this.logger.log(`Created fallback output directory: ${fallbackPath}`);
+      
+      return resolve(fallbackPath);
+    } catch (error) {
+      this.logger.error('Failed to create fallback directory', error.stack);
+      throw new Error('Unable to create output directory in any location');
     }
   }
 
@@ -141,8 +175,20 @@ export class OutputService {
 
       return outputFiles;
     } catch (error) {
-      this.logger.error('Failed to write output files', error.stack);
-      throw new Error(`Output file writing failed: ${error.message}`);
+      const errorResult = FileSystemErrorHandler.handleError(
+        error,
+        'writing output files',
+        outputPath
+      );
+      
+      FileSystemErrorHandler.logErrorResult(errorResult);
+      
+      if (errorResult.isCritical) {
+        throw new Error(`${errorResult.userMessage}. ${errorResult.suggestions.join(' ')}`);
+      } else {
+        this.logger.warn(`Non-critical error during file writing: ${errorResult.userMessage}`);
+        return outputFiles; // Return partial results
+      }
     }
   }
 
@@ -178,8 +224,19 @@ export class OutputService {
       const stats = await fs.stat(manifestPath);
       this.logger.log(`Generated manifest: ${manifestPath} (${stats.size} bytes)`);
     } catch (error) {
-      this.logger.error('Failed to generate manifest', error.stack);
-      throw new Error(`Manifest generation failed: ${error.message}`);
+      const errorResult = FileSystemErrorHandler.handleError(
+        error,
+        'generating manifest file',
+        outputPath
+      );
+      
+      FileSystemErrorHandler.logErrorResult(errorResult);
+      
+      if (errorResult.isCritical) {
+        throw new Error(`${errorResult.userMessage}. ${errorResult.suggestions.join(' ')}`);
+      } else {
+        this.logger.warn(`Non-critical error during manifest generation: ${errorResult.userMessage}`);
+      }
     }
   }
 
