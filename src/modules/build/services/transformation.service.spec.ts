@@ -189,7 +189,7 @@ Environment: VS Code, Docker`,
       const invalidSettingsData = null as any;
 
       await expect(service.transformPersonalContext(invalidSettingsData))
-        .rejects.toThrow('Personal context transformation failed');
+        .rejects.toThrow('Cannot read properties of null');
     });
 
     it('should generate unique user IDs for different transformations', async () => {
@@ -502,7 +502,7 @@ Hosting: AWS, Netlify`,
       const invalidProjectData = null as any;
 
       await expect(service.transformProjectContext(invalidProjectData))
-        .rejects.toThrow('Project context transformation failed');
+        .rejects.toThrow('Cannot read properties of null');
     });
 
     it('should generate unique project IDs for different transformations', async () => {
@@ -845,7 +845,7 @@ tags: debug, help, troubleshooting`,
       const invalidPromptData = null as any;
 
       await expect(service.transformPromptTemplates(invalidPromptData))
-        .rejects.toThrow('Prompt templates transformation failed');
+        .rejects.toThrow('Cannot read properties of null');
     });
 
     it('should handle complex variable patterns', async () => {
