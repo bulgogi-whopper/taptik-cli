@@ -1,5 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { OutputService } from './output.service';
+import { SettingsData } from '../interfaces/settings-data.interface';
+import { BuildConfig, BuildCategoryName, BuildPlatform } from '../interfaces/build-config.interface';
+import { TaptikPersonalContext, TaptikProjectContext, TaptikPromptTemplates } from '../interfaces/taptik-format.interface';
 
 describe('OutputService', () => {
   let service: OutputService;
@@ -98,6 +101,143 @@ describe('OutputService', () => {
       await expect(service.createOutputDirectory()).rejects.toThrow(
         'Output directory creation failed: Permission denied'
       );
+    });
+  });
+
+  describe('writeOutputFiles', () => {
+    it('should return empty array when no files provided', async () => {
+      const mockOutputPath = '/test/path';
+      
+      const result = await service.writeOutputFiles(mockOutputPath);
+      
+      expect(result).toEqual([]);
+    });
+
+    it('should write personal context file when provided', async () => {
+      const mockOutputPath = '/test/path';
+      const mockPersonalContext: TaptikPersonalContext = {
+        user_id: 'test-user',
+        preferences: {
+          preferred_languages: ['TypeScript'],
+          coding_style: {
+            indentation: '2 spaces',
+            naming_convention: 'camelCase',
+            comment_style: 'JSDoc',
+            code_organization: 'feature-based',
+          },
+          tools_and_frameworks: ['NestJS'],
+          development_environment: ['VSCode'],
+        },
+        work_style: {
+          preferred_workflow: 'agile',
+          problem_solving_approach: 'incremental',
+          documentation_level: 'comprehensive',
+          testing_approach: 'unit-first',
+        },
+        communication: {
+          preferred_explanation_style: 'detailed',
+          technical_depth: 'expert',
+          feedback_style: 'direct',
+        },
+        metadata: {
+          source_platform: 'kiro',
+          created_at: '2025-01-04T10:30:00Z',
+          version: '1.0.0',
+        },
+      };
+
+      // Mock fs operations
+      const mockWriteFile = vi.fn().mockResolvedValue(undefined);
+      const mockStat = vi.fn().mockResolvedValue({ size: 1024 });
+      const fs = await import('node:fs');
+      vi.spyOn(fs.promises, 'writeFile').mockImplementation(mockWriteFile);
+      vi.spyOn(fs.promises, 'stat').mockImplementation(mockStat);
+
+      const result = await service.writeOutputFiles(mockOutputPath, mockPersonalContext);
+      
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        filename: 'personal-context.json',
+        category: 'personal-context',
+        size: 1024,
+      });
+      expect(mockWriteFile).toHaveBeenCalledWith(
+        '/test/path/personal-context.json',
+        expect.stringContaining('"user_id": "test-user"'),
+        'utf8'
+      );
+    });
+  });
+
+  describe('generateManifest', () => {
+    it('should generate manifest with correct metadata', async () => {
+      const mockOutputPath = '/test/output';
+      const mockConfig: BuildConfig = {
+        platform: BuildPlatform.KIRO,
+        categories: [
+          { name: BuildCategoryName.PERSONAL_CONTEXT, enabled: true },
+          { name: BuildCategoryName.PROJECT_CONTEXT, enabled: false },
+        ],
+        outputDirectory: '/test/output',
+        timestamp: '2025-01-04T10:30:00Z',
+        buildId: 'build-123',
+      };
+      
+      const mockSettingsData: SettingsData = {
+        localSettings: {
+          steeringFiles: [],
+          hooks: [],
+        },
+        globalSettings: {
+          globalPrompts: [],
+        },
+        collectionMetadata: {
+          sourcePlatform: 'kiro',
+          collectionTimestamp: '2025-01-04T10:30:00Z',
+          projectPath: '/test/project',
+          globalPath: '/home/.kiro',
+          warnings: [],
+          errors: [],
+        },
+      };
+
+      const mockOutputFiles = [
+        { filename: 'personal-context.json', category: 'personal-context', size: 1024 },
+      ];
+
+      // Mock fs operations
+      const mockWriteFile = vi.fn().mockResolvedValue(undefined);
+      const mockStat = vi.fn().mockResolvedValue({ size: 512 });
+      const fs = await import('node:fs');
+      vi.spyOn(fs.promises, 'writeFile').mockImplementation(mockWriteFile);
+      vi.spyOn(fs.promises, 'stat').mockImplementation(mockStat);
+
+      await service.generateManifest(mockOutputPath, mockConfig, mockSettingsData, mockOutputFiles);
+
+      const manifestContent = mockWriteFile.mock.calls[0][1];
+      expect(manifestContent).toContain('"source_platform": "kiro"');
+      expect(manifestContent).toContain('"personal-context"');
+      expect(manifestContent).toContain('"taptik_version": "1.0.0"');
+      expect(manifestContent).toContain('"build_id"');
+      expect(manifestContent).toContain('"created_at"');
+    });
+  });
+
+  describe('generateBuildId', () => {
+    it('should generate unique build IDs', () => {
+      const id1 = service['generateBuildId']();
+      const id2 = service['generateBuildId']();
+      
+      expect(id1).toMatch(/^build-[a-z0-9]+-[a-z0-9]+$/);
+      expect(id2).toMatch(/^build-[a-z0-9]+-[a-z0-9]+$/);
+      expect(id1).not.toBe(id2);
+    });
+  });
+
+  describe('file existence checks', () => {
+    it('should check file existence correctly', async () => {
+      const existsResult = await service['fileExists']('/nonexistent/file.txt');
+      expect(existsResult).toBe(false);
     });
   });
 });
