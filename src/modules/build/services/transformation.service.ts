@@ -87,6 +87,31 @@ export class TransformationService {
   }
 
   /**
+   * Transform prompt templates data from Kiro format to Taptik format
+   * @param settingsData Raw settings data collected from Kiro
+   * @returns Transformed prompt templates in Taptik format
+   */
+  async transformPromptTemplates(settingsData: SettingsData): Promise<TaptikPromptTemplates> {
+    try {
+      this.logger.log('Starting prompt templates transformation');
+
+      const templates = await this.extractPromptTemplates(settingsData);
+      const metadata = this.generatePromptMetadata(settingsData, templates.length);
+
+      const promptTemplates: TaptikPromptTemplates = {
+        templates: templates,
+        metadata: metadata,
+      };
+
+      this.logger.log(`Prompt templates transformation completed successfully with ${templates.length} templates`);
+      return promptTemplates;
+    } catch (error) {
+      this.logger.error('Failed to transform prompt templates', error.stack);
+      throw new Error(`Prompt templates transformation failed: ${error.message}`);
+    }
+  }
+
+  /**
    * Extract user preferences from Kiro settings
    */
   private async extractUserPreferences(settingsData: SettingsData): Promise<UserPreferences> {
@@ -700,5 +725,357 @@ export class TransformationService {
       }
       return '';
     }).filter(content => content.length > 0);
+  }
+
+  /**
+   * Extract prompt templates from Kiro global settings
+   */
+  private async extractPromptTemplates(settingsData: SettingsData): Promise<PromptTemplateEntry[]> {
+    const templates: PromptTemplateEntry[] = [];
+
+    // Extract from global prompts
+    if (settingsData.globalSettings.globalPrompts && Array.isArray(settingsData.globalSettings.globalPrompts)) {
+      settingsData.globalSettings.globalPrompts.forEach((prompt, index) => {
+        const template = this.convertKiroPromptToTaptik(prompt, index);
+        if (template) {
+          templates.push(template);
+        }
+      });
+    }
+
+    // Extract from global settings content (markdown format)
+    const additionalTemplates = this.extractTemplatesFromMarkdown(settingsData.globalSettings.userConfig);
+    templates.push(...additionalTemplates);
+
+    // Sort templates by name for consistent ordering
+    return templates.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  /**
+   * Convert Kiro prompt format to Taptik template entry
+   */
+  private convertKiroPromptToTaptik(kiroPrompt: any, index: number): PromptTemplateEntry | null {
+    if (!kiroPrompt || typeof kiroPrompt !== 'object') {
+      return null;
+    }
+
+    try {
+      const id = kiroPrompt.id || `template-${index + 1}`;
+      const name = kiroPrompt.name || `Template ${index + 1}`;
+      const description = kiroPrompt.description || kiroPrompt.summary || 'No description available';
+      const content = kiroPrompt.content || kiroPrompt.template || '';
+      const category = kiroPrompt.category || kiroPrompt.type || this.inferCategoryFromName(name);
+
+      if (!content) {
+        this.logger.warn(`Skipping prompt template ${name} - no content found`);
+        return null;
+      }
+
+      const variables = this.extractVariablesFromContent(content);
+      const tags = this.extractTagsFromPrompt(kiroPrompt);
+
+      return {
+        id,
+        name,
+        description,
+        category,
+        content,
+        variables,
+        tags,
+      };
+    } catch (error) {
+      this.logger.warn(`Failed to convert Kiro prompt at index ${index}`, error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Extract templates from markdown content
+   */
+  private extractTemplatesFromMarkdown(markdownContent?: string): PromptTemplateEntry[] {
+    if (!markdownContent) {
+      return [];
+    }
+
+    const templates: PromptTemplateEntry[] = [];
+    const parsedContent = this.parseKiroConfig(markdownContent);
+
+    // Look for template sections in the markdown
+    for (const section of Object.keys(parsedContent)) {
+      const sectionData = parsedContent[section];
+      if (typeof sectionData === 'object' && sectionData !== null) {
+        // Check if this section contains template-like data
+        if (this.isTemplateSection(section, sectionData)) {
+          const template = this.createTemplateFromSection(section, sectionData);
+          if (template) {
+            templates.push(template);
+          }
+        }
+      }
+    }
+
+    return templates;
+  }
+
+  /**
+   * Check if a markdown section represents a template
+   */
+  private isTemplateSection(sectionName: string, sectionData: any): boolean {
+    const templateKeywords = ['template', 'prompt', 'instruction', 'guide'];
+    const lowerSectionName = sectionName.toLowerCase();
+    
+    // Check if section name contains template keywords
+    const hasTemplateKeyword = templateKeywords.some(keyword => lowerSectionName.includes(keyword));
+    
+    // Check if section data has template-like content
+    const hasTemplateContent = (sectionData && typeof sectionData === 'object' && sectionData !== null) &&
+                              ((sectionData.content && typeof sectionData.content === 'string') ||
+                               (sectionData.template && typeof sectionData.template === 'string'));
+    
+    return hasTemplateKeyword || hasTemplateContent;
+  }
+
+  /**
+   * Create a template entry from a markdown section
+   */
+  private createTemplateFromSection(sectionName: string, sectionData: any): PromptTemplateEntry | null {
+    try {
+      // Debug: log the section data to understand the structure
+      this.logger.debug(`Creating template from section ${sectionName}`, JSON.stringify(sectionData));
+
+      const content = sectionData.content || sectionData.template || sectionData.text || '';
+      if (!content || typeof content !== 'string') {
+        this.logger.warn(`No valid content found for section ${sectionName}`);
+        return null;
+      }
+
+      const id = this.generateTemplateId(sectionName);
+      const name = this.cleanTemplateName(sectionName);
+      const description = sectionData.description || sectionData.summary || `Template extracted from ${sectionName}`;
+      const category = sectionData.category || this.inferCategoryFromName(sectionName);
+      
+      const variables = this.extractVariablesFromContent(content);
+      const tags = this.extractTagsFromSection(sectionData);
+
+      return {
+        id,
+        name,
+        description,
+        category,
+        content,
+        variables,
+        tags,
+      };
+    } catch (error) {
+      this.logger.warn(`Failed to create template from section ${sectionName}`, error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Extract variables from template content (patterns like {{variable}} or {variable})
+   */
+  private extractVariablesFromContent(content: string): string[] {
+    const variables = new Set<string>();
+    
+    // Match {{variable}} pattern
+    const doubleBacketMatches = content.match(/\{\{([^}]+)\}\}/g);
+    if (doubleBacketMatches) {
+      doubleBacketMatches.forEach(match => {
+        const variable = match.replace(/\{\{|\}\}/g, '').trim();
+        if (variable) {
+          variables.add(variable);
+        }
+      });
+    }
+
+    // Match {variable} pattern
+    const singleBracketMatches = content.match(/\{([^}]+)\}/g);
+    if (singleBracketMatches) {
+      singleBracketMatches.forEach(match => {
+        const variable = match.replace(/\{|\}/g, '').trim();
+        // Only add if it's not already caught by double bracket pattern
+        if (variable && !variable.includes('{') && !variable.includes('}')) {
+          variables.add(variable);
+        }
+      });
+    }
+
+    // Match $variable pattern
+    const dollarMatches = content.match(/\$([a-zA-Z_][a-zA-Z0-9_]*)/g);
+    if (dollarMatches) {
+      dollarMatches.forEach(match => {
+        const variable = match.replace('$', '');
+        if (variable) {
+          variables.add(variable);
+        }
+      });
+    }
+
+    return Array.from(variables).sort();
+  }
+
+  /**
+   * Extract tags from Kiro prompt object
+   */
+  private extractTagsFromPrompt(kiroPrompt: any): string[] {
+    const tags = new Set<string>();
+
+    // Direct tags property
+    if (kiroPrompt.tags && Array.isArray(kiroPrompt.tags)) {
+      kiroPrompt.tags.forEach((tag: any) => {
+        if (typeof tag === 'string') {
+          tags.add(tag.toLowerCase().trim());
+        }
+      });
+    }
+
+    // Keywords property
+    if (kiroPrompt.keywords && Array.isArray(kiroPrompt.keywords)) {
+      kiroPrompt.keywords.forEach((keyword: any) => {
+        if (typeof keyword === 'string') {
+          tags.add(keyword.toLowerCase().trim());
+        }
+      });
+    }
+
+    // Category as tag
+    if (kiroPrompt.category && typeof kiroPrompt.category === 'string') {
+      tags.add(kiroPrompt.category.toLowerCase().trim());
+    }
+
+    // Type as tag
+    if (kiroPrompt.type && typeof kiroPrompt.type === 'string') {
+      tags.add(kiroPrompt.type.toLowerCase().trim());
+    }
+
+    return Array.from(tags);
+  }
+
+  /**
+   * Extract tags from markdown section data
+   */
+  private extractTagsFromSection(sectionData: any): string[] {
+    const tags = new Set<string>();
+
+    if (sectionData.tags && Array.isArray(sectionData.tags)) {
+      sectionData.tags.forEach((tag: any) => {
+        if (typeof tag === 'string') {
+          tags.add(tag.toLowerCase().trim());
+        }
+      });
+    }
+
+    if (sectionData.category && typeof sectionData.category === 'string') {
+      tags.add(sectionData.category.toLowerCase().trim());
+    }
+
+    return Array.from(tags);
+  }
+
+  /**
+   * Generate unique template ID from section name
+   */
+  private generateTemplateId(sectionName: string): string {
+    const cleanName = sectionName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+    const timestamp = Date.now().toString(36);
+    return `${cleanName}-${timestamp}`;
+  }
+
+  /**
+   * Clean template name for display
+   */
+  private cleanTemplateName(sectionName: string): string {
+    return sectionName
+      .replace(/_/g, ' ')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .toLowerCase()
+      .replace(/^\w/, c => c.toUpperCase());
+  }
+
+  /**
+   * Infer category from template name
+   */
+  private inferCategoryFromName(name: string): string {
+    const lowerName = name.toLowerCase();
+    
+    if (lowerName.includes('code') || lowerName.includes('programming') || lowerName.includes('dev')) {
+      return 'development';
+    }
+    if (lowerName.includes('review') || lowerName.includes('feedback')) {
+      return 'review';
+    }
+    if (lowerName.includes('doc') || lowerName.includes('documentation')) {
+      return 'documentation';
+    }
+    if (lowerName.includes('test') || lowerName.includes('qa')) {
+      return 'testing';
+    }
+    if (lowerName.includes('explain') || lowerName.includes('help')) {
+      return 'assistance';
+    }
+    
+    return 'general';
+  }
+
+  /**
+   * Generate metadata for prompt templates collection
+   */
+  private generatePromptMetadata(settingsData: SettingsData, templateCount: number): PromptMetadata {
+    return {
+      source_platform: settingsData.collectionMetadata.sourcePlatform,
+      created_at: new Date().toISOString(),
+      version: '1.0.0',
+      total_templates: templateCount,
+    };
+  }
+
+  /**
+   * Validate template against taptik specification
+   */
+  private validateTemplate(template: PromptTemplateEntry): boolean {
+    try {
+      // Basic validation
+      if (!template.id || typeof template.id !== 'string') {
+        this.logger.warn('Template missing or invalid ID');
+        return false;
+      }
+
+      if (!template.name || typeof template.name !== 'string') {
+        this.logger.warn('Template missing or invalid name');
+        return false;
+      }
+
+      if (!template.content || typeof template.content !== 'string') {
+        this.logger.warn('Template missing or invalid content');
+        return false;
+      }
+
+      if (!Array.isArray(template.variables)) {
+        this.logger.warn('Template variables must be an array');
+        return false;
+      }
+
+      if (!Array.isArray(template.tags)) {
+        this.logger.warn('Template tags must be an array');
+        return false;
+      }
+
+      // Content length validation
+      if (template.content.length < 10) {
+        this.logger.warn('Template content too short');
+        return false;
+      }
+
+      if (template.content.length > 10000) {
+        this.logger.warn('Template content too long');
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      this.logger.error('Template validation failed', error.message);
+      return false;
+    }
   }
 }

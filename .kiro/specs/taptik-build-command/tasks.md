@@ -53,7 +53,7 @@
     - Write unit tests for project context transformation
     - _Requirements: 5.1, 5.3, 5.5_
 
-  - [ ] 4.3 Add prompt templates transformation
+  - [x] 4.3 Add prompt templates transformation
     - Implement conversion of Kiro prompts to prompt-templates.json format
     - Handle prompt metadata and content mapping
     - Add validation against taptik specification schema
