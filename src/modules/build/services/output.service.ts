@@ -289,4 +289,118 @@ export class OutputService {
       return null;
     }
   }
+
+  /**
+   * Display comprehensive build summary and completion information
+   * @param outputPath Path to the output directory
+   * @param outputFiles Generated output files
+   * @param warnings Optional array of warning messages
+   * @param errors Optional array of error messages
+   * @param buildTime Optional build duration in milliseconds
+   */
+  async displayBuildSummary(
+    outputPath: string, 
+    outputFiles: OutputFile[], 
+    warnings: string[] = [], 
+    errors: string[] = [],
+    buildTime?: number
+  ): Promise<void> {
+    try {
+      const totalSize = outputFiles.reduce((sum, file) => sum + file.size, 0);
+      const formattedSize = this.formatBytes(totalSize);
+      const buildTimeFormatted = buildTime ? this.formatDuration(buildTime) : undefined;
+
+      // Main success message
+      this.logger.log('');
+      this.logger.log('🎉 Build completed successfully!');
+      this.logger.log('');
+      
+      // Build details
+      this.logger.log('📊 Build Summary:');
+      this.logger.log(`📁 Output directory: ${outputPath}`);
+      this.logger.log(`📄 Generated files: ${outputFiles.length}`);
+      this.logger.log(`💾 Total size: ${formattedSize}`);
+      if (buildTimeFormatted) {
+        this.logger.log(`⏱️  Build time: ${buildTimeFormatted}`);
+      }
+      this.logger.log('');
+
+      // Individual file details
+      this.logger.log('📋 Generated Files:');
+      for (const file of outputFiles) {
+        const fileSize = this.formatBytes(file.size);
+        this.logger.log(`  • ${file.filename} (${file.category}): ${fileSize}`);
+      }
+
+      // Check for manifest file
+      const manifestPath = join(outputPath, 'manifest.json');
+      if (await this.fileExists(manifestPath)) {
+        const manifestStats = await fs.stat(manifestPath);
+        const manifestSize = this.formatBytes(manifestStats.size);
+        this.logger.log(`  • manifest.json: ${manifestSize}`);
+      }
+
+      // Display warnings and errors if any
+      if (warnings.length > 0 || errors.length > 0) {
+        this.displayIssuesSummary(warnings, errors);
+      }
+
+      this.logger.log('');
+    } catch (error) {
+      this.logger.error('Failed to display summary', error.stack);
+      // Don't throw error for display issues - build was successful
+    }
+  }
+
+  /**
+   * Display warnings and errors summary
+   * @param warnings Array of warning messages
+   * @param errors Array of error messages
+   */
+  private displayIssuesSummary(warnings: string[], errors: string[]): void {
+    if (warnings.length > 0) {
+      this.logger.log('');
+      this.logger.warn('⚠️  Warnings encountered during build:');
+      warnings.forEach(warning => this.logger.warn(`  • ${warning}`));
+    }
+
+    if (errors.length > 0) {
+      this.logger.log('');
+      this.logger.error('❌ Non-critical errors encountered:');
+      errors.forEach(error => this.logger.error(`  • ${error}`));
+    }
+  }
+
+  /**
+   * Format bytes to human-readable string
+   * @param bytes Number of bytes
+   */
+  private formatBytes(bytes: number): string {
+    if (bytes === 0) return '0 B';
+    
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+  }
+
+  /**
+   * Format duration in milliseconds to human-readable format
+   * @param milliseconds Duration in milliseconds
+   */
+  private formatDuration(milliseconds: number): string {
+    if (milliseconds < 1000) {
+      return `${milliseconds}ms`;
+    }
+    
+    const seconds = Math.floor(milliseconds / 1000);
+    if (seconds < 60) {
+      return `${seconds}s`;
+    }
+    
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds}s`;
+  }
 }

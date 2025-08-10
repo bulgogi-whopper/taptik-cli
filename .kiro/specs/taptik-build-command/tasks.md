@@ -75,7 +75,7 @@
     - Write unit tests for file generation and manifest creation
     - _Requirements: 7.2, 7.3, 7.4_
 
-- [ ] 6. Implement progress reporting and user feedback
+- [x] 6. Implement progress reporting and user feedback
   - [x] 6.1 Add progress indicators for build process
     - Implement spinner and progress messages for scanning operations
     - Show "✓ Scanning local Kiro settings..." and "✓ Scanning global Kiro settings..."
@@ -83,7 +83,7 @@
     - Write unit tests for progress reporting functionality
     - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
-  - [ ] 6.2 Create build summary and completion reporting
+  - [x] 6.2 Create build summary and completion reporting
     - Display final summary with output directory path and file sizes
     - Show completion status and any warnings or errors encountered
     - Write unit tests for summary generation and display
