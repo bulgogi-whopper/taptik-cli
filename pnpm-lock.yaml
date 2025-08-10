@@ -3103,13 +3103,10 @@ packages:
       utf-8-validate:
         optional: true
 
-<<<<<<< HEAD
   wsl-utils@0.1.0:
     resolution: {integrity: sha512-h3Fbisa2nKGPxCpm89Hk33lBLsnaGBvctQopaBSOW/uIs6FTe1ATyAnKFJrzVs9vpGdsTe73WF3V4lIsk4Gacw==}
     engines: {node: '>=18'}
 
-=======
->>>>>>> @{-1}
   xtend@4.0.2:
     resolution: {integrity: sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==}
     engines: {node: '>=0.4'}
@@ -6131,13 +6128,10 @@ snapshots:
 
   ws@8.18.3: {}
 
-<<<<<<< HEAD
   wsl-utils@0.1.0:
     dependencies:
       is-wsl: 3.1.0
 
-=======
->>>>>>> @{-1}
   xtend@4.0.2: {}
 
   yargs-parser@21.1.1: {}
