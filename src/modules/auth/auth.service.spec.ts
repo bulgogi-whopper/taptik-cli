@@ -33,6 +33,33 @@ vi.mock('./services/session.service', () => ({
   SessionService: vi.fn(() => mockSessionService),
 }));
 
+// Mock the OAuthProviderService
+const mockOAuthProviderService = {
+  startOAuthFlow: vi.fn(),
+  handleOAuthCallback: vi.fn(),
+  getProviderConfig: vi.fn(),
+  validateProviderConfig: vi.fn(),
+  startCallbackServer: vi.fn(),
+  stopCallbackServer: vi.fn(),
+  getSupportedProviders: vi.fn(),
+  isProviderSupported: vi.fn(),
+  getOAuthConfig: vi.fn(),
+  updateProviderConfig: vi.fn(),
+};
+
+vi.mock('./services/oauth-provider.service', () => ({
+  OAuthProviderService: vi.fn(() => mockOAuthProviderService),
+}));
+
+// Mock ConfigService
+const mockConfigService = {
+  get: vi.fn(),
+};
+
+vi.mock('@nestjs/config', () => ({
+  ConfigService: vi.fn(() => mockConfigService),
+}));
+
 describe('AuthService', () => {
   let authService: AuthService;
 
@@ -40,7 +67,7 @@ describe('AuthService', () => {
     // Clear all mocks
     vi.clearAllMocks();
 
-    authService = new AuthService();
+    authService = new AuthService(mockConfigService as any);
   });
 
   afterEach(() => {

@@ -1,19 +1,24 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
-import open from 'open';
 
 import { User, UserSession, fromSupabaseUser } from '../../models/user.model';
 import { getSupabaseClient } from '../../supabase/supabase-client';
+import { AuthProviderType, AuthenticationResult, AuthErrorCode, AuthError } from './types';
 
-import { OAuthCallbackServer } from './oauth-callback-server';
 import { SessionService } from './services/session.service';
+import { OAuthProviderService } from './services/oauth-provider.service';
 
 @Injectable()
 export class AuthService {
   private supabase = getSupabaseClient();
-  private callbackServer = new OAuthCallbackServer();
   private sessionService = new SessionService();
+  private oauthProviderService: OAuthProviderService;
+
+  constructor(private readonly configService: ConfigService) {
+    this.oauthProviderService = new OAuthProviderService(this.configService);
+  }
 
   /**
    * Logout the current user
@@ -126,215 +131,208 @@ export class AuthService {
   /**
    * Login with OAuth provider (Google or GitHub)
    */
-  async loginWithProvider(provider: 'google' | 'github'): Promise<UserSession> {
-    let callbackUrl: string | null = null;
-
+  async loginWithProvider(provider: AuthProviderType): Promise<AuthenticationResult> {
     try {
       console.log(`🔄 Starting ${provider} OAuth login...`);
 
-      // Start the callback server
-      console.log('🚀 Starting temporary callback server...');
-      callbackUrl = await this.callbackServer.start(54_321);
+      // Start OAuth flow using the provider service
+      const callbackUrl = await this.oauthProviderService.startOAuthFlow(provider);
 
-      // Use Supabase's signInWithOAuth method with our callback server
-      const { data, error } = await this.supabase.auth.signInWithOAuth({
+      // Handle the OAuth callback and get token data
+      const oauthData = await this.oauthProviderService.handleOAuthCallback(callbackUrl);
+
+      // Create session from OAuth data
+      const session = await this.createSessionFromOAuthData(oauthData);
+
+      // Save session to local storage with metadata
+      console.log('💾 Saving session for future use...');
+      await this.sessionService.saveSession(session, {
         provider,
-        options: {
-          redirectTo: callbackUrl,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
+        creationMethod: 'oauth',
+        client: {
+          version: process.env.npm_package_version || '0.0.1',
+          platform: process.platform,
         },
       });
 
-      if (error) {
-        throw new Error(`OAuth login failed: ${error.message}`);
-      }
-
-      if (!data.url) {
-        throw new Error('No OAuth URL provided by Supabase');
-      }
-
-      console.log('🌐 Opening browser for authentication...');
-      console.log(`📡 Callback server listening on: ${callbackUrl}`);
-
-      // Open the OAuth URL in the user's default browser
-      await open(data.url);
-
-      console.log(
-        '\n⏳ Waiting for you to complete authentication in the browser...',
-      );
-      console.log(
-        '💡 The browser will automatically redirect back to complete the process.',
-      );
-
-      // Wait for the callback to be received
-      const callbackData = await this.callbackServer.waitForCallback();
-      console.log('✅ OAuth callback received!');
-
-      // Supabase OAuth returns data as URL fragments, not query params
-      // Convert query params back to fragments for our existing handler
-      const fragmentString = new URLSearchParams(callbackData).toString();
-      const fullCallbackUrl = `${callbackUrl}#${fragmentString}`;
-
-      // Process the callback data
-      const session = await this.handleOAuthCallback(fullCallbackUrl);
-
-      // Save session to local storage
-      console.log('💾 Saving session for future use...');
-      await this.sessionService.saveSession(session);
-
       console.log('🎉 OAuth login completed successfully!');
-      return session;
+
+      return {
+        success: true,
+        session,
+        metadata: {
+          method: 'oauth',
+          provider,
+          startedAt: new Date(),
+          completedAt: new Date(),
+          duration: 0, // Will be calculated in real implementation
+        },
+      };
     } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error('OAuth login failed: Unknown error occurred');
+      console.error('OAuth login failed:', error);
+
+      const authError: AuthError = error instanceof Error && 'code' in error
+        ? error as AuthError
+        : {
+            code: AuthErrorCode.OAUTH_FLOW_FAILED,
+            message: `OAuth login failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            recoverable: true,
+            suggestions: [
+              'Check internet connection',
+              'Verify OAuth provider configuration',
+              'Try again',
+            ],
+          };
+
+      return {
+        success: false,
+        error: authError,
+        metadata: {
+          method: 'oauth',
+          provider,
+          startedAt: new Date(),
+          completedAt: new Date(),
+        },
+      };
     } finally {
       // Always stop the callback server
-      if (this.callbackServer.isRunning()) {
-        console.log('🛑 Stopping callback server...');
-        try {
-          await this.callbackServer.stop();
-        } catch {
-          console.warn('Warning: Failed to stop callback server cleanly');
-        }
-      }
-    }
-  }
-
-  /**
-   * Handle OAuth callback by processing the callback URL
-   * Extracts session data from URL fragments (access_token, refresh_token, etc.)
-   */
-  async handleOAuthCallback(callbackUrl: string): Promise<UserSession> {
-    try {
-      console.log('🔄 Processing OAuth callback...');
-
-      // Parse URL fragments to extract OAuth tokens
-      const urlParts = callbackUrl.split('#');
-      if (urlParts.length < 2) {
-        throw new Error('Invalid callback URL: missing fragment parameters');
-      }
-
-      const fragment = urlParts[1];
-      const parameters = new URLSearchParams(fragment);
-
-      const accessToken = parameters.get('access_token');
-      const refreshToken = parameters.get('refresh_token');
-      const expiresAt = parameters.get('expires_at');
-
-      if (!accessToken) {
-        throw new Error('No access token found in callback URL');
-      }
-
-      console.log('✅ OAuth tokens extracted successfully');
-
-      // Try to set the session with both tokens
-      let sessionData;
-      let sessionError;
-
       try {
-        const { data, error } = await this.supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken || '',
-        });
-        sessionData = data;
-        sessionError = error;
+        await this.oauthProviderService.stopCallbackServer();
       } catch (error) {
-        sessionError = error;
+        console.warn('Warning: Failed to stop callback server cleanly:', error);
       }
-
-      // If setSession fails (e.g., refresh token expired), try alternative approach
-      if (sessionError) {
-        console.log(
-          '⚠️ Direct setSession failed, trying alternative approach...',
-        );
-
-        // Parse JWT to get user info directly
-        try {
-          const parts = accessToken.split('.');
-          if (parts.length !== 3) {
-            throw new Error('Invalid JWT format');
-          }
-
-          const payload = JSON.parse(
-            Buffer.from(parts[1], 'base64').toString(),
-          );
-
-          // Create a mock session from the JWT data with proper Supabase User structure
-          const mockUser: SupabaseUser = {
-            id: payload.sub,
-            aud: payload.aud,
-            role: payload.role,
-            email: payload.user_metadata?.email || '',
-            email_confirmed_at: null,
-            phone: null,
-            phone_confirmed_at: null,
-            confirmed_at: null,
-            last_sign_in_at: new Date().toISOString(),
-            app_metadata: payload.app_metadata || {},
-            user_metadata: payload.user_metadata || {},
-            identities: null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            is_anonymous: false,
-          };
-
-          const mockSession = {
-            access_token: accessToken,
-            refresh_token: refreshToken || '',
-            expires_at: expiresAt ? Number.parseInt(expiresAt) : payload.exp,
-            expires_in: 3600,
-            token_type: 'bearer',
-            user: mockUser,
-          };
-
-          console.log('✅ OAuth session created using JWT parsing');
-
-          // Create and return our UserSession from the parsed data
-          return this.createUserSession(mockSession.user, mockSession);
-        } catch (jwtError) {
-          throw new Error(
-            `Failed to parse JWT token: ${jwtError instanceof Error ? jwtError.message : 'Unknown error'}`,
-          );
-        }
-      }
-
-      if (!sessionData.session || !sessionData.session.user) {
-        throw new Error('Failed to create valid session from OAuth tokens');
-      }
-
-      console.log('✅ OAuth session established successfully');
-
-      // Create and return our UserSession from the Supabase session
-      return this.createUserSession(
-        sessionData.session.user,
-        sessionData.session,
-      );
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error('OAuth callback handling failed: Unknown error occurred');
     }
   }
+
 
   /**
    * Process OAuth callback URL manually (for CLI usage)
    * This method can be called when user provides the callback URL manually
    */
-  async processOAuthCallbackUrl(callbackUrl: string): Promise<UserSession> {
+  async processOAuthCallbackUrl(callbackUrl: string): Promise<AuthenticationResult> {
     try {
-      // Parse the callback URL and handle the OAuth response
-      return await this.handleOAuthCallback(callbackUrl);
+      // Handle the OAuth callback using the provider service
+      const oauthData = await this.oauthProviderService.handleOAuthCallback(callbackUrl);
+      
+      // Create session from OAuth data
+      const session = await this.createSessionFromOAuthData(oauthData);
+      
+      // Save session with basic metadata
+      await this.sessionService.saveSession(session, {
+        provider: 'google', // Default to google since we don't know which provider
+        creationMethod: 'oauth',
+      });
+
+      return {
+        success: true,
+        session,
+        metadata: {
+          method: 'oauth',
+          provider: 'google', // Default to google since we don't know which provider
+          startedAt: new Date(),
+          completedAt: new Date(),
+        },
+      };
     } catch (error) {
-      if (error instanceof Error) {
-        throw error;
+      const authError: AuthError = error instanceof Error && 'code' in error
+        ? error as AuthError
+        : {
+            code: AuthErrorCode.OAUTH_FLOW_FAILED,
+            message: `OAuth URL processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            recoverable: true,
+            suggestions: [
+              'Verify callback URL format',
+              'Check OAuth response data',
+              'Try the full OAuth flow instead',
+            ],
+          };
+
+      return {
+        success: false,
+        error: authError,
+        metadata: {
+          method: 'oauth',
+          provider: 'google', // Default to google since we don't know which provider
+          startedAt: new Date(),
+          completedAt: new Date(),
+        },
+      };
+    }
+  }
+
+  /**
+   * Helper method to create UserSession from OAuth callback data
+   */
+  private async createSessionFromOAuthData(oauthData: import('./types').OAuthCallbackData): Promise<UserSession> {
+    try {
+      // Try to set the session with Supabase using the OAuth tokens
+      const { data, error } = await this.supabase.auth.setSession({
+        access_token: oauthData.accessToken,
+        refresh_token: oauthData.refreshToken || '',
+      });
+
+      if (error || !data.session || !data.session.user) {
+        // If setSession fails, try alternative approach by parsing JWT
+        console.log('⚠️ Direct setSession failed, trying alternative approach...');
+        return this.createSessionFromJWT(oauthData.accessToken, oauthData.refreshToken);
       }
-      throw new Error('OAuth URL processing failed: Unknown error occurred');
+
+      console.log('✅ OAuth session established successfully');
+      return this.createUserSession(data.session.user, data.session);
+    } catch (error) {
+      // Fallback to JWT parsing if Supabase session creation fails
+      return this.createSessionFromJWT(oauthData.accessToken, oauthData.refreshToken);
+    }
+  }
+
+  /**
+   * Create session from JWT token parsing (fallback method)
+   */
+  private createSessionFromJWT(accessToken: string, refreshToken?: string): UserSession {
+    try {
+      const parts = accessToken.split('.');
+      if (parts.length !== 3) {
+        throw new Error('Invalid JWT format');
+      }
+
+      const payload = JSON.parse(
+        Buffer.from(parts[1], 'base64').toString(),
+      );
+
+      // Create a mock session from the JWT data with proper Supabase User structure
+      const mockUser: SupabaseUser = {
+        id: payload.sub,
+        aud: payload.aud,
+        role: payload.role,
+        email: payload.user_metadata?.email || '',
+        email_confirmed_at: null,
+        phone: null,
+        phone_confirmed_at: null,
+        confirmed_at: null,
+        last_sign_in_at: new Date().toISOString(),
+        app_metadata: payload.app_metadata || {},
+        user_metadata: payload.user_metadata || {},
+        identities: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        is_anonymous: false,
+      };
+
+      const mockSession = {
+        access_token: accessToken,
+        refresh_token: refreshToken || '',
+        expires_at: payload.exp,
+        expires_in: 3600,
+        token_type: 'bearer',
+        user: mockUser,
+      };
+
+      console.log('✅ OAuth session created using JWT parsing');
+      return this.createUserSession(mockSession.user, mockSession);
+    } catch (error) {
+      throw new Error(
+        `Failed to parse JWT token: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     }
   }
 
