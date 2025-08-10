@@ -1,12 +1,13 @@
 import { promises as fs } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import { UserSession } from '../../../models/user.model';
-import { SessionService } from './session.service';
 import { AuthErrorCode } from '../types';
+
+import { SessionService } from './session.service';
 
 // Mock fs module
 vi.mock('node:fs', () => ({
@@ -24,14 +25,14 @@ const mockFs = fs as any;
 describe('SessionService', () => {
   let sessionService: SessionService;
   let mockSession: UserSession;
-  let testDir: string;
+  let testDirectory: string;
 
   beforeEach(() => {
     vi.clearAllMocks();
     
-    testDir = join(tmpdir(), '.taptik-test');
+    testDirectory = join(tmpdir(), '.taptik-test');
     sessionService = new SessionService({
-      directory: testDir,
+      directory: testDirectory,
       filename: 'test-session.json',
       encryption: false,
     });
@@ -45,7 +46,7 @@ describe('SessionService', () => {
       },
       accessToken: 'access-token',
       refreshToken: 'refresh-token',
-      expiresAt: new Date(Date.now() + 3600000), // 1 hour from now
+      expiresAt: new Date(Date.now() + 3_600_000), // 1 hour from now
     };
   });
 
@@ -61,13 +62,13 @@ describe('SessionService', () => {
       await sessionService.saveSession(mockSession);
 
       expect(mockFs.mkdir).toHaveBeenCalledWith(
-        testDir,
+        testDirectory,
         { recursive: true, mode: 0o700 }
       );
       expect(mockFs.writeFile).toHaveBeenCalled();
       
       const writeCall = mockFs.writeFile.mock.calls[0];
-      expect(writeCall[0]).toBe(join(testDir, 'test-session.json'));
+      expect(writeCall[0]).toBe(join(testDirectory, 'test-session.json'));
       expect(typeof writeCall[1]).toBe('string');
       expect(writeCall[2]).toEqual({
         encoding: 'utf8',
@@ -114,7 +115,7 @@ describe('SessionService', () => {
       const storedSession = {
         userSession: mockSession,
         storedAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
         metadata: {
           provider: 'google',
           creationMethod: 'oauth',
@@ -135,7 +136,7 @@ describe('SessionService', () => {
       expect(result?.userSession.user.id).toBe('123');
       expect(result?.userSession.user.email).toBe('test@example.com');
       expect(mockFs.readFile).toHaveBeenCalledWith(
-        join(testDir, 'test-session.json'),
+        join(testDirectory, 'test-session.json'),
         'utf8'
       );
     });
@@ -153,10 +154,10 @@ describe('SessionService', () => {
       const expiredSession = {
         userSession: {
           ...mockSession,
-          expiresAt: new Date(Date.now() - 3600000), // 1 hour ago
+          expiresAt: new Date(Date.now() - 3_600_000), // 1 hour ago
         },
         storedAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() - 3600000).toISOString(),
+        expiresAt: new Date(Date.now() - 3_600_000).toISOString(),
         metadata: {},
       };
 
@@ -168,7 +169,7 @@ describe('SessionService', () => {
 
       expect(result).toBeNull();
       expect(mockFs.unlink).toHaveBeenCalledWith(
-        join(testDir, 'test-session.json')
+        join(testDirectory, 'test-session.json')
       );
     });
 
@@ -195,7 +196,7 @@ describe('SessionService', () => {
       await sessionService.clearSession();
 
       expect(mockFs.unlink).toHaveBeenCalledWith(
-        join(testDir, 'test-session.json')
+        join(testDirectory, 'test-session.json')
       );
     });
 
@@ -226,7 +227,7 @@ describe('SessionService', () => {
 
       expect(result).toBe(true);
       expect(mockFs.access).toHaveBeenCalledWith(
-        join(testDir, 'test-session.json')
+        join(testDirectory, 'test-session.json')
       );
     });
 
@@ -244,7 +245,7 @@ describe('SessionService', () => {
       const validSession = {
         userSession: mockSession,
         storedAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
       };
 
       const result = await sessionService.isSessionValid(validSession);
@@ -256,7 +257,7 @@ describe('SessionService', () => {
       const expiredSession = {
         userSession: {
           ...mockSession,
-          expiresAt: new Date(Date.now() - 3600000), // 1 hour ago
+          expiresAt: new Date(Date.now() - 3_600_000), // 1 hour ago
         },
         storedAt: new Date().toISOString(),
       };
@@ -300,7 +301,7 @@ describe('SessionService', () => {
       const storedSession = {
         userSession: mockSession,
         storedAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
         metadata: {
           provider: 'google' as const,
           creationMethod: 'oauth' as const,
@@ -312,7 +313,7 @@ describe('SessionService', () => {
       mockFs.mkdir.mockResolvedValue(undefined);
       mockFs.writeFile.mockResolvedValue(undefined);
 
-      await sessionService.extendSession(3600000); // Extend by 1 hour
+      await sessionService.extendSession(3_600_000); // Extend by 1 hour
 
       expect(mockFs.writeFile).toHaveBeenCalled();
     });
@@ -320,7 +321,7 @@ describe('SessionService', () => {
     it('should throw error when no session exists to extend', async () => {
       mockFs.access.mockRejectedValue(new Error('ENOENT'));
 
-      await expect(sessionService.extendSession(3600000)).rejects.toThrow(
+      await expect(sessionService.extendSession(3_600_000)).rejects.toThrow(
         'No session to extend'
       );
     });
@@ -331,7 +332,7 @@ describe('SessionService', () => {
       const storedSession = {
         userSession: mockSession,
         storedAt: new Date('2023-01-01').toISOString(),
-        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
         metadata: {
           provider: 'google' as const,
           creationMethod: 'oauth' as const,
@@ -368,7 +369,7 @@ describe('SessionService', () => {
   describe('encryption', () => {
     it('should handle encryption configuration', () => {
       const encryptedService = new SessionService({
-        directory: testDir,
+        directory: testDirectory,
         filename: 'encrypted-session.json',
         encryption: true,
         encryptionKey: 'test-key-32-chars-long-for-aes256',
@@ -384,7 +385,7 @@ describe('SessionService', () => {
     it('should return current configuration', () => {
       const config = sessionService.getConfiguration();
 
-      expect(config.directory).toBe(testDir);
+      expect(config.directory).toBe(testDirectory);
       expect(config.filename).toBe('test-session.json');
       expect(config.encryption).toBe(false);
     });
@@ -392,7 +393,7 @@ describe('SessionService', () => {
     it('should return session file path', () => {
       const path = sessionService.getSessionPath();
 
-      expect(path).toBe(join(testDir, 'test-session.json'));
+      expect(path).toBe(join(testDirectory, 'test-session.json'));
     });
   });
 });

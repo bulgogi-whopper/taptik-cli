@@ -1,4 +1,5 @@
 import { Injectable, Controller, Get, Module, Query, Res, Logger  } from '@nestjs/common';
+import type { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 
 import type { Response } from 'express';
@@ -181,7 +182,7 @@ class CallbackModule {}
 @Injectable()
 export class OAuthCallbackServer {
   private readonly logger = new Logger(OAuthCallbackServer.name);
-  private app: unknown = null;
+  private app: INestApplication | null = null;
   private server: unknown = null;
   private controller: CallbackController | null = null;
 

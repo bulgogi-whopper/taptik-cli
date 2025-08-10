@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+
 import open from 'open';
 
+import { OAuthCallbackServer } from '../oauth-callback-server';
 import {
   IOAuthProviderService,
   AuthProviderType,
@@ -12,7 +14,6 @@ import {
   AuthError,
   AuthErrorCode,
 } from '../types';
-import { OAuthCallbackServer } from '../oauth-callback-server';
 
 /**
  * OAuth provider service that handles provider-specific authentication flows,
@@ -174,16 +175,9 @@ export class OAuthProviderService implements IOAuthProviderService {
    */
   async startCallbackServer(config?: Partial<CallbackServerConfig>): Promise<string> {
     try {
-      const serverConfig: CallbackServerConfig = {
-        port: 54321,
-        host: 'localhost',
-        path: '/auth/callback',
-        timeout: 120000, // 2 minutes
-        secure: false,
-        ...config,
-      };
+      const port = config?.port || 54_321;
 
-      return await this.callbackServer.start(serverConfig.port);
+      return await this.callbackServer.start(port);
     } catch (error) {
       throw this.createAuthError(
         AuthErrorCode.CALLBACK_SERVER_ERROR,
@@ -216,7 +210,7 @@ export class OAuthProviderService implements IOAuthProviderService {
    * Get supported providers list
    */
   getSupportedProviders(): AuthProviderType[] {
-    return Array.from(this.providerConfigs.keys());
+    return [...this.providerConfigs.keys()];
   }
 
   /**
@@ -308,7 +302,7 @@ export class OAuthProviderService implements IOAuthProviderService {
     oauthConfig: ProviderOAuthConfig[AuthProviderType],
     callbackUrl: string
   ): string {
-    const params = new URLSearchParams({
+    const parameters = new URLSearchParams({
       client_id: provider.clientId || '',
       redirect_uri: callbackUrl,
       response_type: 'code',
@@ -318,28 +312,28 @@ export class OAuthProviderService implements IOAuthProviderService {
     // Add provider-specific parameters
     if (provider.name === 'google') {
       const googleConfig = oauthConfig as ProviderOAuthConfig['google'];
-      params.set('access_type', googleConfig.accessType);
-      params.set('prompt', googleConfig.prompt);
+      parameters.set('access_type', googleConfig.accessType);
+      parameters.set('prompt', googleConfig.prompt);
       if (googleConfig.includeGrantedScopes) {
-        params.set('include_granted_scopes', 'true');
+        parameters.set('include_granted_scopes', 'true');
       }
     } else if (provider.name === 'github') {
       const githubConfig = oauthConfig as ProviderOAuthConfig['github'];
       if (githubConfig.allowSignup) {
-        params.set('allow_signup', 'true');
+        parameters.set('allow_signup', 'true');
       }
     }
 
     // Add any additional config parameters (but don't duplicate existing ones)
     if (provider.config) {
       Object.entries(provider.config).forEach(([key, value]) => {
-        if (typeof value === 'string' && !params.has(key)) {
-          params.set(key, value);
+        if (typeof value === 'string' && !parameters.has(key)) {
+          parameters.set(key, value);
         }
       });
     }
 
-    return `${provider.authUrl}?${params.toString()}`;
+    return `${provider.authUrl}?${parameters.toString()}`;
   }
 
   private parseCallbackData(
@@ -348,25 +342,25 @@ export class OAuthProviderService implements IOAuthProviderService {
   ): OAuthCallbackData {
     // Parse URL fragments to extract OAuth tokens (for implicit flow)
     const urlParts = callbackUrl.split('#');
-    let fragmentParams: URLSearchParams | null = null;
+    let fragmentParameters: URLSearchParams | null = null;
     
     if (urlParts.length > 1) {
-      fragmentParams = new URLSearchParams(urlParts[1]);
+      fragmentParameters = new URLSearchParams(urlParts[1]);
     }
 
     // Parse query parameters (for authorization code flow) from serverCallbackData
-    const queryParams = new URLSearchParams();
+    const queryParameters = new URLSearchParams();
     Object.entries(serverCallbackData).forEach(([key, value]) => {
-      queryParams.set(key, value);
+      queryParameters.set(key, value);
     });
 
     // Extract tokens from either fragments or query params
-    const accessToken = fragmentParams?.get('access_token') || queryParams.get('access_token') || '';
-    const refreshToken = fragmentParams?.get('refresh_token') || queryParams.get('refresh_token');
-    const expiresAt = fragmentParams?.get('expires_at') || queryParams.get('expires_at');
-    const state = fragmentParams?.get('state') || queryParams.get('state');
-    const error = fragmentParams?.get('error') || queryParams.get('error') || serverCallbackData.error;
-    const errorDescription = fragmentParams?.get('error_description') || queryParams.get('error_description') || serverCallbackData.error_description;
+    const accessToken = fragmentParameters?.get('access_token') || queryParameters.get('access_token') || '';
+    const refreshToken = fragmentParameters?.get('refresh_token') || queryParameters.get('refresh_token');
+    const expiresAt = fragmentParameters?.get('expires_at') || queryParameters.get('expires_at');
+    const state = fragmentParameters?.get('state') || queryParameters.get('state');
+    const error = fragmentParameters?.get('error') || queryParameters.get('error') || serverCallbackData.error;
+    const errorDescription = fragmentParameters?.get('error_description') || queryParameters.get('error_description') || serverCallbackData.error_description;
 
     // Check for OAuth errors first
     if (error) {
@@ -389,12 +383,12 @@ export class OAuthProviderService implements IOAuthProviderService {
     return {
       accessToken,
       refreshToken: refreshToken || undefined,
-      expiresAt: expiresAt ? parseInt(expiresAt, 10) : undefined,
+      expiresAt: expiresAt ? Number.parseInt(expiresAt, 10) : undefined,
       state: state || undefined,
       error: error || undefined,
       errorDescription: errorDescription || undefined,
       additionalParams: Object.fromEntries(
-        [...queryParams.entries()].filter(([key]) => 
+        [...queryParameters.entries()].filter(([key]) => 
           !['access_token', 'refresh_token', 'expires_at', 'state', 'error', 'error_description'].includes(key)
         )
       ),

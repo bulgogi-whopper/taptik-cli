@@ -5,10 +5,11 @@ import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 
 import { User, UserSession, fromSupabaseUser } from '../../models/user.model';
 import { getSupabaseClient } from '../../supabase/supabase-client';
+
+import { OAuthProviderService } from './services/oauth-provider.service';
+import { SessionService } from './services/session.service';
 import { AuthProviderType, AuthenticationResult, AuthErrorCode, AuthError } from './types';
 
-import { SessionService } from './services/session.service';
-import { OAuthProviderService } from './services/oauth-provider.service';
 
 @Injectable()
 export class AuthService {
@@ -171,7 +172,7 @@ export class AuthService {
     } catch (error) {
       console.error('OAuth login failed:', error);
 
-      const authError: AuthError = error instanceof Error && 'code' in error
+      const authError: AuthError = error instanceof Error && 'code' in error && 'recoverable' in error
         ? error as AuthError
         : {
             code: AuthErrorCode.OAUTH_FLOW_FAILED,
@@ -234,7 +235,7 @@ export class AuthService {
         },
       };
     } catch (error) {
-      const authError: AuthError = error instanceof Error && 'code' in error
+      const authError: AuthError = error instanceof Error && 'code' in error && 'recoverable' in error
         ? error as AuthError
         : {
             code: AuthErrorCode.OAUTH_FLOW_FAILED,
@@ -279,7 +280,7 @@ export class AuthService {
 
       console.log('✅ OAuth session established successfully');
       return this.createUserSession(data.session.user, data.session);
-    } catch (error) {
+    } catch {
       // Fallback to JWT parsing if Supabase session creation fails
       return this.createSessionFromJWT(oauthData.accessToken, oauthData.refreshToken);
     }

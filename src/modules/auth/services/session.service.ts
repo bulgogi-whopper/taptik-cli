@@ -1,7 +1,7 @@
+import { randomBytes, createCipheriv, createDecipheriv } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { randomBytes, createCipherGCM, createDecipherGCM } from 'node:crypto';
 
 import { Injectable, Logger } from '@nestjs/common';
 
@@ -332,7 +332,7 @@ export class SessionService implements ISessionStorage {
       const algorithm = 'aes-256-gcm';
       const key = Buffer.from(this.options.encryptionKey.slice(0, 32), 'utf8');
       const iv = randomBytes(16);
-      const cipher = createCipherGCM(algorithm, key, iv);
+      const cipher = createCipheriv(algorithm, key, iv);
       
       let encrypted = cipher.update(data, 'utf8', 'hex');
       encrypted += cipher.final('hex');
@@ -340,7 +340,7 @@ export class SessionService implements ISessionStorage {
       const authTag = cipher.getAuthTag();
       
       // Return iv + authTag + encrypted data
-      return iv.toString('hex') + ':' + authTag.toString('hex') + ':' + encrypted;
+      return `${iv.toString('hex')  }:${  authTag.toString('hex')  }:${  encrypted}`;
     } catch (error) {
       throw new Error(`Encryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -364,7 +364,7 @@ export class SessionService implements ISessionStorage {
       const authTag = Buffer.from(parts[1], 'hex');
       const encrypted = parts[2];
       
-      const decipher = createDecipherGCM(algorithm, key, iv);
+      const decipher = createDecipheriv(algorithm, key, iv);
       decipher.setAuthTag(authTag);
       
       let decrypted = decipher.update(encrypted, 'hex', 'utf8');
@@ -376,14 +376,14 @@ export class SessionService implements ISessionStorage {
     }
   }
 
-  private isValidStoredSession(obj: unknown): obj is StoredSession {
+  private isValidStoredSession(object: unknown): object is StoredSession {
     return (
-      typeof obj === 'object' &&
-      obj !== null &&
-      'userSession' in obj &&
-      'storedAt' in obj &&
-      typeof (obj as any).userSession === 'object' &&
-      typeof (obj as any).storedAt === 'string'
+      typeof object === 'object' &&
+      object !== null &&
+      'userSession' in object &&
+      'storedAt' in object &&
+      typeof (object as Record<string, unknown>).userSession === 'object' &&
+      typeof (object as Record<string, unknown>).storedAt === 'string'
     );
   }
 

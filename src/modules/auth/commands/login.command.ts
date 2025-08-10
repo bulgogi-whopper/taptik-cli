@@ -75,8 +75,21 @@ export class LoginCommand extends CommandRunner {
       }
 
       // Call the OAuth login method (this will open browser and handle callback automatically)
-      const session = await this.authService.loginWithProvider(provider);
+      const result = await this.authService.loginWithProvider(provider);
 
+      if (!result.success || !result.session) {
+        console.error('\n❌ OAuth login failed!');
+        console.error(`Error: ${result.error?.message || 'Unknown error'}`);
+        if (result.error?.suggestions) {
+          console.log('\n💡 Suggestions:');
+          result.error.suggestions.forEach(suggestion => {
+            console.log(`  • ${suggestion}`);
+          });
+        }
+        process.exit(1);
+      }
+
+      const {session} = result;
       console.log('\n✅ OAuth login successful!');
       console.log(`👤 Logged in as: ${session.user.email}`);
       console.log(`🆔 User ID: ${session.user.id}`);

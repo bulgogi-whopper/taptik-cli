@@ -1,8 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ConfigService } from '@nestjs/config';
 
-import { OAuthProviderService } from './oauth-provider.service';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import { AuthErrorCode } from '../types';
+
+import { OAuthProviderService } from './oauth-provider.service';
 
 // Mock dependencies
 const mockConfigService = {
@@ -109,7 +111,7 @@ describe('OAuthProviderService', () => {
       const result = await oauthProviderService.startOAuthFlow('google');
 
       expect(result).toBe(callbackUrl);
-      expect(mockCallbackServer.start).toHaveBeenCalledWith(54321);
+      expect(mockCallbackServer.start).toHaveBeenCalledWith(54_321);
       expect(mockOpen).toHaveBeenCalled();
     });
 
@@ -245,7 +247,7 @@ describe('OAuthProviderService', () => {
       const result = await oauthProviderService.startCallbackServer();
 
       expect(result).toBe(callbackUrl);
-      expect(mockCallbackServer.start).toHaveBeenCalledWith(54321);
+      expect(mockCallbackServer.start).toHaveBeenCalledWith(54_321);
     });
 
     it('should start callback server with custom config', async () => {

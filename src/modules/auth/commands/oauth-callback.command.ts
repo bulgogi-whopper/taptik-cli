@@ -57,9 +57,22 @@ export class OAuthCallbackCommand extends CommandRunner {
 
       // Process the callback URL
       console.log('\n🔄 Processing OAuth callback...');
-      const session =
+      const result =
         await this.authService.processOAuthCallbackUrl(callbackUrl);
 
+      if (!result.success || !result.session) {
+        console.error('\n❌ OAuth callback processing failed!');
+        console.error(`Error: ${result.error?.message || 'Unknown error'}`);
+        if (result.error?.suggestions) {
+          console.log('\n💡 Suggestions:');
+          result.error.suggestions.forEach(suggestion => {
+            console.log(`  • ${suggestion}`);
+          });
+        }
+        process.exit(1);
+      }
+
+      const {session} = result;
       // Success
       console.log('\n🎉 OAuth authentication completed successfully!');
       console.log(`👤 Logged in as: ${session.user.email}`);

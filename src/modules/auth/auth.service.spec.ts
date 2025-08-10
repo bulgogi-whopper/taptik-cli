@@ -106,7 +106,7 @@ describe('AuthService', () => {
   describe('getCurrentUser', () => {
     it('should return current user when authenticated', async () => {
       // Arrange
-      const mockUser = {
+      const _mockUser = {
         id: '123',
         email: 'test@example.com',
         created_at: '2023-01-01T00:00:00Z',
@@ -177,7 +177,7 @@ describe('AuthService', () => {
   describe('getSession', () => {
     it('should return current session when authenticated', async () => {
       // Arrange
-      const mockUser = {
+      const _mockUser = {
         id: '123',
         email: 'test@example.com',
         created_at: '2023-01-01T00:00:00Z',
@@ -188,7 +188,7 @@ describe('AuthService', () => {
         access_token: 'access-token',
         refresh_token: 'refresh-token',
         expires_at: Math.floor(Date.now() / 1000) + 3600,
-        user: mockUser,
+        user: _mockUser,
       };
 
       mockAuth.getSession.mockResolvedValue({
