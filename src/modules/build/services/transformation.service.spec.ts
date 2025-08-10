@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TransformationService } from './transformation.service';
 import { SettingsData } from '../interfaces/settings-data.interface';
-import { TaptikPersonalContext } from '../interfaces/taptik-format.interface';
+import { TaptikPersonalContext, TaptikProjectContext } from '../interfaces/taptik-format.interface';
 
 describe('TransformationService', () => {
   let service: TransformationService;
@@ -240,6 +240,306 @@ Environment: VS Code`,
       expect(result.preferences.tools_and_frameworks).toContain('Kubernetes');
 
       expect(result.preferences.development_environment).toContain('VS Code');
+    });
+  });
+
+  describe('transformProjectContext', () => {
+    const mockProjectSettingsData: SettingsData = {
+      localSettings: {
+        contextMd: `# Project Context
+Name: Taptik CLI
+Description: AI IDE settings migration tool
+Version: 1.0.0
+Repository: https://github.com/user/taptik-cli
+Language: TypeScript
+Frameworks: NestJS, Commander
+Tools: Vitest, ESLint, Prettier`,
+        projectSpecMd: `# Project Specification
+Primary Language: TypeScript
+Frameworks: NestJS, nest-commander
+Databases: None
+Testing: Vitest, unit-first approach
+Deployment: npm publish, GitHub Actions`,
+        userPreferencesMd: `# User Preferences
+Tools: VS Code, Docker, Git`,
+        steeringFiles: [
+          {
+            filename: 'coding-standards.md',
+            content: 'Use TypeScript strict mode and follow NestJS conventions',
+            path: '.kiro/steering/coding-standards.md',
+          },
+          {
+            filename: 'testing-requirements.md', 
+            content: 'Minimum 80% test coverage required for all new features',
+            path: '.kiro/steering/testing-requirements.md',
+          }
+        ],
+        hooks: [
+          {
+            filename: 'pre-commit.kiro.hook',
+            content: 'Run linting and type checking before commit',
+            path: '.kiro/hooks/pre-commit.kiro.hook',
+            type: 'pre-commit',
+          }
+        ],
+      },
+      globalSettings: {
+        userConfig: '# Global Config\nStandards: Clean Architecture',
+        preferences: '# Global Preferences\nTools: Docker, Kubernetes',
+        globalPrompts: [],
+      },
+      collectionMetadata: {
+        sourcePlatform: 'kiro',
+        collectionTimestamp: '2025-01-04T10:30:00Z',
+        projectPath: '/Users/user/projects/taptik-cli',
+        globalPath: '/home/user/.kiro',
+        warnings: [],
+        errors: [],
+      },
+    };
+
+    it('should transform Kiro project settings to Taptik project context format', async () => {
+      const result = await service.transformProjectContext(mockProjectSettingsData);
+
+      expect(result).toBeDefined();
+      expect(result.project_id).toBeDefined();
+      expect(result.project_info).toBeDefined();
+      expect(result.technical_stack).toBeDefined();
+      expect(result.development_guidelines).toBeDefined();
+      expect(result.metadata).toBeDefined();
+    });
+
+    it('should extract project info correctly', async () => {
+      const result = await service.transformProjectContext(mockProjectSettingsData);
+
+      expect(result.project_info.name).toBe('taptik cli');
+      expect(result.project_info.description).toBe('ai ide settings migration tool');
+      expect(result.project_info.version).toBe('1.0.0');
+      expect(result.project_info.repository).toBe('https://github.com/user/taptik-cli');
+    });
+
+    it('should extract technical stack correctly', async () => {
+      const result = await service.transformProjectContext(mockProjectSettingsData);
+
+      expect(result.technical_stack.primary_language).toBe('TypeScript');
+      expect(result.technical_stack.frameworks).toContain('NestJS');
+      expect(result.technical_stack.frameworks).toContain('nest-commander');
+      expect(result.technical_stack.frameworks).toContain('Commander');
+      expect(result.technical_stack.tools).toContain('Vitest');
+      expect(result.technical_stack.tools).toContain('ESLint');
+      expect(result.technical_stack.tools).toContain('VS Code');
+    });
+
+    it('should extract development guidelines correctly', async () => {
+      const result = await service.transformProjectContext(mockProjectSettingsData);
+
+      expect(result.development_guidelines.coding_standards).toContain('Use TypeScript strict mode and follow NestJS conventions');
+      expect(result.development_guidelines.testing_requirements).toContain('Minimum 80% test coverage required for all new features');
+      expect(result.development_guidelines.review_process).toContain('Hook-based: Run linting and type checking before commit');
+    });
+
+    it('should set correct metadata', async () => {
+      const result = await service.transformProjectContext(mockProjectSettingsData);
+
+      expect(result.metadata.source_platform).toBe('kiro');
+      expect(result.metadata.source_path).toBe('/Users/user/projects/taptik-cli');
+      expect(result.metadata.version).toBe('1.0.0');
+      expect(result.metadata.created_at).toBeDefined();
+      expect(new Date(result.metadata.created_at)).toBeInstanceOf(Date);
+    });
+
+    it('should generate project ID with project name', async () => {
+      const result = await service.transformProjectContext(mockProjectSettingsData);
+
+      expect(result.project_id).toContain('taptik-cli');
+      expect(result.project_id.split('-').length).toBeGreaterThanOrEqual(3); // name + uuid parts
+    });
+
+    it('should handle missing project files gracefully', async () => {
+      const minimalProjectData: SettingsData = {
+        localSettings: {
+          steeringFiles: [],
+          hooks: [],
+        },
+        globalSettings: {
+          globalPrompts: [],
+        },
+        collectionMetadata: {
+          sourcePlatform: 'kiro',
+          collectionTimestamp: '2025-01-04T10:30:00Z',
+          projectPath: '/Users/user/projects/test-project',
+          globalPath: '/home/user/.kiro',
+          warnings: [],
+          errors: [],
+        },
+      };
+
+      const result = await service.transformProjectContext(minimalProjectData);
+
+      expect(result).toBeDefined();
+      expect(result.project_info.name).toBe('test-project'); // Fallback to directory name
+      expect(result.project_info.description).toBe('No description available');
+      expect(result.technical_stack.primary_language).toBe('typescript');
+      expect(result.development_guidelines.coding_standards).toEqual([]);
+    });
+
+    it('should extract frameworks from multiple sources', async () => {
+      const multiSourceData: SettingsData = {
+        localSettings: {
+          contextMd: `# Context
+Frameworks: React, Express`,
+          projectSpecMd: `# Spec
+Libraries: Lodash, Axios`,
+          userPreferencesMd: `# Preferences
+Tools: Jest, Webpack`,
+          steeringFiles: [],
+          hooks: [],
+        },
+        globalSettings: {
+          globalPrompts: [],
+        },
+        collectionMetadata: {
+          sourcePlatform: 'kiro',
+          collectionTimestamp: '2025-01-04T10:30:00Z',
+          projectPath: '/Users/user/projects/multi-source',
+          globalPath: '/home/user/.kiro',
+          warnings: [],
+          errors: [],
+        },
+      };
+
+      const result = await service.transformProjectContext(multiSourceData);
+
+      expect(result.technical_stack.frameworks).toContain('React');
+      expect(result.technical_stack.frameworks).toContain('Express');
+      expect(result.technical_stack.frameworks).toContain('Lodash');
+      expect(result.technical_stack.frameworks).toContain('Axios');
+      expect(result.technical_stack.tools).toContain('Jest');
+      expect(result.technical_stack.tools).toContain('Webpack');
+    });
+
+    it('should extract steering rules and hook guidelines', async () => {
+      const steeringData: SettingsData = {
+        localSettings: {
+          steeringFiles: [
+            {
+              filename: 'docs.md',
+              content: 'All public methods must have documentation comments',
+              path: '.kiro/steering/docs.md',
+            },
+            {
+              filename: 'review.md',
+              content: 'All PRs must be reviewed by at least 2 team members',
+              path: '.kiro/steering/review.md',
+            }
+          ],
+          hooks: [
+            {
+              filename: 'post-commit.kiro.hook',
+              content: 'Validate commit message format',
+              path: '.kiro/hooks/post-commit.kiro.hook',
+              type: 'post-commit',
+            }
+          ],
+        },
+        globalSettings: {
+          globalPrompts: [],
+        },
+        collectionMetadata: {
+          sourcePlatform: 'kiro',
+          collectionTimestamp: '2025-01-04T10:30:00Z',
+          projectPath: '/Users/user/projects/steering-test',
+          globalPath: '/home/user/.kiro',
+          warnings: [],
+          errors: [],
+        },
+      };
+
+      const result = await service.transformProjectContext(steeringData);
+
+      expect(result.development_guidelines.documentation_standards).toContain('All public methods must have documentation comments');
+      expect(result.development_guidelines.review_process).toContain('All PRs must be reviewed by at least 2 team members');
+      expect(result.development_guidelines.review_process).toContain('Hook-based: Validate commit message format');
+    });
+
+    it('should handle deployment and database extraction', async () => {
+      const deploymentData: SettingsData = {
+        localSettings: {
+          contextMd: `# Context
+Databases: PostgreSQL, Redis
+Deployment: Heroku, Docker`,
+          projectSpecMd: `# Spec
+Database: MongoDB
+Hosting: AWS, Netlify`,
+          steeringFiles: [],
+          hooks: [],
+        },
+        globalSettings: {
+          globalPrompts: [],
+        },
+        collectionMetadata: {
+          sourcePlatform: 'kiro',
+          collectionTimestamp: '2025-01-04T10:30:00Z',
+          projectPath: '/Users/user/projects/deployment-test',
+          globalPath: '/home/user/.kiro',
+          warnings: [],
+          errors: [],
+        },
+      };
+
+      const result = await service.transformProjectContext(deploymentData);
+
+      expect(result.technical_stack.databases).toContain('PostgreSQL');
+      expect(result.technical_stack.databases).toContain('Redis');
+      expect(result.technical_stack.databases).toContain('MongoDB');
+      expect(result.technical_stack.deployment).toContain('Heroku');
+      expect(result.technical_stack.deployment).toContain('Docker');
+      expect(result.technical_stack.deployment).toContain('AWS');
+      expect(result.technical_stack.deployment).toContain('Netlify');
+    });
+
+    it('should throw error when critical project transformation fails', async () => {
+      const invalidProjectData = null as any;
+
+      await expect(service.transformProjectContext(invalidProjectData))
+        .rejects.toThrow('Project context transformation failed');
+    });
+
+    it('should generate unique project IDs for different transformations', async () => {
+      const result1 = await service.transformProjectContext(mockProjectSettingsData);
+      const result2 = await service.transformProjectContext(mockProjectSettingsData);
+
+      expect(result1.project_id).toBeDefined();
+      expect(result2.project_id).toBeDefined();
+      expect(result1.project_id).not.toBe(result2.project_id);
+    });
+
+    it('should handle empty steering files and hooks', async () => {
+      const emptyData: SettingsData = {
+        localSettings: {
+          contextMd: '# Empty Context',
+          steeringFiles: [],
+          hooks: [],
+        },
+        globalSettings: {
+          globalPrompts: [],
+        },
+        collectionMetadata: {
+          sourcePlatform: 'kiro',
+          collectionTimestamp: '2025-01-04T10:30:00Z',
+          projectPath: '/Users/user/projects/empty-project',
+          globalPath: '/home/user/.kiro',
+          warnings: [],
+          errors: [],
+        },
+      };
+
+      const result = await service.transformProjectContext(emptyData);
+
+      expect(result.development_guidelines.coding_standards).toEqual([]);
+      expect(result.development_guidelines.testing_requirements).toEqual([]);
+      expect(result.development_guidelines.documentation_standards).toEqual([]);
+      expect(result.development_guidelines.review_process).toEqual([]);
     });
   });
 });

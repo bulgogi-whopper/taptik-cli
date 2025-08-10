@@ -57,6 +57,36 @@ export class TransformationService {
   }
 
   /**
+   * Transform project context data from Kiro format to Taptik format
+   * @param settingsData Raw settings data collected from Kiro
+   * @returns Transformed project context in Taptik format
+   */
+  async transformProjectContext(settingsData: SettingsData): Promise<TaptikProjectContext> {
+    try {
+      this.logger.log('Starting project context transformation');
+
+      const projectInfo = await this.extractProjectInfo(settingsData);
+      const technicalStack = await this.extractTechnicalStack(settingsData);
+      const developmentGuidelines = await this.extractDevelopmentGuidelines(settingsData);
+      const metadata = this.generateProjectMetadata(settingsData);
+
+      const projectContext: TaptikProjectContext = {
+        project_id: this.generateProjectId(settingsData),
+        project_info: projectInfo,
+        technical_stack: technicalStack,
+        development_guidelines: developmentGuidelines,
+        metadata: metadata,
+      };
+
+      this.logger.log('Project context transformation completed successfully');
+      return projectContext;
+    } catch (error) {
+      this.logger.error('Failed to transform project context', error.stack);
+      throw new Error(`Project context transformation failed: ${error.message}`);
+    }
+  }
+
+  /**
    * Extract user preferences from Kiro settings
    */
   private async extractUserPreferences(settingsData: SettingsData): Promise<UserPreferences> {
@@ -367,5 +397,308 @@ export class TransformationService {
     const globalValue = this.extractStringFromParsedData(globalConfig, ['feedback_style'], '');
     const prefValue = this.extractStringFromParsedData(preferences, ['feedback_style'], '');
     return prefValue || globalValue || 'direct';
+  }
+
+  /**
+   * Extract project information from Kiro settings
+   */
+  private async extractProjectInfo(settingsData: SettingsData): Promise<ProjectInfo> {
+    const contextData = this.parseKiroConfig(settingsData.localSettings.contextMd);
+    const projectSpecData = this.parseKiroConfig(settingsData.localSettings.projectSpecMd);
+
+    return {
+      name: this.extractProjectName(contextData, projectSpecData, settingsData),
+      description: this.extractProjectDescription(contextData, projectSpecData),
+      version: this.extractProjectVersion(contextData, projectSpecData),
+      repository: this.extractProjectRepository(contextData, projectSpecData),
+    };
+  }
+
+  /**
+   * Extract technical stack information from Kiro settings
+   */
+  private async extractTechnicalStack(settingsData: SettingsData): Promise<TechnicalStack> {
+    const contextData = this.parseKiroConfig(settingsData.localSettings.contextMd);
+    const projectSpecData = this.parseKiroConfig(settingsData.localSettings.projectSpecMd);
+    const userPrefs = this.parseKiroPreferences(settingsData.localSettings.userPreferencesMd);
+
+    return {
+      primary_language: this.extractPrimaryLanguage(contextData, projectSpecData, userPrefs),
+      frameworks: this.extractFrameworks(contextData, projectSpecData, userPrefs),
+      databases: this.extractDatabases(contextData, projectSpecData),
+      tools: this.extractProjectTools(contextData, projectSpecData, userPrefs),
+      deployment: this.extractDeployment(contextData, projectSpecData),
+    };
+  }
+
+  /**
+   * Extract development guidelines from Kiro settings
+   */
+  private async extractDevelopmentGuidelines(settingsData: SettingsData): Promise<DevelopmentGuidelines> {
+    const steeringRules = this.extractSteeringRules(settingsData.localSettings.steeringFiles);
+    const projectSpecData = this.parseKiroConfig(settingsData.localSettings.projectSpecMd);
+    const hooks = settingsData.localSettings.hooks;
+
+    return {
+      coding_standards: this.extractCodingStandards(steeringRules, projectSpecData),
+      testing_requirements: this.extractTestingRequirements(steeringRules, projectSpecData),
+      documentation_standards: this.extractDocumentationStandards(steeringRules, projectSpecData),
+      review_process: this.extractReviewProcess(steeringRules, hooks),
+    };
+  }
+
+  /**
+   * Generate metadata for project context
+   */
+  private generateProjectMetadata(settingsData: SettingsData): ProjectMetadata {
+    return {
+      source_platform: settingsData.collectionMetadata.sourcePlatform,
+      source_path: settingsData.collectionMetadata.projectPath,
+      created_at: new Date().toISOString(),
+      version: '1.0.0',
+    };
+  }
+
+  /**
+   * Generate unique project ID based on settings data
+   */
+  private generateProjectId(settingsData: SettingsData): string {
+    const projectPath = settingsData.collectionMetadata.projectPath;
+    const projectName = projectPath.split('/').pop() || 'unknown-project';
+    return `${projectName}-${randomUUID().substring(0, 8)}`;
+  }
+
+  /**
+   * Extract project name from various sources
+   */
+  private extractProjectName(contextData: Record<string, any>, projectSpecData: Record<string, any>, settingsData: SettingsData): string {
+    const projectName = this.extractStringFromParsedData(contextData, ['name', 'project_name', 'title'], '') ||
+                       this.extractStringFromParsedData(projectSpecData, ['name', 'project_name', 'title'], '');
+
+    if (projectName) {
+      return projectName;
+    }
+
+    // Fallback to directory name
+    const projectPath = settingsData.collectionMetadata.projectPath;
+    return projectPath.split('/').pop() || 'untitled-project';
+  }
+
+  /**
+   * Extract project description
+   */
+  private extractProjectDescription(contextData: Record<string, any>, projectSpecData: Record<string, any>): string {
+    return this.extractStringFromParsedData(contextData, ['description', 'summary', 'about'], '') ||
+           this.extractStringFromParsedData(projectSpecData, ['description', 'summary', 'about'], '') ||
+           'No description available';
+  }
+
+  /**
+   * Extract project version
+   */
+  private extractProjectVersion(contextData: Record<string, any>, projectSpecData: Record<string, any>): string {
+    return this.extractStringFromParsedData(contextData, ['version'], '') ||
+           this.extractStringFromParsedData(projectSpecData, ['version'], '') ||
+           '1.0.0';
+  }
+
+  /**
+   * Extract project repository information
+   */
+  private extractProjectRepository(contextData: Record<string, any>, projectSpecData: Record<string, any>): string {
+    return this.extractStringFromParsedData(contextData, ['repository', 'repo', 'git_url'], '') ||
+           this.extractStringFromParsedData(projectSpecData, ['repository', 'repo', 'git_url'], '') ||
+           '';
+  }
+
+  /**
+   * Extract primary programming language
+   */
+  private extractPrimaryLanguage(contextData: Record<string, any>, projectSpecData: Record<string, any>, userPrefs: Record<string, any>): string {
+    const languages = [
+      ...this.extractArrayFromParsedData(contextData, ['language', 'primary_language', 'main_language']),
+      ...this.extractArrayFromParsedData(projectSpecData, ['language', 'primary_language', 'main_language']),
+      ...this.extractArrayFromParsedData(userPrefs, ['languages', 'preferred_languages']),
+    ];
+
+    return languages[0] || 'typescript';
+  }
+
+  /**
+   * Extract frameworks from project settings
+   */
+  private extractFrameworks(contextData: Record<string, any>, projectSpecData: Record<string, any>, userPrefs: Record<string, any>): string[] {
+    const frameworks = new Set<string>();
+
+    const contextFrameworks = this.extractArrayFromParsedData(contextData, ['frameworks', 'framework', 'libraries']);
+    const specFrameworks = this.extractArrayFromParsedData(projectSpecData, ['frameworks', 'framework', 'libraries']);
+    const prefFrameworks = this.extractArrayFromParsedData(userPrefs, ['frameworks', 'tools']);
+
+    [...contextFrameworks, ...specFrameworks, ...prefFrameworks].forEach(fw => frameworks.add(fw));
+
+    return Array.from(frameworks);
+  }
+
+  /**
+   * Extract databases from project settings
+   */
+  private extractDatabases(contextData: Record<string, any>, projectSpecData: Record<string, any>): string[] {
+    const databases = new Set<string>();
+
+    const contextDbs = this.extractArrayFromParsedData(contextData, ['databases', 'database', 'db']);
+    const specDbs = this.extractArrayFromParsedData(projectSpecData, ['databases', 'database', 'db']);
+
+    [...contextDbs, ...specDbs].forEach(db => databases.add(db));
+
+    return Array.from(databases);
+  }
+
+  /**
+   * Extract project tools
+   */
+  private extractProjectTools(contextData: Record<string, any>, projectSpecData: Record<string, any>, userPrefs: Record<string, any>): string[] {
+    const tools = new Set<string>();
+
+    const contextTools = this.extractArrayFromParsedData(contextData, ['tools', 'build_tools', 'dev_tools']);
+    const specTools = this.extractArrayFromParsedData(projectSpecData, ['tools', 'build_tools', 'dev_tools']);
+    const prefTools = this.extractArrayFromParsedData(userPrefs, ['tools', 'development_tools']);
+
+    [...contextTools, ...specTools, ...prefTools].forEach(tool => tools.add(tool));
+
+    return Array.from(tools);
+  }
+
+  /**
+   * Extract deployment information
+   */
+  private extractDeployment(contextData: Record<string, any>, projectSpecData: Record<string, any>): string[] {
+    const deployment = new Set<string>();
+
+    const contextDeploy = this.extractArrayFromParsedData(contextData, ['deployment', 'deploy', 'hosting']);
+    const specDeploy = this.extractArrayFromParsedData(projectSpecData, ['deployment', 'deploy', 'hosting']);
+
+    [...contextDeploy, ...specDeploy].forEach(dep => deployment.add(dep));
+
+    return Array.from(deployment);
+  }
+
+  /**
+   * Extract steering rules from steering files
+   */
+  private extractSteeringRules(steeringFiles: any[]): string[] {
+    if (!Array.isArray(steeringFiles)) {
+      return [];
+    }
+
+    return steeringFiles.map(file => {
+      if (typeof file === 'object' && file.content) {
+        return file.content.trim();
+      }
+      return '';
+    }).filter(content => content.length > 0);
+  }
+
+  /**
+   * Extract coding standards from steering rules and project spec
+   */
+  private extractCodingStandards(steeringRules: string[], projectSpecData: Record<string, any>): string[] {
+    const standards = new Set<string>();
+
+    // Extract from steering files
+    steeringRules.forEach(rule => {
+      if (rule.toLowerCase().includes('standard') || rule.toLowerCase().includes('convention')) {
+        standards.add(rule);
+      }
+    });
+
+    // Extract from project spec
+    const specStandards = this.extractArrayFromParsedData(projectSpecData, ['coding_standards', 'standards', 'conventions']);
+    specStandards.forEach(std => standards.add(std));
+
+    return Array.from(standards);
+  }
+
+  /**
+   * Extract testing requirements
+   */
+  private extractTestingRequirements(steeringRules: string[], projectSpecData: Record<string, any>): string[] {
+    const requirements = new Set<string>();
+
+    // Extract from steering files
+    steeringRules.forEach(rule => {
+      if (rule.toLowerCase().includes('test') || rule.toLowerCase().includes('coverage')) {
+        requirements.add(rule);
+      }
+    });
+
+    // Extract from project spec
+    const specTests = this.extractArrayFromParsedData(projectSpecData, ['testing', 'test_requirements', 'coverage']);
+    specTests.forEach(req => requirements.add(req));
+
+    return Array.from(requirements);
+  }
+
+  /**
+   * Extract documentation standards
+   */
+  private extractDocumentationStandards(steeringRules: string[], projectSpecData: Record<string, any>): string[] {
+    const standards = new Set<string>();
+
+    // Extract from steering files
+    steeringRules.forEach(rule => {
+      if (rule.toLowerCase().includes('documentation') || rule.toLowerCase().includes('comment')) {
+        standards.add(rule);
+      }
+    });
+
+    // Extract from project spec
+    const specDocs = this.extractArrayFromParsedData(projectSpecData, ['documentation', 'docs', 'comments']);
+    specDocs.forEach(doc => standards.add(doc));
+
+    return Array.from(standards);
+  }
+
+  /**
+   * Extract review process guidelines
+   */
+  private extractReviewProcess(steeringRules: string[], hooks: any[]): string[] {
+    const process = new Set<string>();
+
+    // Extract from steering files
+    steeringRules.forEach(rule => {
+      if (rule.toLowerCase().includes('review') || rule.toLowerCase().includes('approval')) {
+        process.add(rule);
+      }
+    });
+
+    // Extract from hooks - check if hooks contain review-related content
+    if (Array.isArray(hooks)) {
+      hooks.forEach(hook => {
+        if (typeof hook === 'object' && hook.content) {
+          const content = hook.content.toLowerCase();
+          if (content.includes('review') || content.includes('lint') || content.includes('check') || content.includes('validate') || content.includes('commit')) {
+            process.add(`Hook-based: ${hook.content.trim()}`);
+          }
+        }
+      });
+    }
+
+    return Array.from(process);
+  }
+
+  /**
+   * Extract hook guidelines from hook files
+   */
+  private extractHookGuidelines(hooks: any[]): string[] {
+    if (!Array.isArray(hooks)) {
+      return [];
+    }
+
+    return hooks.map(hook => {
+      if (typeof hook === 'object' && hook.content && hook.filename) {
+        return `${hook.filename}: ${hook.content.trim()}`;
+      }
+      return '';
+    }).filter(content => content.length > 0);
   }
 }
