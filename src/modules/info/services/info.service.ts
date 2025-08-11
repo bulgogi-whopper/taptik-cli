@@ -34,7 +34,7 @@ export class InfoService {
   async getToolInfo() {
     const packageVersion = process.env.npm_package_version || '0.0.1';
     const nodeVersion = process.version;
-    const platform = process.platform;
+    const { platform } = process;
 
     return {
       cliVersion: packageVersion,
