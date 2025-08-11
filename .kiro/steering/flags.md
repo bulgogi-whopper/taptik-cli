@@ -60,8 +60,7 @@ inclusion: always
 
 - Pre-operation validation and risk assessment
 - Auto-activates: Risk score >0.7 or resource usage >75%
-- Risk algorithm: complexity*0.3 + vulnerabilities*0.25 + resources*0.2 + failure_prob*0.15 +
-  time\*0.1
+- Risk algorithm: complexity*0.3 + vulnerabilities*0.25 + resources*0.2 + failure_prob*0.15 + time\*0.1
 
 **`--safe-mode`**
 
@@ -235,6 +234,4 @@ inclusion: always
 
 ### Context-Based Auto-Activation
 
-**Wave Auto-Activation**: complexity ≥0.7 AND files >20 AND operation_types >2 **Sub-Agent
-Auto-Activation**: >7 directories OR >50 files OR complexity >0.8 **Loop Auto-Activation**: polish,
-refine, enhance, improve keywords detected
+**Wave Auto-Activation**: complexity ≥0.7 AND files >20 AND operation_types >2 **Sub-Agent Auto-Activation**: >7 directories OR >50 files OR complexity >0.8 **Loop Auto-Activation**: polish, refine, enhance, improve keywords detected

@@ -12,10 +12,7 @@ inclusion: always
 
 ### Product Description
 
-A CLI tool that enables easy migration and synchronization of settings and environments between
-various AI development tools such as AI IDEs and Claude Code. It provides secure authentication
-through Supabase Auth (supporting Google and GitHub OAuth), helping developers maintain consistent
-development environments across multiple AI tools.
+A CLI tool that enables easy migration and synchronization of settings and environments between various AI development tools such as AI IDEs and Claude Code. It provides secure authentication through Supabase Auth (supporting Google and GitHub OAuth), helping developers maintain consistent development environments across multiple AI tools.
 
 ### Core Values
 
@@ -163,8 +160,7 @@ development environments across multiple AI tools.
 
 **Output Format**:
 
-ID Name Created Size Access ───────────────────────────────────────────────────────── abc123 My IDE
-Config 2025-08-01 2.3MB Private def456 Team Settings 2025-07-30 1.8MB Public
+ID Name Created Size Access ───────────────────────────────────────────────────────── abc123 My IDE Config 2025-08-01 2.3MB Private def456 Team Settings 2025-07-30 1.8MB Public
 
 ### 4. Utility Commands
 

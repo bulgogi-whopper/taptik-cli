@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { TerminusModule } from '@nestjs/terminus';
 
 import { HealthCommand } from './commands/health.command';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
@@ -11,6 +12,7 @@ import { HealthCommand } from './commands/health.command';
       envFilePath: ['.env.local', '.env'],
     }),
     TerminusModule,
+    AuthModule,
   ],
   providers: [HealthCommand],
 })

@@ -2,11 +2,7 @@
 
 ## Overview
 
-This design outlines the implementation of a comprehensive ESLint and Prettier configuration for the
-NestJS CLI project. The setup will include eslint-plugin-unicorn for modern JavaScript/TypeScript
-best practices and eslint-plugin-import-x for import/export validation and organization. The
-configuration will be optimized for NestJS patterns while maintaining compatibility with the
-existing development workflow.
+This design outlines the implementation of a comprehensive ESLint and Prettier configuration for the NestJS CLI project. The setup will include eslint-plugin-unicorn for modern JavaScript/TypeScript best practices and eslint-plugin-import-x for import/export validation and organization. The configuration will be optimized for NestJS patterns while maintaining compatibility with the existing development workflow.
 
 ## Architecture
 
@@ -15,8 +11,7 @@ existing development workflow.
 - **Hierarchical Configuration**: Use .eslintrc.js for maximum flexibility and comments
 - **Plugin Integration**: Layer unicorn and import-x plugins with existing TypeScript ESLint setup
 - **Prettier Integration**: Use eslint-config-prettier to disable conflicting ESLint rules
-- **Ignore Files**: Separate ignore files for ESLint and Prettier to handle different file types
-  appropriately
+- **Ignore Files**: Separate ignore files for ESLint and Prettier to handle different file types appropriately
 
 ### Tool Integration Flow
 

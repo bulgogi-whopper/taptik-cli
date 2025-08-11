@@ -8,11 +8,9 @@ Comprehensive testing strategy for Taptik CLI using Vitest framework.
 
 ## Overview
 
-**Testing Philosophy**: Fast, reliable, and maintainable tests that provide confidence in code
-quality and prevent regressions.
+**Testing Philosophy**: Fast, reliable, and maintainable tests that provide confidence in code quality and prevent regressions.
 
-**Framework**: Vitest - Fast unit test framework powered by Vite **Current Status**: Migrating from
-Jest to Vitest **Coverage Target**: >80% for critical paths, >60% overall
+**Framework**: Vitest - Fast unit test framework powered by Vite **Current Status**: Migrating from Jest to Vitest **Coverage Target**: >80% for critical paths, >60% overall
 
 ## Setup & Configuration
 
@@ -224,9 +222,7 @@ describe('ConfigService', () => {
 
       // Assert
       expect(result).toEqual(mockConfig);
-      expect(fileUtils.readJson).toHaveBeenCalledWith(
-        expect.stringContaining('vscode/settings.json'),
-      );
+      expect(fileUtils.readJson).toHaveBeenCalledWith(expect.stringContaining('vscode/settings.json'));
     });
 
     it('should throw error for unsupported tool', async () => {
@@ -268,10 +264,7 @@ describe('Migrate Command E2E', () => {
     await writeFile(join(tempDir, 'vscode-settings.json'), JSON.stringify(vscodeSettings, null, 2));
 
     // Act
-    const result = execSync(
-      `node dist/cli.js migrate --source vscode --target cursor --config-path ${tempDir}`,
-      { encoding: 'utf8' },
-    );
+    const result = execSync(`node dist/cli.js migrate --source vscode --target cursor --config-path ${tempDir}`, { encoding: 'utf8' });
 
     // Assert
     expect(result).toContain('Migration completed successfully');

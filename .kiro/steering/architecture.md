@@ -6,8 +6,7 @@ inclusion: always
 
 ## Module Structure
 
-The application follows a modular architecture where each major CLI command is organized as a
-separate module under `/src/modules/`.
+The application follows a modular architecture where each major CLI command is organized as a separate module under `/src/modules/`.
 
 ### Core Modules
 
@@ -256,5 +255,4 @@ export class ConfigBundleEntity implements ConfigBundle {
 4. Module-specific imports (`@/modules/`)
 5. Relative imports (`./`, `../`)
 
-This architecture ensures clear separation of concerns, testability, and maintainability while
-following NestJS best practices.
+This architecture ensures clear separation of concerns, testability, and maintainability while following NestJS best practices.

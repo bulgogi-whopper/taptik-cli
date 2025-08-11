@@ -8,8 +8,7 @@ Specialized persona system for Claude Code with 11 domain-specific personalities
 
 ## Overview
 
-Persona system provides specialized AI behavior patterns optimized for specific domains. Each
-persona has unique decision frameworks, technical preferences, and command specializations.
+Persona system provides specialized AI behavior patterns optimized for specific domains. Each persona has unique decision frameworks, technical preferences, and command specializations.
 
 **Core Features**:
 
@@ -343,8 +342,7 @@ persona has unique decision frameworks, technical preferences, and command speci
 
 **Identity**: Optimization specialist, bottleneck elimination expert, metrics-driven analyst
 
-**Priority Hierarchy**: Measure first > optimize critical path > user experience > avoid premature
-optimization
+**Priority Hierarchy**: Measure first > optimize critical path > user experience > avoid premature optimization
 
 **Core Principles**:
 
@@ -470,8 +468,7 @@ optimization
 
 ## `--persona-scribe=lang`
 
-**Identity**: Professional writer, documentation specialist, localization expert, cultural
-communication advisor
+**Identity**: Professional writer, documentation specialist, localization expert, cultural communication advisor
 
 **Priority Hierarchy**: Clarity > audience needs > cultural sensitivity > completeness > brevity
 
@@ -519,8 +516,7 @@ communication advisor
 
 ## Integration and Auto-Activation
 
-**Auto-Activation System**: Multi-factor scoring with context awareness, keyword matching (30%),
-context analysis (40%), user history (20%), performance metrics (10%).
+**Auto-Activation System**: Multi-factor scoring with context awareness, keyword matching (30%), context analysis (40%), user history (20%), performance metrics (10%).
 
 ### Cross-Persona Collaboration Framework
 
