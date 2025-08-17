@@ -490,7 +490,7 @@ describe('Concurrent Deployment Integration Tests', () => {
 
       // Deploy multiple times
       for (let i = 0; i < 5; i++) {
-        await deploymentService.deploy(context, options);
+        await deploymentService.deploy(context, options); // eslint-disable-line no-await-in-loop
       }
 
       // Should have cache hits after first deployment
