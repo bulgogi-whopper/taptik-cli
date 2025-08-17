@@ -12,6 +12,7 @@ import { ErrorRecoveryService } from './services/error-recovery.service';
 import { ImportService } from './services/import.service';
 import { LockingService } from './services/locking.service';
 import { PlatformValidatorService } from './services/platform-validator.service';
+import { PromptService } from './services/prompt.service';
 import { SecurityScannerService } from './services/security-scanner.service';
 import { PathResolver } from './utils/path-resolver.utility';
 import { PerformanceOptimizer } from './utils/performance-optimizer.utility';
@@ -29,6 +30,7 @@ import { PerformanceOptimizer } from './utils/performance-optimizer.utility';
     ImportService,
     LockingService,
     PlatformValidatorService,
+    PromptService,
     SecurityScannerService,
 
     // Utilities
