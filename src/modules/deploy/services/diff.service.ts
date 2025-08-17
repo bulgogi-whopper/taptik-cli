@@ -3,11 +3,26 @@ import { Injectable } from '@nestjs/common';
 import { TaptikContext } from '../../context/interfaces/taptik-context.interface';
 import { ConflictStrategy } from '../interfaces/deploy-options.interface';
 
+type JsonValue = 
+  | string 
+  | number 
+  | boolean 
+  | null 
+  | undefined
+  | JsonObject 
+  | JsonArray;
+
+interface JsonObject {
+  [key: string]: JsonValue;
+}
+
+type JsonArray = JsonValue[];
+
 export interface DiffEntry {
   path: string;
   type: 'addition' | 'modification' | 'deletion';
-  oldValue?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
-  newValue?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  oldValue?: JsonValue;
+  newValue?: JsonValue;
 }
 
 export interface DiffResult {
@@ -19,8 +34,8 @@ export interface DiffResult {
 
 export interface Conflict {
   path: string;
-  sourceValue: any; // eslint-disable-line @typescript-eslint/no-explicit-any
-  targetValue: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  sourceValue: JsonValue;
+  targetValue: JsonValue;
   type: 'value_conflict' | 'type_conflict';
 }
 
@@ -32,8 +47,8 @@ export interface DiffFormatOptions {
 @Injectable()
 export class DiffService {
   generateDiff(
-    source: TaptikContext | any,
-    target: TaptikContext | any,
+    source: TaptikContext | Record<string, unknown>,
+    target: TaptikContext | Record<string, unknown>,
   ): DiffResult {
      
     const additions: DiffEntry[] = [];
@@ -106,10 +121,10 @@ export class DiffService {
   }
 
   mergeConfigurations(
-    source: TaptikContext,
-    target: TaptikContext,
+    source: TaptikContext | Record<string, unknown>,
+    target: TaptikContext | Record<string, unknown>,
     strategy: ConflictStrategy,
-  ): TaptikContext {
+  ): TaptikContext | Record<string, unknown> {
     switch (strategy) {
       case 'skip':
         // Keep target as-is
@@ -121,14 +136,14 @@ export class DiffService {
 
       case 'merge':
         // Deep merge source into target
-        return this.deepMerge(target, source);
+        return this.deepMerge(target, source) as TaptikContext | Record<string, unknown>;
 
       case 'backup':
         // Use source but mark that backup was created
         return {
           ...source,
           metadata: {
-            ...source.metadata,
+            ...(source as Record<string, unknown>).metadata as Record<string, unknown>,
             backupCreated: true,
           },
         };
@@ -169,8 +184,8 @@ export class DiffService {
   }
 
   private compareObjects(
-    source: any, // eslint-disable-line @typescript-eslint/no-explicit-any
-    target: any, // eslint-disable-line @typescript-eslint/no-explicit-any
+    source: unknown,
+    target: unknown,
     path: string,
     additions: DiffEntry[],
     modifications: DiffEntry[],
@@ -182,7 +197,7 @@ export class DiffService {
       deletions.push({
         path: path || 'root',
         type: 'deletion',
-        oldValue: target,
+        oldValue: target as JsonValue,
       });
       return;
     }
@@ -190,8 +205,22 @@ export class DiffService {
       additions.push({
         path: path || 'root',
         type: 'addition',
-        newValue: source,
+        newValue: source as JsonValue,
       });
+      return;
+    }
+
+    // Only compare objects
+    if (!this.isJsonObject(source) || !this.isJsonObject(target)) {
+      // Compare primitive values
+      if (source !== target) {
+        modifications.push({
+          path: path || 'root',
+          type: 'modification',
+          oldValue: target as JsonValue,
+          newValue: source as JsonValue,
+        });
+      }
       return;
     }
 
@@ -255,14 +284,18 @@ export class DiffService {
     }
   }
 
-  private deepMerge(target: any, source: any): any {
-     
+  private deepMerge(target: unknown, source: unknown): unknown {
+    // Handle non-object types
+    if (!this.isJsonObject(target) || !this.isJsonObject(source)) {
+      return source; // Replace with source value
+    }
+
     const result = { ...target };
 
     for (const key in source) {
       if (Object.prototype.hasOwnProperty.call(source, key)) {
         if (this.isObject(source[key]) && this.isObject(target[key])) {
-          result[key] = this.deepMerge(target[key], source[key]);
+          result[key] = this.deepMerge(target[key], source[key]) as JsonValue;
         } else if (Array.isArray(source[key]) && Array.isArray(target[key])) {
           // Merge arrays by id if objects have id field, otherwise concatenate unique
           result[key] = this.mergeArrays(target[key], source[key]);
@@ -275,23 +308,25 @@ export class DiffService {
     return result;
   }
 
-  private mergeArrays(target: any[], source: any[]): any[] {
+  private mergeArrays(target: JsonArray, source: JsonArray): JsonArray {
      
     if (target.length === 0) return source;
     if (source.length === 0) return target;
 
     // Check if arrays contain objects with id field
-    const hasIds = source[0]?.id !== undefined || target[0]?.id !== undefined;
+    const firstSource = source[0] as JsonObject;
+    const firstTarget = target[0] as JsonObject;
+    const hasIds = (firstSource && typeof firstSource === 'object' && 'id' in firstSource) || 
+                   (firstTarget && typeof firstTarget === 'object' && 'id' in firstTarget);
 
     if (hasIds) {
       // Merge by id
       const result = [...target];
-      const _targetIds = new Set(target.map((item) => item.id).filter(Boolean));
-
+      
       for (const sourceItem of source) {
-        if (sourceItem.id) {
+        if (sourceItem && typeof sourceItem === 'object' && 'id' in sourceItem && sourceItem.id) {
           const targetIndex = result.findIndex(
-            (item) => item.id === sourceItem.id,
+            (item) => item && typeof item === 'object' && 'id' in item && item.id === sourceItem.id,
           );
           if (targetIndex >= 0) {
             // Replace existing item
@@ -314,13 +349,18 @@ export class DiffService {
   }
 
   private findConflicts(
-    source: any, // eslint-disable-line @typescript-eslint/no-explicit-any
-    target: any, // eslint-disable-line @typescript-eslint/no-explicit-any
+    source: unknown,
+    target: unknown,
     path: string,
     conflicts: Conflict[],
   ): void {
-    const sourceKeys = Object.keys(source || {});
-    const targetKeys = Object.keys(target || {});
+    // Only compare object types
+    if (!this.isJsonObject(source) || !this.isJsonObject(target)) {
+      return;
+    }
+
+    const sourceKeys = Object.keys(source);
+    const targetKeys = Object.keys(target);
     const commonKeys = sourceKeys.filter((key) => targetKeys.includes(key));
 
     for (const key of commonKeys) {
@@ -351,38 +391,51 @@ export class DiffService {
     }
   }
 
-  private setNestedValue(object: any, pathParts: string[], value: any): void {
-     
-    let current = object;
+  private setNestedValue(object: JsonObject, pathParts: string[], value: JsonValue): void {
+    let current: JsonObject = object;
 
     for (let i = 0; i < pathParts.length - 1; i++) {
       const part = pathParts[i];
-      if (!current[part] || typeof current[part] !== 'object') {
+      if (!current[part] || !this.isJsonObject(current[part])) {
         current[part] = {};
       }
-      current = current[part];
+      current = current[part] as JsonObject;
     }
 
-    current[pathParts.at(-1)] = value;
+    const lastPart = pathParts.at(-1);
+    if (lastPart) {
+      current[lastPart] = value;
+    }
   }
 
-  private deleteNestedValue(object: any, pathParts: string[]): void {
-     
+  private deleteNestedValue(object: JsonObject, pathParts: string[]): void {
     if (pathParts.length === 0) return;
 
-    let current = object;
+    let current: JsonObject = object;
 
     for (let i = 0; i < pathParts.length - 1; i++) {
       const part = pathParts[i];
-      if (!current[part]) return;
-      current = current[part];
+      if (!current[part] || !this.isJsonObject(current[part])) {
+        return; // Path doesn't exist
+      }
+      current = current[part] as JsonObject;
     }
 
-    delete current[pathParts.at(-1)];
+    const lastPart = pathParts.at(-1);
+    if (lastPart) {
+      delete current[lastPart];
+    }
   }
 
-  private isObject(value: any): boolean {
-     
+  private isObject(value: unknown): boolean {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  private isJsonObject(value: unknown): value is JsonObject {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  private isJsonArray(value: unknown): value is JsonArray {
+    return Array.isArray(value);
   }
 }
