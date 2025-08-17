@@ -13,7 +13,7 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "cli": "ts-node src/cli.ts",
-    "cli:build": "nest build && node dist/cli.js",
+    "cli:build": "nest build && node dist/src/cli.js",
     "lint": "eslint \"src/**/*.ts\" --fix",
     "lint:check": "eslint \"src/**/*.ts\"",
     "test": "vitest",
