@@ -48,6 +48,20 @@
   - Create cleanupStaleLocks for interrupted deployment recovery
   - _Requirements: 5.4, 6.1_
 
+- [x] 2.4 Implement Schema Migration Service for version compatibility
+  - Write unit tests for version compatibility checking and migration transformers
+  - Create schema version detection logic for TaptikContext format evolution
+  - Implement migration transformers for v1→v2 and future version upgrades
+  - Add backward compatibility support for older configuration formats
+  - _Requirements: 1.2, 2.1, 2.4_
+
+- [x] 2.5 Create Secret Management Strategy for secure credential handling
+  - Write unit tests for secret detection, secure storage, and environment injection
+  - Implement secure storage using system keychain (macOS Keychain, Windows Credential Store)
+  - Add environment variable injection for deployment-time secrets
+  - Create secret rotation capabilities and audit logging for security compliance
+  - _Requirements: 2.2, 2.5, 6.1_
+
 - [x] 3. Implement core import and validation services (TDD)
   - Write comprehensive test suite for Supabase import and platform validation
   - Create ImportService with retry logic and caching integration
@@ -76,6 +90,20 @@
   - Create streamLargeFile for configurations over 10MB threshold
   - _Requirements: 1.5, 6.3_
 
+- [x] 3.4 Add Performance Monitoring and optimization
+  - Write unit tests for deployment time tracking and memory usage monitoring
+  - Implement deployment time tracking with component-level performance metrics
+  - Add memory usage monitoring for large configuration deployments
+  - Create performance regression tests with baseline benchmarks and alerts
+  - _Requirements: 6.3, NFR Performance_
+
+- [x] 3.5 Implement large file handling and streaming optimization
+  - Write unit tests for streaming operations and progress tracking for 10MB+ configurations
+  - Implement streaming for configurations exceeding 10MB threshold with chunked processing
+  - Add progress tracking with real-time updates for large file operations
+  - Create memory optimization with garbage collection and resource cleanup
+  - _Requirements: 6.3, NFR Performance_
+
 - [x] 4. Implement diff and merge services (TDD)
   - Write comprehensive test suite for configuration comparison and merging
   - Create DiffService with intelligent merge strategies
@@ -90,7 +118,7 @@
   - Create mergeConfigurations with intelligent conflict resolution
   - _Requirements: 4.3, 4.8_
 
-- [ ] 4.2 Implement PromptService for user interaction
+- [x] 4.2 Implement PromptService for user interaction
   - Write unit tests for confirmation prompts and progress reporting
   - Create confirmDeployment with deployment summary display
   - Add selectConflictResolution with interactive conflict handling
@@ -110,6 +138,13 @@
   - Add rollbackComponent for selective component restoration
   - Create rollbackWithDependencies using dependency graph analysis
   - _Requirements: 3.1, 3.5, 5.2_
+
+- [x] 5.1.1 Create comprehensive rollback testing suite
+  - Write unit tests for complete rollback scenarios with dependency validation
+  - Test partial rollback with component dependencies and conflict resolution
+  - Add rollback during network failure with resumable recovery mechanisms
+  - Test rollback with corrupted backup files and alternative recovery strategies
+  - _Requirements: 3.5, 5.2, 5.4_
 
 - [x] 5.2 Implement DeploymentService for Claude Code deployment
   - Write unit tests for global settings, agents, commands, and project deployment
@@ -153,7 +188,7 @@
   - Implement rollback instructions and backup manifest information display
   - _Requirements: 4.4, 4.5_
 
-- [ ] 7. Create comprehensive integration tests (TDD)
+- [x] 7. Create comprehensive integration tests (TDD)
   - Write end-to-end test suite for complete deployment workflows
   - Test integration with existing Supabase client and context validation
   - Add security integration tests for malicious content detection
@@ -237,48 +272,6 @@
   - Write security best practices for configuration validation and deployment
   - _Requirements: 4.4, 6.5_
 
-- [ ] 2.4 Implement Schema Migration Service for version compatibility
-  - Write unit tests for version compatibility checking and migration transformers
-  - Create schema version detection logic for TaptikContext format evolution
-  - Implement migration transformers for v1→v2 and future version upgrades
-  - Add backward compatibility support for older configuration formats
-  - _Requirements: 1.2, 2.1, 2.4_
-
-- [ ] 2.5 Create Secret Management Strategy for secure credential handling
-  - Write unit tests for secret detection, secure storage, and environment injection
-  - Implement secure storage using system keychain (macOS Keychain, Windows Credential Store)
-  - Add environment variable injection for deployment-time secrets
-  - Create secret rotation capabilities and audit logging for security compliance
-  - _Requirements: 2.2, 2.5, 6.1_
-
-- [ ] 5.1.1 Create comprehensive rollback testing suite
-  - Write unit tests for complete rollback scenarios with dependency validation
-  - Test partial rollback with component dependencies and conflict resolution
-  - Add rollback during network failure with resumable recovery mechanisms
-  - Test rollback with corrupted backup files and alternative recovery strategies
-  - _Requirements: 3.5, 5.2, 5.4_
-
-- [ ] 3.4 Add Performance Monitoring and optimization
-  - Write unit tests for deployment time tracking and memory usage monitoring
-  - Implement deployment time tracking with component-level performance metrics
-  - Add memory usage monitoring for large configuration deployments
-  - Create performance regression tests with baseline benchmarks and alerts
-  - _Requirements: 6.3, NFR Performance_
-
-- [ ] 7.3 Create concurrent operation and stress tests
-  - Write integration tests for multiple simultaneous deployments with lock validation
-  - Test lock timeout scenarios with graceful degradation and user feedback
-  - Add stale lock cleanup testing with process termination simulation
-  - Create stress tests for high-concurrency deployment scenarios
-  - _Requirements: 5.4, 6.3_
-
-- [ ] 3.5 Implement large file handling and streaming optimization
-  - Write unit tests for streaming operations and progress tracking for 10MB+ configurations
-  - Implement streaming for configurations exceeding 10MB threshold with chunked processing
-  - Add progress tracking with real-time updates for large file operations
-  - Create memory optimization with garbage collection and resource cleanup
-  - _Requirements: 6.3, NFR Performance_
-
 ## Time Estimates and Risk Mitigation
 
 ### Phase 1: Foundation & Security (Week 1 - 5 days)
@@ -290,7 +283,7 @@
 
 ### Phase 2: Core Services (Week 2 - 5 days)
 
-- Tasks 3-3.3: Import and validation [3-4 days]
+- Tasks 3-3.5: Import and validation [3-4 days]
 - Tasks 5.1-5.1.1: Backup service [2-3 days]
 - **Risk**: Supabase integration issues
 - **Mitigation**: Use existing Supabase client, comprehensive mocking
@@ -305,7 +298,7 @@
 
 ### Phase 4: Integration & Polish (Week 4 - 5 days)
 
-- Tasks 7-7.3: Integration tests [2-3 days]
+- Tasks 7-7.2: Integration tests [2-3 days]
 - Tasks 8-9.2: Module integration and error handling [2-3 days]
 - Tasks 10-10.2: Documentation [1-2 days]
 - **Risk**: Integration issues with existing modules
