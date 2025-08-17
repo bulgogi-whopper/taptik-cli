@@ -35,7 +35,7 @@ export class DiffService {
     source: TaptikContext | any,
     target: TaptikContext | any,
   ): DiffResult {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
+     
     const additions: DiffEntry[] = [];
     const modifications: DiffEntry[] = [];
     const deletions: DiffEntry[] = [];
@@ -256,7 +256,7 @@ export class DiffService {
   }
 
   private deepMerge(target: any, source: any): any {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
+     
     const result = { ...target };
 
     for (const key in source) {
@@ -276,7 +276,7 @@ export class DiffService {
   }
 
   private mergeArrays(target: any[], source: any[]): any[] {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
+     
     if (target.length === 0) return source;
     if (source.length === 0) return target;
 
@@ -352,7 +352,7 @@ export class DiffService {
   }
 
   private setNestedValue(object: any, pathParts: string[], value: any): void {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
+     
     let current = object;
 
     for (let i = 0; i < pathParts.length - 1; i++) {
@@ -367,7 +367,7 @@ export class DiffService {
   }
 
   private deleteNestedValue(object: any, pathParts: string[]): void {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
+     
     if (pathParts.length === 0) return;
 
     let current = object;
@@ -382,7 +382,7 @@ export class DiffService {
   }
 
   private isObject(value: any): boolean {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
+     
     return value !== null && typeof value === 'object' && !Array.isArray(value);
   }
 }

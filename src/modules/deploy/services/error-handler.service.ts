@@ -93,9 +93,9 @@ export class ErrorHandlerService {
         }
 
         // Log retry attempt
-        console.log(
+        console.log( // eslint-disable-line no-console
           `⏳ Retry attempt ${attempt}/${config.maxAttempts} after ${delay}ms...`,
-        ); // eslint-disable-line no-console
+        );  
 
         // Wait before retry with exponential backoff
         await this.delay(delay); // eslint-disable-line no-await-in-loop
