@@ -19,6 +19,7 @@ describe('DeploymentService', () => {
   let mockSecurityService: any;
   let mockValidatorService: any;
   let mockErrorRecoveryService: any;
+  let mockPerformanceMonitorService: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -82,12 +83,24 @@ describe('DeploymentService', () => {
       }),
     };
 
+    mockPerformanceMonitorService = {
+      startDeploymentTiming: vi.fn(),
+      endDeploymentTiming: vi.fn(),
+      startComponentTiming: vi.fn(),
+      endComponentTiming: vi.fn(),
+      recordMemoryUsage: vi.fn(),
+      generatePerformanceReport: vi.fn().mockReturnValue('Performance Report'),
+      checkPerformanceThresholds: vi.fn().mockReturnValue([]),
+      clearMetrics: vi.fn(),
+    };
+
     service = new DeploymentService(
       mockBackupService,
       mockDiffService,
       mockSecurityService,
       mockValidatorService,
       mockErrorRecoveryService,
+      mockPerformanceMonitorService,
     );
   });
 
