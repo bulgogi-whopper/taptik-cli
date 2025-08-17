@@ -482,7 +482,7 @@ export const apiServiceProjectContextOutput: TaptikProjectContext = {
       database_url: 'postgresql://localhost:5432/payments_dev',
       redis_url: 'redis://localhost:6379/0',
       log_level: 'debug',
-      rate_limit: 10000,
+      rate_limit: 10_000,
     },
     staging: {
       node_version: '20.x',
@@ -1098,12 +1098,12 @@ export const sampleManifestOutput: TaptikManifest = {
     {
       filename: 'project-context.json',
       category: 'project-context', 
-      size: 12288,
+      size: 12_288,
     },
     {
       filename: 'prompt-templates.json',
       category: 'prompt-templates',
-      size: 16384,
+      size: 16_384,
     },
     {
       filename: 'manifest.json',
@@ -1128,51 +1128,46 @@ export const taptikSchemaValidators = {
   /**
    * Validate that a personal context object matches expected structure
    */
-  validatePersonalContext: (obj: any): obj is TaptikPersonalContext => {
-    return (
-      obj &&
-      obj.taptik_version === '1.0.0' &&
-      obj.context_type === 'personal' &&
-      typeof obj.created_at === 'string' &&
-      typeof obj.source_platform === 'string' &&
-      obj.user_info &&
-      obj.development_environment &&
-      obj.coding_preferences &&
-      obj.workflow_preferences &&
-      obj.ai_interaction_preferences
-    );
-  },
+  validatePersonalContext: (object: any): object is TaptikPersonalContext => (
+      object &&
+      object.taptik_version === '1.0.0' &&
+      object.context_type === 'personal' &&
+      typeof object.created_at === 'string' &&
+      typeof object.source_platform === 'string' &&
+      object.user_info &&
+      object.development_environment &&
+      object.coding_preferences &&
+      object.workflow_preferences &&
+      object.ai_interaction_preferences
+    ),
 
   /**
    * Validate that a project context object matches expected structure
    */
-  validateProjectContext: (obj: any): obj is TaptikProjectContext => {
-    return (
-      obj &&
-      obj.taptik_version === '1.0.0' &&
-      obj.context_type === 'project' &&
-      typeof obj.created_at === 'string' &&
-      typeof obj.source_platform === 'string' &&
-      obj.project_info &&
-      obj.technical_stack &&
-      obj.development_guidelines &&
-      Array.isArray(obj.architecture_patterns)
-    );
-  },
+  validateProjectContext: (object: any): object is TaptikProjectContext => (
+      object &&
+      object.taptik_version === '1.0.0' &&
+      object.context_type === 'project' &&
+      typeof object.created_at === 'string' &&
+      typeof object.source_platform === 'string' &&
+      object.project_info &&
+      object.technical_stack &&
+      object.development_guidelines &&
+      Array.isArray(object.architecture_patterns)
+    ),
 
   /**
    * Validate that a prompt templates object matches expected structure
    */
-  validatePromptTemplates: (obj: any): obj is TaptikPromptTemplates => {
-    return (
-      obj &&
-      obj.taptik_version === '1.0.0' &&
-      obj.context_type === 'prompt_templates' &&
-      typeof obj.created_at === 'string' &&
-      typeof obj.source_platform === 'string' &&
-      Array.isArray(obj.templates) &&
-      obj.metadata &&
-      obj.templates.every((template: any) =>
+  validatePromptTemplates: (object: any): object is TaptikPromptTemplates => (
+      object &&
+      object.taptik_version === '1.0.0' &&
+      object.context_type === 'prompt_templates' &&
+      typeof object.created_at === 'string' &&
+      typeof object.source_platform === 'string' &&
+      Array.isArray(object.templates) &&
+      object.metadata &&
+      object.templates.every((template: any) =>
         template.id &&
         template.name &&
         template.description &&
@@ -1181,23 +1176,20 @@ export const taptikSchemaValidators = {
         Array.isArray(template.variables) &&
         Array.isArray(template.tags)
       )
-    );
-  },
+    ),
 
   /**
    * Validate that a manifest object matches expected structure
    */
-  validateManifest: (obj: any): obj is TaptikManifest => {
-    return (
-      obj &&
-      typeof obj.build_id === 'string' &&
-      obj.taptik_version === '1.0.0' &&
-      typeof obj.source_platform === 'string' &&
-      Array.isArray(obj.categories) &&
-      typeof obj.created_at === 'string' &&
-      Array.isArray(obj.source_files) &&
-      Array.isArray(obj.output_files) &&
-      obj.build_metadata
-    );
-  },
+  validateManifest: (object: any): object is TaptikManifest => (
+      object &&
+      typeof object.build_id === 'string' &&
+      object.taptik_version === '1.0.0' &&
+      typeof object.source_platform === 'string' &&
+      Array.isArray(object.categories) &&
+      typeof object.created_at === 'string' &&
+      Array.isArray(object.source_files) &&
+      Array.isArray(object.output_files) &&
+      object.build_metadata
+    ),
 };

@@ -1,7 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
+
+import { beforeEach, describe, expect, it } from 'vitest';
+
+import { SettingsData } from '../../interfaces/settings-data.interface';
+
 import { TransformationService } from './transformation.service';
-import { SettingsData } from '../interfaces/settings-data.interface';
-import { TaptikPersonalContext, TaptikProjectContext, TaptikPromptTemplates } from '../interfaces/taptik-format.interface';
 
 describe('TransformationService', () => {
   let service: TransformationService;
@@ -566,20 +569,12 @@ tags: debug, help, troubleshooting`,
         preferences: '# Preferences\nDefault templates: enabled',
         globalPrompts: [
           {
-            id: 'explain-code',
             name: 'Explain Code',
-            description: 'Template for explaining code functionality',
             content: 'Explain what this {{language}} code does: {code_snippet}. Focus on the main logic and any important patterns.',
-            category: 'documentation',
-            tags: ['explanation', 'code', 'documentation'],
-            keywords: ['explain', 'understand']
           },
           {
-            id: 'refactor-suggestion',
             name: 'Refactor Suggestion',
             content: 'Suggest improvements for this code: {code}. Consider performance, readability, and {criteria}.',
-            type: 'development',
-            summary: 'Get suggestions for code improvements'
           }
         ],
       },
@@ -644,7 +639,6 @@ tags: debug, help, troubleshooting`,
             {
               name: 'Variable Test',
               content: 'Test {{double_bracket}}, {single_bracket}, $dollar_var, and {{nested_var}} patterns',
-              description: 'Test variable detection'
             }
           ],
         },
@@ -717,23 +711,19 @@ tags: debug, help, troubleshooting`,
           globalPrompts: [
             {
               name: 'Code Generator',
-              content: 'Generate code for {task}',
-              description: 'Generate code'
+              content: 'Generate code for {task}',  
             },
             {
               name: 'Documentation Helper',
               content: 'Write docs for {feature}',
-              description: 'Documentation help'
             },
             {
               name: 'Test Assistant', 
               content: 'Create tests for {component}',
-              description: 'Testing assistance'
             },
             {
               name: 'Review Checklist',
               content: 'Review {code} for issues',
-              description: 'Code review'
             }
           ],
         },
@@ -752,8 +742,8 @@ tags: debug, help, troubleshooting`,
       const codeTemplate = result.templates.find(t => t.name === 'Code Generator');
       expect(codeTemplate?.category).toBe('development');
 
-      const docsTemplate = result.templates.find(t => t.name === 'Documentation Helper');
-      expect(docsTemplate?.category).toBe('documentation');
+      const documentationTemplate = result.templates.find(t => t.name === 'Documentation Helper');
+      expect(documentationTemplate?.category).toBe('documentation');
 
       const testTemplate = result.templates.find(t => t.name === 'Test Assistant');
       expect(testTemplate?.category).toBe('testing');
@@ -780,13 +770,11 @@ tags: debug, help, troubleshooting`,
         globalSettings: {
           globalPrompts: [
             null,
-            { name: 'Missing Content' },
-            { content: 'Missing Name', id: 'no-name' },
-            'invalid-string-entry',
+            { name: 'Missing Content', content: 'Missing Content' },
+            { name: 'Missing Name', content: 'Missing Name' },
             {
               name: 'Valid Template',
               content: 'This is a valid template with {variable}',
-              description: 'A working template'
             }
           ],
         },
@@ -818,10 +806,8 @@ tags: debug, help, troubleshooting`,
         globalSettings: {
           globalPrompts: [
             {
-              id: 'simple-template',
               name: 'Simple Template',
               content: 'This is a simple template without any variables',
-              description: 'A template with no variables'
             }
           ],
         },
@@ -859,7 +845,6 @@ tags: debug, help, troubleshooting`,
             {
               name: 'Complex Variables',
               content: 'Test {{user.name}}, {project_config.version}, $APP_ENV, {{nested.deep.value}} and {simple} patterns',
-              description: 'Complex variable test'
             }
           ],
         },

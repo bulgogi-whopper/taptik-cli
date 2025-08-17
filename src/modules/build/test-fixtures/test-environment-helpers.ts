@@ -3,9 +3,10 @@
  * Provides comprehensive testing support for different environments and scenarios
  */
 
-import { tmpdir } from 'os';
-import { join, resolve } from 'path';
-import { promises as fs } from 'fs';
+import { promises as fs } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+
 import { MockFileSystem, AdvancedMockFileSystem } from './advanced-error-scenarios';
 import { 
   webAppProjectScenario, 
@@ -70,7 +71,7 @@ export const TEST_ENVIRONMENTS: Record<string, TestEnvironmentConfig> = {
     cleanup: true,
     performance: {
       enableMetrics: true,
-      timeout: 30000,
+      timeout: 30_000,
     },
     filesystem: {
       useRealFS: true,
@@ -86,7 +87,7 @@ export const TEST_ENVIRONMENTS: Record<string, TestEnvironmentConfig> = {
     cleanup: true,
     performance: {
       enableMetrics: true,
-      timeout: 60000,
+      timeout: 60_000,
       memoryLimit: 512 * 1024 * 1024, // 512MB
     },
     filesystem: {
@@ -104,7 +105,7 @@ export const TEST_ENVIRONMENTS: Record<string, TestEnvironmentConfig> = {
     cleanup: true,
     performance: {
       enableMetrics: true,
-      timeout: 120000,
+      timeout: 120_000,
     },
     filesystem: {
       useRealFS: true,
@@ -120,7 +121,7 @@ export const TEST_ENVIRONMENTS: Record<string, TestEnvironmentConfig> = {
     cleanup: false,
     performance: {
       enableMetrics: true,
-      timeout: 300000, // 5 minutes
+      timeout: 300_000, // 5 minutes
     },
     filesystem: {
       useRealFS: true,
@@ -175,7 +176,7 @@ export class TestDataGenerator {
    */
   static generateBuildId(): string {
     const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substring(2, 8);
+    const random = Math.random().toString(36).slice(2, 8);
     return `build-${timestamp}-${random}`;
   }
 
@@ -277,7 +278,7 @@ export class TestDataGenerator {
       const filePath = `${directory}/${fileName}`;
       
       // Generate content of approximately avgFileSize
-      const content = 'x'.repeat(avgFileSize - 50) + `\n// File ${i}\n// Generated content`;
+      const content = `${'x'.repeat(avgFileSize - 50)  }\n// File ${i}\n// Generated content`;
       files[filePath] = content;
     }
 

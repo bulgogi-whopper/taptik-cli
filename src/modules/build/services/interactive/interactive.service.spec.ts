@@ -1,7 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
+
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+
+import { BuildPlatform, BuildCategoryName } from '../../interfaces/build-config.interface';
+
 import { InteractiveService } from './interactive.service';
-import { BuildPlatform, BuildCategoryName } from '../interfaces/build-config.interface';
 
 // Mock the @inquirer/prompts module
 vi.mock('@inquirer/prompts', () => ({
@@ -66,7 +69,7 @@ describe('InteractiveService', () => {
       await service.selectPlatform();
 
       const selectCall = (select as any).mock.calls[0][0];
-      const choices = selectCall.choices;
+      const {choices} = selectCall;
       
       const cursorChoice = choices.find((c: any) => c.value === BuildPlatform.CURSOR);
       const claudeCodeChoice = choices.find((c: any) => c.value === BuildPlatform.CLAUDE_CODE);
@@ -126,10 +129,10 @@ describe('InteractiveService', () => {
       await service.selectCategories();
 
       const checkboxCall = (checkbox as any).mock.calls[0][0];
-      const validateFn = checkboxCall.validate;
+      const validateFunction = checkboxCall.validate;
       
-      expect(validateFn([])).toBe('At least one category must be selected.');
-      expect(validateFn([BuildCategoryName.PERSONAL_CONTEXT])).toBe(true);
+      expect(validateFunction([])).toBe('At least one category must be selected.');
+      expect(validateFunction([BuildCategoryName.PERSONAL_CONTEXT])).toBe(true);
     });
 
     it('should handle selection of all categories', async () => {
@@ -166,7 +169,7 @@ describe('InteractiveService', () => {
       await service.selectCategories();
 
       const checkboxCall = (checkbox as any).mock.calls[0][0];
-      const choices = checkboxCall.choices;
+      const {choices} = checkboxCall;
       
       expect(choices).toEqual(expect.arrayContaining([
         expect.objectContaining({

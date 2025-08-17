@@ -1,6 +1,6 @@
+import { promises as fs } from 'node:fs';
+
 import { Injectable, Logger } from '@nestjs/common';
-import { promises as fs } from 'fs';
-import { join } from 'path';
 
 export interface ErrorSummary {
   criticalErrors: CriticalError[];
@@ -96,7 +96,7 @@ export class ErrorHandlerService {
     });
 
     // Handle unhandled promise rejections
-    process.on('unhandledRejection', async (reason, promise) => {
+    process.on('unhandledRejection', async (reason) => {
       this.addCriticalError({
         type: 'system',
         message: 'Unhandled promise rejection',
@@ -264,6 +264,7 @@ export class ErrorHandlerService {
   handleCriticalErrorAndExit(error: CriticalError): never {
     this.addCriticalError(error);
     this.displayErrorSummary();
+    // eslint-disable-next-line unicorn/no-process-exit
     process.exit(error.exitCode);
   }
 
@@ -273,18 +274,21 @@ export class ErrorHandlerService {
   exitWithAppropriateCode(): never {
     if (this.hasCriticalErrors()) {
       const highestExitCode = Math.max(
-        ...this.errorSummary.criticalErrors.map(e => e.exitCode),
+        ...this.errorSummary.criticalErrors.map(error => error.exitCode),
         1
       );
+      // eslint-disable-next-line unicorn/no-process-exit
       process.exit(highestExitCode);
     }
 
     if (this.hasWarnings()) {
       console.log('\n✅ Build completed with warnings');
+      // eslint-disable-next-line unicorn/no-process-exit
       process.exit(0);
     }
 
     console.log('\n✅ Build completed successfully');
+    // eslint-disable-next-line unicorn/no-process-exit
     process.exit(0);
   }
 

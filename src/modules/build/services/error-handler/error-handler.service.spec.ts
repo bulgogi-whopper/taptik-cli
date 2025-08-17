@@ -1,6 +1,8 @@
+import { promises as fs } from 'node:fs';
+
 import { Test, TestingModule } from '@nestjs/testing';
+
 import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest';
-import { promises as fs } from 'fs';
 
 import { ErrorHandlerService, CriticalError, Warning } from './error-handler.service';
 
@@ -14,7 +16,6 @@ vi.mock('fs', () => ({
 
 // Mock console methods
 const mockConsoleLog = vi.spyOn(console, 'log').mockImplementation(() => {});
-const mockConsoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 
 // Mock process methods
 const mockProcessExit = vi.spyOn(process, 'exit').mockImplementation(() => {
@@ -23,15 +24,15 @@ const mockProcessExit = vi.spyOn(process, 'exit').mockImplementation(() => {
 
 describe('ErrorHandlerService', () => {
   let service: ErrorHandlerService;
-  let originalProcessListeners: { [key: string]: Function[] };
+  let originalProcessListeners: { [key: string]: ((...arguments_: any[]) => void)[] };
 
   beforeEach(async () => {
     // Store original process listeners
     originalProcessListeners = {
-      SIGINT: [...(process.listeners('SIGINT') as Function[])],
-      SIGTERM: [...(process.listeners('SIGTERM') as Function[])],
-      uncaughtException: [...(process.listeners('uncaughtException') as Function[])],
-      unhandledRejection: [...(process.listeners('unhandledRejection') as Function[])],
+      SIGINT: [...(process.listeners('SIGINT') as ((...arguments_: any[]) => void)[])],
+      SIGTERM: [...(process.listeners('SIGTERM') as ((...arguments_: any[]) => void)[])],
+      uncaughtException: [...(process.listeners('uncaughtException') as ((...arguments_: any[]) => void)[])],
+      unhandledRejection: [...(process.listeners('unhandledRejection') as ((...arguments_: any[]) => void)[])],
     };
 
     // Remove existing listeners
@@ -66,7 +67,7 @@ describe('ErrorHandlerService', () => {
     process.removeAllListeners('unhandledRejection');
 
     Object.entries(originalProcessListeners).forEach(([event, listeners]) => {
-      listeners.forEach(listener => process.on(event as any, listener));
+      listeners.forEach((listener) => process.on(event as any, listener));
     });
 
     // Clear all mocks
@@ -206,7 +207,7 @@ describe('ErrorHandlerService', () => {
       service.registerCleanupHandler(cleanupHandler);
 
       // Trigger cleanup by simulating SIGINT
-      const sigintHandler = process.listeners('SIGINT')[0] as Function;
+      const sigintHandler = process.listeners('SIGINT')[0];
       expect(sigintHandler).toBeDefined();
     });
 
@@ -218,13 +219,13 @@ describe('ErrorHandlerService', () => {
       service.registerCleanupHandler(cleanupHandler2);
 
       // Simulate SIGINT
-      const sigintHandler = process.listeners('SIGINT')[0] as Function;
+      const sigintHandler = process.listeners('SIGINT')[0];
       
       // Mock the cleanup to avoid actual process.exit
       const performCleanupSpy = vi.spyOn(service as any, 'performCleanup').mockResolvedValue(undefined);
       
       try {
-        await sigintHandler();
+        await sigintHandler(undefined);
       } catch {
         // Expected due to process.exit mock
       }
@@ -300,10 +301,10 @@ describe('ErrorHandlerService', () => {
     it('should handle SIGINT with cleanup', async () => {
       const performCleanupSpy = vi.spyOn(service as any, 'performCleanup').mockResolvedValue(undefined);
       
-      const sigintHandler = process.listeners('SIGINT')[0] as Function;
+      const sigintHandler = process.listeners('SIGINT')[0];
       
       try {
-        await sigintHandler();
+        await sigintHandler(undefined);
       } catch {
         // Expected due to process.exit mock
       }
@@ -316,10 +317,10 @@ describe('ErrorHandlerService', () => {
     it('should handle SIGTERM with cleanup', async () => {
       const performCleanupSpy = vi.spyOn(service as any, 'performCleanup').mockResolvedValue(undefined);
       
-      const sigtermHandler = process.listeners('SIGTERM')[0] as Function;
+      const sigtermHandler = process.listeners('SIGTERM')[0];
       
       try {
-        await sigtermHandler();
+        await sigtermHandler(undefined);
       } catch {
         // Expected due to process.exit mock
       }
@@ -330,11 +331,11 @@ describe('ErrorHandlerService', () => {
     });
 
     it('should force exit on second SIGINT', async () => {
-      const sigintHandler = process.listeners('SIGINT')[0] as Function;
+      const sigintHandler = process.listeners('SIGINT')[0];
       
       // First SIGINT - should start cleanup
       try {
-        await sigintHandler();
+        await sigintHandler(undefined);
       } catch {
         // Expected due to process.exit mock
       }
@@ -344,7 +345,7 @@ describe('ErrorHandlerService', () => {
       
       // Second SIGINT - should force exit
       try {
-        await sigintHandler();
+        await sigintHandler(undefined);
       } catch {
         // Expected due to process.exit mock
       }
@@ -426,10 +427,10 @@ describe('ErrorHandlerService', () => {
       expect(service.isProcessInterrupted()).toBe(false);
 
       // Simulate interruption by triggering SIGINT
-      const sigintHandler = process.listeners('SIGINT')[0] as Function;
+      const sigintHandler = process.listeners('SIGINT')[0];
       
       try {
-        sigintHandler();
+        sigintHandler(undefined);
       } catch {
         // Expected due to process.exit mock
       }

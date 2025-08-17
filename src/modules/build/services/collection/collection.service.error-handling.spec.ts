@@ -1,10 +1,15 @@
+import { promises as fs } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+
 import { Test, TestingModule } from '@nestjs/testing';
-import { Logger } from '@nestjs/common';
-import { promises as fs } from 'fs';
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { CollectionService } from './collection.service';
 
 // Mock fs promises
-vi.mock('fs', () => ({
+vi.mock('node:fs', () => ({
   promises: {
     access: vi.fn(),
     readFile: vi.fn(),
@@ -94,7 +99,7 @@ describe('CollectionService - Error Handling', () => {
       const filename = 'missing-file.json';
 
       const fileNotFoundError = new Error('ENOENT: no such file or directory');
-      fileNotFoundError.code = 'ENOENT';
+      (fileNotFoundError as any).code = 'ENOENT';
       vi.mocked(fs.readFile).mockRejectedValue(fileNotFoundError);
 
       const mockCallback = vi.fn();
@@ -112,7 +117,7 @@ describe('CollectionService - Error Handling', () => {
       const filename = 'restricted-file.json';
 
       const permissionError = new Error('EACCES: permission denied');
-      permissionError.code = 'EACCES';
+      (permissionError as any).code = 'EACCES';
       vi.mocked(fs.readFile).mockRejectedValue(permissionError);
 
       const mockCallback = vi.fn();
@@ -148,9 +153,9 @@ describe('CollectionService - Error Handling', () => {
       const projectPath = '/test/project';
       const kiroPath = '/test/project/.kiro';
 
-      const dirNotFoundError = new Error('ENOENT: no such file or directory');
-      dirNotFoundError.code = 'ENOENT';
-      vi.mocked(fs.access).mockRejectedValue(dirNotFoundError);
+      const directoryNotFoundError = new Error('ENOENT: no such file or directory');
+      (directoryNotFoundError as any).code = 'ENOENT';
+      vi.mocked(fs.access).mockRejectedValue(directoryNotFoundError);
 
       await expect(service.collectLocalSettings(projectPath)).rejects.toThrow(
         `No .kiro directory found at: ${kiroPath}`
@@ -163,12 +168,12 @@ describe('CollectionService - Error Handling', () => {
     });
 
     it('should handle missing global .kiro directory gracefully', async () => {
-      const homeDir = require('os').homedir();
-      const globalKiroPath = require('path').join(homeDir, '.kiro');
+      const homeDirectory = homedir();
+      const globalKiroPath = join(homeDirectory, '.kiro');
 
-      const dirNotFoundError = new Error('ENOENT: no such file or directory');
-      dirNotFoundError.code = 'ENOENT';
-      vi.mocked(fs.access).mockRejectedValue(dirNotFoundError);
+      const directoryNotFoundError = new Error('ENOENT: no such file or directory');
+      (directoryNotFoundError as any).code = 'ENOENT';
+      vi.mocked(fs.access).mockRejectedValue(directoryNotFoundError);
 
       await expect(service.collectGlobalSettings()).rejects.toThrow(
         `No global .kiro directory found at: ${globalKiroPath}`
@@ -191,7 +196,6 @@ describe('CollectionService - Error Handling', () => {
           return Promise.resolve();
         } else if (path === settingsPath) {
           const error = new Error('ENOENT: no such file or directory');
-          error.code = 'ENOENT';
           return Promise.reject(error);
         }
         return Promise.reject(new Error('Unexpected path'));
@@ -264,9 +268,9 @@ describe('CollectionService - Error Handling', () => {
     });
 
     it('should handle templates directory read errors gracefully', async () => {
-      const homeDir = require('os').homedir();
-      const globalKiroPath = require('path').join(homeDir, '.kiro');
-      const templatesPath = require('path').join(globalKiroPath, 'templates');
+      const homeDirectory = homedir();
+      const globalKiroPath = join(homeDirectory, '.kiro');
+      const templatesPath = join(globalKiroPath, 'templates');
 
       // Mock directory access
       vi.mocked(fs.access).mockImplementation((path) => {
@@ -337,7 +341,7 @@ describe('CollectionService - Error Handling', () => {
       await (service as any).collectFileWithSecurity(filePath, filename, mockCallback);
 
       expect(mockCallback).toHaveBeenCalled();
-      const [filteredContent, wasFiltered] = mockCallback.mock.calls[0];
+      const [filteredContent, _wasFiltered] = mockCallback.mock.calls[0] as [string, boolean];
       
       // Should still process the content even if some patterns fail
       expect(filteredContent).toContain('normal_content: this should work');
@@ -361,13 +365,13 @@ describe('CollectionService - Error Handling', () => {
 
       // Mock file reading - some succeed, some fail
       vi.mocked(fs.readFile).mockImplementation((path) => {
-        if (path.includes('context.md')) {
+        if (path.toString().includes('context.md')) {
           return Promise.resolve('# Context Content');
-        } else if (path.includes('user-preferences.md')) {
+        } else if (path.toString().includes('user-preferences.md')) {
           return Promise.reject(new Error('File corrupted'));
-        } else if (path.includes('project-spec.md')) {
+        } else if (path.toString().includes('project-spec.md')) {
           return Promise.resolve('# Project Spec Content');
-        }
+        } 
         return Promise.reject(new Error('Unexpected file'));
       });
 
@@ -403,11 +407,11 @@ describe('CollectionService - Error Handling', () => {
 
       // Mock file reading - some succeed, some fail
       vi.mocked(fs.readFile).mockImplementation((path) => {
-        if (path.includes('rule1.md')) {
+        if (path.toString().includes('rule1.md')) {
           return Promise.resolve('# Rule 1 Content');
-        } else if (path.includes('rule2.md')) {
+        } else if (path.toString().includes('rule2.md')) {
           return Promise.reject(new Error('Permission denied'));
-        } else if (path.includes('rule3.md')) {
+        } else if (path.toString().includes('rule3.md')) {
           return Promise.resolve('# Rule 3 Content');
         }
         return Promise.reject(new Error('Unexpected file'));

@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { select, checkbox } from '@inquirer/prompts';
 
-import { BuildCategory, BuildPlatform, BuildCategoryName } from '../interfaces/build-config.interface';
+import { BuildCategory, BuildPlatform, BuildCategoryName } from '../../interfaces/build-config.interface';
 
 /**
  * Service for handling interactive user input during the build process

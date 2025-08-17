@@ -1,9 +1,12 @@
+import { promises as fs } from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+
 import { Test, TestingModule } from '@nestjs/testing';
+
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { promises as fs } from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-import { CollectionService, LocalSettingsData, GlobalSettingsData } from './collection.service';
+
+import { CollectionService } from './collection.service';
 
 // Mock the fs module
 vi.mock('fs', () => ({
@@ -41,7 +44,7 @@ describe('CollectionService', () => {
       mockFs.access.mockRejectedValue(new Error('Directory not found'));
 
       await expect(service.collectLocalSettings('/test/path')).rejects.toThrow(
-        'No .kiro directory found at: /test/path/.kiro'
+        'No .kiro directory found at: /test/path/.kiro',
       );
     });
 
@@ -50,23 +53,29 @@ describe('CollectionService', () => {
       const kiroPath = path.join(testPath, '.kiro');
 
       // Mock .kiro directory exists
-      mockFs.access.mockImplementation((dirPath: string) => {
-        if (dirPath === kiroPath || 
-            dirPath === path.join(kiroPath, 'settings') ||
-            dirPath === path.join(kiroPath, 'steering') ||
-            dirPath === path.join(kiroPath, 'hooks')) {
+      mockFs.access.mockImplementation((directoryPath: string) => {
+        if (
+          directoryPath === kiroPath ||
+          directoryPath === path.join(kiroPath, 'settings') ||
+          directoryPath === path.join(kiroPath, 'steering') ||
+          directoryPath === path.join(kiroPath, 'hooks')
+        ) {
           return Promise.resolve();
         }
         return Promise.reject(new Error('Not found'));
       });
 
       // Mock readdir for steering and hooks
-      mockFs.readdir.mockImplementation((dirPath: string) => {
-        if (dirPath === path.join(kiroPath, 'steering')) {
+      mockFs.readdir.mockImplementation((directoryPath: string) => {
+        if (directoryPath === path.join(kiroPath, 'steering')) {
           return Promise.resolve(['feature.md', 'guidelines.md', 'other.txt']);
         }
-        if (dirPath === path.join(kiroPath, 'hooks')) {
-          return Promise.resolve(['pre-commit.kiro.hook', 'post-build.kiro.hook', 'script.sh']);
+        if (directoryPath === path.join(kiroPath, 'hooks')) {
+          return Promise.resolve([
+            'pre-commit.kiro.hook',
+            'post-build.kiro.hook',
+            'script.sh',
+          ]);
         }
         return Promise.resolve([]);
       });
@@ -78,9 +87,13 @@ describe('CollectionService', () => {
           case 'context.md':
             return Promise.resolve('# Context\nProject context content');
           case 'user-preferences.md':
-            return Promise.resolve('# User Preferences\nUser preferences content');
+            return Promise.resolve(
+              '# User Preferences\nUser preferences content',
+            );
           case 'project-spec.md':
-            return Promise.resolve('# Project Spec\nProject specification content');
+            return Promise.resolve(
+              '# Project Spec\nProject specification content',
+            );
           case 'feature.md':
             return Promise.resolve('# Feature\nFeature steering content');
           case 'guidelines.md':
@@ -128,15 +141,17 @@ describe('CollectionService', () => {
         collectedAt: expect.any(String),
       });
 
-      expect(result.collectedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+      expect(result.collectedAt).toMatch(
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/,
+      );
     });
 
     it('should handle missing settings directory gracefully', async () => {
       const testPath = '/test/project';
       const kiroPath = path.join(testPath, '.kiro');
 
-      mockFs.access.mockImplementation((dirPath: string) => {
-        if (dirPath === kiroPath) {
+      mockFs.access.mockImplementation((directoryPath: string) => {
+        if (directoryPath === kiroPath) {
           return Promise.resolve();
         }
         return Promise.reject(new Error('Directory not found'));
@@ -161,8 +176,11 @@ describe('CollectionService', () => {
       const testPath = '/test/project';
       const kiroPath = path.join(testPath, '.kiro');
 
-      mockFs.access.mockImplementation((dirPath: string) => {
-        if (dirPath === kiroPath || dirPath === path.join(kiroPath, 'settings')) {
+      mockFs.access.mockImplementation((directoryPath: string) => {
+        if (
+          directoryPath === kiroPath ||
+          directoryPath === path.join(kiroPath, 'settings')
+        ) {
           return Promise.resolve();
         }
         return Promise.reject(new Error('Directory not found'));
@@ -186,8 +204,11 @@ describe('CollectionService', () => {
       const testPath = '/test/project';
       const kiroPath = path.join(testPath, '.kiro');
 
-      mockFs.access.mockImplementation((dirPath: string) => {
-        if (dirPath === kiroPath || dirPath === path.join(kiroPath, 'settings')) {
+      mockFs.access.mockImplementation((directoryPath: string) => {
+        if (
+          directoryPath === kiroPath ||
+          directoryPath === path.join(kiroPath, 'settings')
+        ) {
           return Promise.resolve();
         }
         return Promise.reject(new Error('Directory not found'));
@@ -204,8 +225,11 @@ describe('CollectionService', () => {
       const testPath = '/test/project';
       const kiroPath = path.join(testPath, '.kiro');
 
-      mockFs.access.mockImplementation((dirPath: string) => {
-        if (dirPath === kiroPath || dirPath === path.join(kiroPath, 'settings')) {
+      mockFs.access.mockImplementation((directoryPath: string) => {
+        if (
+          directoryPath === kiroPath ||
+          directoryPath === path.join(kiroPath, 'settings')
+        ) {
           return Promise.resolve();
         }
         return Promise.reject(new Error('Directory not found'));
@@ -227,11 +251,11 @@ describe('CollectionService', () => {
     });
 
     it('should use current working directory when no path provided', async () => {
-      const currentDir = process.cwd();
-      const kiroPath = path.join(currentDir, '.kiro');
+      const currentDirectory = process.cwd();
+      const kiroPath = path.join(currentDirectory, '.kiro');
 
-      mockFs.access.mockImplementation((dirPath: string) => {
-        if (dirPath === kiroPath) {
+      mockFs.access.mockImplementation((directoryPath: string) => {
+        if (directoryPath === kiroPath) {
           return Promise.resolve();
         }
         return Promise.reject(new Error('Directory not found'));
@@ -248,21 +272,27 @@ describe('CollectionService', () => {
       const testPath = '/test/project';
       const kiroPath = path.join(testPath, '.kiro');
 
-      mockFs.access.mockImplementation((dirPath: string) => {
-        if (dirPath === kiroPath ||
-            dirPath === path.join(kiroPath, 'steering') ||
-            dirPath === path.join(kiroPath, 'hooks')) {
+      mockFs.access.mockImplementation((directoryPath: string) => {
+        if (
+          directoryPath === kiroPath ||
+          directoryPath === path.join(kiroPath, 'steering') ||
+          directoryPath === path.join(kiroPath, 'hooks')
+        ) {
           return Promise.resolve();
         }
         return Promise.reject(new Error('Directory not found'));
       });
 
-      mockFs.readdir.mockImplementation((dirPath: string) => {
-        if (dirPath === path.join(kiroPath, 'steering')) {
+      mockFs.readdir.mockImplementation((directoryPath: string) => {
+        if (directoryPath === path.join(kiroPath, 'steering')) {
           return Promise.resolve(['valid.md', 'invalid.txt', 'another.md']);
         }
-        if (dirPath === path.join(kiroPath, 'hooks')) {
-          return Promise.resolve(['valid.kiro.hook', 'invalid.hook', 'another.kiro.hook']);
+        if (directoryPath === path.join(kiroPath, 'hooks')) {
+          return Promise.resolve([
+            'valid.kiro.hook',
+            'invalid.hook',
+            'another.kiro.hook',
+          ]);
         }
         return Promise.resolve([]);
       });
@@ -275,20 +305,28 @@ describe('CollectionService', () => {
       const result = await service.collectLocalSettings(testPath);
 
       expect(result.steeringFiles).toHaveLength(2);
-      expect(result.steeringFiles.map(f => f.filename)).toEqual(['valid.md', 'another.md']);
+      expect(result.steeringFiles.map((f) => f.filename)).toEqual([
+        'valid.md',
+        'another.md',
+      ]);
 
       expect(result.hookFiles).toHaveLength(2);
-      expect(result.hookFiles.map(f => f.filename)).toEqual(['valid.kiro.hook', 'another.kiro.hook']);
+      expect(result.hookFiles.map((f) => f.filename)).toEqual([
+        'valid.kiro.hook',
+        'another.kiro.hook',
+      ]);
     });
 
     it('should handle readdir errors gracefully', async () => {
       const testPath = '/test/project';
       const kiroPath = path.join(testPath, '.kiro');
 
-      mockFs.access.mockImplementation((dirPath: string) => {
-        if (dirPath === kiroPath ||
-            dirPath === path.join(kiroPath, 'steering') ||
-            dirPath === path.join(kiroPath, 'hooks')) {
+      mockFs.access.mockImplementation((directoryPath: string) => {
+        if (
+          directoryPath === kiroPath ||
+          directoryPath === path.join(kiroPath, 'steering') ||
+          directoryPath === path.join(kiroPath, 'hooks')
+        ) {
           return Promise.resolve();
         }
         return Promise.reject(new Error('Directory not found'));
@@ -312,31 +350,38 @@ describe('CollectionService', () => {
       mockFs.access.mockRejectedValue(new Error('Directory not found'));
 
       await expect(service.collectGlobalSettings()).rejects.toThrow(
-        'No global .kiro directory found at: /home/user/.kiro'
+        'No global .kiro directory found at: /home/user/.kiro',
       );
     });
 
     it('should collect data from complete ~/.kiro directory structure', async () => {
-      const homeDir = '/home/user';
-      const globalKiroPath = path.join(homeDir, '.kiro');
+      const homeDirectory = '/home/user';
+      const globalKiroPath = path.join(homeDirectory, '.kiro');
 
       // Mock ~/.kiro directory exists
-      mockFs.access.mockImplementation((dirPath: string) => {
-        if (dirPath === globalKiroPath || 
-            dirPath === path.join(globalKiroPath, 'templates') ||
-            dirPath === path.join(globalKiroPath, 'config')) {
+      mockFs.access.mockImplementation((directoryPath: string) => {
+        if (
+          directoryPath === globalKiroPath ||
+          directoryPath === path.join(globalKiroPath, 'templates') ||
+          directoryPath === path.join(globalKiroPath, 'config')
+        ) {
           return Promise.resolve();
         }
         return Promise.reject(new Error('Not found'));
       });
 
       // Mock readdir for templates and config
-      mockFs.readdir.mockImplementation((dirPath: string) => {
-        if (dirPath === path.join(globalKiroPath, 'templates')) {
+      mockFs.readdir.mockImplementation((directoryPath: string) => {
+        if (directoryPath === path.join(globalKiroPath, 'templates')) {
           return Promise.resolve(['prompt1.md', 'prompt2.txt', 'other.json']);
         }
-        if (dirPath === path.join(globalKiroPath, 'config')) {
-          return Promise.resolve(['app.json', 'settings.yaml', 'readme.md', 'script.sh']);
+        if (directoryPath === path.join(globalKiroPath, 'config')) {
+          return Promise.resolve([
+            'app.json',
+            'settings.yaml',
+            'readme.md',
+            'script.sh',
+          ]);
         }
         return Promise.resolve([]);
       });
@@ -348,7 +393,9 @@ describe('CollectionService', () => {
           case 'user-config.md':
             return Promise.resolve('# User Config\nUser configuration content');
           case 'global-preferences.md':
-            return Promise.resolve('# Global Preferences\napi_key=secret123\npreference=value');
+            return Promise.resolve(
+              '# Global Preferences\napi_key=secret123\npreference=value',
+            );
           case 'prompt1.md':
             return Promise.resolve('# Prompt 1\nPrompt template content');
           case 'prompt2.txt':
@@ -368,7 +415,8 @@ describe('CollectionService', () => {
 
       expect(result).toEqual({
         userConfig: '# User Config\nUser configuration content',
-        globalPreferences: '# Global Preferences\napi_key=[REDACTED]\npreference=value',
+        globalPreferences:
+          '# Global Preferences\napi_key=[REDACTED]\npreference=value',
         promptTemplates: [
           {
             filename: 'prompt1.md',
@@ -403,15 +451,17 @@ describe('CollectionService', () => {
         securityFiltered: true,
       });
 
-      expect(result.collectedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+      expect(result.collectedAt).toMatch(
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/,
+      );
     });
 
     it('should handle missing templates directory gracefully', async () => {
-      const homeDir = '/home/user';
-      const globalKiroPath = path.join(homeDir, '.kiro');
+      const homeDirectory = '/home/user';
+      const globalKiroPath = path.join(homeDirectory, '.kiro');
 
-      mockFs.access.mockImplementation((dirPath: string) => {
-        if (dirPath === globalKiroPath) {
+      mockFs.access.mockImplementation((directoryPath: string) => {
+        if (directoryPath === globalKiroPath) {
           return Promise.resolve();
         }
         return Promise.reject(new Error('Directory not found'));
@@ -433,26 +483,29 @@ describe('CollectionService', () => {
     });
 
     it('should handle missing config directory gracefully', async () => {
-      const homeDir = '/home/user';
-      const globalKiroPath = path.join(homeDir, '.kiro');
+      const homeDirectory = '/home/user';
+      const globalKiroPath = path.join(homeDirectory, '.kiro');
 
-      mockFs.access.mockImplementation((dirPath: string) => {
-        if (dirPath === globalKiroPath || dirPath === path.join(globalKiroPath, 'templates')) {
+      mockFs.access.mockImplementation((directoryPath: string) => {
+        if (
+          directoryPath === globalKiroPath ||
+          directoryPath === path.join(globalKiroPath, 'templates')
+        ) {
           return Promise.resolve();
         }
         return Promise.reject(new Error('Directory not found'));
       });
 
-      mockFs.readdir.mockImplementation((dirPath: string) => {
-        if (dirPath === path.join(globalKiroPath, 'templates')) {
+      mockFs.readdir.mockImplementation((directoryPath: string) => {
+        if (directoryPath === path.join(globalKiroPath, 'templates')) {
           return Promise.resolve(['template.md']);
         }
         return Promise.resolve([]);
       });
 
-      mockFs.readFile.mockImplementation((filePath: string) => {
-        return Promise.resolve('File content');
-      });
+      mockFs.readFile.mockImplementation(() =>
+        Promise.resolve('File content'),
+      );
 
       const result = await service.collectGlobalSettings();
 
@@ -461,9 +514,6 @@ describe('CollectionService', () => {
     });
 
     it('should apply security filtering correctly', async () => {
-      const homeDir = '/home/user';
-      const globalKiroPath = path.join(homeDir, '.kiro');
-
       mockFs.access.mockResolvedValue(undefined);
       mockFs.readdir.mockResolvedValue([]);
 
@@ -484,16 +534,20 @@ describe('CollectionService', () => {
       const result = await service.collectGlobalSettings();
 
       expect(result.userConfig).toContain('[REDACTED]');
-      expect(result.userConfig).not.toContain('sk-1234567890abcdef1234567890abcdef');
+      expect(result.userConfig).not.toContain(
+        'sk-1234567890abcdef1234567890abcdef',
+      );
       expect(result.userConfig).not.toContain('password123');
-      expect(result.userConfig).not.toContain('ghp_1234567890abcdef1234567890abcdef123456');
+      expect(result.userConfig).not.toContain(
+        'ghp_1234567890abcdef1234567890abcdef123456',
+      );
       expect(result.userConfig).toContain('normal_setting=value');
       expect(result.securityFiltered).toBe(true);
     });
 
     it('should handle file read errors gracefully', async () => {
-      const homeDir = '/home/user';
-      const globalKiroPath = path.join(homeDir, '.kiro');
+      const homeDirectory = '/home/user';
+      const globalKiroPath = path.join(homeDirectory, '.kiro');
 
       mockFs.access.mockResolvedValue(undefined);
       mockFs.readdir.mockResolvedValue([]);
@@ -513,13 +567,15 @@ describe('CollectionService', () => {
     });
 
     it('should handle readdir errors gracefully', async () => {
-      const homeDir = '/home/user';
-      const globalKiroPath = path.join(homeDir, '.kiro');
+      const homeDirectory = '/home/user';
+      const globalKiroPath = path.join(homeDirectory, '.kiro');
 
-      mockFs.access.mockImplementation((dirPath: string) => {
-        if (dirPath === globalKiroPath ||
-            dirPath === path.join(globalKiroPath, 'templates') ||
-            dirPath === path.join(globalKiroPath, 'config')) {
+      mockFs.access.mockImplementation((directoryPath: string) => {
+        if (
+          directoryPath === globalKiroPath ||
+          directoryPath === path.join(globalKiroPath, 'templates') ||
+          directoryPath === path.join(globalKiroPath, 'config')
+        ) {
           return Promise.resolve();
         }
         return Promise.reject(new Error('Directory not found'));
@@ -535,24 +591,37 @@ describe('CollectionService', () => {
     });
 
     it('should filter files correctly in templates and config directories', async () => {
-      const homeDir = '/home/user';
-      const globalKiroPath = path.join(homeDir, '.kiro');
+      const homeDirectory = '/home/user';
+      const globalKiroPath = path.join(homeDirectory, '.kiro');
 
-      mockFs.access.mockImplementation((dirPath: string) => {
-        if (dirPath === globalKiroPath ||
-            dirPath === path.join(globalKiroPath, 'templates') ||
-            dirPath === path.join(globalKiroPath, 'config')) {
+      mockFs.access.mockImplementation((directoryPath: string) => {
+        if (
+          directoryPath === globalKiroPath ||
+          directoryPath === path.join(globalKiroPath, 'templates') ||
+          directoryPath === path.join(globalKiroPath, 'config')
+        ) {
           return Promise.resolve();
         }
         return Promise.reject(new Error('Directory not found'));
       });
 
-      mockFs.readdir.mockImplementation((dirPath: string) => {
-        if (dirPath === path.join(globalKiroPath, 'templates')) {
-          return Promise.resolve(['valid.md', 'valid.txt', 'invalid.json', 'another.md']);
+      mockFs.readdir.mockImplementation((directoryPath: string) => {
+        if (directoryPath === path.join(globalKiroPath, 'templates')) {
+          return Promise.resolve([
+            'valid.md',
+            'valid.txt',
+            'invalid.json',
+            'another.md',
+          ]);
         }
-        if (dirPath === path.join(globalKiroPath, 'config')) {
-          return Promise.resolve(['valid.json', 'valid.yaml', 'valid.yml', 'valid.md', 'invalid.txt']);
+        if (directoryPath === path.join(globalKiroPath, 'config')) {
+          return Promise.resolve([
+            'valid.json',
+            'valid.yaml',
+            'valid.yml',
+            'valid.md',
+            'invalid.txt',
+          ]);
         }
         return Promise.resolve([]);
       });
@@ -565,10 +634,19 @@ describe('CollectionService', () => {
       const result = await service.collectGlobalSettings();
 
       expect(result.promptTemplates).toHaveLength(3);
-      expect(result.promptTemplates.map(f => f.filename)).toEqual(['valid.md', 'valid.txt', 'another.md']);
+      expect(result.promptTemplates.map((f) => f.filename)).toEqual([
+        'valid.md',
+        'valid.txt',
+        'another.md',
+      ]);
 
       expect(result.configFiles).toHaveLength(4);
-      expect(result.configFiles.map(f => f.filename)).toEqual(['valid.json', 'valid.yaml', 'valid.yml', 'valid.md']);
+      expect(result.configFiles.map((f) => f.filename)).toEqual([
+        'valid.json',
+        'valid.yaml',
+        'valid.yml',
+        'valid.md',
+      ]);
     });
   });
 });

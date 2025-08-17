@@ -298,7 +298,7 @@ export class DataProcessingErrorHandler {
     const failedCount = failedResults.length;
     const failedFiles = failedResults
       .map(result => result.filePath)
-      .filter(path => path) as string[];
+      .filter(Boolean) as string[];
     
     const summary = `Processed ${successfulItems}/${totalItems} items successfully (${successRate}% success rate). ${failedCount} items failed.`;
     

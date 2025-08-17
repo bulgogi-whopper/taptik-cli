@@ -73,7 +73,7 @@ export interface PromptTemplate {
   /** Template content with possible variables */
   content: string;
   /** Additional metadata about the template */
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**

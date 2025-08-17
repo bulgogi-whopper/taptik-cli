@@ -28,6 +28,28 @@ export interface FileSystemErrorResult {
 }
 
 /**
+ * Extended error interface for file system operations
+ */
+export interface FileSystemError extends Error {
+  code: FileSystemErrorCode;
+  errno?: number;
+  syscall?: string;
+  path?: string;
+}
+
+/**
+ * Type guard function to check if error is a file system error
+ */
+function isFileSystemError(error: unknown): error is FileSystemError {
+  return (
+    error instanceof Error &&
+    'code' in error &&
+    typeof (error as any).code === 'string' &&
+    Object.values(FileSystemErrorCode).includes((error as any).code)
+  );
+}
+
+/**
  * Utility class for handling file system errors with user-friendly messages
  */
 export class FileSystemErrorHandler {
@@ -40,32 +62,35 @@ export class FileSystemErrorHandler {
    * @param filePath The file/directory path involved
    * @returns Error handling result with user-friendly information
    */
-  static handleError(error: any, operation: string, filePath: string): FileSystemErrorResult {
-    const errorCode = error.code as FileSystemErrorCode;
-    
-    switch (errorCode) {
-      case FileSystemErrorCode.PERMISSION_DENIED:
-        return this.handlePermissionDenied(operation, filePath);
-        
-      case FileSystemErrorCode.FILE_NOT_FOUND:
-      case FileSystemErrorCode.DIRECTORY_NOT_FOUND:
-        return this.handleFileNotFound(operation, filePath);
-        
-      case FileSystemErrorCode.NO_SPACE_LEFT:
-        return this.handleNoSpaceLeft(operation, filePath);
-        
-      case FileSystemErrorCode.READ_ONLY_FILE_SYSTEM:
-        return this.handleReadOnlyFileSystem(operation, filePath);
-        
-      case FileSystemErrorCode.TOO_MANY_OPEN_FILES:
-        return this.handleTooManyOpenFiles(operation, filePath);
-        
-      case FileSystemErrorCode.INVALID_PATH:
-        return this.handleInvalidPath(operation, filePath);
-        
-      default:
-        return this.handleGenericError(error, operation, filePath);
+  static handleError(error: unknown, operation: string, filePath: string): FileSystemErrorResult {
+    if (isFileSystemError(error)) {
+      switch (error.code) {
+        case FileSystemErrorCode.PERMISSION_DENIED:
+          return this.handlePermissionDenied(operation, filePath);
+          
+        case FileSystemErrorCode.FILE_NOT_FOUND:
+        case FileSystemErrorCode.DIRECTORY_NOT_FOUND:
+          return this.handleFileNotFound(operation, filePath);
+          
+        case FileSystemErrorCode.NO_SPACE_LEFT:
+          return this.handleNoSpaceLeft(operation, filePath);
+          
+        case FileSystemErrorCode.READ_ONLY_FILE_SYSTEM:
+          return this.handleReadOnlyFileSystem(operation, filePath);
+          
+        case FileSystemErrorCode.TOO_MANY_OPEN_FILES:
+          return this.handleTooManyOpenFiles(operation, filePath);
+          
+        case FileSystemErrorCode.INVALID_PATH:
+          return this.handleInvalidPath(operation, filePath);
+          
+        default:
+          return this.handleGenericError(error, operation, filePath);
+      }
     }
+    
+    // Handle generic errors without specific error codes
+    return this.handleGenericError(error as Error, operation, filePath);
   }
 
   /**
@@ -197,8 +222,9 @@ export class FileSystemErrorHandler {
   /**
    * Handle generic/unknown file system errors
    */
-  private static handleGenericError(error: any, operation: string, filePath: string): FileSystemErrorResult {
-    const userMessage = `File system error when ${operation}: ${filePath} - ${error.message}`;
+  private static handleGenericError(error: FileSystemError | Error, operation: string, filePath: string): FileSystemErrorResult {
+    const errorMessage = error.message || 'Unknown error';
+    const userMessage = `File system error when ${operation}: ${filePath} - ${errorMessage}`;
     
     this.logger.error(userMessage, error.stack);
     

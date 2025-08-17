@@ -1,5 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { Logger } from '@nestjs/common';
+
+import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest';
+
 import { ProgressService } from './progress.service';
 
 describe('ProgressService', () => {
@@ -254,9 +256,9 @@ describe('ProgressService', () => {
       
       expect(formatDuration(500)).toBe('500ms');
       expect(formatDuration(1500)).toBe('1s');
-      expect(formatDuration(30000)).toBe('30s');
-      expect(formatDuration(90000)).toBe('1m 30s');
-      expect(formatDuration(125000)).toBe('2m 5s');
+      expect(formatDuration(30_000)).toBe('30s');
+      expect(formatDuration(90_000)).toBe('1m 30s');
+      expect(formatDuration(125_000)).toBe('2m 5s');
     });
   });
 });

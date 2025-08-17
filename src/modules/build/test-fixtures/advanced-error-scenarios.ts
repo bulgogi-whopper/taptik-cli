@@ -161,7 +161,7 @@ export class AdvancedMockFileSystem extends MockFileSystem {
       const error: AdvancedError = new Error('ETIMEDOUT: operation timed out');
       error.code = 'ETIMEDOUT';
       error.errno = -110;
-      error.timeout = 30000;
+      error.timeout = 30_000;
       error.retry = true;
       throw error;
     }
@@ -255,8 +255,8 @@ export class AdvancedMockFileSystem extends MockFileSystem {
     }
 
     // Directory already exists with different case (Windows simulation)
-    const existingDirs = Array.from(this.directories || new Set());
-    const conflictingDir = existingDirs.find(dir => 
+    const existingDirectories = [...this.directories || new Set()];
+    const conflictingDir = existingDirectories.find(dir => 
       dir.toLowerCase() === dirPath.toLowerCase() && dir !== dirPath
     );
     
@@ -341,10 +341,10 @@ export class AdvancedMockFileSystem extends MockFileSystem {
    */
   async cleanup(): Promise<void> {
     // Clean up temporary files
-    for (const tempFile of this.tempFiles) {
+    for (const temporaryFile of this.tempFiles) {
       try {
-        this.files?.delete(tempFile);
-      } catch (error) {
+        this.files?.delete(temporaryFile);
+      } catch {
         // Ignore cleanup errors
       }
     }
@@ -442,8 +442,8 @@ export class ErrorScenarioFactory {
   static createHighConcurrencyScenario(): AdvancedMockFileSystem {
     return new AdvancedMockFileSystem(
       {
-        files: Array.from({ length: 100 }, (_, i) => [`/file${i}.txt`, `content ${i}`])
-          .reduce((acc, [path, content]) => ({ ...acc, [path]: content }), {}),
+        files: Object.fromEntries(Array.from({ length: 100 }, (_, i) => [`/file${i}.txt`, `content ${i}`])
+          .map(( [path, content]) => [path, content])),
         directories: ['/'],
       },
       { concurrentOperationLimit: 3 }
@@ -648,7 +648,7 @@ export class ErrorScenarioTestUtils {
       try {
         await operation();
         successes++;
-      } catch (error) {
+      } catch {
         // Count failed operations in timing
       }
       times.push(Date.now() - start);

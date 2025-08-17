@@ -1,8 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { BuildConfig, BuildCategoryName, BuildPlatform } from '../../interfaces/build-config.interface';
+import { SettingsData } from '../../interfaces/settings-data.interface';
+import { TaptikPersonalContext } from '../../interfaces/taptik-format.interface';
+
 import { OutputService } from './output.service';
-import { SettingsData } from '../interfaces/settings-data.interface';
-import { BuildConfig, BuildCategoryName, BuildPlatform } from '../interfaces/build-config.interface';
-import { TaptikPersonalContext, TaptikProjectContext, TaptikPromptTemplates } from '../interfaces/taptik-format.interface';
 
 describe('OutputService', () => {
   let service: OutputService;
@@ -228,8 +232,8 @@ describe('OutputService', () => {
       const id1 = service['generateBuildId']();
       const id2 = service['generateBuildId']();
       
-      expect(id1).toMatch(/^build-[a-z0-9]+-[a-z0-9]+$/);
-      expect(id2).toMatch(/^build-[a-z0-9]+-[a-z0-9]+$/);
+      expect(id1).toMatch(/^build(?:-[\da-z]+){2}$/);
+      expect(id2).toMatch(/^build(?:-[\da-z]+){2}$/);
       expect(id1).not.toBe(id2);
     });
   });
@@ -319,9 +323,9 @@ describe('OutputService', () => {
 
       expect(formatDuration(500)).toBe('500ms');
       expect(formatDuration(1500)).toBe('1s');
-      expect(formatDuration(30000)).toBe('30s');
-      expect(formatDuration(90000)).toBe('1m 30s');
-      expect(formatDuration(125000)).toBe('2m 5s');
+      expect(formatDuration(30_000)).toBe('30s');
+      expect(formatDuration(90_000)).toBe('1m 30s');
+      expect(formatDuration(125_000)).toBe('2m 5s');
     });
 
     it('should display issues summary correctly', () => {

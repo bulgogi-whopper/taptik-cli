@@ -1,7 +1,8 @@
+import { promises as fs } from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+
 import { Injectable, Logger } from '@nestjs/common';
-import { promises as fs } from 'fs';
-import * as path from 'path';
-import * as os from 'os';
 
 /**
  * Interface for collected settings data from local Kiro configuration
@@ -80,7 +81,7 @@ export class CollectionService {
     // Check if .kiro directory exists
     try {
       await fs.access(kiroPath);
-    } catch (error) {
+    } catch {
       this.logger.warn(`No .kiro directory found at: ${kiroPath}`);
       throw new Error(`No .kiro directory found at: ${kiroPath}`);
     }
@@ -115,7 +116,7 @@ export class CollectionService {
     try {
       await fs.access(settingsPath);
       this.logger.debug(`Found settings directory: ${settingsPath}`);
-    } catch (error) {
+    } catch {
       this.logger.warn(`Settings directory not found: ${settingsPath}`);
       return;
     }
@@ -158,7 +159,7 @@ export class CollectionService {
     try {
       await fs.access(steeringPath);
       this.logger.debug(`Found steering directory: ${steeringPath}`);
-    } catch (error) {
+    } catch {
       this.logger.warn(`Steering directory not found: ${steeringPath}`);
       return;
     }
@@ -169,6 +170,7 @@ export class CollectionService {
 
       for (const filename of mdFiles) {
         const filePath = path.join(steeringPath, filename);
+        // eslint-disable-next-line no-await-in-loop
         await this.collectFile(filePath, filename, (content) => {
           settingsData.steeringFiles.push({
             filename,
@@ -194,7 +196,7 @@ export class CollectionService {
     try {
       await fs.access(hooksPath);
       this.logger.debug(`Found hooks directory: ${hooksPath}`);
-    } catch (error) {
+    } catch {
       this.logger.warn(`Hooks directory not found: ${hooksPath}`);
       return;
     }
@@ -205,6 +207,7 @@ export class CollectionService {
 
       for (const filename of hookFiles) {
         const filePath = path.join(hooksPath, filename);
+        // eslint-disable-next-line no-await-in-loop
         await this.collectFile(filePath, filename, (content) => {
           settingsData.hookFiles.push({
             filename,
@@ -225,15 +228,15 @@ export class CollectionService {
    * @returns Promise resolving to collected global settings data
    */
   async collectGlobalSettings(): Promise<GlobalSettingsData> {
-    const homeDir = os.homedir();
-    const globalKiroPath = path.join(homeDir, '.kiro');
+    const homeDirectory = os.homedir();
+    const globalKiroPath = path.join(homeDirectory, '.kiro');
 
     this.logger.log(`Scanning global Kiro settings in: ${globalKiroPath}`);
 
     // Check if ~/.kiro directory exists
     try {
       await fs.access(globalKiroPath);
-    } catch (error) {
+    } catch {
       this.logger.warn(`No global .kiro directory found at: ${globalKiroPath}`);
       throw new Error(`No global .kiro directory found at: ${globalKiroPath}`);
     }
@@ -295,7 +298,7 @@ export class CollectionService {
     try {
       await fs.access(templatesPath);
       this.logger.debug(`Found templates directory: ${templatesPath}`);
-    } catch (error) {
+    } catch {
       this.logger.warn(`Templates directory not found: ${templatesPath}`);
       return;
     }
@@ -306,6 +309,7 @@ export class CollectionService {
 
       for (const filename of templateFiles) {
         const filePath = path.join(templatesPath, filename);
+        // eslint-disable-next-line no-await-in-loop
         await this.collectFileWithSecurity(filePath, filename, (content, filtered) => {
           globalData.promptTemplates.push({
             filename,
@@ -332,7 +336,7 @@ export class CollectionService {
     try {
       await fs.access(configPath);
       this.logger.debug(`Found config directory: ${configPath}`);
-    } catch (error) {
+    } catch {
       this.logger.warn(`Config directory not found: ${configPath}`);
       return;
     }
@@ -348,6 +352,7 @@ export class CollectionService {
 
       for (const filename of configFiles) {
         const filePath = path.join(configPath, filename);
+        // eslint-disable-next-line no-await-in-loop
         await this.collectFileWithSecurity(filePath, filename, (content, filtered) => {
           globalData.configFiles.push({
             filename,
@@ -409,26 +414,26 @@ export class CollectionService {
     // Define patterns for sensitive information with simpler approach
     const sensitivePatterns = [
       // API keys - match common API key patterns
-      { pattern: /(["']?(?:api[_-]?key|apikey|api_key)["']?)\s*[=:]\s*["']?([a-zA-Z0-9_-]{6,})["']?/gi, name: 'API key' },
+      { pattern: /(["']?(?:api[_-]?key|apikey|api_key)["']?)\s*[:=]\s*["']?([\w-]{6,})["']?/gi, name: 'API key' },
       // Tokens - match various token types
-      { pattern: /(["']?(?:token|access_token|auth_token)["']?)\s*[=:]\s*["']?([a-zA-Z0-9_.-]{6,})["']?/gi, name: 'Token' },
+      { pattern: /(["']?(?:token|access_token|auth_token)["']?)\s*[:=]\s*["']?([\w.-]{6,})["']?/gi, name: 'Token' },
       // Secrets - match secret patterns
-      { pattern: /(["']?(?:secret|client_secret|app_secret)["']?)\s*[=:]\s*["']?([a-zA-Z0-9_.-]{6,})["']?/gi, name: 'Secret' },
+      { pattern: /(["']?(?:secret|client_secret|app_secret)["']?)\s*[:=]\s*["']?([\w.-]{6,})["']?/gi, name: 'Secret' },
       // Passwords - match password patterns
-      { pattern: /(["']?(?:password|passwd|pwd)["']?)\s*[=:]\s*["']?([^\s"']{6,})["']?/gi, name: 'Password' },
+      { pattern: /(["']?(?:password|passwd|pwd)["']?)\s*[:=]\s*["']?([^\s"']{6,})["']?/gi, name: 'Password' },
       // Database URLs - match database connection strings with credentials
-      { pattern: /(["']?(?:database_url|db_url)["']?)\s*[=:]\s*["']?[^"'\s]*:\/\/[^"'\s@]*:[^"'\s@]*@[^"'\s]*["']?/gi, name: 'Database URL' },
+      { pattern: /(["']?(?:database_url|db_url)["']?)\s*[:=]\s*["']?[^\s"']*:\/\/[^\s"'@]*:[^\s"'@]*@[^\s"']*["']?/gi, name: 'Database URL' },
     ];
 
-    for (const { pattern, name } of sensitivePatterns) {
+    for (const { pattern } of sensitivePatterns) {
       if (pattern.test(filteredContent)) {
-        filteredContent = filteredContent.replace(pattern, (match, key) => {
+        filteredContent = filteredContent.replace(pattern, (match) => {
           const equalIndex = match.indexOf('=');
           const colonIndex = match.indexOf(':');
           const separatorIndex = equalIndex !== -1 ? equalIndex : colonIndex;
           
           if (separatorIndex !== -1) {
-            return match.substring(0, separatorIndex + 1) + '[REDACTED]';
+            return `${match.slice(0, Math.max(0, separatorIndex + 1))  }[REDACTED]`;
           }
           return '[REDACTED]';
         });

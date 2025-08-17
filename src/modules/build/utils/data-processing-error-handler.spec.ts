@@ -1,3 +1,5 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { 
   DataProcessingErrorHandler, 
   DataProcessingErrorType,
@@ -307,7 +309,7 @@ describe('DataProcessingErrorHandler', () => {
 
   describe('Partial markdown data extraction', () => {
     it('should extract partial content from markdown', () => {
-      const extractPartialMarkdownData = (DataProcessingErrorHandler as any).extractPartialMarkdownData;
+      const {extractPartialMarkdownData} = (DataProcessingErrorHandler as any);
       const markdownContent = `# Main Title
       
 Some introduction text here.
@@ -329,7 +331,7 @@ More content here.`;
     });
 
     it('should handle empty or invalid markdown content', () => {
-      const extractPartialMarkdownData = (DataProcessingErrorHandler as any).extractPartialMarkdownData;
+      const {extractPartialMarkdownData} = (DataProcessingErrorHandler as any);
       
       expect(extractPartialMarkdownData(undefined)).toBeNull();
       expect(extractPartialMarkdownData('')).toBeNull();

@@ -1,5 +1,5 @@
-import { promises as fs } from 'fs';
-import { join } from 'path';
+import { promises as fs } from 'node:fs';
+import { join } from 'node:path';
 
 /**
  * Mock file system utilities for testing with advanced error scenarios
@@ -101,8 +101,8 @@ export class MockFileSystem {
     // Return files in directory
     const filesInDir: string[] = [];
     for (const filePath of this.files.keys()) {
-      if (filePath.startsWith(dirPath + '/')) {
-        const relativePath = filePath.substring(dirPath.length + 1);
+      if (filePath.startsWith(`${dirPath  }/`)) {
+        const relativePath = filePath.slice(Math.max(0, dirPath.length + 1));
         if (!relativePath.includes('/')) {
           filesInDir.push(relativePath);
         }
@@ -134,7 +134,7 @@ export class MockFileSystem {
       let currentPath = '';
       for (const part of parts) {
         if (part) {
-          currentPath += '/' + part;
+          currentPath += `/${  part}`;
           this.directories.add(currentPath);
         }
       }

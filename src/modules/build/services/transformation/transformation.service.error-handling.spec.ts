@@ -1,14 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { Logger } from '@nestjs/common';
-import { TransformationService } from './transformation.service';
-import { SettingsData } from '../interfaces/settings-data.interface';
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { SettingsData } from '../../interfaces/settings-data.interface';
 import { 
   DataProcessingErrorHandler, 
   DataProcessingErrorType 
-} from '../utils/data-processing-error-handler';
+} from '../../utils/data-processing-error-handler';
+
+import { TransformationService } from './transformation.service';
 
 // Mock the DataProcessingErrorHandler
-vi.mock('../utils/data-processing-error-handler');
+vi.mock('../../utils/data-processing-error-handler');
 
 describe('TransformationService - Error Handling', () => {
   let service: TransformationService;
@@ -29,9 +32,11 @@ describe('TransformationService - Error Handling', () => {
     },
     collectionMetadata: {
       sourcePlatform: 'kiro',
+      collectionTimestamp: '2025-01-10T10:00:00Z',
       projectPath: '/test/project',
       globalPath: '/test/global',
-      collectedAt: '2025-01-10T10:00:00Z',
+      warnings: [],
+      errors: [],
     },
   };
 
@@ -317,7 +322,7 @@ describe('TransformationService - Error Handling', () => {
       vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(mockErrorResult);
       vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(() => {});
 
-      const processor = (item: any, index: number) => {
+      const processor = (item: any, _index: number) => {
         if (!item.valid) {
           throw new Error('Invalid item');
         }

@@ -1,3 +1,5 @@
+import { beforeEach, describe, expect, it, vi  } from 'vitest';
+
 import { FileSystemErrorHandler, FileSystemErrorCode } from './file-system-error-handler';
 
 describe('FileSystemErrorHandler', () => {
