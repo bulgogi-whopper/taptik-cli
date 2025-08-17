@@ -15,6 +15,13 @@ export interface DeploymentResult {
     timestamp?: Date;
     deploymentId?: string;
     performanceReport?: string;
+    isLargeConfiguration?: boolean;
+    streamingMetrics?: {
+      chunksProcessed: number;
+      totalSize: number;
+      processingTime: number;
+      memoryUsagePeak: number;
+    };
   };
 }
 

@@ -148,32 +148,51 @@ describe('ImportService', () => {
       const mockConfigId = 'test-config-123';
       const mockContext = createMockTaptikContext();
       const mockData = Buffer.from(JSON.stringify(mockContext));
+      const mockMetadata = { 
+        id: mockConfigId, 
+        name: 'Test Config', 
+        version: '1.0.0',
+        createdAt: '2023-01-01',
+        platform: 'claude-code',
+        size: 1024 // Small file, no streaming
+      };
+      const mockMetadataData = Buffer.from(JSON.stringify(mockMetadata));
 
-      const downloadMock = vi.fn().mockResolvedValue({
-        data: {
-          arrayBuffer: vi
-            .fn()
-            .mockResolvedValue(
+      const downloadMock = vi.fn()
+        .mockImplementationOnce(() => Promise.resolve({
+          data: {
+            arrayBuffer: vi.fn().mockResolvedValue(
+              mockMetadataData.buffer.slice(
+                mockMetadataData.byteOffset,
+                mockMetadataData.byteOffset + mockMetadataData.byteLength,
+              ),
+            ),
+          },
+          error: null,
+        }))
+        .mockImplementationOnce(() => Promise.resolve({
+          data: {
+            arrayBuffer: vi.fn().mockResolvedValue(
               mockData.buffer.slice(
                 mockData.byteOffset,
                 mockData.byteOffset + mockData.byteLength,
               ),
             ),
-        },
-        error: null,
-      });
+          },
+          error: null,
+        }));
 
       mockSupabaseClient.storage!.from = vi.fn().mockReturnValue({
         download: downloadMock,
       });
 
-      // First call - should fetch from Supabase
+      // First call - should fetch metadata + config from Supabase
       const result1 = await service.importConfiguration(mockConfigId);
-      expect(downloadMock).toHaveBeenCalledTimes(1);
+      expect(downloadMock).toHaveBeenCalledTimes(2); // metadata + config
 
-      // Second call - should use cache
+      // Second call - should use cache, no additional downloads
       const result2 = await service.importConfiguration(mockConfigId);
-      expect(downloadMock).toHaveBeenCalledTimes(1); // Still 1, not 2
+      expect(downloadMock).toHaveBeenCalledTimes(2); // Still 2, not more
       expect(result2).toEqual(result1);
     });
   });

@@ -20,6 +20,7 @@ describe('DeploymentService', () => {
   let mockValidatorService: any;
   let mockErrorRecoveryService: any;
   let mockPerformanceMonitorService: any;
+  let mockLargeFileStreamerService: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -94,6 +95,23 @@ describe('DeploymentService', () => {
       clearMetrics: vi.fn(),
     };
 
+    mockLargeFileStreamerService = {
+      streamProcessConfiguration: vi.fn().mockResolvedValue({
+        success: true,
+        chunksProcessed: 1,
+        totalSize: 1024,
+        processingTime: 100,
+        memoryUsagePeak: 1024 * 1024,
+      }),
+      optimizeMemoryUsage: vi.fn().mockResolvedValue({
+        memoryOptimized: true,
+        gcTriggered: false,
+        memoryBefore: 1024 * 1024,
+        memoryAfter: 1024 * 1024,
+      }),
+      getEstimatedProcessingTime: vi.fn().mockReturnValue(1000),
+    };
+
     service = new DeploymentService(
       mockBackupService,
       mockDiffService,
@@ -101,6 +119,7 @@ describe('DeploymentService', () => {
       mockValidatorService,
       mockErrorRecoveryService,
       mockPerformanceMonitorService,
+      mockLargeFileStreamerService,
     );
   });
 

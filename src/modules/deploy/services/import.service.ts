@@ -1,8 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 import { TaptikContext } from '../../context/interfaces/taptik-context.interface';
 import { SupabaseService } from '../../supabase/supabase.service';
 import { DEPLOYMENT_DEFAULTS } from '../constants/deployment.constants';
+
+import { LargeFileStreamerService, ProgressInfo } from './large-file-streamer.service';
 
 export interface CloudMetadataDto {
   id: string;
@@ -13,8 +15,16 @@ export interface CloudMetadataDto {
   size: number;
 }
 
+export interface ImportOptions {
+  enableLargeFileStreaming?: boolean;
+  onProgress?: (progress: ProgressInfo) => void;
+  maxFileSize?: number; // bytes
+  enableMemoryOptimization?: boolean;
+}
+
 @Injectable()
 export class ImportService {
+  private readonly logger = new Logger(ImportService.name);
   private readonly cache = new Map<
     string,
     { data: TaptikContext; timestamp: number }
@@ -22,21 +32,34 @@ export class ImportService {
   private readonly CACHE_TTL = DEPLOYMENT_DEFAULTS.CACHE_TTL;
   private readonly RETRY_ATTEMPTS = DEPLOYMENT_DEFAULTS.RETRY_ATTEMPTS;
   private readonly RETRY_DELAY = DEPLOYMENT_DEFAULTS.RETRY_DELAY;
+  private readonly LARGE_FILE_THRESHOLD = 10 * 1024 * 1024; // 10MB
 
-  constructor(private readonly supabaseService: SupabaseService) {}
+  constructor(
+    private readonly supabaseService: SupabaseService,
+    private readonly largeFileStreamer: LargeFileStreamerService,
+  ) {}
 
   async importFromSupabase(configId: string): Promise<TaptikContext> {
     return this.importConfiguration(configId);
   }
 
-  async importConfiguration(configId: string): Promise<TaptikContext> {
+  async importConfiguration(configId: string, options: ImportOptions = {}): Promise<TaptikContext> {
     // Check cache first
     const cached = this.getFromCache(configId);
     if (cached) {
       return cached;
     }
 
-    // Fetch from Supabase with retry logic
+    // Get metadata to check file size
+    const metadata = await this.getConfigMetadata(configId);
+    const isLargeFile = metadata ? metadata.size > this.LARGE_FILE_THRESHOLD : false;
+
+    if (isLargeFile && options.enableLargeFileStreaming !== false) {
+      this.logger.debug(`Processing large configuration (${Math.round((metadata?.size || 0) / 1024 / 1024)}MB) with streaming`);
+      return this.importLargeConfiguration(configId, options);
+    }
+
+    // Standard import for smaller files
     const data = await this.fetchFromStorage(configId);
     const context = await this.parseConfiguration(data);
 
@@ -44,6 +67,77 @@ export class ImportService {
     this.setCache(configId, context);
 
     return context;
+  }
+
+  /**
+   * Import large configuration with streaming optimization
+   */
+  async importLargeConfiguration(configId: string, options: ImportOptions = {}): Promise<TaptikContext> {
+    let context: TaptikContext;
+
+    try {
+      // Get estimated processing time
+      const metadata = await this.getConfigMetadata(configId);
+      const estimatedTime = this.largeFileStreamer.getEstimatedProcessingTime(metadata?.size || 0);
+      
+      this.logger.debug(`Estimated processing time: ${Math.round(estimatedTime / 1000)}s`);
+
+      // Progress callback
+      const onProgress = options.onProgress || ((progress) => {
+        this.logger.debug(`Import progress: ${progress.percentage}% (${progress.current}/${progress.total})`);
+      });
+
+      // Fetch raw data
+      const rawData = await this.fetchFromStorage(configId);
+      
+      // Process with streaming if data is large enough
+      if (rawData.length > this.LARGE_FILE_THRESHOLD) {
+        let parsedContext: TaptikContext | null = null;
+
+        const result = await this.largeFileStreamer.streamProcessConfiguration(
+          rawData,
+          async (_chunk: unknown) => {
+            // For import, we mainly need to parse the complete data
+            // This is more of a memory optimization than actual streaming processing
+            if (!parsedContext) {
+              parsedContext = await this.parseConfiguration(rawData);
+            }
+            return { chunk: 'processed' };
+          },
+          {
+            chunkSize: 1024 * 1024, // 1MB chunks for import
+            onProgress,
+            enableGarbageCollection: options.enableMemoryOptimization ?? true,
+            memoryThreshold: 50 * 1024 * 1024, // 50MB
+          }
+        );
+
+        if (!result.success) {
+          throw new Error(`Large file streaming failed: ${result.error}`);
+        }
+
+        if (!parsedContext) {
+          throw new Error('Failed to parse configuration during streaming');
+        }
+
+        context = parsedContext;
+      } else {
+        // Fallback to standard parsing
+        context = await this.parseConfiguration(rawData);
+      }
+
+      // Cache the result (be mindful of memory usage for large configs)
+      if ((metadata?.size || 0) < 50 * 1024 * 1024) { // Only cache configs smaller than 50MB
+        this.setCache(configId, context);
+      }
+
+      this.logger.debug(`Large configuration import completed successfully`);
+      return context;
+
+    } catch (error) {
+      this.logger.error(`Large configuration import failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error;
+    }
   }
 
   async validateConfigExists(configId: string): Promise<boolean> {
