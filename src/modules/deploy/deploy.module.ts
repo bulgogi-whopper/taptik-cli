@@ -1,0 +1,50 @@
+import { Module } from '@nestjs/common';
+
+import { SupabaseModule } from '../supabase/supabase.module';
+
+import { DeployCommand } from './commands/deploy.command';
+import { BackupService } from './services/backup.service';
+import { DeploymentLoggerService } from './services/deployment-logger.service';
+import { DeploymentService } from './services/deployment.service';
+import { DiffService } from './services/diff.service';
+import { ErrorHandlerService } from './services/error-handler.service';
+import { ErrorRecoveryService } from './services/error-recovery.service';
+import { ImportService } from './services/import.service';
+import { LockingService } from './services/locking.service';
+import { PlatformValidatorService } from './services/platform-validator.service';
+import { SecurityScannerService } from './services/security-scanner.service';
+import { PathResolver } from './utils/path-resolver.utility';
+import { PerformanceOptimizer } from './utils/performance-optimizer.utility';
+
+@Module({
+  imports: [SupabaseModule],
+  providers: [
+    // Services
+    BackupService,
+    DeploymentService,
+    DeploymentLoggerService,
+    DiffService,
+    ErrorHandlerService,
+    ErrorRecoveryService,
+    ImportService,
+    LockingService,
+    PlatformValidatorService,
+    SecurityScannerService,
+
+    // Utilities
+    PathResolver,
+    PerformanceOptimizer,
+
+    // Commands
+    DeployCommand,
+  ],
+  exports: [
+    DeploymentService,
+    ImportService,
+    BackupService,
+    ErrorRecoveryService,
+    ErrorHandlerService,
+    DeploymentLoggerService,
+  ],
+})
+export class DeployModule {}

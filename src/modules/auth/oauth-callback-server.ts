@@ -1,4 +1,12 @@
-import { Injectable, Controller, Get, Module, Query, Res, Logger  } from '@nestjs/common';
+import {
+  Injectable,
+  Controller,
+  Get,
+  Module,
+  Query,
+  Res,
+  Logger,
+} from '@nestjs/common';
 import type { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 
@@ -194,8 +202,8 @@ export class OAuthCallbackServer {
   async start(preferredPort?: number): Promise<string> {
     try {
       // Find an available port in the 60000-65535 range
-      const port = preferredPort || await findAvailablePort(60_000, 65_535);
-      
+      const port = preferredPort || (await findAvailablePort(60_000, 65_535));
+
       this.logger.log(`Starting OAuth callback server on port ${port}...`);
 
       // Create NestJS application

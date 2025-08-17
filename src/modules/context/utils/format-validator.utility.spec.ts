@@ -10,9 +10,7 @@ import {
   DeployableContext,
 } from '../interfaces/taptik-context.interface';
 
-import {
-  FormatValidator,
-} from './format-validator.utility';
+import { FormatValidator } from './format-validator.utility';
 
 describe('FormatValidator', () => {
   describe('validateExportFormat', () => {
@@ -82,7 +80,7 @@ describe('FormatValidator', () => {
       expect(result.errors).toContainEqual(
         expect.objectContaining({
           code: ValidationErrorCode.INVALID_VERSION,
-        })
+        }),
       );
     });
 
@@ -111,7 +109,7 @@ describe('FormatValidator', () => {
       expect(result.errors).toContainEqual(
         expect.objectContaining({
           code: ValidationErrorCode.UNSUPPORTED_IDE,
-        })
+        }),
       );
     });
 
@@ -143,7 +141,7 @@ describe('FormatValidator', () => {
         expect.objectContaining({
           code: ValidationErrorCode.INVALID_FORMAT,
           field: 'metadata.title',
-        })
+        }),
       );
     });
 
@@ -246,7 +244,7 @@ describe('FormatValidator', () => {
         expect.objectContaining({
           code: ValidationErrorCode.MISSING_METADATA,
           field: 'cloudMetadata',
-        })
+        }),
       );
     });
   });

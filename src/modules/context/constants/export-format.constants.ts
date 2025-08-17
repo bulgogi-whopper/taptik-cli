@@ -6,13 +6,13 @@
 export const EXPORT_FORMAT = {
   /** Current context format version */
   CURRENT_VERSION: '1.0.0',
-  
+
   /** File extension for exported contexts */
   FILE_EXTENSION: '.taptik',
-  
+
   /** MIME type for context files */
   MIME_TYPE: 'application/json',
-  
+
   /** Default encoding for context files */
   ENCODING: 'utf8',
 } as const;
@@ -35,27 +35,29 @@ export const SECURITY_PATTERNS = {
   API_KEY: /(?:api[_-]?key|apikey)[\s:=]["']?([\w-]+)["']?/gi,
   SECRET: /(?:secret|password|pwd)[\s:=]["']?([\w#$%&()-+=@^]+)["']?/gi,
   TOKEN: /(?:token|auth[_-]?token)[\s:=]["']?([\w.-]+)["']?/gi,
-  PRIVATE_KEY: /-{5}begin\s+(?:rsa\s+)?private\s+key-{5}[\S\s]*?-{5}end\s+(?:rsa\s+)?private\s+key-{5}/gi,
+  PRIVATE_KEY:
+    /-{5}begin\s+(?:rsa\s+)?private\s+key-{5}[\S\s]*?-{5}end\s+(?:rsa\s+)?private\s+key-{5}/gi,
   ACCESS_KEY: /(?:access[_-]?key|accesskey)[\s:=]["']?([\w-]+)["']?/gi,
-  DATABASE_URL: /(?:database[_-]?url|db[_-]?url)[\s:=]["']?((?:mongodb|mysql|postgres|postgresql):\/\/[^\s"']+)["']?/gi,
+  DATABASE_URL:
+    /(?:database[_-]?url|db[_-]?url)[\s:=]["']?((?:mongodb|mysql|postgres|postgresql):\/\/[^\s"']+)["']?/gi,
 } as const;
 
 export const CLOUD_STORAGE = {
   /** Supabase bucket name for storing contexts */
   BUCKET_NAME: 'taptik-configs',
-  
+
   /** Storage paths by visibility */
   PATHS: {
     PUBLIC: 'public',
     PRIVATE: 'private',
   },
-  
+
   /** File size limits */
   LIMITS: {
     FREE_USER: 50 * 1024 * 1024, // 50MB
     PREMIUM_USER: 500 * 1024 * 1024, // 500MB
   },
-  
+
   /** Allowed file types for upload */
   ALLOWED_EXTENSIONS: ['.taptik', '.json'],
 } as const;
@@ -85,19 +87,19 @@ export const API_ENDPOINTS = {
 export const VALIDATION_RULES = {
   /** Maximum number of tags per context */
   MAX_TAGS: 10,
-  
+
   /** Maximum length for title */
   MAX_TITLE_LENGTH: 100,
-  
+
   /** Maximum length for description */
   MAX_DESCRIPTION_LENGTH: 500,
-  
+
   /** Required version format (semver) */
   VERSION_PATTERN: /^\d+\.\d+\.\d+$/,
-  
+
   /** Valid IDE identifiers */
   VALID_IDE_IDS: Object.values(SUPPORTED_PLATFORMS),
-  
+
   /** Valid context categories */
   VALID_CATEGORIES: Object.values(CONTEXT_CATEGORIES),
 } as const;

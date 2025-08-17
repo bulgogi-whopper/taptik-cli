@@ -9,7 +9,7 @@ Refactor the auth module to improve type safety, separation of concerns, maintai
 ### Layered Architecture Strategy
 
 - **Main Approach**: Implement a layered architecture with clear separation between presentation (commands), business logic (services), and infrastructure (storage, clients)
-- **Key Components**: 
+- **Key Components**:
   - Type definitions layer for strong typing
   - Authentication service layer for core business logic
   - Session management layer for persistence
@@ -19,6 +19,7 @@ Refactor the auth module to improve type safety, separation of concerns, maintai
 - **Extensibility**: Pluggable OAuth providers, configurable session storage backends, modular command structure
 
 ### Authentication Flow
+
 ```
 CLI Command → AuthService → OAuth Provider → Callback Server
     ↓              ↓              ↓              ↓
@@ -28,6 +29,7 @@ Validation → State Management → Token Exchange → Local Storage
 ```
 
 ### Refactoring Flow
+
 ```
 Current Auth Module → Type Definitions → Service Separation
         ↓                    ↓                   ↓
@@ -40,8 +42,8 @@ Current Auth Module → Type Definitions → Service Separation
 
 ### 1. Type Definitions (src/modules/auth/types/)
 
-**Purpose**: Centralize all auth-related type definitions for strong typing and consistency
-**Key Features**:
+**Purpose**: Centralize all auth-related type definitions for strong typing and consistency **Key Features**:
+
 - OAuth provider types and configurations
 - Authentication result and error types
 - Session management types
@@ -49,8 +51,8 @@ Current Auth Module → Type Definitions → Service Separation
 
 ### 2. Authentication Service (src/modules/auth/services/auth.service.ts)
 
-**Purpose**: Core business logic for authentication operations
-**Key Features**:
+**Purpose**: Core business logic for authentication operations **Key Features**:
+
 - OAuth provider management
 - User authentication state
 - Session lifecycle management
@@ -58,8 +60,8 @@ Current Auth Module → Type Definitions → Service Separation
 
 ### 3. Session Management Service (src/modules/auth/services/session.service.ts)
 
-**Purpose**: Handle session persistence and retrieval operations
-**Key Features**:
+**Purpose**: Handle session persistence and retrieval operations **Key Features**:
+
 - Session storage abstraction
 - Session validation and expiry
 - Secure session management
@@ -67,8 +69,8 @@ Current Auth Module → Type Definitions → Service Separation
 
 ### 4. OAuth Provider Service (src/modules/auth/services/oauth-provider.service.ts)
 
-**Purpose**: Abstract OAuth provider interactions and callback handling
-**Key Features**:
+**Purpose**: Abstract OAuth provider interactions and callback handling **Key Features**:
+
 - Provider-specific OAuth flows
 - Callback server management
 - Token exchange and validation
@@ -76,8 +78,8 @@ Current Auth Module → Type Definitions → Service Separation
 
 ### 5. Auth Commands (src/modules/auth/commands/)
 
-**Purpose**: CLI command handlers with minimal business logic
-**Key Features**:
+**Purpose**: CLI command handlers with minimal business logic **Key Features**:
+
 - Input validation and parsing
 - Service orchestration
 - User feedback and error display
@@ -86,6 +88,7 @@ Current Auth Module → Type Definitions → Service Separation
 ## Data Models
 
 ### AuthProvider
+
 ```typescript
 interface AuthProvider {
   name: 'google' | 'github';
@@ -97,6 +100,7 @@ interface AuthProvider {
 ```
 
 ### AuthenticationResult
+
 ```typescript
 interface AuthenticationResult {
   success: boolean;
@@ -107,6 +111,7 @@ interface AuthenticationResult {
 ```
 
 ### AuthError
+
 ```typescript
 interface AuthError {
   code: string;
@@ -117,6 +122,7 @@ interface AuthError {
 ```
 
 ### SessionStorageOptions
+
 ```typescript
 interface SessionStorageOptions {
   directory: string;
@@ -127,6 +133,7 @@ interface SessionStorageOptions {
 ```
 
 ### OAuthCallbackData
+
 ```typescript
 interface OAuthCallbackData {
   accessToken: string;
@@ -158,7 +165,7 @@ interface OAuthCallbackData {
 ### Unit Testing
 
 1. **Service Layer Tests**: Mock external dependencies, test business logic isolation
-2. **Type Validation Tests**: Ensure type safety and proper interface compliance  
+2. **Type Validation Tests**: Ensure type safety and proper interface compliance
 3. **Error Handling Tests**: Verify proper error propagation and handling
 4. **Storage Layer Tests**: Mock file system operations, test data persistence
 
@@ -182,7 +189,7 @@ Full authentication flow with real OAuth providers in test environment, session 
 ### Phase 2: Service Layer Separation
 
 - Extract session management into dedicated service
-- Create OAuth provider abstraction service  
+- Create OAuth provider abstraction service
 - Refactor AuthService to focus on business logic
 - Implement proper dependency injection
 

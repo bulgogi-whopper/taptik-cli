@@ -1,9 +1,9 @@
 /**
  * @fileoverview Comprehensive type definitions for the authentication module
- * 
+ *
  * This file contains all type definitions, interfaces, and enums used throughout
  * the auth module to ensure type safety and consistency across the codebase.
- * 
+ *
  * @author Kiro Agent
  * @version 1.0.0
  */
@@ -72,29 +72,29 @@ export enum AuthErrorCode {
   NETWORK_ERROR = 'NETWORK_ERROR',
   PROVIDER_UNAVAILABLE = 'PROVIDER_UNAVAILABLE',
   CALLBACK_SERVER_ERROR = 'CALLBACK_SERVER_ERROR',
-  
-  // OAuth flow errors  
+
+  // OAuth flow errors
   OAUTH_FLOW_FAILED = 'OAUTH_FLOW_FAILED',
   INVALID_OAUTH_RESPONSE = 'INVALID_OAUTH_RESPONSE',
   TOKEN_EXCHANGE_FAILED = 'TOKEN_EXCHANGE_FAILED',
   CALLBACK_TIMEOUT = 'CALLBACK_TIMEOUT',
-  
+
   // Session management errors
   SESSION_STORAGE_ERROR = 'SESSION_STORAGE_ERROR',
   SESSION_EXPIRED = 'SESSION_EXPIRED',
   SESSION_INVALID = 'SESSION_INVALID',
   SESSION_CLEANUP_FAILED = 'SESSION_CLEANUP_FAILED',
-  
+
   // Configuration errors
   PROVIDER_CONFIG_INVALID = 'PROVIDER_CONFIG_INVALID',
   MISSING_ENVIRONMENT_VARIABLES = 'MISSING_ENVIRONMENT_VARIABLES',
-  
+
   // User interaction errors
   USER_CANCELLED = 'USER_CANCELLED',
   BROWSER_NOT_AVAILABLE = 'BROWSER_NOT_AVAILABLE',
-  
+
   // Unknown errors
-  UNKNOWN_ERROR = 'UNKNOWN_ERROR'
+  UNKNOWN_ERROR = 'UNKNOWN_ERROR',
 }
 
 /**
@@ -308,39 +308,39 @@ export interface OAuthCallbackCommandOptions {
 /**
  * Type guards for runtime type checking
  */
-export const isAuthProvider = (value: unknown): value is AuthProviderType => typeof value === 'string' && ['google', 'github'].includes(value);
+export const isAuthProvider = (value: unknown): value is AuthProviderType =>
+  typeof value === 'string' && ['google', 'github'].includes(value);
 
-export const isAuthError = (value: unknown): value is AuthError => (
-    typeof value === 'object' &&
-    value !== null &&
-    'code' in value &&
-    'message' in value &&
-    'recoverable' in value
-  );
+export const isAuthError = (value: unknown): value is AuthError =>
+  typeof value === 'object' &&
+  value !== null &&
+  'code' in value &&
+  'message' in value &&
+  'recoverable' in value;
 
-export const isOAuthCallbackData = (value: unknown): value is OAuthCallbackData => (
-    typeof value === 'object' &&
-    value !== null &&
-    'accessToken' in value &&
-    typeof (value as Record<string, unknown>).accessToken === 'string'
-  );
+export const isOAuthCallbackData = (
+  value: unknown,
+): value is OAuthCallbackData =>
+  typeof value === 'object' &&
+  value !== null &&
+  'accessToken' in value &&
+  typeof (value as Record<string, unknown>).accessToken === 'string';
 
-export const isStoredSession = (value: unknown): value is StoredSession => (
-    typeof value === 'object' &&
-    value !== null &&
-    'userSession' in value &&
-    'storedAt' in value
-  );
+export const isStoredSession = (value: unknown): value is StoredSession =>
+  typeof value === 'object' &&
+  value !== null &&
+  'userSession' in value &&
+  'storedAt' in value;
 
 /**
  * Utility types for auth operations
  */
 export type AuthOperationResult<T = void> = Promise<
-  | { success: true; data: T }
-  | { success: false; error: AuthError }
+  { success: true; data: T } | { success: false; error: AuthError }
 >;
 
-export type PartialAuthProvider = Partial<AuthProvider> & Pick<AuthProvider, 'name'>;
+export type PartialAuthProvider = Partial<AuthProvider> &
+  Pick<AuthProvider, 'name'>;
 
 export type RequiredSessionStorageOptions = Required<
   Pick<SessionStorageOptions, 'directory' | 'filename' | 'expirationCheck'>

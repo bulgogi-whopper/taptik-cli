@@ -206,7 +206,7 @@ export function validateTag(tag: string): boolean {
   const lowerTag = tag.toLowerCase();
   if (
     VALIDATION_RULES.TAGS.BLACKLIST.includes(
-      lowerTag as typeof VALIDATION_RULES.TAGS.BLACKLIST[number],
+      lowerTag as (typeof VALIDATION_RULES.TAGS.BLACKLIST)[number],
     )
   ) {
     return false;

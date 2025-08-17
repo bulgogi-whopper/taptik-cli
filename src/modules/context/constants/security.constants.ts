@@ -34,15 +34,24 @@ export enum SensitiveDataType {
  * Security patterns for detecting sensitive data
  */
 export const SECURITY_PATTERNS: Record<SensitiveDataType, RegExp> = {
-  [SensitiveDataType.API_KEY]: /(?:api[_-]?key|apikey)[\s:=]["']?([\w-]+)["']?/gi,
-  [SensitiveDataType.SECRET]: /(?:secret|client[_-]?secret)[\s:=]["']?([\w#$%&()-+=@^]+)["']?/gi,
-  [SensitiveDataType.PASSWORD]: /(?:password|passwd|pwd)[\s:=]["']?([\w#$%&()-+=@^]+)["']?/gi,
-  [SensitiveDataType.TOKEN]: /(?:token|auth[_-]?token|bearer)[\s:=]["']?([\w.-]+)["']?/gi,
-  [SensitiveDataType.PRIVATE_KEY]: /-{5}begin\s+(?:rsa\s+)?private\s+key-{5}[\S\s]*?-{5}end\s+(?:rsa\s+)?private\s+key-{5}/gi,
-  [SensitiveDataType.ACCESS_KEY]: /(?:access[_-]?key|accesskey)[\s:=]["']?([\w-]+)["']?/gi,
-  [SensitiveDataType.DATABASE_URL]: /(?:database[_-]?url|db[_-]?url|connection[_-]?string)[\s:=]["']?((?:mongodb|mysql|postgres|postgresql|redis|sqlite):\/\/[^\s"']+)["']?/gi,
-  [SensitiveDataType.CREDENTIAL]: /(?:credential|cred)s?[\s:=]["']?([\w.-]+)["']?/gi,
-  [SensitiveDataType.CERTIFICATE]: /-{5}begin\s+certificate-{5}[\S\s]*?-{5}end\s+certificate-{5}/gi,
+  [SensitiveDataType.API_KEY]:
+    /(?:api[_-]?key|apikey)[\s:=]["']?([\w-]+)["']?/gi,
+  [SensitiveDataType.SECRET]:
+    /(?:secret|client[_-]?secret)[\s:=]["']?([\w#$%&()-+=@^]+)["']?/gi,
+  [SensitiveDataType.PASSWORD]:
+    /(?:password|passwd|pwd)[\s:=]["']?([\w#$%&()-+=@^]+)["']?/gi,
+  [SensitiveDataType.TOKEN]:
+    /(?:token|auth[_-]?token|bearer)[\s:=]["']?([\w.-]+)["']?/gi,
+  [SensitiveDataType.PRIVATE_KEY]:
+    /-{5}begin\s+(?:rsa\s+)?private\s+key-{5}[\S\s]*?-{5}end\s+(?:rsa\s+)?private\s+key-{5}/gi,
+  [SensitiveDataType.ACCESS_KEY]:
+    /(?:access[_-]?key|accesskey)[\s:=]["']?([\w-]+)["']?/gi,
+  [SensitiveDataType.DATABASE_URL]:
+    /(?:database[_-]?url|db[_-]?url|connection[_-]?string)[\s:=]["']?((?:mongodb|mysql|postgres|postgresql|redis|sqlite):\/\/[^\s"']+)["']?/gi,
+  [SensitiveDataType.CREDENTIAL]:
+    /(?:credential|cred)s?[\s:=]["']?([\w.-]+)["']?/gi,
+  [SensitiveDataType.CERTIFICATE]:
+    /-{5}begin\s+certificate-{5}[\S\s]*?-{5}end\s+certificate-{5}/gi,
   [SensitiveDataType.SSH_KEY]: /ssh-(?:rsa|ed25519|ecdsa|dss)\s+[\w+/]+=*/gi,
 } as const;
 
@@ -146,10 +155,9 @@ export const MASKING_STRATEGIES = {
     if (value.length <= 8) return '[***]';
     return `${value.slice(0, 3)}...${value.slice(Math.max(0, value.length - 3))}`;
   },
-  HASH: (value: string) => 
+  HASH: (value: string) =>
     // Simple hash representation (in real implementation, use crypto)
-     `[HASH:${value.length}]`
-  ,
+    `[HASH:${value.length}]`,
   TYPE: (type: SensitiveDataType) => `[${type.toUpperCase()}]`,
 } as const;
 
@@ -183,7 +191,10 @@ export function shouldEncrypt(type: SensitiveDataType): boolean {
   return requireEncryption.includes(type);
 }
 
-export function maskValue(value: string, strategy: 'FULL' | 'PARTIAL' | 'HASH' = 'FULL'): string {
+export function maskValue(
+  value: string,
+  strategy: 'FULL' | 'PARTIAL' | 'HASH' = 'FULL',
+): string {
   if (strategy === 'FULL') return MASKING_STRATEGIES.FULL;
   if (strategy === 'PARTIAL') return MASKING_STRATEGIES.PARTIAL(value);
   if (strategy === 'HASH') return MASKING_STRATEGIES.HASH(value);
@@ -192,8 +203,8 @@ export function maskValue(value: string, strategy: 'FULL' | 'PARTIAL' | 'HASH' =
 
 export function isSensitiveField(fieldName: string): boolean {
   const lowerField = fieldName.toLowerCase();
-  return SENSITIVE_JSON_FIELDS.some(sensitive => 
-    lowerField.includes(sensitive.toLowerCase())
+  return SENSITIVE_JSON_FIELDS.some((sensitive) =>
+    lowerField.includes(sensitive.toLowerCase()),
   );
 }
 

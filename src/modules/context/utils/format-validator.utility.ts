@@ -369,7 +369,7 @@ export class FormatValidator {
     Object.entries(SECURITY_PATTERNS).forEach(([dataType, pattern]) => {
       const regex = new RegExp(pattern.source, pattern.flags || 'gi');
       let matchIndex = 0;
-      
+
       while (regex.exec(contentString) !== null) {
         const severity = SEVERITY_MAPPING[dataType as SensitiveDataType];
         result.securityIssues.push({
@@ -400,7 +400,6 @@ export class FormatValidator {
       }
     }
   }
-
 
   /**
    * Quick validation check for basic format compliance
@@ -443,7 +442,9 @@ export class FormatValidator {
         });
         return cleaned;
       } else if (Array.isArray(object)) {
-        return object.map((item, index) => sanitizeValue(item, `${path}[${index}]`));
+        return object.map((item, index) =>
+          sanitizeValue(item, `${path}[${index}]`),
+        );
       } else if (object && typeof object === 'object') {
         const result: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(object)) {
@@ -455,7 +456,10 @@ export class FormatValidator {
       return object;
     };
 
-    sanitized.content = sanitizeValue(sanitized.content, 'content') as typeof sanitized.content;
+    sanitized.content = sanitizeValue(
+      sanitized.content,
+      'content',
+    ) as typeof sanitized.content;
     sanitized.security.hasApiKeys = filteredFields.length > 0;
     sanitized.security.filteredFields = filteredFields;
 

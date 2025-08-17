@@ -90,25 +90,14 @@ export const PLATFORM_FILE_PATTERNS = {
       '**/CLAUDE.local.md',
       '**/.mcp.json',
     ],
-    exclude: [
-      '**/node_modules/**',
-      '**/.git/**',
-    ],
+    exclude: ['**/node_modules/**', '**/.git/**'],
   },
   [SupportedPlatform.KIRO_IDE]: {
-    include: [
-      '**/.kiro/**',
-    ],
-    exclude: [
-      '**/.kiro/cache/**',
-      '**/.kiro/logs/**',
-      '**/node_modules/**',
-    ],
+    include: ['**/.kiro/**'],
+    exclude: ['**/.kiro/cache/**', '**/.kiro/logs/**', '**/node_modules/**'],
   },
   [SupportedPlatform.CURSOR_IDE]: {
-    include: [
-      '**/.cursor/**',
-    ],
+    include: ['**/.cursor/**'],
     exclude: [
       '**/.cursor/cache/**',
       '**/.cursor/workspaceStorage/**',
@@ -140,8 +129,12 @@ export const PLATFORM_DETECTION = {
 /**
  * Type guards for platform validation
  */
-export function isSupportedPlatform(platform: string): platform is SupportedPlatform {
-  return Object.values(SupportedPlatform).includes(platform as SupportedPlatform);
+export function isSupportedPlatform(
+  platform: string,
+): platform is SupportedPlatform {
+  return Object.values(SupportedPlatform).includes(
+    platform as SupportedPlatform,
+  );
 }
 
 export function getPlatformDisplayName(platform: SupportedPlatform): string {

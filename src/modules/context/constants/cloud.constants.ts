@@ -223,17 +223,17 @@ export enum WebSocketEvent {
   CONFIG_DELETED = 'config:deleted',
   CONFIG_LIKED = 'config:liked',
   CONFIG_DOWNLOADED = 'config:downloaded',
-  
+
   // User events
   USER_ONLINE = 'user:online',
   USER_OFFLINE = 'user:offline',
   USER_FOLLOWED = 'user:followed',
   USER_UNFOLLOWED = 'user:unfollowed',
-  
+
   // Notification events
   NOTIFICATION_NEW = 'notification:new',
   NOTIFICATION_READ = 'notification:read',
-  
+
   // System events
   SYSTEM_MAINTENANCE = 'system:maintenance',
   SYSTEM_UPDATE = 'system:update',
@@ -245,7 +245,7 @@ export enum WebSocketEvent {
 export function getStoragePath(
   visibility: StorageVisibility,
   platform: string,
-  configId: string
+  configId: string,
 ): string {
   return `${SUPABASE_CONFIG.STORAGE_PATHS[visibility]}/${platform}/${configId}.taptik`;
 }
@@ -254,21 +254,24 @@ export function getMaxFileSize(tier: UserTier): number {
   return SUPABASE_CONFIG.BUCKET.MAX_FILE_SIZE[tier];
 }
 
-export function buildApiUrl(endpoint: string, parameters?: Record<string, string>): string {
+export function buildApiUrl(
+  endpoint: string,
+  parameters?: Record<string, string>,
+): string {
   let url = `${API_ENDPOINTS.BASE_URL}/${API_ENDPOINTS.VERSION}${endpoint}`;
-  
+
   if (parameters) {
     Object.entries(parameters).forEach(([key, value]) => {
       url = url.replace(`:${key}`, value);
     });
   }
-  
+
   return url;
 }
 
 export function isAllowedFileType(filename: string): boolean {
-  return UPLOAD_CONFIG.ALLOWED_EXTENSIONS.some(extension => 
-    filename.toLowerCase().endsWith(extension)
+  return UPLOAD_CONFIG.ALLOWED_EXTENSIONS.some((extension) =>
+    filename.toLowerCase().endsWith(extension),
   );
 }
 
