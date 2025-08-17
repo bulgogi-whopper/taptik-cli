@@ -1,23 +1,24 @@
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+
 import { describe, it, expect, beforeEach, vi, Mock } from 'vitest';
 
-import { InteractiveService } from '../services/interactive.service';
-import { BuildCommand } from './build.command';
-import { CollectionService } from '../services/collection.service';
-import { TransformationService } from '../services/transformation.service';
-import { OutputService } from '../services/output.service';
-import { ProgressService } from '../services/progress.service';
-import { ErrorHandlerService } from '../services/error-handler.service';
 import { BuildPlatform, BuildCategoryName } from '../interfaces/build-config.interface';
+import { CollectionService } from '../services/collection/collection.service';
+import { ErrorHandlerService } from '../services/error-handler/error-handler.service';
+import { InteractiveService } from '../services/interactive/interactive.service';
+import { OutputService } from '../services/output/output.service';
+import { ProgressService } from '../services/progress/progress.service';
+import { TransformationService } from '../services/transformation/transformation.service';
+
+import { BuildCommand } from './build.command';
 
 // Mock all services
-vi.mock('../services/interactive.service');
-vi.mock('../services/collection.service');
-vi.mock('../services/transformation.service');
-vi.mock('../services/output.service');
-vi.mock('../services/progress.service');
-vi.mock('../services/error-handler.service');
+vi.mock('../services/interactive/interactive.service');
+vi.mock('../services/collection/collection.service');
+vi.mock('../services/transformation/transformation.service');
+vi.mock('../services/output/output.service');
+vi.mock('../services/progress/progress.service');
+vi.mock('../services/error-handler/error-handler.service');
 
 describe('BuildCommand', () => {
   let command: BuildCommand;
@@ -384,7 +385,7 @@ describe('BuildCommand', () => {
 
     it('should handle permission denied error appropriately', async () => {
       const permissionError = new Error('Permission denied');
-      permissionError.code = 'EACCES';
+      (permissionError as any).code = 'EACCES';
       (collectionService.collectLocalSettings as Mock).mockRejectedValue(permissionError);
 
       await command.run([], {});
@@ -400,7 +401,7 @@ describe('BuildCommand', () => {
 
     it('should handle file not found error appropriately', async () => {
       const notFoundError = new Error('File not found');
-      notFoundError.code = 'ENOENT';
+      (notFoundError as any).code = 'ENOENT';
       (outputService.createOutputDirectory as Mock).mockRejectedValue(notFoundError);
 
       await command.run([], {});
@@ -491,13 +492,13 @@ describe('BuildCommand', () => {
       const generateBuildId2 = (command2 as any).generateBuildId();
 
       expect(generateBuildId1).not.toBe(generateBuildId2);
-      expect(generateBuildId1).toMatch(/^build-[a-z0-9]+-[a-z0-9]+$/);
+      expect(generateBuildId1).toMatch(/^build(?:-[\da-z]+){2}$/);
     });
   });
 
   describe('private methods', () => {
     it('should extract hook type from filename correctly', () => {
-      const extractHookType = (command as any).extractHookType;
+      const {extractHookType} = (command as any);
 
       expect(extractHookType('commit.kiro.hook')).toBe('commit');
       expect(extractHookType('save.kiro.hook')).toBe('save');

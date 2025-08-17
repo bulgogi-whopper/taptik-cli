@@ -1,27 +1,22 @@
-import { Command, CommandRunner, Option } from 'nest-commander';
+import { homedir } from 'node:os';
+
 import { Logger } from '@nestjs/common';
 
-import { InteractiveService } from '../services/interactive.service';
-import { CollectionService } from '../services/collection.service';
-import { TransformationService } from '../services/transformation.service';
-import { OutputService } from '../services/output.service';
-import { ProgressService } from '../services/progress.service';
-import { ErrorHandlerService } from '../services/error-handler.service';
+import { Command, CommandRunner, Option } from 'nest-commander';
+
 import { BuildConfig, BuildPlatform, BuildCategoryName } from '../interfaces/build-config.interface';
 import { SettingsData } from '../interfaces/settings-data.interface';
 import { TaptikPersonalContext, TaptikProjectContext, TaptikPromptTemplates } from '../interfaces/taptik-format.interface';
+import { CollectionService } from '../services/collection/collection.service';
+import { ErrorHandlerService } from '../services/error-handler/error-handler.service';
+import { InteractiveService } from '../services/interactive/interactive.service';
+import { OutputService } from '../services/output/output.service';
+import { ProgressService } from '../services/progress/progress.service';
+import { TransformationService } from '../services/transformation/transformation.service';
 
 @Command({
   name: 'build',
   description: 'Build taptik-compatible context files from Kiro settings',
-  examples: [
-    'build                           # Interactive build with prompts',
-    'build --dry-run                 # Preview what would be built without creating files',
-    'build --output ./my-output      # Specify custom output directory',
-    'build --verbose                 # Show detailed progress information',
-    'build --platform kiro           # Skip platform selection (use "kiro")',
-    'build --categories personal,project  # Build only specific categories',
-  ],
 })
 export class BuildCommand extends CommandRunner {
   private readonly logger = new Logger(BuildCommand.name);
@@ -49,8 +44,8 @@ export class BuildCommand extends CommandRunner {
     flags: '--output <path>',
     description: 'Specify custom output directory path',
   })
-  parseOutputPath(val: string): string {
-    return val;
+  parseOutputPath(value: string): string {
+    return value;
   }
 
   @Option({
@@ -65,20 +60,20 @@ export class BuildCommand extends CommandRunner {
     flags: '--platform <platform>',
     description: 'Skip platform selection and use specified platform (kiro, cursor, claude-code)',
   })
-  parsePlatform(val: string): BuildPlatform {
-    const platform = val.toLowerCase();
+  parsePlatform(value: string): BuildPlatform {
+    const platform = value.toLowerCase();
     if (platform === 'kiro') return BuildPlatform.KIRO;
     if (platform === 'cursor') return BuildPlatform.CURSOR;
     if (platform === 'claude-code') return BuildPlatform.CLAUDE_CODE;
-    throw new Error(`Invalid platform: ${val}. Must be one of: kiro, cursor, claude-code`);
+    throw new Error(`Invalid platform: ${value}. Must be one of: kiro, cursor, claude-code`);
   }
 
   @Option({
     flags: '--categories <categories>',
     description: 'Comma-separated list of categories to build (personal, project, prompts)',
   })
-  parseCategories(val: string): string[] {
-    return val.split(',').map(cat => cat.trim().toLowerCase());
+  parseCategories(value: string): string[] {
+    return value.split(',').map(category => category.trim().toLowerCase());
   }
 
   @Option({
@@ -89,7 +84,7 @@ export class BuildCommand extends CommandRunner {
     return true;
   }
 
-  async run(passedParams: string[], options?: Record<string, unknown>): Promise<void> {
+  async run(_passedParameters: string[], options?: Record<string, unknown>): Promise<void> {
     const startTime = Date.now();
     const isDryRun = options?.dryRun as boolean;
     const customOutputPath = options?.output as string;
@@ -161,16 +156,16 @@ export class BuildCommand extends CommandRunner {
         }
         
         // Convert preset categories to proper format
-        categories = presetCategories.map(cat => {
+        categories = presetCategories.map(category => {
           const categoryMap: Record<string, BuildCategoryName> = {
             'personal': BuildCategoryName.PERSONAL_CONTEXT,
             'project': BuildCategoryName.PROJECT_CONTEXT, 
             'prompts': BuildCategoryName.PROMPT_TEMPLATES,
           };
           
-          const categoryName = categoryMap[cat];
+          const categoryName = categoryMap[category];
           if (!categoryName) {
-            throw new Error(`Invalid category: ${cat}. Must be one of: personal, project, prompts`);
+            throw new Error(`Invalid category: ${category}. Must be one of: personal, project, prompts`);
           }
           
           return { name: categoryName, enabled: true };
@@ -191,7 +186,7 @@ export class BuildCommand extends CommandRunner {
       // Create build configuration
       const buildConfig: BuildConfig = {
         platform: platform as BuildPlatform,
-        categories: categories,
+        categories,
         outputDirectory: customOutputPath || '', // Will be set by output service
         timestamp: new Date().toISOString(),
         buildId: this.generateBuildId(),
@@ -371,7 +366,7 @@ export class BuildCommand extends CommandRunner {
         sourcePlatform: buildConfig.platform,
         collectionTimestamp: new Date().toISOString(),
         projectPath: process.cwd(),
-        globalPath: require('os').homedir() + '/.kiro',
+        globalPath: `${homedir()}/.kiro`,
         warnings,
         errors,
       },
@@ -395,24 +390,30 @@ export class BuildCommand extends CommandRunner {
       promptTemplates?: TaptikPromptTemplates;
     } = {};
 
-    // Transform each enabled category
-    for (const category of buildConfig.categories.filter(cat => cat.enabled)) {
+    // Transform each enabled category in parallel
+    const enabledCategories = buildConfig.categories.filter(category => category.enabled);
+    const transformationPromises = enabledCategories.map(async (category) => {
       try {
         this.progressService.startTransformation(category.name);
 
+        let result: TaptikPersonalContext | TaptikProjectContext | TaptikPromptTemplates | undefined;
         switch (category.name) {
-          case BuildCategoryName.PERSONAL_CONTEXT:
-            transformedData.personalContext = await this.transformationService.transformPersonalContext(settingsData);
+          case BuildCategoryName.PERSONAL_CONTEXT: {
+            result = await this.transformationService.transformPersonalContext(settingsData);
             break;
-          case BuildCategoryName.PROJECT_CONTEXT:
-            transformedData.projectContext = await this.transformationService.transformProjectContext(settingsData);
+          }
+          case BuildCategoryName.PROJECT_CONTEXT: {
+            result = await this.transformationService.transformProjectContext(settingsData);
             break;
-          case BuildCategoryName.PROMPT_TEMPLATES:
-            transformedData.promptTemplates = await this.transformationService.transformPromptTemplates(settingsData);
+          }
+          case BuildCategoryName.PROMPT_TEMPLATES: {
+            result = await this.transformationService.transformPromptTemplates(settingsData);
             break;
+          }
         }
 
         this.progressService.completeTransformation(category.name);
+        return { category: category.name, result };
       } catch (error) {
         this.errorHandler.addWarning({
           type: 'partial_conversion',
@@ -420,6 +421,27 @@ export class BuildCommand extends CommandRunner {
           details: error.message,
         });
         this.progressService.failStep(`Failed to transform ${category.name}`, error);
+        return { category: category.name, result: undefined };
+      }
+    });
+
+    const transformationResults = await Promise.all(transformationPromises);
+    
+    // Assign results to transformedData
+    for (const { category, result } of transformationResults) {
+      switch (category) {
+        case BuildCategoryName.PERSONAL_CONTEXT: {
+          transformedData.personalContext = result as TaptikPersonalContext;
+          break;
+        }
+        case BuildCategoryName.PROJECT_CONTEXT: {
+          transformedData.projectContext = result as TaptikProjectContext;
+          break;
+        }
+        case BuildCategoryName.PROMPT_TEMPLATES: {
+          transformedData.promptTemplates = result as TaptikPromptTemplates;
+          break;
+        }
       }
     }
 
@@ -441,7 +463,7 @@ export class BuildCommand extends CommandRunner {
     
     this.logger.log(`🎯 Platform: ${buildConfig.platform}`);
     this.logger.log(`📂 Output would be created in: ${buildConfig.outputDirectory || './taptik-build-[timestamp]'}`);
-    this.logger.log(`📋 Categories to build: ${enabledCategories.map(c => c.name).join(', ')}`);
+    this.logger.log(`📋 Categories to build: ${enabledCategories.map(category => category.name).join(', ')}`);
     
     const filesToGenerate = [];
     if (transformedData.personalContext) filesToGenerate.push('personal-context.json');
@@ -476,7 +498,7 @@ export class BuildCommand extends CommandRunner {
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return `${Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
   }
 
   /**
@@ -519,8 +541,8 @@ export class BuildCommand extends CommandRunner {
    */
   private async completeBuild(outputPath: string, buildConfig: BuildConfig, buildTime: number): Promise<void> {
     const enabledCategories = buildConfig.categories
-      .filter(cat => cat.enabled)
-      .map(cat => cat.name);
+      .filter(category => category.enabled)
+      .map(category => category.name);
 
     // Display build summary
     this.progressService.displayBuildSummary(buildTime, outputPath, enabledCategories);
@@ -529,11 +551,10 @@ export class BuildCommand extends CommandRunner {
     try {
       const outputFiles = await this.getOutputFiles(outputPath);
       const errorSummary = this.errorHandler.getErrorSummary();
-      const warnings = errorSummary.warnings;
-      const errors = errorSummary.criticalErrors;
+      const { warnings, criticalErrors: errors } = errorSummary;
 
-      const warningMessages = warnings.map(w => w.message);
-      const errorMessages = errors.map(e => e.message);
+      const warningMessages = warnings.map(warning => warning.message);
+      const errorMessages = errors.map(error => error.message);
       await this.outputService.displayBuildSummary(outputPath, outputFiles, warningMessages, errorMessages, buildTime);
     } catch (error) {
       this.logger.warn('Failed to display detailed build summary', error.message);
@@ -546,7 +567,7 @@ export class BuildCommand extends CommandRunner {
    */
   private generateBuildId(): string {
     const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substring(2, 8);
+    const random = Math.random().toString(36).slice(2, 8);
     return `build-${timestamp}-${random}`;
   }
 
@@ -565,31 +586,50 @@ export class BuildCommand extends CommandRunner {
    * Get output files information
    */
   private async getOutputFiles(outputPath: string): Promise<Array<{ filename: string; category: string; size: number }>> {
-    const { promises: fs } = await import('fs');
-    const { join } = await import('path');
+    const { promises: fs } = await import('node:fs');
+    const { join } = await import('node:path');
     const outputFiles = [];
 
     try {
       const files = await fs.readdir(outputPath);
       
-      for (const filename of files) {
-        if (filename.endsWith('.json')) {
-          const filePath = join(outputPath, filename);
-          const stats = await fs.stat(filePath);
-          
-          let category = 'unknown';
-          if (filename === 'personal-context.json') category = 'personal-context';
-          else if (filename === 'project-context.json') category = 'project-context';
-          else if (filename === 'prompt-templates.json') category = 'prompt-templates';
-          else if (filename === 'manifest.json') category = 'manifest';
-
-          outputFiles.push({
-            filename,
-            category,
-            size: stats.size,
-          });
+      const jsonFiles = files.filter(filename => filename.endsWith('.json'));
+      const fileStatsPromises = jsonFiles.map(async (filename) => {
+        const filePath = join(outputPath, filename);
+        const stats = await fs.stat(filePath);
+        
+        let category = 'unknown';
+        switch (filename) {
+          case 'personal-context.json': {
+            category = 'personal-context';
+            break;
+          }
+          case 'project-context.json': {
+            category = 'project-context';
+            break;
+          }
+          case 'prompt-templates.json': {
+            category = 'prompt-templates';
+            break;
+          }
+          case 'manifest.json': {
+            category = 'manifest';
+            break;
+          }
+          default: {
+            category = 'unknown';
+          }
         }
-      }
+
+        return {
+          filename,
+          category,
+          size: stats.size,
+        };
+      });
+
+      const fileStats = await Promise.all(fileStatsPromises);
+      outputFiles.push(...fileStats);
     } catch (error) {
       this.logger.warn('Failed to read output files for summary', error.message);
     }
