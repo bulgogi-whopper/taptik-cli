@@ -1,5 +1,3 @@
-import { promises as fs } from 'node:fs';
-import { join } from 'node:path';
 
 /**
  * Mock file system utilities for testing with advanced error scenarios
@@ -13,10 +11,10 @@ export interface MockFileSystemConfig {
 }
 
 export class MockFileSystem {
-  private files: Map<string, string> = new Map();
-  private directories: Set<string> = new Set();
-  private permissions: Map<string, { readable: boolean; writable: boolean }> = new Map();
-  private errors: Map<string, Error> = new Map();
+  protected files: Map<string, string> = new Map();
+  protected directories: Set<string> = new Set();
+  protected permissions: Map<string, { readable: boolean; writable: boolean }> = new Map();
+  protected errors: Map<string, Error> = new Map();
 
   constructor(config: MockFileSystemConfig) {
     // Set up files
@@ -25,8 +23,8 @@ export class MockFileSystem {
     }
 
     // Set up directories
-    for (const dir of config.directories) {
-      this.directories.add(dir);
+    for (const directory of config.directories) {
+      this.directories.add(directory);
     }
 
     // Set up permissions
@@ -85,52 +83,52 @@ export class MockFileSystem {
     this.files.set(filePath, content);
   }
 
-  async readdir(dirPath: string): Promise<string[]> {
+  async readdir(directoryPath: string): Promise<string[]> {
     // Check for errors first
-    if (this.errors.has(dirPath)) {
-      throw this.errors.get(dirPath);
+    if (this.errors.has(directoryPath)) {
+      throw this.errors.get(directoryPath);
     }
 
     // Check if directory exists
-    if (!this.directories.has(dirPath)) {
-      const error = new Error(`ENOENT: no such file or directory, scandir '${dirPath}'`);
+    if (!this.directories.has(directoryPath)) {
+      const error = new Error(`ENOENT: no such file or directory, scandir '${directoryPath}'`);
       (error as any).code = 'ENOENT';
       throw error;
     }
 
     // Return files in directory
-    const filesInDir: string[] = [];
+    const filesInDirectory: string[] = [];
     for (const filePath of this.files.keys()) {
-      if (filePath.startsWith(`${dirPath  }/`)) {
-        const relativePath = filePath.slice(Math.max(0, dirPath.length + 1));
+      if (filePath.startsWith(`${directoryPath  }/`)) {
+        const relativePath = filePath.slice(Math.max(0, directoryPath.length + 1));
         if (!relativePath.includes('/')) {
-          filesInDir.push(relativePath);
+          filesInDirectory.push(relativePath);
         }
       }
     }
 
-    return filesInDir;
+    return filesInDirectory;
   }
 
-  async mkdir(dirPath: string, options?: { recursive?: boolean }): Promise<void> {
+  async mkdir(directoryPath: string, options?: { recursive?: boolean }): Promise<void> {
     // Check for errors first
-    if (this.errors.has(dirPath)) {
-      throw this.errors.get(dirPath);
+    if (this.errors.has(directoryPath)) {
+      throw this.errors.get(directoryPath);
     }
 
     // Check permissions
-    const perms = this.permissions.get(dirPath);
+    const perms = this.permissions.get(directoryPath);
     if (perms && !perms.writable) {
-      const error = new Error(`EACCES: permission denied, mkdir '${dirPath}'`);
+      const error = new Error(`EACCES: permission denied, mkdir '${directoryPath}'`);
       (error as any).code = 'EACCES';
       throw error;
     }
 
-    this.directories.add(dirPath);
+    this.directories.add(directoryPath);
 
     // Add parent directories if recursive
     if (options?.recursive) {
-      const parts = dirPath.split('/');
+      const parts = directoryPath.split('/');
       let currentPath = '';
       for (const part of parts) {
         if (part) {
@@ -141,13 +139,13 @@ export class MockFileSystem {
     }
   }
 
-  async stat(path: string): Promise<{ isDirectory(): boolean; isFile(): boolean; size: number }> {
+  async stat(filePath: string): Promise<{ isDirectory(): boolean; isFile(): boolean; size: number }> {
     // Check for errors first
-    if (this.errors.has(path)) {
-      throw this.errors.get(path);
+    if (this.errors.has(filePath)) {
+      throw this.errors.get(filePath);
     }
 
-    if (this.directories.has(path)) {
+    if (this.directories.has(filePath)) {
       return {
         isDirectory: () => true,
         isFile: () => false,
@@ -155,8 +153,8 @@ export class MockFileSystem {
       };
     }
 
-    if (this.files.has(path)) {
-      const content = this.files.get(path)!;
+    if (this.files.has(filePath)) {
+      const content = this.files.get(filePath)!;
       return {
         isDirectory: () => false,
         isFile: () => true,
@@ -164,21 +162,21 @@ export class MockFileSystem {
       };
     }
 
-    const error = new Error(`ENOENT: no such file or directory, stat '${path}'`);
+    const error = new Error(`ENOENT: no such file or directory, stat '${filePath}'`);
     (error as any).code = 'ENOENT';
     throw error;
   }
 
-  exists(path: string): boolean {
-    return this.files.has(path) || this.directories.has(path);
+  exists(filePath: string): boolean {
+    return this.files.has(filePath) || this.directories.has(filePath);
   }
 
-  getFile(path: string): string | undefined {
-    return this.files.get(path);
+  getFile(filePath: string): string | undefined {
+    return this.files.get(filePath);
   }
 
-  hasDirectory(path: string): boolean {
-    return this.directories.has(path);
+  hasDirectory(filePath: string): boolean {
+    return this.directories.has(filePath);
   }
 }
 

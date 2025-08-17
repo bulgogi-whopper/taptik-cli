@@ -99,6 +99,12 @@ This is a modern React-based e-commerce platform with TypeScript and Next.js.
 `,
   },
 
+  globalSettings: {
+    sourcePath: 'src/modules/build/test-fixtures/web-app-project',
+    collectedAt: new Date().toISOString(),
+    securityFiltered: false,
+  },
+
   steeringFiles: [
     {
       filename: 'react-patterns.md',
@@ -423,6 +429,12 @@ This is a mission-critical payment processing API built with Node.js, Express, a
 `,
   },
 
+  globalSettings: {
+    sourcePath: 'src/modules/build/test-fixtures/api-service-project',
+    collectedAt: new Date().toISOString(),
+    securityFiltered: false,
+  },
+
   steeringFiles: [
     {
       filename: 'api-design.md',
@@ -556,206 +568,219 @@ echo "✅ All pre-commit checks passed!"
 `,
     },
   ],
+  sourcePath: 'src/modules/build/test-fixtures/api-service-project',
+  collectedAt: new Date().toISOString(),
 };
 
-// CLI Tool Project Scenario  
+// CLI Tool Project Scenario
 export const cliToolProjectScenario = {
   localSettings: {
-    context: `# Developer Productivity CLI Tool
+    context: `# Taptik CLI - Cross-Platform Development Tool
 
-A powerful command-line tool for automating development workflows and project management tasks.
+This is a comprehensive CLI tool for migrating and synchronizing settings between various AI development platforms.
 
 ## Architecture
-- Node.js CLI with TypeScript
-- Commander.js for command parsing and routing
-- Inquirer.js for interactive prompts
-- Chalk for colorized terminal output
-- Ora for loading spinners and progress indicators
-- Configstore for persistent configuration management
+- Node.js with TypeScript for cross-platform compatibility
+- NestJS framework for modular architecture
+- Commander.js for CLI argument parsing and command structure
+- Inquirer.js for interactive prompts and user input
+- File system operations with Node.js fs/promises
+- JSON/YAML configuration file handling
+- Plugin system for extensible platform support
 
 ## Key Features
-- Project scaffolding with multiple templates
-- Git workflow automation (branch management, PR creation)
-- Package dependency analysis and updates
-- Code quality checks and formatting automation
-- Database migration and seeding utilities
-- Environment management across different stages
-- Integration with popular development tools (Docker, Kubernetes, AWS)
+- Multi-platform settings migration (VS Code, Cursor, Kiro, etc.)
+- Interactive configuration wizards
+- Dry-run mode for safe testing
+- Verbose logging and progress indicators
+- Configuration validation and error handling
+- Backup and restore functionality
+- Plugin architecture for new platform support
+- Cross-platform compatibility (Windows, macOS, Linux)
 
-## Command Categories
-- `init` - Project initialization and scaffolding
-- `dev` - Development workflow commands
-- `deploy` - Deployment and infrastructure commands  
-- `db` - Database management commands
-- `config` - Configuration management
-- `health` - System health and diagnostics
+## Development Tools
+- TypeScript for type safety and better DX
+- ESLint and Prettier for code quality
+- Vitest for fast testing with coverage
+- Husky for git hooks integration
+- Conventional commits for version control
+- GitHub Actions for CI/CD pipeline
+- Docker for containerized development
 
-## Distribution
-- NPM package with global installation
-- Homebrew formula for macOS users
-- Self-contained executables for Windows/Linux
-- Auto-update mechanism with semantic versioning
+## User Experience
+- Intuitive command-line interface
+- Helpful error messages and suggestions
+- Progress bars for long-running operations
+- Color-coded output for better readability
+- Interactive prompts for user guidance
+- Comprehensive documentation and examples
 `,
 
-    userPreferences: `# CLI Tool Developer Preferences  
+    userPreferences: `# CLI Tool Developer Preferences
 
-## Development Philosophy
-- Focus on developer experience and ergonomics
-- Provide helpful error messages with actionable guidance
-- Follow UNIX philosophy: do one thing well
-- Progressive disclosure of complexity
-- Fail fast with clear error reporting
-- Extensive help documentation and examples
+## Development Environment
+- Editor: VS Code with TypeScript, ESLint, Prettier extensions
+- Terminal: iTerm2 with Oh My Zsh and custom aliases
+- Node.js version: 20.x LTS with nvm for version management
+- Package manager: pnpm for faster, disk-efficient package management
+- Git tools: GitLens, Git Graph for enhanced Git workflow
+- Testing: Vitest UI for interactive test development
 
-## User Interface Design
-- Colorized output for better readability
-- Interactive prompts for complex operations
-- Progress indicators for long-running tasks
-- Consistent command structure and naming
-- Support for both interactive and non-interactive modes
-- Comprehensive help system with examples
-
-## Configuration & Extensibility
-- Sensible defaults with override capabilities
-- Plugin architecture for extensibility
-- Configuration file support (JSON, YAML)
-- Environment variable configuration
-- Per-project and global configuration scopes
-- Configuration validation and error reporting
-
-## Testing & Quality
-- Unit tests for all command logic
-- Integration tests for file system operations  
-- Snapshot testing for CLI output
-- Cross-platform testing (Windows, macOS, Linux)
-- Performance testing for large projects
-- User acceptance testing with real workflows
-`,
-
-    projectSpec: `# CLI Tool Technical Specification
-
-## Core Technologies
-- **Runtime**: Node.js 18+ for modern JavaScript features
-- **Language**: TypeScript with strict mode
-- **CLI Framework**: Commander.js for command parsing
-- **Prompts**: Inquirer.js for interactive user input
-- **Output**: Chalk for colors, Ora for spinners
-- **Config**: Configstore for persistent settings
-- **File System**: fs-extra for enhanced file operations
-- **HTTP**: Axios for API requests with retry logic
-
-## Command Structure
-```
-tool-name <command> [subcommand] [options] [arguments]
-
-Examples:
-  tool-name init react-app my-project
-  tool-name dev start --watch --port 3000
-  tool-name deploy production --dry-run
-  tool-name db migrate --up --environment staging
-```
-
-## Configuration Management
-- Global config: `~/.tool-name/config.json`
-- Project config: `./tool-name.config.js` or `package.json`
-- Environment variables: `TOOL_NAME_*` prefix
-- Command-line flags override all other sources
-- Configuration validation with helpful error messages
+## Code Architecture & Patterns
+- Command pattern for CLI operations
+- Factory pattern for platform-specific implementations
+- Strategy pattern for different migration strategies
+- Observer pattern for progress tracking and logging
+- Dependency injection with NestJS IoC container
+- Repository pattern for configuration storage
+- SOLID principles and clean code practices
 
 ## Error Handling & Logging
-- Structured error codes for programmatic handling
-- Detailed error messages with suggestions
-- Debug logging with different verbosity levels
-- Crash reporting with user consent
-- Graceful handling of network failures
-- Rollback capabilities for destructive operations
+- Structured logging with different verbosity levels
+- Graceful error recovery with user-friendly messages
+- Input validation with detailed error explanations
+- Progress tracking for long-running operations
+- Debug mode for detailed troubleshooting
+- Error reporting with context preservation
+
+## Testing Philosophy
+- Unit tests for all business logic
+- Integration tests for CLI commands
+- E2E tests for complete workflows
+- Mock testing for file system operations
+- Snapshot testing for configuration outputs
+- Performance testing for large file operations
+
+## CLI Design Principles
+- Intuitive command structure and naming
+- Consistent help text and documentation
+- Progressive disclosure of advanced options
+- Default values for common use cases
+- Short and long option flags
+- Command aliases for convenience
+`,
+
+    projectSpec: `# Taptik CLI Tool Specification
+
+## Technical Stack
+- **Runtime**: Node.js 20.x LTS with TypeScript 5.x
+- **Framework**: NestJS with Commander.js for CLI structure
+- **Testing**: Vitest for fast unit and integration tests
+- **Linting**: ESLint with TypeScript rules
+- **Formatting**: Prettier for consistent code style
+- **Documentation**: JSDoc with TypeDoc generation
+- **Packaging**: pnpm for dependency management
+- **CI/CD**: GitHub Actions with automated testing
 
 ## Performance Requirements
-- Command startup time < 500ms
-- File operations progress indication
-- Async operations with proper cancellation
-- Memory efficient for large projects
-- Disk space cleanup for temporary files
+- CLI startup time < 2 seconds
+- Settings migration < 30 seconds for typical projects
+- Memory usage < 100MB for large configurations
+- Support for projects with 10,000+ files
+- Cross-platform compatibility (Windows, macOS, Linux)
+
+## User Experience Requirements
+- Intuitive command-line interface
+- Helpful error messages with actionable suggestions
+- Progress indicators for long-running operations
+- Dry-run mode for safe testing
+- Verbose logging for debugging
+- Interactive prompts for user guidance
+- Color-coded output for better readability
+
+## Security & Reliability
+- Input validation and sanitization
+- Safe file operations with backup creation
+- Error handling with graceful degradation
+- Configuration file validation
+- Secure handling of sensitive data
+- Regular dependency updates and security audits
 `,
+  },
+
+  globalSettings: {
+    sourcePath: 'src/modules/build/test-fixtures/cli-tool-project',
+    collectedAt: new Date().toISOString(),
+    securityFiltered: false,
   },
 
   steeringFiles: [
     {
-      filename: 'cli-ux.md', 
-      path: '.kiro/steering/cli-ux.md',
+      filename: 'cli-design.md',
+      path: '.kiro/steering/cli-design.md',
       content: `---
 inclusion: always
 priority: high
 ---
 
-# CLI User Experience Guidelines
+# CLI Design Guidelines
 
-## Command Design Principles
-- Commands should be self-documenting through clear naming
-- Use consistent verb-noun pattern: \`tool action resource\`
-- Provide both short and long option forms (-v, --verbose)
-- Support dry-run mode for destructive operations
-- Include confirmation prompts for irreversible actions
+## Command Structure
+- Use verb-noun pattern for command names (build, migrate, validate)
+- Group related commands under subcommands
+- Provide both short (-v) and long (--verbose) option flags
+- Use consistent naming conventions across all commands
+- Implement command aliases for common operations
 
-## Output & Feedback
-- Use colors meaningfully (red for errors, green for success, yellow for warnings)
-- Show progress for operations taking >2 seconds
-- Provide structured output options (JSON, table, plain text)
-- Include timestamps for log-style output
-- Support quiet mode for scripting
+## User Interface
+- Provide clear, concise help text for all commands
+- Use color coding for different types of output (success, error, warning)
+- Implement progress bars for long-running operations
+- Show meaningful error messages with actionable suggestions
+- Use interactive prompts for complex user input
 
 ## Error Handling
-- Show error messages in human-readable format
-- Include error codes for programmatic handling
-- Provide suggestions for common mistakes
-- Link to documentation for complex errors
-- Never fail silently - always provide feedback
+- Validate all user input before processing
+- Provide context-aware error messages
+- Implement graceful degradation for non-critical errors
+- Log detailed error information for debugging
+- Suggest solutions for common error scenarios
 
-## Help & Documentation
-- Every command must have help documentation
-- Include practical examples in help text
-- Show available options and their defaults
-- Group related options logically
-- Provide man pages for complex commands
+## Documentation
+- Comprehensive help text for all commands
+- Include usage examples and common scenarios
+- Document all configuration options
+- Provide troubleshooting guides
+- Keep documentation in sync with implementation
 `,
     },
     {
-      filename: 'node-patterns.md',
-      path: '.kiro/steering/node-patterns.md', 
+      filename: 'testing-strategy.md',
+      path: '.kiro/steering/testing-strategy.md',
       content: `---
 inclusion: always
-priority: medium
+priority: high
 ---
 
-# Node.js CLI Development Patterns
+# Testing Strategy for CLI Tool
 
-## Command Structure
-- Use Commander.js for consistent command parsing
-- Implement command classes for complex operations
-- Separate business logic from CLI concerns
-- Use dependency injection for testability
-- Handle process signals gracefully (SIGINT, SIGTERM)
+## Test Categories
+- Unit tests for all business logic functions
+- Integration tests for CLI command workflows
+- E2E tests for complete user scenarios
+- Performance tests for large file operations
+- Cross-platform compatibility tests
 
-## File System Operations
-- Use fs-extra for enhanced file operations
-- Implement proper error handling for file operations
-- Create temporary directories for safe operations
-- Clean up temporary files on exit
-- Handle permission errors gracefully
+## Testing Tools
+- Vitest for fast unit and integration testing
+- Mock file system operations for isolated testing
+- Snapshot testing for configuration outputs
+- Coverage reporting with minimum thresholds
+- Automated testing in CI/CD pipeline
 
-## Configuration Management
-- Support multiple configuration sources (file, env, CLI)
-- Implement configuration validation
-- Provide configuration migration paths
-- Use JSON Schema for configuration validation
-- Store sensitive data securely (keychain integration)
+## Test Data Management
+- Use realistic test fixtures for different scenarios
+- Mock external dependencies and file system
+- Create temporary test environments
+- Clean up test artifacts after execution
+- Version control test data and fixtures
 
-## Testing Strategies
-- Mock file system operations for unit tests
-- Use temporary directories for integration tests
-- Test cross-platform compatibility
-- Snapshot test CLI output formatting
+## Quality Assurance
+- Maintain >90% code coverage
 - Test error scenarios and edge cases
+- Validate cross-platform compatibility
+- Performance testing for scalability
+- Security testing for input validation
 `,
     },
   ],
@@ -763,53 +788,65 @@ priority: medium
   hookFiles: [
     {
       filename: 'pre-commit.kiro.hook',
-      path: '.kiro/hooks/pre-commit.kiro.hook', 
+      path: '.kiro/hooks/pre-commit.kiro.hook',
       content: `#!/bin/bash
 # Pre-commit hook for CLI tool
 
 echo "🔍 Running CLI tool pre-commit checks..."
 
 # TypeScript compilation
-echo "📝 Checking TypeScript..."
+echo "📝 Checking TypeScript compilation..."
 npx tsc --noEmit
 if [ $? -ne 0 ]; then
-  echo "❌ TypeScript compilation failed"
+  echo "❌ TypeScript errors found"
   exit 1
 fi
 
-# Linting
+# ESLint for code quality
 echo "🔧 Running ESLint..."
 npx eslint src --ext .ts --max-warnings 0
 if [ $? -ne 0 ]; then
-  echo "❌ Linting failed"  
+  echo "❌ ESLint errors found"
+  exit 1
+fi
+
+# Prettier formatting check
+echo "🎨 Checking code formatting..."
+npx prettier --check "src/**/*.ts"
+if [ $? -ne 0 ]; then
+  echo "❌ Code formatting issues found"
+  exit 1
+fi
+
+# Security audit
+echo "🔒 Running security audit..."
+npm audit --audit-level high
+if [ $? -ne 0 ]; then
+  echo "❌ Security vulnerabilities found"
   exit 1
 fi
 
 # Unit tests
 echo "🧪 Running unit tests..."
-npm test -- --passWithNoTests
+npm run test:run
 if [ $? -ne 0 ]; then
   echo "❌ Unit tests failed"
   exit 1
 fi
 
-# CLI integration tests
-echo "🖥️  Running CLI integration tests..."
+# CLI command tests
+echo "⚡ Testing CLI commands..."
 npm run test:cli
 if [ $? -ne 0 ]; then
-  echo "❌ CLI integration tests failed"
+  echo "❌ CLI tests failed"
   exit 1
 fi
 
-# Check package.json for required fields
-echo "📦 Validating package.json..."
-node -e "
-const pkg = require('./package.json');
-if (!pkg.bin) throw new Error('Missing bin field in package.json');
-if (!pkg.engines?.node) throw new Error('Missing engines.node in package.json');
-"
+# Build verification
+echo "🏗️  Verifying build..."
+npm run build
 if [ $? -ne 0 ]; then
-  echo "❌ package.json validation failed"
+  echo "❌ Build failed"
   exit 1
 fi
 
@@ -817,186 +854,6 @@ echo "✅ All pre-commit checks passed!"
 `,
     },
   ],
-};
-
-// Edge Cases and Error Scenarios
-export const edgeCaseScenarios = {
-  emptyProject: {
-    localSettings: {
-      context: `# Minimal Project Setup
-
-This is a minimal project with basic configuration only.
-
-## Status
-- Just initialized
-- No major features implemented yet
-- Placeholder content for testing
-`,
-      userPreferences: `# Basic Preferences
-
-## Environment
-- Editor: Any text editor
-- Runtime: Node.js latest
-`,
-      projectSpec: `# Minimal Spec
-
-## Goal
-Test empty/minimal project handling.
-`,
-    },
-    steeringFiles: [],
-    hookFiles: [],
-  },
-
-  corruptedFiles: {
-    localSettings: {
-      context: `# Project with Corrupted Data
-
-This project contains intentionally malformed data for testing error handling.
-
-## Notes
-- Some configuration files may be corrupted
-- Testing parser resilience  
-- Should gracefully handle invalid data
-`,
-      userPreferences: `# Preferences
-
-This file contains some invalid markdown and malformed content:
-
-<<< INVALID YAML >>>
-invalid: [unclosed bracket
-malformed: {no closing brace
-unquoted: string without quotes
-`,
-      projectSpec: null, // Will cause null reference
-    },
-    steeringFiles: [
-      {
-        filename: 'invalid.md',
-        path: '.kiro/steering/invalid.md',
-        content: `---
-invalid yaml frontmatter:
-  - unclosed array
-  broken: {object
----
-
-# Invalid Content
-
-This contains intentionally broken content:
-- Invalid JSON: {"key": value}
-- Unclosed brackets: [1, 2, 3
-- Invalid references: ${UNDEFINED_VARIABLE}
-`,
-      },
-    ],
-    hookFiles: [
-      {
-        filename: 'broken.kiro.hook',
-        path: '.kiro/hooks/broken.kiro.hook',
-        content: `#!/bin/bash
-# This hook contains syntax errors for testing
-
-echo "Testing error handling"
-invalid_command_that_does_not_exist
-syntax error here
-`,
-      },
-    ],
-  },
-
-  largeProject: {
-    localSettings: {
-      context: `# Enterprise Monorepo
-
-This is a large-scale enterprise monorepo with multiple services and applications.
-
-## Scale
-- 50+ microservices
-- 200+ developers
-- 1000+ npm packages
-- Multi-region deployment
-- 24/7 operations
-
-## Architecture  
-- Microservices with event-driven communication
-- Kubernetes orchestration
-- Multi-cloud deployment (AWS, Azure, GCP)
-- Comprehensive CI/CD pipelines
-- Automated security scanning and compliance
-- Performance monitoring and alerting
-
-${'## Services\n' + Array.from({length: 50}, (_, i) => 
-  `- Service ${i+1}: ${['User Management', 'Payment Processing', 'Inventory Management', 'Notification Service', 'Analytics Engine', 'File Storage', 'Search Service', 'Authentication', 'Logging Service', 'Monitoring'][i % 10]}`
-).join('\n')}
-`,
-      userPreferences: `# Enterprise Development Preferences
-
-## Team Structure
-- Platform Engineering team
-- Application Development teams  
-- DevOps and Infrastructure teams
-- Quality Assurance teams
-- Security and Compliance teams
-
-## Development Standards
-${Array.from({length: 20}, (_, i) => 
-  `- Standard ${i+1}: Detailed requirement for enterprise development`
-).join('\n')}
-
-## Tooling Requirements
-${Array.from({length: 15}, (_, i) => 
-  `- Tool ${i+1}: Enterprise-grade tooling requirement`  
-).join('\n')}
-`,
-      projectSpec: `# Enterprise Project Specification
-
-## Compliance Requirements
-- SOC 2 Type II certification
-- PCI DSS compliance  
-- GDPR compliance
-- HIPAA compliance where applicable
-- ISO 27001 certification
-
-## Performance Requirements  
-${Array.from({length: 25}, (_, i) => 
-  `- Requirement ${i+1}: Enterprise performance standard`
-).join('\n')}
-`,
-    },
-    steeringFiles: Array.from({length: 30}, (_, i) => ({
-      filename: `standard-${i+1}.md`,
-      path: `.kiro/steering/standard-${i+1}.md`,
-      content: `---
-inclusion: always
-priority: ${['high', 'medium', 'low'][i % 3]}
-team: ${['platform', 'backend', 'frontend', 'devops', 'security'][i % 5]}
----
-
-# Enterprise Standard ${i+1}
-
-## Overview
-This is enterprise standard #${i+1} for large-scale development.
-
-## Requirements
-${Array.from({length: 10}, (_, j) => `- Requirement ${j+1} for standard ${i+1}`).join('\n')}
-
-## Implementation
-${Array.from({length: 5}, (_, k) => `Step ${k+1}: Implementation detail for standard ${i+1}`).join('\n')}
-`,
-    })),
-    hookFiles: Array.from({length: 15}, (_, i) => ({
-      filename: `${['pre-commit', 'pre-push', 'post-commit', 'post-merge', 'pre-rebase'][i % 5]}-${Math.floor(i/5)+1}.kiro.hook`,
-      path: `.kiro/hooks/${['pre-commit', 'pre-push', 'post-commit', 'post-merge', 'pre-rebase'][i % 5]}-${Math.floor(i/5)+1}.kiro.hook`,
-      content: `#!/bin/bash
-# Enterprise hook ${i+1}
-
-echo "Running enterprise hook ${i+1}..."
-
-# Multiple validation steps
-${Array.from({length: 8}, (_, j) => `echo "Step ${j+1}: Enterprise validation"`).join('\n')}
-
-echo "Hook ${i+1} completed successfully"
-`,
-    })),
-  },
+  sourcePath: 'src/modules/build/test-fixtures/cli-tool-project',
+  collectedAt: new Date().toISOString(),
 };

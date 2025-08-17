@@ -12,346 +12,112 @@ import {
 
 // Web Application Personal Context Output
 export const webAppPersonalContextOutput: TaptikPersonalContext = {
-  taptik_version: '1.0.0',
-  context_type: 'personal',
-  created_at: '2024-01-15T10:30:00.000Z',
-  source_platform: 'Kiro',
-  user_info: {
-    role: 'Senior Frontend Developer',
-    experience_level: 'senior',
-    specializations: ['React', 'Next.js', 'TypeScript', 'Performance Optimization'],
+  user_id: '1234567890',
+  preferences: {
     preferred_languages: ['TypeScript', 'JavaScript'],
-    timezone: 'America/New_York',
-  },
-  development_environment: {
-    operating_system: 'macOS',
-    editor: 'VS Code',
-    terminal: 'Warp',
-    shell: 'zsh',
-    package_manager: 'pnpm',
-    version_control: 'git',
-  },
-  tools_and_extensions: {
-    editor_extensions: [
-      'ES7+ React/Redux/React-Native snippets',
-      'Tailwind CSS IntelliSense', 
-      'Prisma',
-      'GitLens',
-      'Auto Rename Tag',
-      'Prettier',
-      'ESLint'
-    ],
-    development_tools: [
-      'React DevTools',
-      'Chrome DevTools',
-      'Figma',
-      'Postman',
-      'TablePlus'
-    ],
-    productivity_tools: [
-      'Raycast',
-      'CleanMyMac',
-      'Notion',
-      'Linear'
-    ],
-  },
-  coding_preferences: {
-    indentation: {
-      type: 'spaces',
-      size: 2,
+    coding_style: {
+      indentation: '2 spaces',
+      naming_convention: 'camelCase',
+      comment_style: 'JSDoc',
+      code_organization: 'feature-based',
     },
-    line_endings: 'LF',
-    max_line_length: 100,
-    trailing_commas: true,
-    semicolons: true,
-    quote_style: 'single',
-    bracket_spacing: true,
+    tools_and_frameworks: ['React', 'Next.js', 'TypeScript', 'Performance Optimization'],
+    development_environment: ['macOS', 'VS Code', 'Warp', 'zsh', 'pnpm', 'git'],
   },
-  workflow_preferences: {
-    commit_frequency: 'frequent_small_commits',
-    branch_strategy: 'feature_branches',
-    code_review_approach: 'thorough_reviews',
-    testing_approach: 'test_driven_development',
+  work_style: {
+    preferred_workflow: 'agile',
+    problem_solving_approach: 'incremental',
     documentation_level: 'comprehensive',
+    testing_approach: 'unit-first',
   },
-  ai_interaction_preferences: {
-    communication_style: 'concise_technical',
-    detail_level: 'high_detail_with_examples',
-    code_explanation_preference: 'explain_complex_logic',
-    error_handling_approach: 'provide_multiple_solutions',
-    learning_style: 'hands_on_with_theory',
+  communication: {
+    preferred_explanation_style: 'concise',
+    technical_depth: 'intermediate',
+    feedback_style: 'direct',
+  },
+  metadata: {
+    source_platform: 'Kiro',
+    created_at: '2024-01-15T10:30:00.000Z',
+    version: '1.0.0',
   },
 };
 
 // API Service Personal Context Output  
 export const apiServicePersonalContextOutput: TaptikPersonalContext = {
-  taptik_version: '1.0.0',
-  context_type: 'personal', 
-  created_at: '2024-01-15T10:30:00.000Z',
-  source_platform: 'Kiro',
-  user_info: {
-    role: 'Senior Backend Developer',
-    experience_level: 'senior',
-    specializations: ['Node.js', 'PostgreSQL', 'Microservices', 'Payment Processing'],
+  user_id: '1234567890',
+  preferences: {
     preferred_languages: ['TypeScript', 'SQL', 'Bash'],
-    timezone: 'UTC',
-  },
-  development_environment: {
-    operating_system: 'Ubuntu 22.04 LTS',
-    editor: 'VS Code',
-    terminal: 'iTerm2',
-    shell: 'bash',
-    package_manager: 'npm',
-    version_control: 'git',
-  },
-  tools_and_extensions: {
-    editor_extensions: [
-      'REST Client',
-      'Thunder Client',
-      'Prisma',
-      'PostgreSQL',
-      'Docker',
-      'GitLens'
-    ],
-    development_tools: [
-      'TablePlus',
-      'pgAdmin',
-      'Postman',
-      'Insomnia',
-      'Docker Desktop',
-      'Kubernetes Dashboard'
-    ],
-    monitoring_tools: [
-      'Grafana',
-      'Prometheus',
-      'Sentry',
-      'DataDog'
-    ],
-  },
-  coding_preferences: {
-    indentation: {
-      type: 'spaces',
-      size: 2,
+    coding_style: {
+      indentation: '2 spaces',
+      naming_convention: 'camelCase',
+      comment_style: 'JSDoc',
+      code_organization: 'feature-based',
     },
-    line_endings: 'LF',
-    max_line_length: 120,
-    trailing_commas: true,
-    semicolons: true,
-    quote_style: 'single',
-    bracket_spacing: true,
+    tools_and_frameworks: ['Node.js', 'PostgreSQL', 'Microservices', 'Payment Processing'],
+    development_environment: ['macOS', 'VS Code', 'Warp', 'zsh', 'pnpm', 'git'],
   },
-  workflow_preferences: {
-    commit_frequency: 'logical_commits',
-    branch_strategy: 'git_flow',
-    code_review_approach: 'security_focused_reviews',
-    testing_approach: 'test_driven_development',
-    documentation_level: 'api_documentation_focused',
+  work_style: {
+    preferred_workflow: 'agile',
+    problem_solving_approach: 'incremental',
+    documentation_level: 'comprehensive',
+    testing_approach: 'unit-first',
   },
-  ai_interaction_preferences: {
-    communication_style: 'technical_precise',
-    detail_level: 'architecture_focused',
-    code_explanation_preference: 'explain_design_patterns',
-    error_handling_approach: 'security_first_solutions',
-    learning_style: 'best_practices_focused',
+  communication: {
+    preferred_explanation_style: 'concise',
+    technical_depth: 'intermediate',
+    feedback_style: 'direct',
+  },
+  metadata: {
+    source_platform: 'Kiro',
+    created_at: '2024-01-15T10:30:00.000Z',
+    version: '1.0.0',
   },
 };
 
 // Web Application Project Context Output
 export const webAppProjectContextOutput: TaptikProjectContext = {
-  taptik_version: '1.0.0',
-  context_type: 'project',
-  created_at: '2024-01-15T10:30:00.000Z',
-  source_platform: 'Kiro',
+  project_id: '1234567890',
   project_info: {
     name: 'E-Commerce Platform Frontend',
     description: 'Modern React-based e-commerce platform with TypeScript and Next.js',
-    version: '2.1.0',
-    repository_url: 'https://github.com/company/ecommerce-frontend',
-    documentation_url: 'https://docs.company.com/ecommerce-frontend',
-    primary_language: 'TypeScript',
-    project_type: 'web_application',
+    version: '2.1.0', 
+    repository: 'https://github.com/company/ecommerce-frontend',
   },
   technical_stack: {
     primary_language: 'TypeScript',
-    frameworks: [
-      'Next.js 14',
-      'React 18',
-      'TailwindCSS',
-      'Zustand',
-      'React Query',
-      'Prisma'
-    ],
-    databases: [
-      'PostgreSQL 15'
-    ],
-    tools: [
-      'Webpack',
-      'ESBuild',
-      'Prettier',
-      'ESLint',
-      'Jest',
-      'Playwright',
-      'Chromatic'
-    ],
-    deployment: [
-      'Vercel',
-      'GitHub Actions',
-      'Sentry',
-      'PostHog'
-    ],
+    frameworks: ['Next.js 14', 'React 18', 'TailwindCSS', 'Zustand', 'React Query', 'Prisma'],
+    databases: ['PostgreSQL 15'],
+    tools: ['Webpack', 'ESBuild', 'Prettier', 'ESLint', 'Jest', 'Playwright', 'Chromatic'],
+    deployment: ['Vercel', 'GitHub Actions', 'Sentry', 'PostHog'],
   },
-  architecture_patterns: [
-    {
-      pattern: 'Component-Based Architecture',
-      description: 'Modular React components with clear separation of concerns',
-      implementation_details: [
-        'Compound components for complex UI patterns',
-        'Custom hooks for business logic',
-        'Context API for global state when needed',
-        'Render props for flexible component composition'
-      ],
-    },
-    {
-      pattern: 'Server-Side Rendering',
-      description: 'Next.js App Router with server and client components',
-      implementation_details: [
-        'Server components for static data',
-        'Client components for interactive features',
-        'Streaming with Suspense boundaries',
-        'Progressive enhancement approach'
-      ],
-    },
-    {
-      pattern: 'State Management',
-      description: 'Multi-layered state management strategy',
-      implementation_details: [
-        'Zustand for global client state',
-        'React Query for server state',
-        'Local component state for UI state',
-        'URL state for shareable application state'
-      ],
-    },
-  ],
   development_guidelines: {
-    coding_standards: [
-      'TypeScript strict mode enabled',
-      'ESLint with custom rules for React/Next.js',
-      'Prettier for consistent formatting',
-      'Husky for git hooks',
-      'Conventional commits for changelog generation'
-    ],
-    testing_requirements: [
-      'Unit tests with Jest and React Testing Library',
-      'Integration tests for user workflows',
-      'E2E tests with Playwright for critical paths',
-      'Visual regression tests with Chromatic',
-      'Accessibility testing with axe-core'
-    ],
-    documentation_standards: [
-      'TSDoc for public APIs',
-      'Storybook for component documentation',
-      'README files for setup instructions',
-      'ADRs for architectural decisions',
-      'API documentation with OpenAPI'
-    ],
-    performance_requirements: [
-      'Core Web Vitals passing scores',
-      'First Contentful Paint < 1.5s',
-      'Time to Interactive < 3.5s',
-      'Bundle size monitoring',
-      'Lighthouse CI in deployment pipeline'
-    ],
+    coding_standards: ['TypeScript strict mode enabled', 'ESLint with custom rules for React/Next.js', 'Prettier for consistent formatting', 'Husky for git hooks', 'Conventional commits for changelog generation'],
+    testing_requirements: ['Unit tests with Jest and React Testing Library', 'Integration tests for user workflows', 'E2E tests with Playwright for critical paths', 'Visual regression tests with Chromatic', 'Accessibility testing with axe-core'],
+    documentation_standards: ['TSDoc for public APIs', 'Storybook for component documentation', 'README files for setup instructions', 'ADRs for architectural decisions', 'API documentation with OpenAPI'], 
+    review_process: ['Code reviews with detailed feedback', 'Pair programming sessions', 'Code reviews with detailed feedback', 'Pair programming sessions', 'Code reviews with detailed feedback', 'Pair programming sessions'],
   },
-  environment_configuration: {
-    development: {
-      node_version: '20.x',
-      package_manager: 'pnpm',
-      database_url: 'postgresql://localhost:5432/ecommerce_dev',
-      api_base_url: 'http://localhost:4000/api',
-      enable_debugging: true,
-    },
-    staging: {
-      node_version: '20.x',
-      package_manager: 'pnpm', 
-      database_url: 'postgresql://staging-db.company.com:5432/ecommerce_staging',
-      api_base_url: 'https://api-staging.company.com/api',
-      enable_debugging: false,
-    },
-    production: {
-      node_version: '20.x',
-      package_manager: 'pnpm',
-      database_url: 'postgresql://prod-db.company.com:5432/ecommerce_prod',
-      api_base_url: 'https://api.company.com/api',
-      enable_debugging: false,
-    },
-  },
-  team_preferences: {
-    communication_channels: [
-      'Slack for daily communication',
-      'GitHub Discussions for technical discussions',
-      'Linear for issue tracking',
-      'Notion for documentation'
-    ],
-    meeting_schedule: [
-      'Daily standups at 9:00 AM EST',
-      'Sprint planning bi-weekly',
-      'Code review sessions weekly',
-      'Architecture review monthly'
-    ],
-    workflow_practices: [
-      'Feature branches with pull requests',
-      'Code review required before merge',
-      'Automated testing in CI/CD',
-      'Regular dependency updates',
-      'Security audits quarterly'
-    ],
-  },
-  deployment_info: {
-    environments: [
-      {
-        name: 'development',
-        url: 'http://localhost:3000',
-        auto_deploy: true,
-        branch: 'main',
-      },
-      {
-        name: 'staging', 
-        url: 'https://staging.company.com',
-        auto_deploy: true,
-        branch: 'main',
-      },
-      {
-        name: 'production',
-        url: 'https://company.com',
-        auto_deploy: false,
-        branch: 'main',
-      },
-    ],
-    deployment_strategy: 'blue_green',
-    rollback_strategy: 'automatic_on_health_check_failure',
-    monitoring: [
-      'Sentry for error tracking',
-      'PostHog for analytics',
-      'Vercel Analytics for performance',
-      'GitHub Actions for deployment status'
-    ],
+  metadata: {
+    source_platform: 'Kiro',
+    created_at: '2024-01-15T10:30:00.000Z',
+    version: '1.0.0',
+    source_path: '/test/project',
   },
 };
 
 // API Service Project Context Output
 export const apiServiceProjectContextOutput: TaptikProjectContext = {
-  taptik_version: '1.0.0',
-  context_type: 'project',
-  created_at: '2024-01-15T10:30:00.000Z',
-  source_platform: 'Kiro',
+  project_id: '1234567890',
+  metadata: {
+    source_platform: 'Kiro',
+    created_at: '2024-01-15T10:30:00.000Z',
+    version: '1.0.0',
+    source_path: '/test/project',
+  },
   project_info: {
     name: 'Payment Processing API',
     description: 'Mission-critical payment processing API built with Node.js, Express, and TypeScript',
     version: '3.2.1',
-    repository_url: 'https://github.com/company/payment-api',
-    documentation_url: 'https://api-docs.company.com/payment-api',
-    primary_language: 'TypeScript',
-    project_type: 'api_service',
+    repository: 'https://github.com/company/payment-api',
   },
   technical_stack: {
     primary_language: 'TypeScript',
@@ -385,41 +151,6 @@ export const apiServiceProjectContextOutput: TaptikProjectContext = {
       'Sentry'
     ],
   },
-  architecture_patterns: [
-    {
-      pattern: 'Clean Architecture',
-      description: 'Layered architecture with dependency inversion',
-      implementation_details: [
-        'Controllers handle HTTP requests/responses',
-        'Services contain business logic',
-        'Repositories abstract data access',
-        'Entities represent business objects',
-        'Use cases orchestrate business workflows'
-      ],
-    },
-    {
-      pattern: 'Event-Driven Architecture',
-      description: 'Asynchronous event processing for scalability',
-      implementation_details: [
-        'Event sourcing for payment transactions',
-        'CQRS for read/write separation',
-        'Message queues for async processing',
-        'Event store for audit trail',
-        'Saga pattern for distributed transactions'
-      ],
-    },
-    {
-      pattern: 'Microservices',
-      description: 'Service-oriented architecture with bounded contexts',
-      implementation_details: [
-        'Payment processing service',
-        'User management service',
-        'Notification service',
-        'Audit logging service',
-        'API Gateway for routing'
-      ],
-    },
-  ],
   development_guidelines: {
     coding_standards: [
       'TypeScript strict mode mandatory',
@@ -442,124 +173,18 @@ export const apiServiceProjectContextOutput: TaptikProjectContext = {
       'Runbook documentation',
       'API integration guides'
     ],
-    performance_requirements: [
-      'API response time <200ms (95th percentile)',
-      '10,000+ concurrent connections support',
-      '99.9% uptime SLA',
-      'Database queries <50ms average',
-      'Background jobs <5 minutes processing'
-    ],
-  },
-  security_requirements: {
-    compliance_standards: [
-      'PCI DSS Level 1',
-      'SOC 2 Type II',
-      'GDPR compliance',
-      'ISO 27001 certification'
-    ],
-    authentication: [
-      'JWT tokens with 15-minute expiration',
-      'Refresh token rotation',
-      'Multi-factor authentication',
-      'API key management with rotation'
-    ],
-    encryption: [
-      'TLS 1.3 for all communications',
-      'AES-256 encryption at rest',
-      'Field-level encryption for PII',
-      'Secure key management with HSM'
-    ],
-    monitoring: [
-      'Real-time security monitoring',
-      'Intrusion detection system',
-      'Regular vulnerability scans',
-      'Penetration testing quarterly'
-    ],
-  },
-  environment_configuration: {
-    development: {
-      node_version: '20.x',
-      database_url: 'postgresql://localhost:5432/payments_dev',
-      redis_url: 'redis://localhost:6379/0',
-      log_level: 'debug',
-      rate_limit: 10_000,
-    },
-    staging: {
-      node_version: '20.x',
-      database_url: 'postgresql://staging-db:5432/payments_staging',
-      redis_url: 'redis://staging-redis:6379/0',
-      log_level: 'info',
-      rate_limit: 5000,
-    },
-    production: {
-      node_version: '20.x',
-      database_url: 'postgresql://prod-cluster:5432/payments_prod',
-      redis_url: 'redis://prod-redis-cluster:6379/0',
-      log_level: 'warn',
-      rate_limit: 1000,
-    },
-  },
-  team_preferences: {
-    communication_channels: [
-      'Slack with dedicated security channel',
-      'PagerDuty for critical alerts',
-      'Confluence for documentation',
-      'Jira for issue tracking'
-    ],
-    meeting_schedule: [
-      'Daily standups at 10:00 AM UTC',
-      'Sprint planning bi-weekly',
-      'Security review weekly',
-      'Architecture review monthly',
-      'Incident postmortem as needed'
-    ],
-    workflow_practices: [
-      'GitFlow with release branches',
-      'Mandatory code review by 2 developers',
-      'Security review for critical changes',
-      'Blue-green deployment strategy',
-      'Automated rollback on failure'
-    ],
-  },
-  deployment_info: {
-    environments: [
-      {
-        name: 'development',
-        url: 'http://localhost:3000',
-        auto_deploy: true,
-        branch: 'develop',
-      },
-      {
-        name: 'staging',
-        url: 'https://api-staging.company.com',
-        auto_deploy: true,
-        branch: 'main',
-      },
-      {
-        name: 'production',
-        url: 'https://api.company.com',
-        auto_deploy: false,
-        branch: 'main',
-      },
-    ],
-    deployment_strategy: 'blue_green',
-    rollback_strategy: 'automated_health_check_failure',
-    monitoring: [
-      'Prometheus metrics collection',
-      'Grafana dashboards',
-      'Sentry error tracking',
-      'PagerDuty alerting',
-      'AWS CloudWatch logs'
-    ],
+    review_process: ['Code reviews with detailed feedback', 'Pair programming sessions', 'Code reviews with detailed feedback', 'Pair programming sessions', 'Code reviews with detailed feedback', 'Pair programming sessions'],
   },
 };
 
 // Comprehensive Prompt Templates Output
 export const comprehensivePromptTemplatesOutput: TaptikPromptTemplates = {
-  taptik_version: '1.0.0',
-  context_type: 'prompt_templates',
-  created_at: '2024-01-15T10:30:00.000Z',
-  source_platform: 'Kiro',
+  metadata: {
+    source_platform: 'Kiro',
+    created_at: '2024-01-15T10:30:00.000Z',
+    version: '1.0.0',
+    total_templates: 4,
+  },
   templates: [
     {
       id: 'code-review-comprehensive',
@@ -1035,13 +660,6 @@ Please provide specific, prioritized security recommendations with clear impleme
       ],
     },
   ],
-  metadata: {
-    source_platform: 'Kiro',
-    created_at: '2024-01-15T10:30:00.000Z',
-    version: '2.1.0',
-    total_templates: 5,
-    categories: ['development', 'debugging', 'architecture', 'performance', 'security'],
-  },
 };
 
 // Manifest Output Example
@@ -1111,16 +729,6 @@ export const sampleManifestOutput: TaptikManifest = {
       size: 2048,
     },
   ],
-  build_metadata: {
-    nodejs_version: '20.10.0',
-    platform: 'darwin',
-    build_duration_ms: 3450,
-    warnings: [
-      'Missing global settings directory: ~/.kiro/config',
-      'Partial conversion for project-context due to missing steering files'
-    ],
-    errors: [],
-  },
 };
 
 // Schema Validation Helpers

@@ -113,7 +113,7 @@ if [[ ! "$commit_msg" =~ ^[[:space:]]*[[:emoji:]][[:space:]] ]]; then
   exit 1
 fi
 
-if [[ ${#commit_msg} -gt 50 ]]; then
+if [[ "#commit_msg" -gt 50 ]]; then
   echo "Warning: Commit message exceeds 50 characters"
 fi
 `,
@@ -364,14 +364,14 @@ export const mockExpectedOutputs = {
         category: 'development',
         description: 'Template for conducting code reviews',
         variables: ['CHANGE_SUMMARY', 'FILES_CHANGED'],
-        template: expect.stringContaining('Review the following code changes'),
+        template: 'Review the following code changes and provide feedback on:',
       },
       {
         name: 'bug-investigation',
         category: 'debugging',
         description: 'Template for investigating and resolving bugs',
         variables: ['BUG_DESCRIPTION', 'EXPECTED_BEHAVIOR', 'ACTUAL_BEHAVIOR', 'REPRODUCTION_STEPS', 'ENVIRONMENT_INFO'],
-        template: expect.stringContaining('Help investigate and resolve this issue'),
+        template: 'Help investigate and resolve this issue:',
       },
     ],
   },

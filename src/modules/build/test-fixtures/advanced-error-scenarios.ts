@@ -3,6 +3,8 @@
  * Tests various edge cases, performance issues, and system failures
  */
 
+import { setTimeout } from 'node:timers';
+
 import { MockFileSystem, MockFileSystemConfig } from './mock-file-system';
 
 /**
@@ -230,56 +232,56 @@ export class AdvancedMockFileSystem extends MockFileSystem {
   /**
    * Enhanced mkdir with advanced error scenarios
    */
-  async mkdir(dirPath: string, options?: { recursive?: boolean }): Promise<void> {
+  async mkdir(directoryPath: string, options?: { recursive?: boolean }): Promise<void> {
     await this.simulateDelay('disk');
     this.checkConcurrencyLimit();
 
     // Path too long simulation
-    if (dirPath.length > 260) { // Windows MAX_PATH limit
+    if (directoryPath.length > 260) { // Windows MAX_PATH limit
       const error: AdvancedError = new Error('ENAMETOOLONG: name too long');
       error.code = 'ENAMETOOLONG';
       error.errno = -36;
       error.syscall = 'mkdir';
-      error.path = dirPath;
+      error.path = directoryPath;
       throw error;
     }
 
     // Invalid characters simulation
-    if (dirPath.includes('<') || dirPath.includes('>') || dirPath.includes('|')) {
+    if (directoryPath.includes('<') || directoryPath.includes('>') || directoryPath.includes('|')) {
       const error: AdvancedError = new Error('EINVAL: invalid argument');
       error.code = 'EINVAL';
       error.errno = -22;
       error.syscall = 'mkdir';
-      error.path = dirPath;
+      error.path = directoryPath;
       throw error;
     }
 
     // Directory already exists with different case (Windows simulation)
     const existingDirectories = [...this.directories || new Set()];
-    const conflictingDir = existingDirectories.find(dir => 
-      dir.toLowerCase() === dirPath.toLowerCase() && dir !== dirPath
+    const conflictingDirectory = existingDirectories.find(directory => 
+      directory.toLowerCase() === directoryPath.toLowerCase() && directory !== directoryPath
     );
     
-    if (conflictingDir) {
+    if (conflictingDirectory) {
       const error: AdvancedError = new Error('EEXIST: file already exists');
       error.code = 'EEXIST';
       error.errno = -17;
       error.syscall = 'mkdir';
-      error.path = dirPath;
+      error.path = directoryPath;
       throw error;
     }
 
-    await super.mkdir(dirPath, options);
+    await super.mkdir(directoryPath, options);
   }
 
   /**
    * Enhanced readdir with large directory simulation
    */
-  async readdir(dirPath: string): Promise<string[]> {
+  async readdir(directoryPath: string): Promise<string[]> {
     await this.simulateDelay('read');
     this.checkConcurrencyLimit();
 
-    const files = await super.readdir(dirPath);
+    const files = await super.readdir(directoryPath);
 
     // Large directory simulation (delay proportional to file count)
     if (files.length > 1000) {
@@ -287,12 +289,12 @@ export class AdvancedMockFileSystem extends MockFileSystem {
     }
 
     // Directory corruption simulation
-    if (this.corruptedFiles.has(dirPath)) {
+    if (this.corruptedFiles.has(directoryPath)) {
       const error: AdvancedError = new Error('EIO: i/o error, scandir');
       error.code = 'EIO';
       error.errno = -5;
       error.syscall = 'scandir';
-      error.path = dirPath;
+      error.path = directoryPath;
       throw error;
     }
 
@@ -302,31 +304,31 @@ export class AdvancedMockFileSystem extends MockFileSystem {
   /**
    * Enhanced stat with various file system edge cases
    */
-  async stat(path: string): Promise<{ isDirectory(): boolean; isFile(): boolean; size: number; mtime: Date; mode: number }> {
+  async stat(filePath: string): Promise<{ isDirectory(): boolean; isFile(): boolean; size: number; mtime: Date; mode: number }> {
     await this.simulateDelay('disk');
     this.checkConcurrencyLimit();
 
     // Broken symlink simulation
-    if (path.includes('.broken-link')) {
+    if (filePath.includes('.broken-link')) {
       const error: AdvancedError = new Error('ENOENT: no such file or directory');
       error.code = 'ENOENT';
       error.errno = -2;
       error.syscall = 'stat';
-      error.path = path;
+      error.path = filePath;
       throw error;
     }
 
     // Permission denied on stat
-    if (path.includes('/no-stat-permission/')) {
+    if (filePath.includes('/no-stat-permission/')) {
       const error: AdvancedError = new Error('EACCES: permission denied');
       error.code = 'EACCES';
       error.errno = -13;
       error.syscall = 'stat';
-      error.path = path;
+      error.path = filePath;
       throw error;
     }
 
-    const baseStat = await super.stat(path);
+    const baseStat = await super.stat(filePath);
 
     // Extended stat information
     return {
@@ -562,7 +564,7 @@ export class ErrorScenarioFactory {
 /**
  * Test utilities for error scenario validation
  */
-export class ErrorScenarioTestUtils {
+export class ErrorScenarioTestUtilities {
   /**
    * Test that a function properly handles and retries on EAGAIN errors
    */
@@ -575,11 +577,13 @@ export class ErrorScenarioTestUtils {
     for (let i = 0; i <= maxRetries; i++) {
       attempts++;
       try {
+        // eslint-disable-next-line no-await-in-loop
         await operation();
         return { success: true, attempts };
       } catch (error: any) {
         if (error.code === 'EAGAIN' && i < maxRetries) {
           // Wait before retry
+          // eslint-disable-next-line no-await-in-loop
           await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 100));
           continue;
         }
@@ -613,7 +617,7 @@ export class ErrorScenarioTestUtils {
    */
   static async testConcurrencyLimits(
     operations: (() => Promise<any>)[],
-    expectedFailures = 0
+    _expectedFailures = 0  
   ): Promise<{ successes: number; failures: number; errors: Error[] }> {
     const results = await Promise.allSettled(
       operations.map(op => op())
@@ -646,6 +650,7 @@ export class ErrorScenarioTestUtils {
     for (let i = 0; i < iterations; i++) {
       const start = Date.now();
       try {
+        // eslint-disable-next-line no-await-in-loop
         await operation();
         successes++;
       } catch {
