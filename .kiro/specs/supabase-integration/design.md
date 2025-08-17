@@ -2,11 +2,7 @@
 
 ## Overview
 
-This design outlines the implementation of Supabase client integration into the Taptik CLI for
-authentication and cloud storage capabilities. The setup will include direct client instantiation,
-environment-based configuration with validation, and seamless integration with NestJS CLI
-commands. The configuration will be optimized for security and performance while maintaining
-compatibility with the existing development workflow.
+This design outlines the implementation of Supabase client integration into the Taptik CLI for authentication and cloud storage capabilities. The setup will include direct client instantiation, environment-based configuration with validation, and seamless integration with NestJS CLI commands. The configuration will be optimized for security and performance while maintaining compatibility with the existing development workflow.
 
 ## Architecture
 
@@ -29,8 +25,7 @@ Commands → Supabase Client → Authentication/Storage → Response
 
 ### 1. Supabase Client Module (src/supabase/supabase-client.ts)
 
-**Purpose**: Main Supabase client instance with configuration and validation
-**Key Features**:
+**Purpose**: Main Supabase client instance with configuration and validation **Key Features**:
 
 - Singleton client instantiation with lazy initialization
 - Environment variable validation at runtime
@@ -39,8 +34,7 @@ Commands → Supabase Client → Authentication/Storage → Response
 
 ### 2. Environment Configuration
 
-**Purpose**: Secure configuration management for Supabase connection
-**Key Features**:
+**Purpose**: Secure configuration management for Supabase connection **Key Features**:
 
 - SUPABASE_URL and SUPABASE_ANON_KEY validation
 - Runtime configuration validation
@@ -49,8 +43,7 @@ Commands → Supabase Client → Authentication/Storage → Response
 
 ### 3. Authentication Service
 
-**Purpose**: Handle user authentication and session management
-**Key Features**:
+**Purpose**: Handle user authentication and session management **Key Features**:
 
 - OAuth support (Google, GitHub)
 - Session persistence and auto-refresh
@@ -59,8 +52,7 @@ Commands → Supabase Client → Authentication/Storage → Response
 
 ### 4. Storage Service
 
-**Purpose**: Configuration file upload/download operations
-**Key Features**:
+**Purpose**: Configuration file upload/download operations **Key Features**:
 
 - File upload to Supabase Storage
 - Configuration retrieval and listing

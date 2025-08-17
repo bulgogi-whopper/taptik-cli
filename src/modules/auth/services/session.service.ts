@@ -43,19 +43,26 @@ export class SessionService implements ISessionStorage {
     // Validate encryption setup
     if (this.options.encryption && !this.options.encryptionKey) {
       this.options.encryptionKey = this.generateEncryptionKey();
-      this.logger.warn('Encryption enabled but no key provided. Generated new key.');
+      this.logger.warn(
+        'Encryption enabled but no key provided. Generated new key.',
+      );
     }
   }
 
   /**
    * Save user session with optional metadata
    */
-  async saveSession(session: UserSession, metadata?: SessionMetadata): Promise<void> {
+  async saveSession(
+    session: UserSession,
+    metadata?: SessionMetadata,
+  ): Promise<void> {
     try {
       await this.ensureDirectoryExists();
 
       const now = new Date();
-      const expiresAt = new Date(now.getTime() + (this.options.ttl || 24 * 60 * 60 * 1000));
+      const expiresAt = new Date(
+        now.getTime() + (this.options.ttl || 24 * 60 * 60 * 1000),
+      );
 
       const storedSession: StoredSession = {
         userSession: session,
@@ -136,7 +143,10 @@ export class SessionService implements ISessionStorage {
       }
 
       // Check expiration if enabled
-      if (this.options.expirationCheck && !(await this.isSessionValid(storedSession))) {
+      if (
+        this.options.expirationCheck &&
+        !(await this.isSessionValid(storedSession))
+      ) {
         this.logger.log('⏰ Session has expired, removing...');
         await this.clearSession();
         return null;
@@ -162,7 +172,11 @@ export class SessionService implements ISessionStorage {
       this.logger.log('📂 Session loaded successfully');
       return session;
     } catch (error) {
-      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+      if (
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'ENOENT'
+      ) {
         return null; // No session file exists
       }
 
@@ -179,7 +193,11 @@ export class SessionService implements ISessionStorage {
       await fs.unlink(this.sessionFile);
       this.logger.log('🗑️ Session cleared successfully');
     } catch (error) {
-      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+      if (
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'ENOENT'
+      ) {
         return; // File doesn't exist, already cleared
       }
 
@@ -269,11 +287,15 @@ export class SessionService implements ISessionStorage {
       throw new Error('No session to extend');
     }
 
-    const newExpiryTime = new Date(session.userSession.expiresAt.getTime() + additionalTime);
+    const newExpiryTime = new Date(
+      session.userSession.expiresAt.getTime() + additionalTime,
+    );
     session.userSession.expiresAt = newExpiryTime;
 
     if (session.expiresAt) {
-      const newStoredExpiryTime = new Date(new Date(session.expiresAt).getTime() + additionalTime);
+      const newStoredExpiryTime = new Date(
+        new Date(session.expiresAt).getTime() + additionalTime,
+      );
       session.expiresAt = newStoredExpiryTime.toISOString();
     }
 
@@ -293,7 +315,7 @@ export class SessionService implements ISessionStorage {
     createdAt?: Date;
   }> {
     const session = await this.loadSession();
-    
+
     return {
       exists: session !== null,
       isValid: session ? await this.isSessionValid(session) : false,
@@ -310,12 +332,14 @@ export class SessionService implements ISessionStorage {
 
   private async ensureDirectoryExists(): Promise<void> {
     try {
-      await fs.mkdir(this.options.directory, { 
-        recursive: true, 
-        mode: 0o700 // Directory accessible only by owner
+      await fs.mkdir(this.options.directory, {
+        recursive: true,
+        mode: 0o700, // Directory accessible only by owner
       });
     } catch (error) {
-      throw new Error(`Failed to create session directory: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to create session directory: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     }
   }
 
@@ -327,22 +351,24 @@ export class SessionService implements ISessionStorage {
     if (!this.options.encryptionKey) {
       throw new Error('Encryption key not available');
     }
-    
+
     try {
       const algorithm = 'aes-256-gcm';
       const key = Buffer.from(this.options.encryptionKey.slice(0, 32), 'utf8');
       const iv = randomBytes(16);
       const cipher = createCipheriv(algorithm, key, iv);
-      
+
       let encrypted = cipher.update(data, 'utf8', 'hex');
       encrypted += cipher.final('hex');
-      
+
       const authTag = cipher.getAuthTag();
-      
+
       // Return iv + authTag + encrypted data
-      return `${iv.toString('hex')  }:${  authTag.toString('hex')  }:${  encrypted}`;
+      return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted}`;
     } catch (error) {
-      throw new Error(`Encryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Encryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     }
   }
 
@@ -350,29 +376,31 @@ export class SessionService implements ISessionStorage {
     if (!this.options.encryptionKey) {
       throw new Error('Encryption key not available for decryption');
     }
-    
+
     try {
       const algorithm = 'aes-256-gcm';
       const key = Buffer.from(this.options.encryptionKey.slice(0, 32), 'utf8');
-      
+
       const parts = encryptedData.split(':');
       if (parts.length !== 3) {
         throw new Error('Invalid encrypted data format');
       }
-      
+
       const iv = Buffer.from(parts[0], 'hex');
       const authTag = Buffer.from(parts[1], 'hex');
       const encrypted = parts[2];
-      
+
       const decipher = createDecipheriv(algorithm, key, iv);
       decipher.setAuthTag(authTag);
-      
+
       let decrypted = decipher.update(encrypted, 'hex', 'utf8');
       decrypted += decipher.final('utf8');
-      
+
       return decrypted;
     } catch (error) {
-      throw new Error(`Decryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Decryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     }
   }
 
@@ -400,7 +428,7 @@ export class SessionService implements ISessionStorage {
       // Write metadata update directly to file without going through saveSession
       // to avoid recursion in loadSession -> updateAccessMetadata -> saveSession -> loadSession
       await this.ensureDirectoryExists();
-      
+
       let content = JSON.stringify(session, null, 2);
 
       // Encrypt if enabled

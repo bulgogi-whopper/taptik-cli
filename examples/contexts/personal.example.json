@@ -1,0 +1,47 @@
+{
+  "version": "1.0.0",
+  "metadata": {
+    "name": "senior-backend-developer",
+    "description": "Personal context for a senior backend developer with NestJS expertise",
+    "created_at": "2025-08-15T10:00:00Z",
+    "updated_at": "2025-08-15T10:00:00Z",
+    "author": "example@taptik.ai",
+    "tags": ["backend", "nestjs", "typescript", "senior"]
+  },
+  "personal": {
+    "category": "personal",
+    "spec_version": "1.0.0",
+    "data": {
+      "developer_profile": {
+        "experience_years": 8,
+        "primary_role": "backend",
+        "secondary_roles": ["devops", "architecture"],
+        "tech_stack": {
+          "languages": ["typescript", "javascript", "python", "go"],
+          "frameworks": ["nestjs", "express", "fastapi", "gin"],
+          "databases": ["postgresql", "mongodb", "redis", "elasticsearch"],
+          "cloud": ["aws", "gcp", "docker", "kubernetes"]
+        }
+      },
+      "coding_preferences": {
+        "style": "clean_code",
+        "naming_convention": "camelCase",
+        "comment_style": "jsdoc_for_public_apis",
+        "error_handling": "explicit_with_custom_errors",
+        "testing_approach": "tdd"
+      },
+      "domain_knowledge": [
+        "microservices",
+        "event_driven_architecture",
+        "payment_processing",
+        "real_time_systems",
+        "high_performance_computing"
+      ],
+      "communication_style": {
+        "explanation_level": "senior",
+        "code_review_tone": "constructive_and_educational",
+        "preferred_language": "english"
+      }
+    }
+  }
+}

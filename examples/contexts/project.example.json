@@ -1,0 +1,60 @@
+{
+  "version": "1.0.0",
+  "metadata": {
+    "name": "taptik-cli-project",
+    "description": "Project context for Taptik CLI development",
+    "created_at": "2025-08-15T10:00:00Z",
+    "updated_at": "2025-08-15T10:00:00Z",
+    "author": "Taptik Team",
+    "tags": ["cli", "nestjs", "typescript", "developer-tools"]
+  },
+  "project": {
+    "category": "project",
+    "spec_version": "1.0.0",
+    "data": {
+      "project_info": {
+        "name": "taptik-cli",
+        "type": "cli_tool",
+        "domain": "developer_tools",
+        "team_size": 3,
+        "repository": "https://github.com/taptik/taptik-cli"
+      },
+      "architecture": {
+        "pattern": "modular_monolith",
+        "cli_framework": "nest-commander",
+        "database_pattern": "repository",
+        "api_style": "rest",
+        "auth_method": "oauth2"
+      },
+      "tech_stack": {
+        "runtime": "node.js",
+        "language": "typescript",
+        "framework": "nestjs",
+        "database": "supabase",
+        "orm": "supabase-js",
+        "testing": ["vitest", "supertest"],
+        "package_manager": "pnpm",
+        "deployment": "npm_registry"
+      },
+      "conventions": {
+        "file_naming": "kebab-case",
+        "folder_structure": "module_based",
+        "commit_convention": "conventional_commits",
+        "branch_strategy": "feature_branch"
+      },
+      "constraints": {
+        "node_version": ">=18.0.0",
+        "typescript_version": ">=5.0.0",
+        "performance_requirements": "cli_response_under_200ms",
+        "security_level": "high",
+        "compliance": ["oauth2_spec", "data_privacy"],
+        "test_coverage": {
+          "lines": 80,
+          "statements": 80,
+          "branches": 60,
+          "functions": 60
+        }
+      }
+    }
+  }
+}

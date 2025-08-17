@@ -4,6 +4,7 @@ import { TerminusModule } from '@nestjs/terminus';
 
 import { HealthCommand } from './commands/health.command';
 import { AuthModule } from './modules/auth/auth.module';
+import { ContextModule } from './modules/context/context.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { AuthModule } from './modules/auth/auth.module';
     }),
     TerminusModule,
     AuthModule,
+    ContextModule,
   ],
   providers: [HealthCommand],
 })

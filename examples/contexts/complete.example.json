@@ -1,0 +1,236 @@
+{
+  "version": "1.0.0",
+  "metadata": {
+    "name": "complete-taptik-context",
+    "description": "Complete context example with all categories for Taptik CLI development",
+    "created_at": "2025-08-15T10:00:00Z",
+    "updated_at": "2025-08-15T10:00:00Z",
+    "author": "Taptik Team",
+    "tags": ["complete", "example", "nestjs", "cli"]
+  },
+  "inheritance": {
+    "extends": ["@taptik/nestjs-defaults"],
+    "priority": "project > team > personal > default",
+    "merge_strategy": "deep",
+    "override_rules": {
+      "arrays": "replace",
+      "objects": "merge"
+    }
+  },
+  "personal": {
+    "category": "personal",
+    "spec_version": "1.0.0",
+    "data": {
+      "developer_profile": {
+        "experience_years": 5,
+        "primary_role": "fullstack",
+        "secondary_roles": ["backend", "devops"],
+        "tech_stack": {
+          "languages": ["typescript", "javascript", "python"],
+          "frameworks": ["nestjs", "nextjs", "react"],
+          "databases": ["postgresql", "supabase", "redis"],
+          "cloud": ["aws", "vercel", "docker"]
+        }
+      },
+      "coding_preferences": {
+        "style": "clean_code",
+        "naming_convention": "camelCase",
+        "comment_style": "minimal_but_clear",
+        "error_handling": "explicit",
+        "testing_approach": "tdd"
+      },
+      "domain_knowledge": ["developer_tools", "cli_applications", "cloud_services", "ai_integration"],
+      "communication_style": {
+        "explanation_level": "senior",
+        "code_review_tone": "constructive",
+        "preferred_language": "korean"
+      }
+    }
+  },
+  "project": {
+    "category": "project",
+    "spec_version": "1.0.0",
+    "data": {
+      "project_info": {
+        "name": "taptik-cli",
+        "type": "cli_tool",
+        "domain": "developer_tools",
+        "team_size": 3,
+        "repository": "https://github.com/taptik/taptik-cli"
+      },
+      "architecture": {
+        "pattern": "modular_monolith",
+        "cli_framework": "nest-commander",
+        "database_pattern": "repository",
+        "api_style": "rest",
+        "auth_method": "oauth2"
+      },
+      "tech_stack": {
+        "runtime": "node.js",
+        "language": "typescript",
+        "framework": "nestjs",
+        "database": "supabase",
+        "testing": ["vitest"],
+        "package_manager": "pnpm"
+      },
+      "conventions": {
+        "file_naming": "kebab-case",
+        "folder_structure": "module_based",
+        "commit_convention": "conventional_commits",
+        "branch_strategy": "feature_branch"
+      },
+      "constraints": {
+        "node_version": ">=18.0.0",
+        "typescript_version": ">=5.0.0",
+        "test_coverage": {
+          "lines": 80,
+          "statements": 80,
+          "branches": 60,
+          "functions": 60
+        }
+      }
+    }
+  },
+  "prompts": {
+    "category": "prompts",
+    "spec_version": "1.0.0",
+    "data": {
+      "templates": {
+        "code_review": {
+          "name": "NestJS Code Review",
+          "prompt": "Review this NestJS code for:\n1. Dependency injection patterns\n2. Module organization\n3. Error handling\n4. TypeScript types\n5. Testing coverage\n\nCode:\n{code}",
+          "variables": ["code"],
+          "use_cases": ["pr_review", "code_quality"],
+          "tags": ["review", "nestjs"]
+        },
+        "refactoring": {
+          "name": "Clean Architecture Refactoring",
+          "prompt": "Refactor this code following:\n- Clean Architecture principles\n- SOLID principles\n- NestJS best practices\n- TypeScript strict mode\n\nOriginal code:\n{code}",
+          "variables": ["code"],
+          "use_cases": ["refactoring", "improvement"],
+          "tags": ["refactor", "clean-code"]
+        },
+        "test_generation": {
+          "name": "Vitest Test Generator",
+          "prompt": "Generate Vitest tests for:\n{code}\n\nInclude:\n- Unit tests for all public methods\n- Edge cases\n- Error scenarios\n- Mocking strategies for dependencies",
+          "variables": ["code"],
+          "use_cases": ["testing", "tdd"],
+          "tags": ["test", "vitest"]
+        },
+        "documentation": {
+          "name": "API Documentation",
+          "prompt": "Generate comprehensive documentation for:\n{code}\n\nInclude:\n- Function descriptions\n- Parameter details\n- Return types\n- Usage examples\n- Error cases",
+          "variables": ["code"],
+          "use_cases": ["documentation", "api"],
+          "tags": ["docs", "api"]
+        }
+      }
+    }
+  },
+  "tools": {
+    "category": "tools",
+    "spec_version": "1.0.0",
+    "data": {
+      "mcp_servers": [
+        {
+          "name": "@modelcontextprotocol/server-filesystem",
+          "version": "0.6.5",
+          "config": {
+            "directories": ["~/dev/taptik"]
+          }
+        },
+        {
+          "name": "@modelcontextprotocol/server-github",
+          "version": "0.7.0",
+          "config": {
+            "token_env": "GITHUB_TOKEN"
+          }
+        },
+        {
+          "name": "@modelcontextprotocol/server-postgres",
+          "version": "0.5.0",
+          "config": {
+            "database_url_env": "DATABASE_URL"
+          }
+        }
+      ],
+      "custom_commands": [
+        {
+          "name": "dev",
+          "command": "pnpm run start:dev",
+          "description": "Start development server with hot reload"
+        },
+        {
+          "name": "test:watch",
+          "command": "pnpm run test --watch",
+          "description": "Run tests in watch mode"
+        },
+        {
+          "name": "lint:fix",
+          "command": "pnpm run lint --fix",
+          "description": "Auto-fix linting issues"
+        },
+        {
+          "name": "build:cli",
+          "command": "pnpm run build && pnpm run cli:build",
+          "description": "Build CLI for production"
+        }
+      ],
+      "aliases": {
+        "d": "dev",
+        "tw": "test:watch",
+        "lf": "lint:fix",
+        "bc": "build:cli"
+      }
+    }
+  },
+  "ide": {
+    "category": "ide",
+    "spec_version": "1.0.0",
+    "data": {
+      "claude_code": {
+        "settings": {
+          "apiKeyHelper": "none",
+          "permissions": {
+            "webSearch": true,
+            "mdFiles": true,
+            "jsonFiles": true,
+            "envFiles": false
+          },
+          "env": {
+            "NODE_ENV": "development",
+            "LOG_LEVEL": "debug"
+          }
+        },
+        "mcp": {
+          "servers": ["filesystem", "github", "postgres"]
+        }
+      },
+      "kiro": {
+        "steering": {
+          "specification_driven": true,
+          "auto_test": true,
+          "incremental_progress": true,
+          "task_confirmation": true
+        },
+        "hooks": ["eslint-check", "test-on-save", "commit-lint"],
+        "specs_path": ".kiro/specs"
+      },
+      "cursor": {
+        "ai_model": "gpt-4",
+        "auto_complete": true,
+        "context_window": 8000,
+        "rules": ["Use TypeScript strict mode", "Follow NestJS patterns", "Write tests for new code"]
+      },
+      "vscode": {
+        "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode", "ms-vscode.vscode-typescript-next"],
+        "settings": {
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.fixAll.eslint": true
+          }
+        }
+      }
+    }
+  }
+}

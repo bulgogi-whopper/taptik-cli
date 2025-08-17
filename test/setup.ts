@@ -11,6 +11,28 @@ vi.mock('fs/promises', () => ({
   copyFile: vi.fn(),
 }));
 
+vi.mock('node:fs/promises', () => ({
+  readFile: vi.fn(),
+  writeFile: vi.fn(),
+  mkdir: vi.fn(),
+  access: vi.fn(),
+  stat: vi.fn(),
+  readdir: vi.fn(),
+  copyFile: vi.fn(),
+}));
+
+vi.mock('node:fs', () => ({
+  promises: {
+    readFile: vi.fn(),
+    writeFile: vi.fn(),
+    mkdir: vi.fn(),
+    access: vi.fn(),
+    stat: vi.fn(),
+    readdir: vi.fn(),
+    copyFile: vi.fn(),
+  },
+}));
+
 // Global mocks for Node.js modules
 vi.mock('child_process', () => ({
   exec: vi.fn(),
