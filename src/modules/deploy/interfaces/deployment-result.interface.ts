@@ -13,6 +13,8 @@ export interface DeploymentResult {
   metadata?: {
     backupCreated?: string;
     timestamp?: Date;
+    deploymentId?: string;
+    performanceReport?: string;
   };
 }
 

@@ -15,6 +15,7 @@ import { DeploymentResult } from '../interfaces/deployment-result.interface';
 import { BackupService } from './backup.service';
 import { DiffService } from './diff.service';
 import { ErrorRecoveryService } from './error-recovery.service';
+import { PerformanceMonitorService } from './performance-monitor.service';
 import { PlatformValidatorService } from './platform-validator.service';
 import { SecurityScannerService } from './security-scanner.service';
 
@@ -26,12 +27,20 @@ export class DeploymentService {
     private readonly securityService: SecurityScannerService,
     private readonly validatorService: PlatformValidatorService,
     private readonly errorRecoveryService: ErrorRecoveryService,
+    private readonly performanceMonitor: PerformanceMonitorService,
   ) {}
 
   async deployToClaudeCode(
     context: TaptikContext,
     options: DeployOptions,
   ): Promise<DeploymentResult> {
+    // Generate unique deployment ID for performance tracking
+    const deploymentId = `deploy-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    
+    // Start performance monitoring
+    this.performanceMonitor.startDeploymentTiming(deploymentId);
+    this.performanceMonitor.recordMemoryUsage(deploymentId, 'start');
+
     const result: DeploymentResult = {
       success: false,
       platform: 'claude-code',
@@ -45,14 +54,20 @@ export class DeploymentService {
       },
       errors: [],
       warnings: [],
+      metadata: {
+        deploymentId,
+        performanceReport: '',
+      },
     };
 
     try {
       // Step 1: Validate configuration for platform
+      this.performanceMonitor.recordMemoryUsage(deploymentId, 'validation-start');
       const validationResult = await this.validatorService.validateForPlatform(
         context,
         'claude-code',
       );
+      this.performanceMonitor.recordMemoryUsage(deploymentId, 'validation-end');
 
       if (!validationResult.isValid) {
         result.errors = validationResult.errors.map((error) => ({
@@ -71,7 +86,9 @@ export class DeploymentService {
       }
 
       // Step 2: Security scan
+      this.performanceMonitor.recordMemoryUsage(deploymentId, 'security-start');
       const securityResult = await this.securityService.scanContext(context);
+      this.performanceMonitor.recordMemoryUsage(deploymentId, 'security-end');
 
       if (!securityResult.isSafe) {
         result.errors = [
@@ -129,6 +146,9 @@ export class DeploymentService {
       // Deploy components sequentially to maintain order and handle dependencies
       for (const component of componentsToDeploy) {
         try {
+          // Start component timing
+          this.performanceMonitor.startComponentTiming(deploymentId, component);
+          
           if (component === 'settings') {
             // Deploy settings even if empty for testing purposes
             const settings = context.content.ide?.claudeCode?.settings || {};
@@ -157,6 +177,9 @@ export class DeploymentService {
             (result.deployedComponents as string[]).push('project');
             result.summary.filesDeployed++;
           }
+          
+          // End component timing
+          this.performanceMonitor.endComponentTiming(deploymentId, component);
         } catch (componentError) {
           result.errors.push({
             message: `Failed to deploy ${component}: ${(componentError as Error).message}`,
@@ -168,6 +191,26 @@ export class DeploymentService {
       }
 
       result.success = true;
+      
+      // End performance monitoring and generate report
+      this.performanceMonitor.endDeploymentTiming(deploymentId);
+      this.performanceMonitor.recordMemoryUsage(deploymentId, 'end');
+      
+      const performanceReport = this.performanceMonitor.generatePerformanceReport(deploymentId);
+      const performanceViolations = this.performanceMonitor.checkPerformanceThresholds(deploymentId);
+      
+      if (result.metadata) {
+        result.metadata.performanceReport = performanceReport;
+      }
+      
+      // Add performance warnings if there are violations
+      for (const violation of performanceViolations) {
+        result.warnings.push({
+          message: `Performance ${violation.severity}: ${violation.message}`,
+          code: `PERFORMANCE_${violation.type.toUpperCase()}`,
+        });
+      }
+      
       return result;
     } catch (error) {
       result.errors = [
@@ -211,6 +254,13 @@ export class DeploymentService {
       }
 
       return result;
+    } finally {
+      // Ensure performance monitoring is cleaned up
+      this.performanceMonitor.endDeploymentTiming(deploymentId);
+      // Optional: Clear metrics after a delay to allow for inspection
+      setTimeout(() => {
+        this.performanceMonitor.clearMetrics(deploymentId);
+      }, 60000); // Clear after 1 minute
     }
   }
 

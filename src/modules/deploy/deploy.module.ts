@@ -11,6 +11,7 @@ import { ErrorHandlerService } from './services/error-handler.service';
 import { ErrorRecoveryService } from './services/error-recovery.service';
 import { ImportService } from './services/import.service';
 import { LockingService } from './services/locking.service';
+import { PerformanceMonitorService } from './services/performance-monitor.service';
 import { PlatformValidatorService } from './services/platform-validator.service';
 import { PromptService } from './services/prompt.service';
 import { SchemaMigrationService } from './services/schema-migration.service';
@@ -31,6 +32,7 @@ import { PerformanceOptimizer } from './utils/performance-optimizer.utility';
     ErrorRecoveryService,
     ImportService,
     LockingService,
+    PerformanceMonitorService,
     PlatformValidatorService,
     PromptService,
     SchemaMigrationService,
@@ -51,6 +53,7 @@ import { PerformanceOptimizer } from './utils/performance-optimizer.utility';
     ErrorRecoveryService,
     ErrorHandlerService,
     DeploymentLoggerService,
+    PerformanceMonitorService,
   ],
 })
 export class DeployModule {}

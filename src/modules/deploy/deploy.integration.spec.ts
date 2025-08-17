@@ -1,14 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
+
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { TaptikContext } from '../context/interfaces/taptik-context.interface';
 import { SupabaseService } from '../supabase/supabase.service';
 
 import { DeployModule } from './deploy.module';
-import { DeploymentService } from './services/deployment.service';
-import { ImportService } from './services/import.service';
 import { BackupService } from './services/backup.service';
+import { DeploymentService } from './services/deployment.service';
 import { ErrorRecoveryService } from './services/error-recovery.service';
+import { ImportService } from './services/import.service';
 
 // Mock environment variables for testing
 process.env.SUPABASE_URL = 'https://test.supabase.co';
@@ -187,7 +188,7 @@ describe('Deploy Module Integration Tests', () => {
       expect(() => {
         // These are just checking the methods exist and can be called
         // Actual functionality is tested in unit tests
-        const deployParams = {
+        const _deployParameters = {
           configId: 'test-config',
           platform: 'claude-code' as const,
           options: {
