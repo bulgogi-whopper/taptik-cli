@@ -11,6 +11,7 @@ The auth module requires refactoring to address current limitations in type safe
 **User Story:** As a developer, I want comprehensive type definitions for all auth-related operations, so that I can write type-safe code and catch errors at compile time.
 
 #### Acceptance Criteria
+
 1. WHEN I import auth types THEN all interfaces and types are strongly typed
 2. WHEN I use auth services THEN TypeScript provides accurate autocomplete and type checking
 3. WHEN I pass parameters to auth functions THEN invalid types are caught at compile time
@@ -22,6 +23,7 @@ The auth module requires refactoring to address current limitations in type safe
 **User Story:** As a developer, I want clear separation between different auth concerns, so that I can maintain and test each component independently.
 
 #### Acceptance Criteria
+
 1. WHEN I look at AuthService THEN it only contains core authentication business logic
 2. WHEN I examine SessionService THEN it only handles session persistence operations
 3. WHEN I review OAuthProviderService THEN it only manages OAuth provider interactions
@@ -33,6 +35,7 @@ The auth module requires refactoring to address current limitations in type safe
 **User Story:** As a CLI user, I want auth commands that are focused on user interaction and input validation, so that business logic is properly separated and commands are easy to understand.
 
 #### Acceptance Criteria
+
 1. WHEN I examine auth commands THEN they contain minimal business logic
 2. WHEN commands handle errors THEN they provide clear, user-friendly messages
 3. WHEN I use auth commands THEN input validation happens at the command level
@@ -44,6 +47,7 @@ The auth module requires refactoring to address current limitations in type safe
 **User Story:** As a developer, I want comprehensive test coverage for the auth module, so that I can refactor confidently and catch regressions early.
 
 #### Acceptance Criteria
+
 1. WHEN I run unit tests THEN all auth services have >80% code coverage
 2. WHEN I run integration tests THEN service interactions work correctly
 3. WHEN I run end-to-end tests THEN the full OAuth flow works properly
@@ -55,6 +59,7 @@ The auth module requires refactoring to address current limitations in type safe
 **User Story:** As a team member, I want all auth module code to pass linting and formatting checks, so that code style is consistent and maintainable.
 
 #### Acceptance Criteria
+
 1. WHEN I run `pnpm run lint` THEN auth module code passes all ESLint rules
 2. WHEN I run `pnpm run format` THEN auth module code is properly formatted
 3. WHEN I run TypeScript compiler THEN auth module compiles without errors
@@ -66,6 +71,7 @@ The auth module requires refactoring to address current limitations in type safe
 **User Story:** As a developer, I want type-safe OAuth provider management, so that provider configurations are validated and OAuth flows are predictable.
 
 #### Acceptance Criteria
+
 1. WHEN I configure OAuth providers THEN configuration is type-checked
 2. WHEN OAuth flow starts THEN provider capabilities are validated
 3. WHEN callback is received THEN response structure is type-validated
@@ -77,6 +83,7 @@ The auth module requires refactoring to address current limitations in type safe
 **User Story:** As a security-conscious user, I want secure session management with proper encryption and expiration handling, so that my authentication state is protected.
 
 #### Acceptance Criteria
+
 1. WHEN sessions are stored THEN sensitive data is properly secured
 2. WHEN sessions expire THEN they are automatically cleaned up
 3. WHEN I logout THEN all session data is completely removed
@@ -88,6 +95,7 @@ The auth module requires refactoring to address current limitations in type safe
 **User Story:** As a CLI user, I want clear error messages and recovery guidance when authentication fails, so that I can resolve issues independently.
 
 #### Acceptance Criteria
+
 1. WHEN OAuth flow fails THEN I receive specific error messages
 2. WHEN network issues occur THEN retry options are suggested
 3. WHEN sessions are invalid THEN re-authentication is triggered
@@ -99,6 +107,7 @@ The auth module requires refactoring to address current limitations in type safe
 **User Story:** As a developer, I want proper dependency injection in auth services, so that components are loosely coupled and easily testable.
 
 #### Acceptance Criteria
+
 1. WHEN I examine service constructors THEN dependencies are injected properly
 2. WHEN I write tests THEN I can easily mock service dependencies
 3. WHEN services interact THEN coupling is through well-defined interfaces
@@ -110,6 +119,7 @@ The auth module requires refactoring to address current limitations in type safe
 **User Story:** As a CLI user, I want auth operations to be fast and resource-efficient, so that authentication doesn't slow down my workflow.
 
 #### Acceptance Criteria
+
 1. WHEN I start OAuth flow THEN callback server starts quickly (<2s)
 2. WHEN authentication completes THEN callback server is cleaned up properly
 3. WHEN sessions are accessed THEN file I/O is minimized through caching

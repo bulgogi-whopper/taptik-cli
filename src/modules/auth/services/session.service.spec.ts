@@ -36,7 +36,7 @@ describe('SessionService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     testDirectory = join(tmpdir(), '.taptik-test');
     sessionService = new SessionService({
       directory: testDirectory,
@@ -68,12 +68,12 @@ describe('SessionService', () => {
 
       await sessionService.saveSession(mockSession);
 
-      expect(mockFs.mkdir).toHaveBeenCalledWith(
-        testDirectory,
-        { recursive: true, mode: 0o700 }
-      );
+      expect(mockFs.mkdir).toHaveBeenCalledWith(testDirectory, {
+        recursive: true,
+        mode: 0o700,
+      });
       expect(mockFs.writeFile).toHaveBeenCalled();
-      
+
       const writeCall = mockFs.writeFile.mock.calls[0];
       expect(writeCall[0]).toBe(join(testDirectory, 'test-session.json'));
       expect(typeof writeCall[1]).toBe('string');
@@ -96,7 +96,7 @@ describe('SessionService', () => {
       await sessionService.saveSession(mockSession, metadata);
 
       expect(mockFs.writeFile).toHaveBeenCalled();
-      
+
       const writeCall = mockFs.writeFile.mock.calls[0];
       const savedData = JSON.parse(writeCall[1]);
       expect(savedData.metadata.provider).toBe('google');
@@ -106,13 +106,13 @@ describe('SessionService', () => {
     it('should throw AuthError when save fails', async () => {
       mockFs.mkdir.mockRejectedValue(new Error('Permission denied'));
 
-      await expect(sessionService.saveSession(mockSession)).rejects.toMatchObject({
+      await expect(
+        sessionService.saveSession(mockSession),
+      ).rejects.toMatchObject({
         code: AuthErrorCode.SESSION_STORAGE_ERROR,
         message: expect.stringContaining('Failed to save session'),
         recoverable: true,
-        suggestions: expect.arrayContaining([
-          'Check file system permissions',
-        ]),
+        suggestions: expect.arrayContaining(['Check file system permissions']),
       });
     });
   });
@@ -144,7 +144,7 @@ describe('SessionService', () => {
       expect(result?.userSession.user.email).toBe('test@example.com');
       expect(mockFs.readFile).toHaveBeenCalledWith(
         join(testDirectory, 'test-session.json'),
-        'utf8'
+        'utf8',
       );
     });
 
@@ -176,7 +176,7 @@ describe('SessionService', () => {
 
       expect(result).toBeNull();
       expect(mockFs.unlink).toHaveBeenCalledWith(
-        join(testDirectory, 'test-session.json')
+        join(testDirectory, 'test-session.json'),
       );
     });
 
@@ -203,7 +203,7 @@ describe('SessionService', () => {
       await sessionService.clearSession();
 
       expect(mockFs.unlink).toHaveBeenCalledWith(
-        join(testDirectory, 'test-session.json')
+        join(testDirectory, 'test-session.json'),
       );
     });
 
@@ -234,7 +234,7 @@ describe('SessionService', () => {
 
       expect(result).toBe(true);
       expect(mockFs.access).toHaveBeenCalledWith(
-        join(testDirectory, 'test-session.json')
+        join(testDirectory, 'test-session.json'),
       );
     });
 
@@ -329,7 +329,7 @@ describe('SessionService', () => {
       mockFs.access.mockRejectedValue(new Error('ENOENT'));
 
       await expect(sessionService.extendSession(3_600_000)).rejects.toThrow(
-        'No session to extend'
+        'No session to extend',
       );
     });
   });
