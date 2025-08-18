@@ -30,7 +30,7 @@ export class OAuthProviderService implements IOAuthProviderService {
     this.callbackServer = new OAuthCallbackServer();
     this.providerConfigs = new Map();
     this.oauthConfigs = this.getDefaultOAuthConfigs();
-    
+
     this.initializeProviders();
   }
 
@@ -46,7 +46,10 @@ export class OAuthProviderService implements IOAuthProviderService {
         throw this.createAuthError(
           AuthErrorCode.PROVIDER_CONFIG_INVALID,
           `Invalid configuration for ${provider} provider`,
-          [`Check ${provider} OAuth configuration`, 'Verify environment variables']
+          [
+            `Check ${provider} OAuth configuration`,
+            'Verify environment variables',
+          ],
         );
       }
 
@@ -62,7 +65,7 @@ export class OAuthProviderService implements IOAuthProviderService {
       const authUrl = this.buildAuthorizationUrl(
         providerConfig,
         oauthConfig,
-        callbackUrl
+        callbackUrl,
       );
 
       this.logger.log('🌐 Opening browser for authentication...');
@@ -71,14 +74,18 @@ export class OAuthProviderService implements IOAuthProviderService {
       // Open the OAuth URL in the user's default browser
       await open(authUrl);
 
-      this.logger.log('\n⏳ Waiting for you to complete authentication in the browser...');
-      this.logger.log('💡 The browser will automatically redirect back to complete the process.');
+      this.logger.log(
+        '\n⏳ Waiting for you to complete authentication in the browser...',
+      );
+      this.logger.log(
+        '💡 The browser will automatically redirect back to complete the process.',
+      );
 
       return callbackUrl;
     } catch (error) {
       // Log the actual error for debugging
       this.logger.error('OAuth flow failed with error:', error);
-      
+
       // Clean up callback server if it was started
       if (this.callbackServer.isRunning()) {
         await this.stopCallbackServer();
@@ -91,7 +98,11 @@ export class OAuthProviderService implements IOAuthProviderService {
       throw this.createAuthError(
         AuthErrorCode.OAUTH_FLOW_FAILED,
         `Failed to start OAuth flow: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        ['Check internet connection', 'Verify OAuth provider configuration', 'Try again']
+        [
+          'Check internet connection',
+          'Verify OAuth provider configuration',
+          'Try again',
+        ],
       );
     }
   }
@@ -120,7 +131,7 @@ export class OAuthProviderService implements IOAuthProviderService {
       throw this.createAuthError(
         AuthErrorCode.OAUTH_FLOW_FAILED,
         `Failed to handle OAuth callback: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        ['Check callback URL format', 'Verify OAuth response structure']
+        ['Check callback URL format', 'Verify OAuth response structure'],
       );
     }
   }
@@ -134,7 +145,7 @@ export class OAuthProviderService implements IOAuthProviderService {
       throw this.createAuthError(
         AuthErrorCode.PROVIDER_CONFIG_INVALID,
         `Provider configuration not found: ${provider}`,
-        [`Add ${provider} provider configuration`, 'Check supported providers']
+        [`Add ${provider} provider configuration`, 'Check supported providers'],
       );
     }
     return config;
@@ -176,7 +187,9 @@ export class OAuthProviderService implements IOAuthProviderService {
   /**
    * Start callback server with optional configuration
    */
-  async startCallbackServer(config?: Partial<CallbackServerConfig>): Promise<string> {
+  async startCallbackServer(
+    config?: Partial<CallbackServerConfig>,
+  ): Promise<string> {
     try {
       const port = config?.port;
 
@@ -185,7 +198,11 @@ export class OAuthProviderService implements IOAuthProviderService {
       throw this.createAuthError(
         AuthErrorCode.CALLBACK_SERVER_ERROR,
         `Failed to start callback server: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        ['Check port availability', 'Verify firewall settings', 'Try a different port']
+        [
+          'Check port availability',
+          'Verify firewall settings',
+          'Try a different port',
+        ],
       );
     }
   }
@@ -200,11 +217,14 @@ export class OAuthProviderService implements IOAuthProviderService {
         await this.callbackServer.stop();
       }
     } catch (error) {
-      this.logger.warn('Warning: Failed to stop callback server cleanly:', error);
+      this.logger.warn(
+        'Warning: Failed to stop callback server cleanly:',
+        error,
+      );
       throw this.createAuthError(
         AuthErrorCode.CALLBACK_SERVER_ERROR,
         `Failed to stop callback server: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        ['Force quit the application', 'Check running processes']
+        ['Force quit the application', 'Check running processes'],
       );
     }
   }
@@ -226,14 +246,19 @@ export class OAuthProviderService implements IOAuthProviderService {
   /**
    * Get OAuth configuration for provider
    */
-  getOAuthConfig(provider: AuthProviderType): ProviderOAuthConfig[AuthProviderType] {
+  getOAuthConfig(
+    provider: AuthProviderType,
+  ): ProviderOAuthConfig[AuthProviderType] {
     return this.oauthConfigs[provider];
   }
 
   /**
    * Update provider configuration
    */
-  updateProviderConfig(provider: AuthProviderType, config: Partial<AuthProvider>): void {
+  updateProviderConfig(
+    provider: AuthProviderType,
+    config: Partial<AuthProvider>,
+  ): void {
     const existingConfig = this.providerConfigs.get(provider);
     if (!existingConfig) {
       throw new Error(`Provider ${provider} not found`);
@@ -303,7 +328,7 @@ export class OAuthProviderService implements IOAuthProviderService {
   private buildAuthorizationUrl(
     provider: AuthProvider,
     oauthConfig: ProviderOAuthConfig[AuthProviderType],
-    callbackUrl: string
+    callbackUrl: string,
   ): string {
     const parameters = new URLSearchParams({
       client_id: provider.clientId || '',
@@ -341,12 +366,12 @@ export class OAuthProviderService implements IOAuthProviderService {
 
   private parseCallbackData(
     callbackUrl: string,
-    serverCallbackData: Record<string, string>
+    serverCallbackData: Record<string, string>,
   ): OAuthCallbackData {
     // Parse URL fragments to extract OAuth tokens (for implicit flow)
     const urlParts = callbackUrl.split('#');
     let fragmentParameters: URLSearchParams | null = null;
-    
+
     if (urlParts.length > 1) {
       fragmentParameters = new URLSearchParams(urlParts[1]);
     }
@@ -358,19 +383,37 @@ export class OAuthProviderService implements IOAuthProviderService {
     });
 
     // Extract tokens from either fragments or query params
-    const accessToken = fragmentParameters?.get('access_token') || queryParameters.get('access_token') || '';
-    const refreshToken = fragmentParameters?.get('refresh_token') || queryParameters.get('refresh_token');
-    const expiresAt = fragmentParameters?.get('expires_at') || queryParameters.get('expires_at');
-    const state = fragmentParameters?.get('state') || queryParameters.get('state');
-    const error = fragmentParameters?.get('error') || queryParameters.get('error') || serverCallbackData.error;
-    const errorDescription = fragmentParameters?.get('error_description') || queryParameters.get('error_description') || serverCallbackData.error_description;
+    const accessToken =
+      fragmentParameters?.get('access_token') ||
+      queryParameters.get('access_token') ||
+      '';
+    const refreshToken =
+      fragmentParameters?.get('refresh_token') ||
+      queryParameters.get('refresh_token');
+    const expiresAt =
+      fragmentParameters?.get('expires_at') ||
+      queryParameters.get('expires_at');
+    const state =
+      fragmentParameters?.get('state') || queryParameters.get('state');
+    const error =
+      fragmentParameters?.get('error') ||
+      queryParameters.get('error') ||
+      serverCallbackData.error;
+    const errorDescription =
+      fragmentParameters?.get('error_description') ||
+      queryParameters.get('error_description') ||
+      serverCallbackData.error_description;
 
     // Check for OAuth errors first
     if (error) {
       throw this.createAuthError(
         AuthErrorCode.OAUTH_FLOW_FAILED,
         `OAuth provider error: ${error}${errorDescription ? ` - ${errorDescription}` : ''}`,
-        ['Check OAuth provider settings', 'Verify application permissions', 'Try authenticating again']
+        [
+          'Check OAuth provider settings',
+          'Verify application permissions',
+          'Try authenticating again',
+        ],
       );
     }
 
@@ -379,7 +422,7 @@ export class OAuthProviderService implements IOAuthProviderService {
       throw this.createAuthError(
         AuthErrorCode.INVALID_OAUTH_RESPONSE,
         'No access token found in OAuth callback',
-        ['Check OAuth provider configuration', 'Verify callback URL format']
+        ['Check OAuth provider configuration', 'Verify callback URL format'],
       );
     }
 
@@ -391,30 +434,40 @@ export class OAuthProviderService implements IOAuthProviderService {
       error: error || undefined,
       errorDescription: errorDescription || undefined,
       additionalParams: Object.fromEntries(
-        [...queryParameters.entries()].filter(([key]) => 
-          !['access_token', 'refresh_token', 'expires_at', 'state', 'error', 'error_description'].includes(key)
-        )
+        [...queryParameters.entries()].filter(
+          ([key]) =>
+            ![
+              'access_token',
+              'refresh_token',
+              'expires_at',
+              'state',
+              'error',
+              'error_description',
+            ].includes(key),
+        ),
       ),
     };
   }
 
   private validateProviderSpecificConfig(
     provider: AuthProviderType,
-    config: AuthProvider
+    config: AuthProvider,
   ): boolean {
     switch (provider) {
       case 'google':
         // Google requires openid scope for proper user info
-        return config.scopes.includes('openid') || 
-               config.scopes.includes('profile') || 
-               config.scopes.includes('email');
-      
+        return (
+          config.scopes.includes('openid') ||
+          config.scopes.includes('profile') ||
+          config.scopes.includes('email')
+        );
+
       case 'github':
         // GitHub requires user scope for user info
-        return config.scopes.some(scope => 
-          scope.includes('user') || scope.includes('read:user')
+        return config.scopes.some(
+          (scope) => scope.includes('user') || scope.includes('read:user'),
         );
-      
+
       default:
         return true;
     }
@@ -423,7 +476,7 @@ export class OAuthProviderService implements IOAuthProviderService {
   private createAuthError(
     code: AuthErrorCode,
     message: string,
-    suggestions: string[] = []
+    suggestions: string[] = [],
   ): AuthError {
     return {
       code,

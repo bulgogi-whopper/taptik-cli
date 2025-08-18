@@ -82,14 +82,14 @@ export class LoginCommand extends CommandRunner {
         console.error(`Error: ${result.error?.message || 'Unknown error'}`);
         if (result.error?.suggestions) {
           console.log('\n💡 Suggestions:');
-          result.error.suggestions.forEach(suggestion => {
+          result.error.suggestions.forEach((suggestion) => {
             console.log(`  • ${suggestion}`);
           });
         }
         process.exit(1);
       }
 
-      const {session} = result;
+      const { session } = result;
       console.log('\n✅ OAuth login successful!');
       console.log(`👤 Logged in as: ${session.user.email}`);
       console.log(`🆔 User ID: ${session.user.id}`);

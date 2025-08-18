@@ -203,12 +203,10 @@ Add to your `.vscode/settings.json`:
 ### Common Issues
 
 1. **Module Resolution Errors**
-
    - Ensure `eslint-import-resolver-typescript` is installed
    - Check that `tsconfig.json` paths are correctly configured
 
 2. **Performance Issues**
-
    - The configuration includes performance optimizations
    - Consider using `--cache` flag for large projects
 
