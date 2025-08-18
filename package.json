@@ -21,7 +21,9 @@
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
     "test:ui": "vitest --ui",
-    "test:e2e": "vitest run --config vitest.e2e.config.ts"
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "test:cli": "vitest run src/modules/build/commands/build.command.integration.spec.ts",
+    "dev:setup": "npm run cli:help && npm run cli:build-help && echo '🎉 Development setup complete'"
   },
   "dependencies": {
     "@inquirer/prompts": "^7.8.0",

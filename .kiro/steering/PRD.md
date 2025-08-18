@@ -40,7 +40,7 @@ A CLI tool that enables easy migration and synchronization of settings and envir
 - `@supabase/supabase-js` (Supabase client)
 - `chalk` (CLI styling)
 - `ora` (Loading spinner)
-- `inquirer` (Interactive prompts)
+- `@inquirer/prompts` (Interactive prompts)
 
 ## Feature Specifications
 
@@ -83,12 +83,17 @@ A CLI tool that enables easy migration and synchronization of settings and envir
 
 **Description**: Collect current AI tool settings and build into synchronizable format
 
-**Options**:
+**Interactive Flow**:
 
-- `--source <tool>`: Specify tool to import settings from
-- `--output <path>`: Build result save path
-- `--include <items>`: Configuration items to include (comma-separated)
-- `--exclude <items>`: Configuration items to exclude
+1. **Tool Selection**: User selects from available AI tools:
+   - Kiro
+   - Cursor
+   - Claude Code
+
+2. **Context Category Selection**: User selects which category to build:
+   - Personal Context (user preferences, settings)
+   - Project Context (project-specific configurations)
+   - Prompt Context (custom prompts, templates)
 
 **Supported Configuration Items**:
 
