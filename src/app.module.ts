@@ -4,6 +4,7 @@ import { TerminusModule } from '@nestjs/terminus';
 
 import { HealthCommand } from './commands/health.command';
 import { AuthModule } from './modules/auth/auth.module';
+import { InfoModule } from './modules/info/info.module';
 import { ContextModule } from './modules/context/context.module';
 import { DeployModule } from './modules/deploy/deploy.module';
 
@@ -15,6 +16,7 @@ import { DeployModule } from './modules/deploy/deploy.module';
     }),
     TerminusModule,
     AuthModule,
+    InfoModule,
     ContextModule,
     DeployModule,
   ],
