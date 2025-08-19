@@ -1,5 +1,7 @@
 # Taptik CLI
 
+[![Claude Code CI](https://github.com/bulgogi-whopper/taptik-cli/actions/workflows/claude.yml/badge.svg)](https://github.com/bulgogi-whopper/taptik-cli/actions/workflows/claude.yml)
+
 A CLI tool that enables seamless migration and synchronization of settings between various AI
 development tools like Cursor, Kiro, and Claude Code. Simplify your AI IDE workflow with one-click
 context and configuration sharing.
