@@ -4,10 +4,10 @@ import { TerminusModule } from '@nestjs/terminus';
 
 import { HealthCommand } from './commands/health.command';
 import { AuthModule } from './modules/auth/auth.module';
-import { InfoModule } from './modules/info/info.module';
 import { BuildModule } from './modules/build/build.module';
 import { ContextModule } from './modules/context/context.module';
 import { DeployModule } from './modules/deploy/deploy.module';
+import { InfoModule } from './modules/info/info.module';
 
 @Module({
   imports: [
