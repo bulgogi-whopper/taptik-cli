@@ -25,7 +25,7 @@ let keytar: {
   findCredentials: (service: string) => Promise<Array<{ account: string; password: string }>>;
 } | undefined;
 try {
-  // eslint-disable-next-line unicorn/prefer-module, @typescript-eslint/no-require-imports
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   keytar = require('keytar') as typeof keytar;
 } catch {
   // Keytar not available, will use fallback
