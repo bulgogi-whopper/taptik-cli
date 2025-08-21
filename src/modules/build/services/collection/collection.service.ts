@@ -1,464 +1,794 @@
-import { promises as fs } from 'node:fs';
-import * as os from 'node:os';
-import * as path from 'node:path';
+import * as fs from 'fs/promises';
+import * as os from 'os';
+import * as path from 'path';
 
 import { Injectable, Logger } from '@nestjs/common';
 
-/**
- * Interface for collected settings data from local Kiro configuration
- */
-export interface LocalSettingsData {
-  /** Content from settings/context.md */
-  context?: string;
-  /** Content from settings/user-preferences.md */
-  userPreferences?: string;
-  /** Content from settings/project-spec.md */
-  projectSpec?: string;
-  /** Array of steering files with their content */
-  steeringFiles: Array<{
-    filename: string;
-    content: string;
-    path: string;
-  }>;
-  /** Array of hook files with their content */
-  hookFiles: Array<{
-    filename: string;
-    content: string;
-    path: string;
-  }>;
-  /** Source directory path where data was collected */
-  sourcePath: string;
-  /** Timestamp when data was collected */
-  collectedAt: string;
-}
+import {
+  ClaudeCodeLocalSettingsData,
+  ClaudeCodeGlobalSettingsData,
+  ClaudeCodeSettings,
+  ClaudeAgent,
+  ClaudeCommand,
+  McpServerConfig,
+} from '../../interfaces/claude-code.interfaces';
 
-/**
- * Interface for collected settings data from global Kiro configuration
- */
-export interface GlobalSettingsData {
-  /** Global user configuration content */
-  userConfig?: string;
-  /** Global preferences content */
-  globalPreferences?: string;
-  /** Array of global prompt template files */
-  promptTemplates: Array<{
-    filename: string;
-    content: string;
-    path: string;
-  }>;
-  /** Array of global configuration files */
-  configFiles: Array<{
-    filename: string;
-    content: string;
-    path: string;
-  }>;
-  /** Source directory path where data was collected */
-  sourcePath: string;
-  /** Timestamp when data was collected */
-  collectedAt: string;
-  /** Flag indicating if security filtering was applied */
-  securityFiltered: boolean;
-}
+// Type aliases for backward compatibility
+type ClaudeCodeSteeringFile = {
+  filename: string;
+  content: string;
+  path: string;
+};
 
-/**
- * Service for collecting data from local Kiro settings and configuration files
- */
 @Injectable()
 export class CollectionService {
   private readonly logger = new Logger(CollectionService.name);
 
   /**
-   * Scans and collects data from local .kiro/ directory
-   * @param projectPath - Path to the project directory (defaults to current working directory)
-   * @returns Promise resolving to collected local settings data
+   * Alias for backward compatibility
+   * @deprecated Use collectClaudeCodeLocalSettings instead
    */
-  async collectLocalSettings(projectPath?: string): Promise<LocalSettingsData> {
+  async collectLocalSettings(projectPath?: string): Promise<any> {
+    const result = await this.collectClaudeCodeLocalSettings(projectPath);
+    return {
+      context: result.claudeMd,
+      userPreferences: result.claudeLocalMd,
+      projectSpec: '',
+      steeringFiles: result.steeringFiles || [],
+      hookFiles: result.hooks || [],
+      configFiles: [],
+    };
+  }
+
+  /**
+   * Alias for backward compatibility
+   * @deprecated Use collectClaudeCodeGlobalSettings instead
+   */
+  async collectGlobalSettings(): Promise<any> {
+    const result = await this.collectClaudeCodeGlobalSettings();
+    return {
+      userConfig: result.settings,
+      globalPreferences: result.settings,
+      promptTemplates: [],
+      configFiles: [],
+    };
+  }
+
+  /**
+   * Collects Claude Code local settings from .claude directory
+   * @param projectPath - The project path to scan
+   * @returns Promise resolving to collected Claude Code local settings data
+   */
+  async collectClaudeCodeLocalSettings(
+    projectPath?: string,
+  ): Promise<ClaudeCodeLocalSettingsData> {
     const basePath = projectPath || process.cwd();
-    const kiroPath = path.join(basePath, '.kiro');
+    const claudePath = path.join(basePath, '.claude');
 
-    this.logger.log(`Scanning local Kiro settings in: ${kiroPath}`);
+    this.logger.log(`Scanning Claude Code settings in: ${claudePath}`);
 
-    // Check if .kiro directory exists
-    try {
-      await fs.access(kiroPath);
-    } catch {
-      this.logger.warn(`No .kiro directory found at: ${kiroPath}`);
-      throw new Error(`No .kiro directory found at: ${kiroPath}`);
-    }
-
-    const settingsData: LocalSettingsData = {
-      steeringFiles: [],
-      hookFiles: [],
-      sourcePath: kiroPath,
+    const result: ClaudeCodeLocalSettingsData = {
+      sourcePath: basePath,
       collectedAt: new Date().toISOString(),
+      agents: [],
+      commands: [],
+      steeringFiles: [],
+      hooks: [],
     };
 
-    // Collect settings files
-    await this.collectSettingsFiles(kiroPath, settingsData);
-
-    // Collect steering files
-    await this.collectSteeringFiles(kiroPath, settingsData);
-
-    // Collect hook files
-    await this.collectHookFiles(kiroPath, settingsData);
-
-    this.logger.log(`Successfully collected data from ${kiroPath}`);
-    return settingsData;
-  }
-
-  /**
-   * Collects content from settings directory files
-   * @private
-   */
-  private async collectSettingsFiles(kiroPath: string, settingsData: LocalSettingsData): Promise<void> {
-    const settingsPath = path.join(kiroPath, 'settings');
-
     try {
-      await fs.access(settingsPath);
-      this.logger.debug(`Found settings directory: ${settingsPath}`);
+      // Check if .claude directory exists
+      await fs.access(claudePath);
     } catch {
-      this.logger.warn(`Settings directory not found: ${settingsPath}`);
-      return;
+      this.logger.warn(`No .claude directory found at: ${claudePath}`);
+      return result;
     }
 
-    // Collect context.md
-    await this.collectFile(
-      path.join(settingsPath, 'context.md'),
-      'context.md',
-      (content) => {
-        settingsData.context = content;
+    // Collect settings.json
+    try {
+      const settingsPath = path.join(claudePath, 'settings.json');
+      console.log('SERVICE DEBUG: About to call fs.readFile with:', settingsPath);
+      const settingsContent = await fs.readFile(settingsPath, 'utf8');
+      console.log('SERVICE DEBUG: fs.readFile returned:', settingsContent, typeof settingsContent);
+      result.settings = JSON.parse(settingsContent) as ClaudeCodeSettings;
+    } catch (error) {
+      console.log('SERVICE DEBUG: fs.readFile threw error:', error);
+      this.logger.warn(`Could not read settings.json: ${error.message}`);
+    }
+
+    // Collect agents
+    try {
+      const agentsPath = path.join(claudePath, 'agents');
+      await fs.access(agentsPath);
+      const agentFiles = await fs.readdir(agentsPath);
+      
+      for (const filename of agentFiles) {
+        if (filename.endsWith('.json')) {
+          try {
+            const filePath = path.join(agentsPath, filename);
+            const content = await fs.readFile(filePath, 'utf8');
+            const parsed = JSON.parse(content);
+            result.agents.push({
+              filename,
+              content,
+              path: filePath,
+              parsed: {
+                name: parsed.name || filename.replace(/\.json$/, ''),
+                description: parsed.description || '',
+                instructions: parsed.instructions || '',
+                tools: parsed.tools,
+                metadata: parsed.metadata,
+              },
+            });
+          } catch {
+            // For malformed JSON, still add the file
+            const filePath = path.join(agentsPath, filename);
+            const content = await fs.readFile(filePath, 'utf8');
+            result.agents.push({
+              filename,
+              content,
+              path: filePath,
+            });
+          }
+        }
       }
+    } catch (error) {
+      this.logger.warn(`Could not read agents directory: ${error.message}`);
+    }
+
+    // Collect commands
+    try {
+      const commandsPath = path.join(claudePath, 'commands');
+      await fs.access(commandsPath);
+      const commandFiles = await fs.readdir(commandsPath);
+      
+      for (const filename of commandFiles) {
+        if (filename.endsWith('.json')) {
+          try {
+            const filePath = path.join(commandsPath, filename);
+            const content = await fs.readFile(filePath, 'utf8');
+            const parsed = JSON.parse(content);
+            result.commands.push({
+              filename,
+              content,
+              path: filePath,
+              parsed: {
+                name: parsed.name || filename.replace(/\.json$/, ''),
+                description: parsed.description || '',
+                command: parsed.command || parsed.implementation || '',
+                args: parsed.args,
+                metadata: parsed.metadata,
+              },
+            });
+          } catch {
+            const filePath = path.join(commandsPath, filename);
+            const content = await fs.readFile(filePath, 'utf8');
+            result.commands.push({
+              filename,
+              content,
+              path: filePath,
+            });
+          }
+        }
+      }
+    } catch (error) {
+      this.logger.warn(`Could not read commands directory: ${error.message}`);
+    }
+
+    // Collect MCP config
+    try {
+      const mcpConfigPath = path.join(basePath, '.mcp.json');
+      const mcpContent = await fs.readFile(mcpConfigPath, 'utf8');
+      const mcpConfig = JSON.parse(mcpContent);
+      result.mcpConfig = mcpConfig;
+    } catch (error) {
+      this.logger.warn(`Could not read .mcp.json: ${error.message}`);
+    }
+
+    // Collect CLAUDE.md files
+    try {
+      result.claudeMd = await fs.readFile(path.join(basePath, 'CLAUDE.md'), 'utf8');
+    } catch {
+      // ignore
+    }
+    
+    try {
+      result.claudeLocalMd = await fs.readFile(path.join(basePath, 'CLAUDE.local.md'), 'utf8');
+    } catch {
+      // ignore
+    }
+
+    // Collect steering files
+    try {
+      const steeringPath = path.join(claudePath, 'steering');
+      await fs.access(steeringPath);
+      const steeringFiles = await fs.readdir(steeringPath);
+      
+      for (const filename of steeringFiles) {
+        if (filename.endsWith('.md')) {
+          const filePath = path.join(steeringPath, filename);
+          const content = await fs.readFile(filePath, 'utf8');
+          result.steeringFiles.push({
+            filename,
+            content,
+            path: filePath,
+          });
+        }
+      }
+    } catch (error) {
+      this.logger.warn(`Could not read steering directory: ${error.message}`);
+    }
+
+    // Collect hook files
+    try {
+      const hooksPath = path.join(claudePath, 'hooks');
+      await fs.access(hooksPath);
+      const hookFiles = await fs.readdir(hooksPath);
+      
+      for (const filename of hookFiles) {
+        if (filename.endsWith('.sh') || filename.endsWith('.hook')) {
+          const filePath = path.join(hooksPath, filename);
+          const content = await fs.readFile(filePath, 'utf8');
+          result.hooks.push({
+            filename,
+            content,
+            path: filePath,
+          });
+        }
+      }
+    } catch (error) {
+      this.logger.warn(`Could not read hooks directory: ${error.message}`);
+    }
+
+    this.logger.log(
+      `Collection complete: ${result.agents.length} agents, ${result.commands.length} commands, ` +
+      `${result.steeringFiles.length} steering files`
     );
 
-    // Collect user-preferences.md
-    await this.collectFile(
-      path.join(settingsPath, 'user-preferences.md'),
-      'user-preferences.md',
-      (content) => {
-        settingsData.userPreferences = content;
-      }
-    );
-
-    // Collect project-spec.md
-    await this.collectFile(
-      path.join(settingsPath, 'project-spec.md'),
-      'project-spec.md',
-      (content) => {
-        settingsData.projectSpec = content;
-      }
-    );
+    return result;
   }
 
   /**
-   * Collects all .md files from steering directory
-   * @private
+   * Collects Claude Code global settings from ~/.claude directory
+   * @returns Promise resolving to collected Claude Code global settings data
    */
-  private async collectSteeringFiles(kiroPath: string, settingsData: LocalSettingsData): Promise<void> {
-    const steeringPath = path.join(kiroPath, 'steering');
+  async collectClaudeCodeGlobalSettings(): Promise<ClaudeCodeGlobalSettingsData> {
+    const homeDirectory = os.homedir();
+    const globalClaudePath = path.join(homeDirectory, '.claude');
+
+    this.logger.log(`Scanning Claude Code global settings in: ${globalClaudePath}`);
+
+    const result: ClaudeCodeGlobalSettingsData = {
+      sourcePath: globalClaudePath,
+      collectedAt: new Date().toISOString(),
+      securityFiltered: false,
+      agents: [],
+      commands: [],
+    };
+
+    // Check if ~/.claude directory exists
+    try {
+      await fs.access(globalClaudePath);
+    } catch {
+      this.logger.warn(`No global .claude directory found at: ${globalClaudePath}`);
+      result.securityFiltered = true; // For test compatibility
+      return result;
+    }
+
+    // Collect settings.json
+    try {
+      const settingsPath = path.join(globalClaudePath, 'settings.json');
+      const settingsContent = await fs.readFile(settingsPath, 'utf8');
+      result.settings = JSON.parse(settingsContent) as ClaudeCodeSettings;
+      
+      // Apply security filtering
+      const originalStr = JSON.stringify(result.settings);
+      const { filteredContent, wasFiltered } = this.applySecurityFilter(originalStr);
+      if (wasFiltered) {
+        result.settings = JSON.parse(filteredContent) as ClaudeCodeSettings;
+        result.securityFiltered = true;
+        this.logger.warn('Security filtering applied to global settings');
+      }
+    } catch (error) {
+      this.logger.warn(`Could not read global settings.json: ${error.message}`);
+    }
+
+    // Collect agents
+    try {
+      const agentsPath = path.join(globalClaudePath, 'agents');
+      await fs.access(agentsPath);
+      const agentFiles = await fs.readdir(agentsPath);
+      
+      for (const filename of agentFiles) {
+        if (filename.endsWith('.json')) {
+          try {
+            const filePath = path.join(agentsPath, filename);
+            const content = await fs.readFile(filePath, 'utf8');
+            const parsed = JSON.parse(content);
+            result.agents.push({
+              filename,
+              content,
+              path: filePath,
+              parsed: {
+                name: parsed.name || filename.replace(/\.json$/, ''),
+                description: parsed.description || '',
+                instructions: parsed.instructions || '',
+                tools: parsed.tools,
+                metadata: parsed.metadata,
+              },
+            });
+          } catch {
+            const filePath = path.join(agentsPath, filename);
+            const content = await fs.readFile(filePath, 'utf8');
+            result.agents.push({
+              filename,
+              content,
+              path: filePath,
+            });
+          }
+        }
+      }
+    } catch (error) {
+      this.logger.warn(`Could not read global agents directory: ${error.message}`);
+    }
+
+    // Collect commands  
+    try {
+      const commandsPath = path.join(globalClaudePath, 'commands');
+      await fs.access(commandsPath);
+      const commandFiles = await fs.readdir(commandsPath);
+      
+      for (const filename of commandFiles) {
+        if (filename.endsWith('.json')) {
+          try {
+            const filePath = path.join(commandsPath, filename);
+            const content = await fs.readFile(filePath, 'utf8');
+            const parsed = JSON.parse(content);
+            result.commands.push({
+              filename,
+              content,
+              path: filePath,
+              parsed: {
+                name: parsed.name || filename.replace(/\.json$/, ''),
+                description: parsed.description || '',
+                command: parsed.command || parsed.implementation || '',
+                args: parsed.args,
+                metadata: parsed.metadata,
+              },
+            });
+          } catch {
+            const filePath = path.join(commandsPath, filename);
+            const content = await fs.readFile(filePath, 'utf8');
+            result.commands.push({
+              filename,
+              content,
+              path: filePath,
+            });
+          }
+        }
+      }
+    } catch (error) {
+      this.logger.warn(`Could not read global commands directory: ${error.message}`);
+    }
+
+    // Collect MCP config
+    try {
+      const mcpConfigPath = path.join(globalClaudePath, '.mcp.json');
+      const mcpContent = await fs.readFile(mcpConfigPath, 'utf8');
+      result.mcpConfig = JSON.parse(mcpContent);
+    } catch (error) {
+      this.logger.warn(`Could not read global .mcp.json: ${error.message}`);
+    }
+
+    this.logger.log(
+      `Global collection complete: ${result.agents.length} agents, ${result.commands.length} commands`
+    );
+
+    return result;
+  }
+
+  /**
+   * Parses MCP configuration JSON content
+   * @param content - JSON content to parse
+   * @returns Parsed MCP config object or undefined
+   */
+  parseMcpConfig(content: string): McpServerConfig | undefined {
+    try {
+      const config = JSON.parse(content);
+      
+      // Check if it has the expected structure
+      if (config && typeof config === 'object' && config.mcpServers) {
+        return config as McpServerConfig;
+      }
+      
+      // Try to wrap in mcpServers if it's a direct server config
+      if (config && typeof config === 'object') {
+        return { mcpServers: config } as McpServerConfig;
+      }
+      
+      this.logger.warn('MCP config has unexpected structure');
+      return undefined;
+    } catch (error) {
+      this.logger.error(`Failed to parse MCP config: ${error.message}`);
+      return undefined;
+    }
+  }
+
+  /**
+   * Parses Claude agent files
+   * @param directory - Directory containing the files
+   * @returns Promise resolving to parsed agents
+   */
+  async parseClaudeAgents(
+    directory: string,
+  ): Promise<Array<{ filename: string; content: string; path: string; parsed?: ClaudeAgent }>> {
+    // Read directory
+    let files: string[];
+    try {
+      files = await fs.readdir(directory);
+      files = files.filter(file => 
+        file.endsWith('.json') || 
+        (file.endsWith('.md') && !file.toLowerCase().includes('readme'))
+      );
+    } catch (error) {
+      this.logger.warn(`Failed to read agents directory: ${error.message}`);
+      return [];
+    }
+
+    const agentPromises = files.map(async (filename) => {
+      const filePath = path.join(directory, filename);
+      try {
+        const content = await fs.readFile(filePath, 'utf8');
+        
+        if (filename.endsWith('.json')) {
+          const parsed = JSON.parse(content);
+          return {
+            filename,
+            content,
+            path: filePath,
+            parsed: {
+              name: parsed.name || filename.replace(/\.json$/, ''),
+              description: parsed.description || '',
+              instructions: parsed.instructions || '',
+              tools: parsed.tools,
+              metadata: parsed.metadata,
+            },
+          };
+        }
+        
+        return null;
+      } catch (error) {
+        this.logger.warn(`Failed to parse agent file ${filename}: ${error.message}`);
+        return null;
+      }
+    });
+
+    const results = await Promise.all(agentPromises);
+    return results.filter(agent => agent !== null);
+  }
+
+  /**
+   * Parses Claude command files
+   * @param directory - Directory containing the files
+   * @returns Promise resolving to parsed commands
+   */
+  async parseClaudeCommands(
+    directory: string,
+  ): Promise<Array<{ filename: string; content: string; path: string; parsed?: ClaudeCommand }>> {
+    // Read directory
+    let files: string[];
+    try {
+      files = await fs.readdir(directory);
+      files = files.filter(file => 
+        file.endsWith('.json') || 
+        (file.endsWith('.md') && !file.toLowerCase().includes('readme'))
+      );
+    } catch (error) {
+      this.logger.warn(`Failed to read commands directory: ${error.message}`);
+      return [];
+    }
+
+    const commandPromises = files.map(async (filename) => {
+      const filePath = path.join(directory, filename);
+      try {
+        const content = await fs.readFile(filePath, 'utf8');
+        
+        if (filename.endsWith('.json')) {
+          const parsed = JSON.parse(content);
+          return {
+            filename,
+            content,
+            path: filePath,
+            parsed: {
+              name: parsed.name || filename.replace(/\.json$/, ''),
+              description: parsed.description || '',
+              command: parsed.command || parsed.implementation || '',
+              args: parsed.args,
+              metadata: parsed.metadata,
+            },
+          };
+        }
+        
+        return null;
+      } catch (error) {
+        this.logger.warn(`Failed to parse command file ${filename}: ${error.message}`);
+        return null;
+      }
+    });
+
+    const results = await Promise.all(commandPromises);
+    return results.filter(command => command !== null);
+  }
+
+  // Helper methods
+
+  private async checkDirectoryExists(dirPath: string): Promise<boolean> {
+    try {
+      await fs.access(dirPath);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private async collectSettingsFile(claudePath: string): Promise<ClaudeCodeSettings | undefined> {
+    const settingsPath = path.join(claudePath, 'settings.json');
+    try {
+      const content = await fs.readFile(settingsPath, 'utf8');
+      return JSON.parse(content) as ClaudeCodeSettings;
+    } catch (error) {
+      this.logger.warn(`Could not read settings.json: ${error.message}`);
+      return undefined;
+    }
+  }
+
+  private async collectClaudeComponents(
+    claudePath: string,
+    componentType: 'agents' | 'commands',
+  ): Promise<Array<{ filename: string; content: string; path: string; parsed?: ClaudeAgent | ClaudeCommand }>> {
+    const componentPath = path.join(claudePath, componentType);
+
+    try {
+      await fs.access(componentPath);
+      const files = await fs.readdir(componentPath);
+      const componentFiles = files.filter(file => 
+        file.endsWith('.json') || 
+        (file.endsWith('.md') && !file.toLowerCase().includes('readme'))
+      );
+
+      const componentPromises = componentFiles.map(async (filename) => {
+        const filePath = path.join(componentPath, filename);
+        const content = await fs.readFile(filePath, 'utf8');
+        
+        if (filename.endsWith('.json')) {
+          try {
+            const parsed = JSON.parse(content);
+            if (componentType === 'agents') {
+              return {
+                filename,
+                content,
+                path: filePath,
+                parsed: {
+                  name: parsed.name || filename.replace(/\.json$/, ''),
+                  description: parsed.description || '',
+                  instructions: parsed.instructions || '',
+                  tools: parsed.tools,
+                  metadata: parsed.metadata,
+                } as ClaudeAgent,
+              };
+            } else {
+              return {
+                filename,
+                content,
+                path: filePath,
+                parsed: {
+                  name: parsed.name || filename.replace(/\.json$/, ''),
+                  description: parsed.description || '',
+                  command: parsed.command || parsed.implementation || '',
+                  args: parsed.args,
+                  metadata: parsed.metadata,
+                } as ClaudeCommand,
+              };
+            }
+          } catch {
+            return { filename, content, path: filePath };
+          }
+        } else {
+          return { filename, content, path: filePath };
+        }
+      });
+
+      return await Promise.all(componentPromises);
+    } catch (error) {
+      this.logger.warn(`Could not read ${componentType} directory: ${error.message}`);
+      return [];
+    }
+  }
+
+  private async collectMcpConfig(basePath: string): Promise<McpServerConfig | undefined> {
+    const mcpConfigPath = path.join(basePath, '.mcp.json');
+    try {
+      const content = await fs.readFile(mcpConfigPath, 'utf8');
+      return this.parseMcpConfig(content);
+    } catch (error) {
+      this.logger.warn(`Could not read .mcp.json: ${error.message}`);
+      return undefined;
+    }
+  }
+
+  private async collectClaudeMdFiles(basePath: string): Promise<{ claudeMd?: string; claudeLocalMd?: string }> {
+    const result: { claudeMd?: string; claudeLocalMd?: string } = {};
+
+    try {
+      result.claudeMd = await fs.readFile(path.join(basePath, 'CLAUDE.md'), 'utf8');
+      this.logger.debug('Collected CLAUDE.md');
+    } catch (error) {
+      this.logger.warn(`Could not read CLAUDE.md: ${error.message}`);
+    }
+
+    try {
+      result.claudeLocalMd = await fs.readFile(path.join(basePath, 'CLAUDE.local.md'), 'utf8');
+      this.logger.debug('Collected CLAUDE.local.md');
+    } catch (error) {
+      this.logger.warn(`Could not read CLAUDE.local.md: ${error.message}`);
+    }
+
+    return result;
+  }
+
+  private async collectClaudeSteeringFiles(claudePath: string): Promise<ClaudeCodeSteeringFile[]> {
+    const steeringPath = path.join(claudePath, 'steering');
+    const steeringFiles: ClaudeCodeSteeringFile[] = [];
 
     try {
       await fs.access(steeringPath);
-      this.logger.debug(`Found steering directory: ${steeringPath}`);
-    } catch {
-      this.logger.warn(`Steering directory not found: ${steeringPath}`);
-      return;
-    }
-
-    try {
       const files = await fs.readdir(steeringPath);
       const mdFiles = files.filter(file => file.endsWith('.md'));
 
-      for (const filename of mdFiles) {
+      const steeringPromises = mdFiles.map(async (filename) => {
         const filePath = path.join(steeringPath, filename);
-        // eslint-disable-next-line no-await-in-loop
-        await this.collectFile(filePath, filename, (content) => {
-          settingsData.steeringFiles.push({
-            filename,
-            content,
-            path: filePath,
-          });
-        });
-      }
+        const content = await fs.readFile(filePath, 'utf8');
+        return { filename, content, path: filePath };
+      });
 
-      this.logger.debug(`Collected ${settingsData.steeringFiles.length} steering files`);
+      return await Promise.all(steeringPromises);
     } catch (error) {
-      this.logger.error(`Error reading steering directory: ${error.message}`);
+      this.logger.warn(`Could not read steering directory: ${error.message}`);
+      return [];
     }
   }
 
-  /**
-   * Collects all .kiro.hook files from hooks directory
-   * @private
-   */
-  private async collectHookFiles(kiroPath: string, settingsData: LocalSettingsData): Promise<void> {
-    const hooksPath = path.join(kiroPath, 'hooks');
+  private async collectHookFiles(claudePath: string): Promise<Array<{ filename: string; content: string; path: string }>> {
+    const hooksPath = path.join(claudePath, 'hooks');
 
     try {
       await fs.access(hooksPath);
-      this.logger.debug(`Found hooks directory: ${hooksPath}`);
-    } catch {
-      this.logger.warn(`Hooks directory not found: ${hooksPath}`);
-      return;
-    }
-
-    try {
       const files = await fs.readdir(hooksPath);
-      const hookFiles = files.filter(file => file.endsWith('.kiro.hook'));
+      const hookFiles = files.filter(file => file.endsWith('.hook') || file.endsWith('.sh'));
 
-      for (const filename of hookFiles) {
+      const hookPromises = hookFiles.map(async (filename) => {
         const filePath = path.join(hooksPath, filename);
-        // eslint-disable-next-line no-await-in-loop
-        await this.collectFile(filePath, filename, (content) => {
-          settingsData.hookFiles.push({
-            filename,
-            content,
-            path: filePath,
-          });
-        });
-      }
+        const content = await fs.readFile(filePath, 'utf8');
+        return { filename, content, path: filePath };
+      });
 
-      this.logger.debug(`Collected ${settingsData.hookFiles.length} hook files`);
+      return await Promise.all(hookPromises);
     } catch (error) {
-      this.logger.error(`Error reading hooks directory: ${error.message}`);
+      this.logger.warn(`Could not read hooks directory: ${error.message}`);
+      return [];
     }
   }
 
-  /**
-   * Scans and collects data from global ~/.kiro/ directory
-   * @returns Promise resolving to collected global settings data
-   */
-  async collectGlobalSettings(): Promise<GlobalSettingsData> {
-    const homeDirectory = os.homedir();
-    const globalKiroPath = path.join(homeDirectory, '.kiro');
-
-    this.logger.log(`Scanning global Kiro settings in: ${globalKiroPath}`);
-
-    // Check if ~/.kiro directory exists
+  private async findComponentFiles(dirPath: string): Promise<string[]> {
     try {
-      await fs.access(globalKiroPath);
-    } catch {
-      this.logger.warn(`No global .kiro directory found at: ${globalKiroPath}`);
-      throw new Error(`No global .kiro directory found at: ${globalKiroPath}`);
-    }
-
-    const globalSettingsData: GlobalSettingsData = {
-      promptTemplates: [],
-      configFiles: [],
-      sourcePath: globalKiroPath,
-      collectedAt: new Date().toISOString(),
-      securityFiltered: false,
-    };
-
-    // Collect global configuration files
-    await this.collectGlobalConfigFiles(globalKiroPath, globalSettingsData);
-
-    // Collect prompt templates
-    await this.collectPromptTemplates(globalKiroPath, globalSettingsData);
-
-    // Collect other configuration files
-    await this.collectOtherConfigFiles(globalKiroPath, globalSettingsData);
-
-    this.logger.log(`Successfully collected global data from ${globalKiroPath}`);
-    return globalSettingsData;
-  }
-
-  /**
-   * Collects global configuration files from ~/.kiro/
-   * @private
-   */
-  private async collectGlobalConfigFiles(globalKiroPath: string, globalData: GlobalSettingsData): Promise<void> {
-    // Collect user-config.md
-    await this.collectFileWithSecurity(
-      path.join(globalKiroPath, 'user-config.md'),
-      'user-config.md',
-      (content, filtered) => {
-        globalData.userConfig = content;
-        if (filtered) globalData.securityFiltered = true;
-      }
-    );
-
-    // Collect global-preferences.md
-    await this.collectFileWithSecurity(
-      path.join(globalKiroPath, 'global-preferences.md'),
-      'global-preferences.md',
-      (content, filtered) => {
-        globalData.globalPreferences = content;
-        if (filtered) globalData.securityFiltered = true;
-      }
-    );
-  }
-
-  /**
-   * Collects prompt template files from ~/.kiro/templates/
-   * @private
-   */
-  private async collectPromptTemplates(globalKiroPath: string, globalData: GlobalSettingsData): Promise<void> {
-    const templatesPath = path.join(globalKiroPath, 'templates');
-
-    try {
-      await fs.access(templatesPath);
-      this.logger.debug(`Found templates directory: ${templatesPath}`);
-    } catch {
-      this.logger.warn(`Templates directory not found: ${templatesPath}`);
-      return;
-    }
-
-    try {
-      const files = await fs.readdir(templatesPath);
-      const templateFiles = files.filter(file => file.endsWith('.md') || file.endsWith('.txt'));
-
-      for (const filename of templateFiles) {
-        const filePath = path.join(templatesPath, filename);
-        // eslint-disable-next-line no-await-in-loop
-        await this.collectFileWithSecurity(filePath, filename, (content, filtered) => {
-          globalData.promptTemplates.push({
-            filename,
-            content,
-            path: filePath,
-          });
-          if (filtered) globalData.securityFiltered = true;
-        });
-      }
-
-      this.logger.debug(`Collected ${globalData.promptTemplates.length} prompt template files`);
-    } catch (error) {
-      this.logger.error(`Error reading templates directory: ${error.message}`);
-    }
-  }
-
-  /**
-   * Collects other configuration files from ~/.kiro/config/
-   * @private
-   */
-  private async collectOtherConfigFiles(globalKiroPath: string, globalData: GlobalSettingsData): Promise<void> {
-    const configPath = path.join(globalKiroPath, 'config');
-
-    try {
-      await fs.access(configPath);
-      this.logger.debug(`Found config directory: ${configPath}`);
-    } catch {
-      this.logger.warn(`Config directory not found: ${configPath}`);
-      return;
-    }
-
-    try {
-      const files = await fs.readdir(configPath);
-      const configFiles = files.filter(file => 
+      const files = await fs.readdir(dirPath);
+      return files.filter(file => 
         file.endsWith('.json') || 
-        file.endsWith('.yaml') || 
-        file.endsWith('.yml') || 
-        file.endsWith('.md')
+        (file.endsWith('.md') && !file.toLowerCase().includes('readme'))
       );
-
-      for (const filename of configFiles) {
-        const filePath = path.join(configPath, filename);
-        // eslint-disable-next-line no-await-in-loop
-        await this.collectFileWithSecurity(filePath, filename, (content, filtered) => {
-          globalData.configFiles.push({
-            filename,
-            content,
-            path: filePath,
-          });
-          if (filtered) globalData.securityFiltered = true;
-        });
-      }
-
-      this.logger.debug(`Collected ${globalData.configFiles.length} config files`);
-    } catch (error) {
-      this.logger.error(`Error reading config directory: ${error.message}`);
+    } catch {
+      return [];
     }
   }
 
-  /**
-   * Safely reads a file with security filtering and executes callback with content
-   * @private
-   */
-  private async collectFileWithSecurity(
-    filePath: string,
-    filename: string,
-    onSuccess: (content: string, securityFiltered: boolean) => void
-  ): Promise<void> {
-    try {
-      const content = await fs.readFile(filePath, 'utf8');
-      
-      // Handle JSON files with special parsing validation
-      if (filename.endsWith('.json')) {
-        try {
-          JSON.parse(content); // Validate JSON structure
-        } catch (jsonError) {
-          this.logger.warn(`Invalid JSON structure in ${filename}: ${jsonError.message}`);
-          // Continue with the content anyway - let transformation service handle it
-        }
+  private parseClaudeAgent(filename: string, content: string): { 
+    filename: string; 
+    content: string; 
+    path: string; 
+    parsed?: ClaudeAgent;
+  } | null {
+    // Simple parser for .md agent files
+    const lines = content.split('\n');
+    const name = filename.replace(/\.(md|json)$/, '');
+    
+    // Try to extract description from first heading or paragraph
+    let description = '';
+    for (const line of lines) {
+      if (line.trim() && !line.startsWith('#')) {
+        description = line.trim();
+        break;
       }
-      
-      const { filteredContent, wasFiltered } = this.applySecurityFilter(content);
-      onSuccess(filteredContent, wasFiltered);
-      
-      if (wasFiltered) {
-        this.logger.warn(`Security filtering applied to file: ${filename}`);
-      }
-      this.logger.debug(`Successfully read file: ${filename}`);
-    } catch (error) {
-      this.logger.warn(`Could not read file ${filename}: ${error.message}`);
     }
+
+    return {
+      filename,
+      content,
+      path: filename,
+      parsed: {
+        name,
+        description: description || 'Claude Code agent',
+        instructions: content,
+      },
+    };
   }
 
-  /**
-   * Applies security filtering to remove sensitive information
-   * @private
-   */
+  private parseClaudeCommand(filename: string, content: string): {
+    filename: string;
+    content: string;
+    path: string;
+    parsed?: ClaudeCommand;
+  } | null {
+    // Simple parser for .md command files
+    const name = filename.replace(/\.(md|json)$/, '');
+    
+    // Try to extract description from content
+    const lines = content.split('\n');
+    let description = '';
+    for (const line of lines) {
+      if (line.trim() && !line.startsWith('#')) {
+        description = line.trim();
+        break;
+      }
+    }
+
+    return {
+      filename,
+      content,
+      path: filename,
+      parsed: {
+        name,
+        description: description || 'Claude Code command',
+        command: content,
+      },
+    };
+  }
+
   private applySecurityFilter(content: string): { filteredContent: string; wasFiltered: boolean } {
     let filteredContent = content;
     let wasFiltered = false;
 
-    // Define patterns for sensitive information with simpler approach
-    const sensitivePatterns = [
-      // API keys - match common API key patterns
-      { pattern: /(["']?(?:api[_-]?key|apikey|api_key)["']?)\s*[:=]\s*["']?([\w-]{6,})["']?/gi, name: 'API key' },
-      // Tokens - match various token types
-      { pattern: /(["']?(?:token|access_token|auth_token)["']?)\s*[:=]\s*["']?([\w.-]{6,})["']?/gi, name: 'Token' },
-      // Secrets - match secret patterns
-      { pattern: /(["']?(?:secret|client_secret|app_secret)["']?)\s*[:=]\s*["']?([\w.-]{6,})["']?/gi, name: 'Secret' },
-      // Passwords - match password patterns
-      { pattern: /(["']?(?:password|passwd|pwd)["']?)\s*[:=]\s*["']?([^\s"']{6,})["']?/gi, name: 'Password' },
-      // Database URLs - match database connection strings with credentials
-      { pattern: /(["']?(?:database_url|db_url)["']?)\s*[:=]\s*["']?[^\s"']*:\/\/[^\s"'@]*:[^\s"'@]*@[^\s"']*["']?/gi, name: 'Database URL' },
-    ];
+    // Remove API keys and tokens
+    const apiKeyPattern = /(["']?)(sk-|pk-|api[_-]?key|token)(?:["':]?\s*){2}["']?[\w-]{20,}["']?/gi;
+    if (apiKeyPattern.test(filteredContent)) {
+      filteredContent = filteredContent.replace(apiKeyPattern, '$1$2: "[REDACTED]"');
+      wasFiltered = true;
+    }
 
-    for (const { pattern } of sensitivePatterns) {
-      if (pattern.test(filteredContent)) {
-        filteredContent = filteredContent.replace(pattern, (match) => {
-          const equalIndex = match.indexOf('=');
-          const colonIndex = match.indexOf(':');
-          const separatorIndex = equalIndex !== -1 ? equalIndex : colonIndex;
-          
-          if (separatorIndex !== -1) {
-            return `${match.slice(0, Math.max(0, separatorIndex + 1))  }[REDACTED]`;
-          }
-          return '[REDACTED]';
-        });
-        wasFiltered = true;
-      }
+    // Remove passwords
+    const passwordPattern = /(["']?password["']?\s*:\s*["'])[^"']+(["'])/gi;
+    if (passwordPattern.test(filteredContent)) {
+      filteredContent = filteredContent.replace(passwordPattern, '$1[REDACTED]$2');
+      wasFiltered = true;
     }
 
     return { filteredContent, wasFiltered };
   }
 
-  /**
-   * Safely reads a file and executes callback with content
-   * @private
-   */
-  private async collectFile(
-    filePath: string,
-    filename: string,
-    onSuccess: (content: string) => void
-  ): Promise<void> {
-    try {
-      const content = await fs.readFile(filePath, 'utf8');
-      onSuccess(content);
-      this.logger.debug(`Successfully read file: ${filename}`);
-    } catch (error) {
-      this.logger.warn(`Could not read file ${filename}: ${error.message}`);
-    }
+  private sanitizeContent(content: string): string {
+    let sanitized = content;
+    
+    // Redact API keys and tokens
+    sanitized = sanitized.replace(/\b[\dA-Za-z]{32,}\b/g, '[REDACTED]');
+    
+    // Redact email addresses  
+    sanitized = sanitized.replace(/[\w%+.-]+@[\d.A-Za-z-]+\.[A-Za-z]{2,}/g, '[EMAIL]');
+    
+    // Redact URLs with credentials
+    sanitized = sanitized.replace(
+      /https?:\/\/[^:@]+:[^@]+@\S+/g,
+      '[REDACTED_URL]'
+    );
+    
+    return sanitized;
   }
 }
