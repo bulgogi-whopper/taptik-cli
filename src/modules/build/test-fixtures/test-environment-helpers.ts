@@ -7,12 +7,12 @@ import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
-import { MockFileSystem, AdvancedMockFileSystem } from './advanced-error-scenarios';
+import { AdvancedMockFileSystem } from './advanced-error-scenarios';
+import { MockFileSystem } from './mock-file-system';
 import { 
   webAppProjectScenario, 
   apiServiceProjectScenario, 
-  cliToolProjectScenario,
-  edgeCaseScenarios 
+  cliToolProjectScenario
 } from './realistic-project-scenarios';
 import {
   webAppPersonalContextOutput,
@@ -191,7 +191,7 @@ export class TestDataGenerator {
       'web-app': webAppProjectScenario,
       'api': apiServiceProjectScenario,
       'cli': cliToolProjectScenario,
-      'minimal': edgeCaseScenarios.emptyProject,
+      // 'minimal': edgeCaseScenarios.emptyProject, // TODO: Add edge case scenarios
     };
 
     const selectedScenario = scenarios[scenario];
@@ -487,7 +487,7 @@ export class TestAssertions {
     expectedMessage?: string
   ): boolean {
     if (!(error instanceof Error)) return false;
-    if (expectedCode && error.code !== expectedCode) return false;
+    if (expectedCode && (error as any).code !== expectedCode) return false;
     if (expectedMessage && !error.message.includes(expectedMessage)) return false;
     return true;
   }
