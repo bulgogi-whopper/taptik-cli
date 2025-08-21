@@ -16,6 +16,7 @@
     "cli:build": "nest build && node dist/src/cli.js",
     "lint": "eslint \"src/**/*.ts\" --fix",
     "lint:check": "eslint \"src/**/*.ts\"",
+    "typecheck": "tsc --noEmit",
     "test": "vitest",
     "test:run": "vitest run",
     "test:watch": "vitest --watch",

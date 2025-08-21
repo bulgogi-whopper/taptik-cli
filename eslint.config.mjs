@@ -52,6 +52,16 @@ export default [
         clearTimeout: 'readonly',
         setInterval: 'readonly',
         clearInterval: 'readonly',
+        // Browser globals for deployment utilities
+        ReadableStream: 'readonly',
+        TextEncoder: 'readonly',
+        URLSearchParams: 'readonly',
+        Blob: 'readonly',
+        Console: 'readonly',
+        UnderlyingSource: 'readonly',
+        BlobPart: 'readonly',
+        BlobPropertyBag: 'readonly',
+        NodeJS: 'readonly',
       },
     },
     linterOptions: {
