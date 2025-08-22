@@ -182,7 +182,7 @@ describe('DiffService', () => {
 
       const merged = service.mergeConfigurations(source, target, 'skip');
 
-      expect(merged.content.personal.name).toBe('Target');
+      expect((merged.content as any)?.personal?.name).toBe('Target');
     });
 
     it('should merge with overwrite strategy', () => {
@@ -199,7 +199,7 @@ describe('DiffService', () => {
 
       const merged = service.mergeConfigurations(source, target, 'overwrite');
 
-      expect(merged.content.personal.name).toBe('Source');
+      expect((merged.content as any)?.personal?.name).toBe('Source');
     });
 
     it('should merge with merge strategy (deep merge)', () => {
@@ -216,7 +216,7 @@ describe('DiffService', () => {
 
       const merged = service.mergeConfigurations(source, target, 'merge');
 
-      expect(merged.content.personal).toEqual({
+      expect((merged.content as any)?.personal).toEqual({
         name: 'Source',
         email: 'target@example.com',
         newField: 'new',
@@ -229,10 +229,10 @@ describe('DiffService', () => {
 
       const merged = service.mergeConfigurations(source, target, 'backup');
 
-      expect(merged.metadata?.backupCreated).toBe(true);
+      expect((merged.metadata as any)?.backupCreated).toBe(true);
       // Remove backupCreated before comparing the rest
       const { backupCreated: _backupCreated, ...restMetadata } =
-        merged.metadata || {};
+        (merged.metadata as any) || {};
       expect({ ...merged, metadata: restMetadata }).toEqual({
         ...source,
         metadata: source.metadata,
@@ -259,16 +259,16 @@ describe('DiffService', () => {
 
       const merged = service.mergeConfigurations(source, target, 'merge');
 
-      expect(merged.content.prompts).toHaveLength(3);
-      expect(merged.content.prompts).toContainEqual({
+      expect((merged.content as any)?.prompts).toHaveLength(3);
+      expect((merged.content as any)?.prompts).toContainEqual({
         id: '1',
         name: 'Source Prompt',
       });
-      expect(merged.content.prompts).toContainEqual({
+      expect((merged.content as any)?.prompts).toContainEqual({
         id: '2',
         name: 'Existing Prompt',
       });
-      expect(merged.content.prompts).toContainEqual({
+      expect((merged.content as any)?.prompts).toContainEqual({
         id: '3',
         name: 'New Prompt',
       });

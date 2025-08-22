@@ -222,7 +222,7 @@ describe('Comprehensive Rollback Integration Tests', () => {
       (backupService.getBackupManifest as any).mockResolvedValue(mockManifest);
 
       const manifest = await backupService.getBackupManifest('/mock/manifest.json');
-      expect(manifest.integrity?.checksum).toBe('abc123');
+      expect((manifest as any).integrity?.checksum).toBe('abc123');
 
       // Mock validation success then failure
       (backupService.rollback as any)
@@ -265,14 +265,14 @@ describe('Comprehensive Rollback Integration Tests', () => {
       // Simulate concurrent rollback attempts
       const performRollback = async (rollbackId: number) => {
         try {
-          const lockAcquired = await lockingService.acquireLock(`rollback_test_${rollbackId}`, 'claude-code');
+          const lockHandle = await lockingService.acquireLock(`rollback_test_${rollbackId}`);
           
-          if (!lockAcquired) {
+          if (!lockHandle) {
             throw new Error('Could not acquire lock for rollback');
           }
 
           await backupService.rollback('/mock/backup');
-          await lockingService.releaseLock(`rollback_test_${rollbackId}`, 'claude-code');
+          await lockingService.releaseLock(lockHandle);
           
           rollbackResults.push({ success: true });
         } catch (error) {
@@ -328,7 +328,7 @@ describe('Comprehensive Rollback Integration Tests', () => {
       };
 
       const recoveryOptions: RecoveryOptions = {
-        platform: 'claude-code',
+        platform: 'claudeCode',
         backupId,
         forceRecovery: true
       };

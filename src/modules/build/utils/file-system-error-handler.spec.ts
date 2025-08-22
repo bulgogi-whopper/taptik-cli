@@ -11,7 +11,8 @@ describe('FileSystemErrorHandler', () => {
   });
 
   it('should handle permission denied errors', () => {
-    const error = { code: FileSystemErrorCode.PERMISSION_DENIED };
+    const error = new Error('Permission denied') as any;
+    error.code = FileSystemErrorCode.PERMISSION_DENIED;
     
     const result = FileSystemErrorHandler.handleError(error, mockOperation, mockFilePath);
     
@@ -28,7 +29,8 @@ describe('FileSystemErrorHandler', () => {
   });
 
   it('should handle file not found errors', () => {
-    const error = { code: FileSystemErrorCode.FILE_NOT_FOUND };
+    const error = new Error('File not found') as any;
+    error.code = FileSystemErrorCode.FILE_NOT_FOUND;
     
     const result = FileSystemErrorHandler.handleError(error, mockOperation, mockFilePath);
     
@@ -45,7 +47,8 @@ describe('FileSystemErrorHandler', () => {
   });
 
   it('should handle directory not found errors', () => {
-    const error = { code: FileSystemErrorCode.DIRECTORY_NOT_FOUND };
+    const error = new Error('Directory not found') as any;
+    error.code = FileSystemErrorCode.DIRECTORY_NOT_FOUND;
     
     const result = FileSystemErrorHandler.handleError(error, mockOperation, mockFilePath);
     
@@ -56,7 +59,8 @@ describe('FileSystemErrorHandler', () => {
   });
 
   it('should handle no space left on device errors', () => {
-    const error = { code: FileSystemErrorCode.NO_SPACE_LEFT };
+    const error = new Error('No space left on device') as any;
+    error.code = FileSystemErrorCode.NO_SPACE_LEFT;
     
     const result = FileSystemErrorHandler.handleError(error, mockOperation, mockFilePath);
     
@@ -71,7 +75,8 @@ describe('FileSystemErrorHandler', () => {
   });
 
   it('should handle read-only file system errors', () => {
-    const error = { code: FileSystemErrorCode.READ_ONLY_FILE_SYSTEM };
+    const error = new Error('Read-only file system') as any;
+    error.code = FileSystemErrorCode.READ_ONLY_FILE_SYSTEM;
     
     const result = FileSystemErrorHandler.handleError(error, mockOperation, mockFilePath);
     
@@ -86,7 +91,8 @@ describe('FileSystemErrorHandler', () => {
   });
 
   it('should handle too many open files errors', () => {
-    const error = { code: FileSystemErrorCode.TOO_MANY_OPEN_FILES };
+    const error = new Error('Too many open files') as any;
+    error.code = FileSystemErrorCode.TOO_MANY_OPEN_FILES;
     
     const result = FileSystemErrorHandler.handleError(error, mockOperation, mockFilePath);
     
@@ -101,7 +107,8 @@ describe('FileSystemErrorHandler', () => {
   });
 
   it('should handle invalid path errors', () => {
-    const error = { code: FileSystemErrorCode.INVALID_PATH };
+    const error = new Error('Invalid path') as any;
+    error.code = FileSystemErrorCode.INVALID_PATH;
     
     const result = FileSystemErrorHandler.handleError(error, mockOperation, mockFilePath);
     

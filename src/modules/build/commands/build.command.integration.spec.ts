@@ -75,13 +75,22 @@ describe('BuildCommand Integration Tests', () => {
 
     const mockErrorHandler = {
       isProcessInterrupted: vi.fn().mockReturnValue(false),
-      handleCriticalErrorAndExit: vi.fn(),
+      handleCriticalErrorAndExit: vi.fn().mockImplementation(() => 
+        // Mock implementation that doesn't actually exit the process
+         undefined
+      ),
       addWarning: vi.fn(),
       hasWarnings: vi.fn().mockReturnValue(false),
-      getWarnings: vi.fn().mockReturnValue([]),
-      getErrors: vi.fn().mockReturnValue([]),
+      getErrorSummary: vi.fn().mockReturnValue({
+        criticalErrors: [],
+        warnings: [],
+        partialFiles: []
+      }),
       displayErrorSummary: vi.fn(),
-      exitWithAppropriateCode: vi.fn(),
+      exitWithAppropriateCode: vi.fn().mockImplementation(() => 
+        // Mock implementation that doesn't actually exit the process
+         undefined
+      ),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -132,9 +141,20 @@ describe('BuildCommand Integration Tests', () => {
     vi.clearAllMocks();
   });
 
+  // Helper function to force command to use mocked services
+  const setupCommandMocks = () => {
+    (command as any).errorHandler = errorHandler;
+    (command as any).progressService = progressService;
+    (command as any).interactiveService = interactiveService;
+    (command as any).collectionService = collectionService;
+    (command as any).transformationService = transformationService;
+    (command as any).outputService = outputService;
+  };
+
   describe('Complete Build Workflow', () => {
     it('should successfully complete full build workflow', async () => {
       // Setup mocks
+      errorHandler.isProcessInterrupted.mockReturnValue(false);
       interactiveService.selectPlatform.mockResolvedValue(BuildPlatform.KIRO);
       interactiveService.selectCategories.mockResolvedValue([
         { name: BuildCategoryName.PERSONAL_CONTEXT, enabled: true },
@@ -143,8 +163,6 @@ describe('BuildCommand Integration Tests', () => {
       ]);
 
       collectionService.collectLocalSettings.mockResolvedValue({
-        sourcePath: '/test/project',
-        collectedAt: '2025-01-01T00:00:00Z',
         context: mockSettingsData.localSettings.contextMd,
         userPreferences: mockSettingsData.localSettings.userPreferencesMd,
         projectSpec: mockSettingsData.localSettings.projectSpecMd,
@@ -160,12 +178,10 @@ describe('BuildCommand Integration Tests', () => {
           content: hook.content,
           path: hook.path,
         })),
+        configFiles: [],
       });
 
       collectionService.collectGlobalSettings.mockResolvedValue({
-        sourcePath: '/test/global',
-        collectedAt: '2025-01-01T00:00:00Z',
-        securityFiltered: false,
         userConfig: mockSettingsData.globalSettings.userConfig,
         globalPreferences: mockSettingsData.globalSettings.preferences,
         promptTemplates: mockSettingsData.globalSettings.globalPrompts,
@@ -202,6 +218,9 @@ describe('BuildCommand Integration Tests', () => {
           size: 300,
         },
       ]);
+
+      // Force command to use mocked services (workaround for NestJS DI issue)
+      setupCommandMocks();
 
       // Execute command
       await command.run([], {});
@@ -242,6 +261,8 @@ describe('BuildCommand Integration Tests', () => {
 
     it('should handle partial category selection', async () => {
       // Setup mocks for only personal context
+      errorHandler.isProcessInterrupted.mockReturnValue(false);
+
       interactiveService.selectPlatform.mockResolvedValue(BuildPlatform.KIRO);
       interactiveService.selectCategories.mockResolvedValue([
         { name: BuildCategoryName.PERSONAL_CONTEXT, enabled: true },
@@ -250,19 +271,15 @@ describe('BuildCommand Integration Tests', () => {
       ]);
 
       collectionService.collectLocalSettings.mockResolvedValue({
-        sourcePath: '/test/project',
-        collectedAt: '2025-01-01T00:00:00Z',
         context: mockSettingsData.localSettings.contextMd,
         userPreferences: mockSettingsData.localSettings.userPreferencesMd,
         projectSpec: mockSettingsData.localSettings.projectSpecMd,
         steeringFiles: [],
         hookFiles: [],
+        configFiles: [],
       });
 
       collectionService.collectGlobalSettings.mockResolvedValue({
-        sourcePath: '/test/global',
-        collectedAt: '2025-01-01T00:00:00Z',
-        securityFiltered: false,
         userConfig: mockSettingsData.globalSettings.userConfig,
         globalPreferences: mockSettingsData.globalSettings.preferences,
         promptTemplates: [],
@@ -282,6 +299,9 @@ describe('BuildCommand Integration Tests', () => {
           size: 100,
         },
       ]);
+
+      // Force command to use mocked services
+      setupCommandMocks();
 
       // Execute command
       await command.run([], {});
@@ -305,6 +325,8 @@ describe('BuildCommand Integration Tests', () => {
     });
 
     it('should handle data collection failures gracefully', async () => {
+      errorHandler.isProcessInterrupted.mockReturnValue(false);
+
       interactiveService.selectPlatform.mockResolvedValue(BuildPlatform.KIRO);
       interactiveService.selectCategories.mockResolvedValue([
         { name: BuildCategoryName.PERSONAL_CONTEXT, enabled: true },
@@ -332,16 +354,21 @@ describe('BuildCommand Integration Tests', () => {
         },
       ]);
 
+      // Force command to use mocked services
+      setupCommandMocks();
+
       // Execute command
       await command.run([], {});
 
       // Verify warnings were added
-      expect(errorHandler.addWarning).toHaveBeenCalledWith(
-        'Local settings collection failed: Permission denied',
-      );
-      expect(errorHandler.addWarning).toHaveBeenCalledWith(
-        'Global settings collection failed: Directory not found',
-      );
+      expect(errorHandler.addWarning).toHaveBeenCalledWith({
+        type: 'missing_file',
+        message: 'Local settings collection failed: Permission denied',
+      });
+      expect(errorHandler.addWarning).toHaveBeenCalledWith({
+        type: 'missing_file',
+        message: 'Global settings collection failed: Directory not found',
+      });
 
       // Verify process continued despite collection failures
       expect(transformationService.transformPersonalContext).toHaveBeenCalled();
@@ -349,6 +376,8 @@ describe('BuildCommand Integration Tests', () => {
     });
 
     it('should handle transformation failures', async () => {
+      errorHandler.isProcessInterrupted.mockReturnValue(false);
+
       interactiveService.selectPlatform.mockResolvedValue(BuildPlatform.KIRO);
       interactiveService.selectCategories.mockResolvedValue([
         { name: BuildCategoryName.PERSONAL_CONTEXT, enabled: true },
@@ -356,19 +385,15 @@ describe('BuildCommand Integration Tests', () => {
       ]);
 
       collectionService.collectLocalSettings.mockResolvedValue({
-        sourcePath: '/test/project',
-        collectedAt: '2025-01-01T00:00:00Z',
         context: mockSettingsData.localSettings.contextMd,
         userPreferences: mockSettingsData.localSettings.userPreferencesMd,
         projectSpec: mockSettingsData.localSettings.projectSpecMd,
         steeringFiles: [],
         hookFiles: [],
+        configFiles: [],
       });
 
       collectionService.collectGlobalSettings.mockResolvedValue({
-        sourcePath: '/test/global',
-        collectedAt: '2025-01-01T00:00:00Z',
-        securityFiltered: false,
         userConfig: '',
         globalPreferences: '',
         promptTemplates: [],
@@ -394,13 +419,18 @@ describe('BuildCommand Integration Tests', () => {
         },
       ]);
 
+      // Force command to use mocked services
+      setupCommandMocks();
+
       // Execute command
       await command.run([], {});
 
       // Verify warning was added for failed transformation
-      expect(errorHandler.addWarning).toHaveBeenCalledWith(
-        'Failed to transform project-context: Invalid project data',
-      );
+      expect(errorHandler.addWarning).toHaveBeenCalledWith({
+        type: 'partial_conversion',
+        message: 'Failed to transform project-context',
+        details: 'Invalid project data',
+      });
 
       // Verify successful transformation still completed
       expect(outputService.writeOutputFiles).toHaveBeenCalledWith(
@@ -440,8 +470,13 @@ describe('BuildCommand Integration Tests', () => {
       const timeoutError = new Error('Operation timed out');
       timeoutError.name = 'TimeoutError';
 
+      // Mock the service to reject with timeout error
       interactiveService.selectPlatform.mockRejectedValue(timeoutError);
 
+      // Force command to use mocked services
+      setupCommandMocks();
+
+      // Execute command
       await command.run([], {});
 
       expect(errorHandler.handleCriticalErrorAndExit).toHaveBeenCalledWith({
@@ -459,6 +494,9 @@ describe('BuildCommand Integration Tests', () => {
       (permissionError as any).code = 'EACCES';
 
       interactiveService.selectPlatform.mockRejectedValue(permissionError);
+
+      // Force command to use mocked services
+      setupCommandMocks();
 
       await command.run([], {});
 
@@ -478,6 +516,9 @@ describe('BuildCommand Integration Tests', () => {
 
       interactiveService.selectPlatform.mockRejectedValue(notFoundError);
 
+      // Force command to use mocked services
+      setupCommandMocks();
+
       await command.run([], {});
 
       expect(errorHandler.handleCriticalErrorAndExit).toHaveBeenCalledWith({
@@ -495,6 +536,9 @@ describe('BuildCommand Integration Tests', () => {
 
       interactiveService.selectPlatform.mockRejectedValue(genericError);
 
+      // Force command to use mocked services
+      setupCommandMocks();
+
       await command.run([], {});
 
       expect(errorHandler.handleCriticalErrorAndExit).toHaveBeenCalledWith({
@@ -509,25 +553,23 @@ describe('BuildCommand Integration Tests', () => {
 
   describe('Build Configuration', () => {
     it('should generate unique build IDs', async () => {
+      errorHandler.isProcessInterrupted.mockReturnValue(false);
+
       interactiveService.selectPlatform.mockResolvedValue(BuildPlatform.KIRO);
       interactiveService.selectCategories.mockResolvedValue([
         { name: BuildCategoryName.PERSONAL_CONTEXT, enabled: true },
       ]);
 
       collectionService.collectLocalSettings.mockResolvedValue({
-        sourcePath: '/test/project',
-        collectedAt: '2025-01-01T00:00:00Z',
         context: '',
         userPreferences: '',
         projectSpec: '',
         steeringFiles: [],
         hookFiles: [],
+        configFiles: [],
       });
 
       collectionService.collectGlobalSettings.mockResolvedValue({
-        sourcePath: '/test/global',
-        collectedAt: '2025-01-01T00:00:00Z',
-        securityFiltered: false,
         userConfig: '',
         globalPreferences: '',
         promptTemplates: [],
@@ -548,15 +590,24 @@ describe('BuildCommand Integration Tests', () => {
         },
       ]);
 
+      // Force command to use mocked services
+      setupCommandMocks();
+
       // Execute multiple times to verify unique build IDs
       await command.run([], {});
       const firstManifestCall = outputService.generateManifest.mock.calls[0];
 
+      // Clear mock calls but keep implementations for second run
       outputService.generateManifest.mockClear();
+
       await command.run([], {});
       const secondManifestCall = outputService.generateManifest.mock.calls[0];
 
-      // Verify build IDs are different
+      // Verify build IDs are different and have correct format
+      expect(firstManifestCall).toBeDefined();
+      expect(secondManifestCall).toBeDefined();
+      expect(firstManifestCall[1]).toBeDefined();
+      expect(secondManifestCall[1]).toBeDefined();
       expect(firstManifestCall[1].buildId).not.toBe(
         secondManifestCall[1].buildId,
       );

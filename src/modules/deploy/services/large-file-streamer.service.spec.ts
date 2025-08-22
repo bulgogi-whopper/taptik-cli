@@ -186,7 +186,7 @@ describe('LargeFileStreamerService', () => {
     it('should monitor and optimize memory usage', async () => {
       // Mock process.memoryUsage for this test
       const originalMemoryUsage = process.memoryUsage;
-      process.memoryUsage = vi.fn().mockReturnValue({
+      (process.memoryUsage as any) = vi.fn().mockReturnValue({
         heapUsed: 60 * 1024 * 1024,
         heapTotal: 100 * 1024 * 1024,
         external: 0,
@@ -222,7 +222,7 @@ describe('LargeFileStreamerService', () => {
     it('should handle memory optimization without gc', async () => {
       // Mock process.memoryUsage for this test
       const originalMemoryUsage = process.memoryUsage;
-      process.memoryUsage = vi.fn().mockReturnValue({
+      (process.memoryUsage as any) = vi.fn().mockReturnValue({
         heapUsed: 60 * 1024 * 1024,
         heapTotal: 100 * 1024 * 1024,
         external: 0,
