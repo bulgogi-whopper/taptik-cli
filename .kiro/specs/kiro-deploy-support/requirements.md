@@ -19,6 +19,214 @@ The feature builds upon the existing deploy architecture and adds Kiro-specific 
 - **TaptikProjectContext**: Project-specific settings, steering documents, specs
 - **TaptikPromptTemplates**: AI prompts and templates
 
+## Kiro IDE Specific Architecture
+
+### Kiro IDE Directory Structure
+```
+~/.kiro/                          # Global Kiro configuration
+├── settings.json                 # Global IDE settings
+├── agents/                       # Custom AI agents
+│   ├── {agent-name}.md          # Agent definition files
+│   └── metadata.json            # Agent metadata registry
+├── hooks/                        # IDE lifecycle hooks
+│   ├── pre-commit.json          # Pre-commit hook configuration
+│   ├── post-save.json           # Post-save hook configuration
+│   └── project-open.json        # Project open hook configuration
+└── templates/                    # Prompt templates and snippets
+    ├── code-review.md           # Code review templates
+    ├── documentation.md         # Documentation templates
+    └── refactor.md              # Refactoring templates
+
+.kiro/                            # Project-level configuration
+├── settings.json                 # Project-specific settings
+├── steering/                     # Project steering documents
+│   ├── persona.md               # AI persona definition
+│   ├── principle.md             # Development principles
+│   ├── architecture.md          # Architecture guidelines
+│   ├── TDD.md                   # TDD methodology
+│   ├── TEST.md                  # Testing guidelines
+│   ├── git.md                   # Git workflow
+│   ├── PRD.md                   # Product requirements
+│   ├── project-context.md       # Project context
+│   ├── flags.md                 # Feature flags
+│   └── mcp.md                   # MCP server configuration
+├── specs/                        # Project specifications
+│   └── {spec-name}/             # Individual spec directories
+│       ├── requirements.md      # Functional requirements
+│       ├── design.md            # Design documentation
+│       └── tasks.md             # Implementation tasks
+└── hooks/                        # Project-specific hooks
+    ├── build.json               # Build process hooks
+    ├── deploy.json              # Deployment hooks
+    └── test.json                # Testing hooks
+```
+
+### Kiro IDE Configuration Schema
+```typescript
+// ~/.kiro/settings.json (Global Settings)
+interface KiroGlobalSettings {
+  version: string;
+  user: {
+    name: string;
+    email: string;
+    preferences: {
+      theme: 'light' | 'dark' | 'auto';
+      fontSize: number;
+      fontFamily: string;
+      autoSave: boolean;
+      autoFormat: boolean;
+    };
+  };
+  security: {
+    permissions: string[];           // File system and network permissions
+    trustedDomains: string[];        // Allowed external domains
+    sandboxMode: boolean;            // Enable/disable sandbox
+  };
+  ai: {
+    defaultModel: string;            // Default AI model
+    maxTokens: number;               // Token limit per request
+    temperature: number;             // AI creativity level
+    customPrompts: Record<string, string>; // Named custom prompts
+  };
+  plugins: {
+    enabled: string[];               // Active plugin IDs
+    registry: string;                // Plugin registry URL
+    autoUpdate: boolean;             // Auto-update plugins
+  };
+  ui: {
+    statusBar: {
+      enabled: boolean;
+      position: 'top' | 'bottom';
+      components: string[];          // Enabled status bar components
+    };
+    sidebar: {
+      width: number;
+      defaultPanel: string;
+      collapsible: boolean;
+    };
+    editor: {
+      lineNumbers: boolean;
+      wordWrap: boolean;
+      minimap: boolean;
+      folding: boolean;
+    };
+  };
+  env: Record<string, string>;       // Environment variables
+}
+
+// .kiro/settings.json (Project Settings)
+interface KiroProjectSettings {
+  version: string;
+  project: {
+    name: string;
+    type: 'web' | 'mobile' | 'desktop' | 'library' | 'other';
+    language: string[];              // Primary programming languages
+    framework: string[];             // Used frameworks
+    buildSystem: string;             // Build system (npm, gradle, etc.)
+  };
+  ai: {
+    context: {
+      includeFiles: string[];        // Files to include in AI context
+      excludeFiles: string[];        // Files to exclude from AI context
+      maxFileSize: number;           // Max file size for context
+    };
+    steering: {
+      enabled: boolean;
+      documents: string[];           // Active steering document paths
+    };
+    agents: {
+      enabled: string[];             // Enabled agent names
+      disabled: string[];            // Disabled agent names
+    };
+  };
+  hooks: {
+    enabled: boolean;
+    preCommit: string[];             // Pre-commit hook scripts
+    postSave: string[];              // Post-save hook scripts
+    projectOpen: string[];           // Project open hook scripts
+    build: string[];                 // Build hook scripts
+    deploy: string[];                // Deploy hook scripts
+    test: string[];                  // Test hook scripts
+  };
+  specs: {
+    enabled: boolean;
+    defaultTemplate: string;         // Default spec template
+    autoGenerate: boolean;           // Auto-generate specs from code
+    trackTasks: boolean;             // Track task completion
+  };
+  integrations: {
+    git: {
+      autoCommit: boolean;
+      commitTemplate: string;
+      branchNaming: string;
+    };
+    ci: {
+      provider: string;              // CI/CD provider
+      configFile: string;            // CI config file path
+    };
+  };
+  env: Record<string, string>;       // Project-specific environment variables
+}
+
+// Agent Definition Schema
+interface KiroAgentDefinition {
+  name: string;
+  version: string;
+  description: string;
+  author: string;
+  tags: string[];
+  capabilities: string[];            // What the agent can do
+  triggers: {
+    filePatterns: string[];          // File patterns that activate agent
+    keywords: string[];              // Keywords that trigger agent
+    contexts: string[];              // Contexts where agent is active
+  };
+  configuration: {
+    model: string;                   // AI model to use
+    temperature: number;             // Creativity level
+    maxTokens: number;               // Token limit
+    systemPrompt: string;            // System prompt for the agent
+  };
+  content: string;                   // Agent implementation (markdown)
+}
+
+// Hook Configuration Schema
+interface KiroHookConfiguration {
+  name: string;
+  version: string;
+  enabled: boolean;
+  trigger: 'pre-commit' | 'post-save' | 'project-open' | 'build' | 'deploy' | 'test';
+  conditions: {
+    filePatterns: string[];          // Files that trigger this hook
+    branches: string[];              // Git branches where hook applies
+    environments: string[];          // Environments where hook runs
+  };
+  actions: Array<{
+    type: 'command' | 'script' | 'notification' | 'ai-prompt';
+    config: Record<string, any>;     // Action-specific configuration
+    timeout: number;                 // Timeout in seconds
+    retries: number;                 // Number of retries on failure
+  }>;
+  dependencies: string[];            // Required tools/dependencies
+}
+```
+
+### Kiro IDE Unique Features and Constraints
+- **Spec-Driven Development**: Built-in support for requirement/design/task specifications
+- **AI-First Architecture**: Deep AI integration with steering documents
+- **Hook System**: Comprehensive lifecycle hooks for automation
+- **Template Engine**: Advanced prompt and code template system
+- **Sandbox Security**: Optional sandboxed execution environment
+- **Multi-Model Support**: Can work with different AI models simultaneously
+- **Context-Aware AI**: AI agents understand project context and history
+
+### Platform-Specific Constraints
+- **File Size Limits**: Individual files limited to 50MB, total project context limited to 500MB
+- **Security Model**: Strict permission system for file access and network operations
+- **Agent Limits**: Maximum 20 custom agents per project, 50 globally
+- **Hook Execution**: Hooks timeout after 30 seconds by default
+- **Template Complexity**: Template files limited to 10MB each
+
 ## Requirements
 
 ### Requirement 1
@@ -135,6 +343,42 @@ The feature builds upon the existing deploy architecture and adds Kiro-specific 
 4. WHEN transformation encounters missing required fields THEN the system SHALL use sensible defaults and log warnings
 5. WHEN transformation detects incompatible data types THEN the system SHALL convert to compatible formats or skip with warnings
 6. WHEN transformation completes THEN the system SHALL validate that all essential data was preserved
+
+### Requirement 17
+
+**User Story:** As a developer, I want concrete data transformation rules with specific examples, so that I can understand exactly how my Claude Code configurations will be converted to Kiro IDE format.
+
+#### Acceptance Criteria
+
+1. WHEN transforming Claude Code settings THEN the system SHALL map:
+   - `permissions: string[]` → `kiroSettings.security.permissions: string[]`
+   - `environmentVariables: Record<string,string>` → `kiroSettings.env: Record<string,string>`
+   - `statusLine.enabled: boolean` → `kiroSettings.ui.statusBar.enabled: boolean`
+   - `statusLine.position: 'top'|'bottom'` → `kiroSettings.ui.statusBar.position: 'top'|'bottom'`
+   - `statusLine.components: string[]` → `kiroSettings.ui.statusBar.components: string[]`
+
+2. WHEN transforming Claude Code agents THEN the system SHALL map:
+   - Agent markdown content → `~/.kiro/agents/{agent-name}.md`
+   - Agent metadata → `~/.kiro/agents/metadata.json` registry entry
+   - Agent capabilities → Kiro agent triggers and configuration
+
+3. WHEN transforming Claude Code commands THEN the system SHALL map:
+   - Command content → Kiro hook configuration in `.kiro/hooks/{command-name}.json`
+   - Command permissions → Hook action permissions and dependencies
+   - Command triggers → Hook conditions and file patterns
+
+4. WHEN transforming project settings THEN the system SHALL map:
+   - Project instructions → `.kiro/steering/project-context.md`
+   - MCP configuration → `.kiro/steering/mcp.md`
+   - Custom settings → `.kiro/settings.json` project-specific section
+
+5. WHEN transformation creates steering documents THEN the system SHALL generate:
+   - `persona.md` from user context and AI preferences
+   - `principle.md` from development guidelines
+   - `architecture.md` from project structure patterns
+   - `TDD.md` and `TEST.md` from testing configurations
+
+6. WHEN transformation encounters data loss scenarios THEN the system SHALL preserve original data in comments and provide migration warnings
 
 ### Requirement 10
 
