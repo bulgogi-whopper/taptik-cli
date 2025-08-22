@@ -24,6 +24,9 @@
     "test:ui": "vitest --ui",
     "test:e2e": "vitest run --config vitest.e2e.config.ts",
     "test:cli": "vitest run src/modules/build/commands/build.command.integration.spec.ts",
+    "cli:help": "npm run cli -- --help",
+    "cli:build-help": "npm run cli -- build --help",
+    "cli:test": "npm run cli -- health",
     "dev:setup": "npm run cli:help && npm run cli:build-help && echo '🎉 Development setup complete'"
   },
   "dependencies": {
