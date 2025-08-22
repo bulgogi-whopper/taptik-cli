@@ -11,7 +11,7 @@ describe('FileSystemErrorHandler', () => {
   });
 
   it('should handle permission denied errors', () => {
-    const error = new Error('Permission denied') as any;
+    const error = new Error('Permission denied') as Error & { code: FileSystemErrorCode };
     error.code = FileSystemErrorCode.PERMISSION_DENIED;
     
     const result = FileSystemErrorHandler.handleError(error, mockOperation, mockFilePath);
@@ -29,7 +29,7 @@ describe('FileSystemErrorHandler', () => {
   });
 
   it('should handle file not found errors', () => {
-    const error = new Error('File not found') as any;
+    const error = new Error('File not found') as Error & { code: FileSystemErrorCode };
     error.code = FileSystemErrorCode.FILE_NOT_FOUND;
     
     const result = FileSystemErrorHandler.handleError(error, mockOperation, mockFilePath);
@@ -47,7 +47,7 @@ describe('FileSystemErrorHandler', () => {
   });
 
   it('should handle directory not found errors', () => {
-    const error = new Error('Directory not found') as any;
+    const error = new Error('Directory not found') as Error & { code: FileSystemErrorCode };
     error.code = FileSystemErrorCode.DIRECTORY_NOT_FOUND;
     
     const result = FileSystemErrorHandler.handleError(error, mockOperation, mockFilePath);
@@ -59,7 +59,7 @@ describe('FileSystemErrorHandler', () => {
   });
 
   it('should handle no space left on device errors', () => {
-    const error = new Error('No space left on device') as any;
+    const error = new Error('No space left on device') as Error & { code: FileSystemErrorCode };
     error.code = FileSystemErrorCode.NO_SPACE_LEFT;
     
     const result = FileSystemErrorHandler.handleError(error, mockOperation, mockFilePath);
@@ -75,7 +75,7 @@ describe('FileSystemErrorHandler', () => {
   });
 
   it('should handle read-only file system errors', () => {
-    const error = new Error('Read-only file system') as any;
+    const error = new Error('Read-only file system') as Error & { code: FileSystemErrorCode };
     error.code = FileSystemErrorCode.READ_ONLY_FILE_SYSTEM;
     
     const result = FileSystemErrorHandler.handleError(error, mockOperation, mockFilePath);
@@ -91,7 +91,7 @@ describe('FileSystemErrorHandler', () => {
   });
 
   it('should handle too many open files errors', () => {
-    const error = new Error('Too many open files') as any;
+    const error = new Error('Too many open files') as Error & { code: FileSystemErrorCode };
     error.code = FileSystemErrorCode.TOO_MANY_OPEN_FILES;
     
     const result = FileSystemErrorHandler.handleError(error, mockOperation, mockFilePath);
@@ -107,7 +107,7 @@ describe('FileSystemErrorHandler', () => {
   });
 
   it('should handle invalid path errors', () => {
-    const error = new Error('Invalid path') as any;
+    const error = new Error('Invalid path') as Error & { code: FileSystemErrorCode };
     error.code = FileSystemErrorCode.INVALID_PATH;
     
     const result = FileSystemErrorHandler.handleError(error, mockOperation, mockFilePath);
@@ -154,7 +154,11 @@ describe('FileSystemErrorHandler', () => {
   });
 
   describe('logErrorResult', () => {
-    let mockLogger: any;
+    let mockLogger: {
+      error: ReturnType<typeof vi.fn>;
+      warn: ReturnType<typeof vi.fn>;
+      log: ReturnType<typeof vi.fn>;
+    };
 
     beforeEach(() => {
       mockLogger = {
@@ -162,7 +166,8 @@ describe('FileSystemErrorHandler', () => {
         warn: vi.fn(),
         log: vi.fn(),
       };
-      (FileSystemErrorHandler as any).logger = mockLogger;
+      // Use type assertion to set private static property
+      (FileSystemErrorHandler as unknown as { logger: typeof mockLogger }).logger = mockLogger;
     });
 
     it('should log critical errors with suggestions', () => {
