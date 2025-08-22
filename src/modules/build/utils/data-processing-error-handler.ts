@@ -29,7 +29,7 @@ export interface DataProcessingErrorResult {
   /** Whether this affects the entire build */
   isCritical: boolean;
   /** Partial data that was successfully processed */
-  partialData?: any;
+  partialData?: Record<string, unknown>;
 }
 
 /**
@@ -60,38 +60,40 @@ export class DataProcessingErrorHandler {
    * @returns Error handling result with detailed information
    */
   static handleError(
-    error: any,
+    error: unknown,
     errorType: DataProcessingErrorType,
     context: ErrorContext
   ): DataProcessingErrorResult {
+    const errorInstance = error instanceof Error ? error : new Error(String(error));
+    
     switch (errorType) {
       case DataProcessingErrorType.JSON_PARSING:
-        return this.handleJsonParsingError(error, context);
+        return this.handleJsonParsingError(errorInstance, context);
         
       case DataProcessingErrorType.MARKDOWN_PARSING:
-        return this.handleMarkdownParsingError(error, context);
+        return this.handleMarkdownParsingError(errorInstance, context);
         
       case DataProcessingErrorType.DATA_VALIDATION:
-        return this.handleDataValidationError(error, context);
+        return this.handleDataValidationError(errorInstance, context);
         
       case DataProcessingErrorType.TRANSFORMATION:
-        return this.handleTransformationError(error, context);
+        return this.handleTransformationError(errorInstance, context);
         
       case DataProcessingErrorType.MISSING_REQUIRED_FIELD:
-        return this.handleMissingRequiredFieldError(error, context);
+        return this.handleMissingRequiredFieldError(errorInstance, context);
         
       case DataProcessingErrorType.INVALID_DATA_FORMAT:
-        return this.handleInvalidDataFormatError(error, context);
+        return this.handleInvalidDataFormatError(errorInstance, context);
         
       default:
-        return this.handleGenericDataError(error, context);
+        return this.handleGenericDataError(errorInstance, context);
     }
   }
 
   /**
    * Handle JSON parsing errors with specific file and line information
    */
-  private static handleJsonParsingError(error: any, context: ErrorContext): DataProcessingErrorResult {
+  private static handleJsonParsingError(error: Error, context: ErrorContext): DataProcessingErrorResult {
     const lineMatch = error.message.match(/line (\d+)/);
     const columnMatch = error.message.match(/column (\d+)/);
     const lineInfo = lineMatch && columnMatch ? ` at line ${lineMatch[1]}, column ${columnMatch[1]}` : '';
@@ -119,7 +121,7 @@ export class DataProcessingErrorHandler {
   /**
    * Handle markdown parsing errors
    */
-  private static handleMarkdownParsingError(error: any, context: ErrorContext): DataProcessingErrorResult {
+  private static handleMarkdownParsingError(error: Error, context: ErrorContext): DataProcessingErrorResult {
     const userMessage = `Markdown parsing failed for ${context.category || 'unknown category'} in ${context.filePath || 'unknown file'}`;
     
     this.logger.warn(userMessage, error.message);
@@ -144,7 +146,7 @@ export class DataProcessingErrorHandler {
   /**
    * Handle data validation errors
    */
-  private static handleDataValidationError(error: any, context: ErrorContext): DataProcessingErrorResult {
+  private static handleDataValidationError(error: Error, context: ErrorContext): DataProcessingErrorResult {
     const userMessage = `Data validation failed during ${context.operation}`;
     
     this.logger.warn(userMessage, error.message);
@@ -168,7 +170,7 @@ export class DataProcessingErrorHandler {
   /**
    * Handle transformation errors
    */
-  private static handleTransformationError(error: any, context: ErrorContext): DataProcessingErrorResult {
+  private static handleTransformationError(error: Error, context: ErrorContext): DataProcessingErrorResult {
     const userMessage = `Transformation failed for ${context.category || 'unknown category'}`;
     
     this.logger.error(userMessage, error.message);
@@ -192,7 +194,7 @@ export class DataProcessingErrorHandler {
   /**
    * Handle missing required field errors
    */
-  private static handleMissingRequiredFieldError(error: any, context: ErrorContext): DataProcessingErrorResult {
+  private static handleMissingRequiredFieldError(error: Error, context: ErrorContext): DataProcessingErrorResult {
     const userMessage = `Required field missing during ${context.operation}`;
     
     this.logger.warn(userMessage, error.message);
@@ -216,7 +218,7 @@ export class DataProcessingErrorHandler {
   /**
    * Handle invalid data format errors
    */
-  private static handleInvalidDataFormatError(error: any, context: ErrorContext): DataProcessingErrorResult {
+  private static handleInvalidDataFormatError(error: Error, context: ErrorContext): DataProcessingErrorResult {
     const userMessage = `Invalid data format in ${context.filePath || 'unknown file'}`;
     
     this.logger.warn(userMessage, error.message);
@@ -240,7 +242,7 @@ export class DataProcessingErrorHandler {
   /**
    * Handle generic data processing errors
    */
-  private static handleGenericDataError(error: any, context: ErrorContext): DataProcessingErrorResult {
+  private static handleGenericDataError(error: Error, context: ErrorContext): DataProcessingErrorResult {
     const userMessage = `Data processing error during ${context.operation}`;
     
     this.logger.error(userMessage, error.stack);
@@ -264,8 +266,8 @@ export class DataProcessingErrorHandler {
   /**
    * Extract partial data from markdown content when parsing fails
    */
-  private static extractPartialMarkdownData(rawData?: string): any {
-    if (!rawData) return null;
+  private static extractPartialMarkdownData(rawData?: string): Record<string, unknown> | undefined {
+    if (!rawData) return undefined;
     
     try {
       // Try to extract basic text content, ignoring complex structures
@@ -277,7 +279,7 @@ export class DataProcessingErrorHandler {
       
       return { partialContent: content };
     } catch {
-      return null;
+      return undefined;
     }
   }
 
@@ -304,7 +306,7 @@ export class DataProcessingErrorHandler {
     
     // Collect unique suggestions from all failed results
     const allSuggestions = failedResults.flatMap(result => result.suggestions);
-    const uniqueSuggestions = [...new Set(allSuggestions)];
+    const uniqueSuggestions = Array.from(new Set(allSuggestions));
     
     this.logger.log(summary);
     if (failedFiles.length > 0) {

@@ -3,6 +3,25 @@
  * Mock file system utilities for testing with advanced error scenarios
  */
 
+/**
+ * File system error with code property
+ */
+interface FileSystemError extends Error {
+  code: string;
+}
+
+/**
+ * File system stats interface
+ */
+export interface MockFileStats {
+  isDirectory(): boolean;
+  isFile(): boolean;
+  size: number;
+}
+
+/**
+ * Mock file system configuration
+ */
 export interface MockFileSystemConfig {
   files: Record<string, string>;
   directories: string[];
@@ -51,15 +70,19 @@ export class MockFileSystem {
     // Check permissions
     const perms = this.permissions.get(filePath);
     if (perms && !perms.readable) {
-      const error = new Error(`EACCES: permission denied, open '${filePath}'`);
-      (error as any).code = 'EACCES';
+      const error: FileSystemError = Object.assign(
+        new Error(`EACCES: permission denied, open '${filePath}'`),
+        { code: 'EACCES' }
+      );
       throw error;
     }
 
     // Check if file exists
     if (!this.files.has(filePath)) {
-      const error = new Error(`ENOENT: no such file or directory, open '${filePath}'`);
-      (error as any).code = 'ENOENT';
+      const error: FileSystemError = Object.assign(
+        new Error(`ENOENT: no such file or directory, open '${filePath}'`),
+        { code: 'ENOENT' }
+      );
       throw error;
     }
 
@@ -75,8 +98,10 @@ export class MockFileSystem {
     // Check permissions
     const perms = this.permissions.get(filePath);
     if (perms && !perms.writable) {
-      const error = new Error(`EACCES: permission denied, open '${filePath}'`);
-      (error as any).code = 'EACCES';
+      const error: FileSystemError = Object.assign(
+        new Error(`EACCES: permission denied, open '${filePath}'`),
+        { code: 'EACCES' }
+      );
       throw error;
     }
 
@@ -91,14 +116,17 @@ export class MockFileSystem {
 
     // Check if directory exists
     if (!this.directories.has(directoryPath)) {
-      const error = new Error(`ENOENT: no such file or directory, scandir '${directoryPath}'`);
-      (error as any).code = 'ENOENT';
+      const error: FileSystemError = Object.assign(
+        new Error(`ENOENT: no such file or directory, scandir '${directoryPath}'`),
+        { code: 'ENOENT' }
+      );
       throw error;
     }
 
     // Return files in directory
     const filesInDirectory: string[] = [];
-    for (const filePath of this.files.keys()) {
+    const filePathsArray = Array.from(this.files.keys());
+    for (const filePath of filePathsArray) {
       if (filePath.startsWith(`${directoryPath  }/`)) {
         const relativePath = filePath.slice(Math.max(0, directoryPath.length + 1));
         if (!relativePath.includes('/')) {
@@ -119,8 +147,10 @@ export class MockFileSystem {
     // Check permissions
     const perms = this.permissions.get(directoryPath);
     if (perms && !perms.writable) {
-      const error = new Error(`EACCES: permission denied, mkdir '${directoryPath}'`);
-      (error as any).code = 'EACCES';
+      const error: FileSystemError = Object.assign(
+        new Error(`EACCES: permission denied, mkdir '${directoryPath}'`),
+        { code: 'EACCES' }
+      );
       throw error;
     }
 
@@ -139,7 +169,7 @@ export class MockFileSystem {
     }
   }
 
-  async stat(filePath: string): Promise<{ isDirectory(): boolean; isFile(): boolean; size: number }> {
+  async stat(filePath: string): Promise<MockFileStats> {
     // Check for errors first
     if (this.errors.has(filePath)) {
       throw this.errors.get(filePath);
@@ -162,8 +192,10 @@ export class MockFileSystem {
       };
     }
 
-    const error = new Error(`ENOENT: no such file or directory, stat '${filePath}'`);
-    (error as any).code = 'ENOENT';
+    const error: FileSystemError = Object.assign(
+      new Error(`ENOENT: no such file or directory, stat '${filePath}'`),
+      { code: 'ENOENT' }
+    );
     throw error;
   }
 

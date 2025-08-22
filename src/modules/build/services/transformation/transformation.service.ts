@@ -389,7 +389,7 @@ export class TransformationService {
       DataProcessingErrorHandler.logErrorResult(errorResult);
 
       // Return partial data if available, otherwise empty object
-      return errorResult.partialData || {};
+      return (errorResult.partialData as ParsedData) || ({} as ParsedData);
     }
   }
 

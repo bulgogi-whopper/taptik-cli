@@ -2,12 +2,31 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import { SanitizationResult } from '../interfaces/cloud.interface';
 
+interface SeverityBreakdown {
+  safe: number;
+  low: number;
+  medium: number;
+  critical: number;
+}
+
+interface DetailedFinding {
+  category: string;
+  severity: string;
+  count: number;
+  path?: string;
+}
+
+interface SanitizationStats {
+  sanitizedFields: number;
+  totalFields: number;
+}
+
 @Injectable()
 export class SanitizationService {
   private readonly logger = new Logger(SanitizationService.name);
   
   // Performance optimization: Cache for processed paths
-  private processedCache = new Map<string, any>();
+  private processedCache = new Map<string, unknown>();
   private readonly CACHE_SIZE_LIMIT = 1000;
   // Enhanced patterns with severity levels and comprehensive coverage
   private readonly sensitivePatterns = {
@@ -134,7 +153,7 @@ export class SanitizationService {
     ],
   };
 
-  sanitizeForCloudUpload(config: any): SanitizationResult {
+  sanitizeForCloudUpload(config: unknown): SanitizationResult {
     const startTime = Date.now();
     
     // Clear cache if it gets too large (performance optimization)
@@ -150,14 +169,9 @@ export class SanitizationService {
       medium: 0,
       critical: 0,
     };
-    const detailedFindings: Array<{
-      category: string;
-      severity: string;
-      count: number;
-      path?: string;
-    }> = [];
+    const detailedFindings: DetailedFinding[] = [];
     
-    const stats = { sanitizedFields: 0, totalFields: 0 };
+    const stats: SanitizationStats = { sanitizedFields: 0, totalFields: 0 };
 
     const sanitizedData = this.sanitizeObject(
       config,
@@ -196,13 +210,13 @@ export class SanitizationService {
   }
 
   private sanitizeObject(
-    obj: any,
+    obj: unknown,
     findings: string[],
-    severityBreakdown: any,
-    stats: { sanitizedFields: number; totalFields: number },
-    detailedFindings: any[],
+    severityBreakdown: SeverityBreakdown,
+    stats: SanitizationStats,
+    detailedFindings: DetailedFinding[],
     path: string
-  ): any {
+  ): unknown {
     if (obj === null || obj === undefined) {
       return obj;
     }
@@ -213,7 +227,7 @@ export class SanitizationService {
       return this.processedCache.get(cacheKey);
     }
 
-    let result: any;
+    let result: unknown;
 
     if (typeof obj === 'string') {
       stats.totalFields++;
@@ -231,15 +245,15 @@ export class SanitizationService {
       );
     } else if (typeof obj === 'object') {
       result = {};
-      for (const [key, value] of Object.entries(obj)) {
+      for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
         const newPath = path ? `${path}.${key}` : key;
         
         if (value === null || value === undefined || value === '') {
-          result[key] = value;
+          (result as Record<string, unknown>)[key] = value;
           continue;
         }
 
-        result[key] = this.sanitizeValue(
+        (result as Record<string, unknown>)[key] = this.sanitizeValue(
           key, 
           value, 
           findings, 
@@ -264,13 +278,13 @@ export class SanitizationService {
 
   private sanitizeValue(
     key: string,
-    value: any,
+    value: unknown,
     findings: string[],
-    severityBreakdown: any,
-    stats: { sanitizedFields: number; totalFields: number },
-    detailedFindings: any[],
+    severityBreakdown: SeverityBreakdown,
+    stats: SanitizationStats,
+    detailedFindings: DetailedFinding[],
     path: string
-  ): any {
+  ): unknown {
     stats.totalFields++;
     
     if (typeof value === 'string') {
@@ -288,9 +302,9 @@ export class SanitizationService {
     value: string,
     key: string,
     findings: string[],
-    severityBreakdown: any,
-    stats: { sanitizedFields: number; totalFields: number },
-    detailedFindings: any[]
+    severityBreakdown: SeverityBreakdown,
+    stats: SanitizationStats,
+    detailedFindings: DetailedFinding[]
   ): string {
     if (!value || value === '') {
       return value;
@@ -531,7 +545,7 @@ export class SanitizationService {
   }
 
   private determineSecurityLevel(
-    severityBreakdown: any,
+    severityBreakdown: SeverityBreakdown,
     _findings: string[]
   ): 'safe' | 'warning' | 'blocked' {
     if (severityBreakdown.critical > 0) {
@@ -548,7 +562,7 @@ export class SanitizationService {
     return Array.from(unique);
   }
 
-  private generateRecommendations(findings: string[], severityBreakdown: any, detailedFindings: any[]): string[] {
+  private generateRecommendations(findings: string[], severityBreakdown: SeverityBreakdown, detailedFindings: DetailedFinding[]): string[] {
     const recommendations: string[] = [];
     
     // Check for specific categories in detailed findings
@@ -639,7 +653,7 @@ export class SanitizationService {
            /^%[A-Z_][\dA-Z_]*%$/.test(value);
   }
   
-  private addDetailedFinding(detailedFindings: any[], category: string, severity: string): void {
+  private addDetailedFinding(detailedFindings: DetailedFinding[], category: string, severity: string): void {
     const existingFinding = detailedFindings.find(f => f.category === category);
     if (existingFinding) {
       existingFinding.count++;

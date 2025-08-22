@@ -46,7 +46,7 @@ export interface ContextContent {
   /** IDE-specific settings for each platform */
   ide?: IdeContext;
   /** Allow additional fields for flexibility */
-  [key: string]: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  [key: string]: unknown;
 }
 
 export interface PersonalContext {
@@ -54,7 +54,7 @@ export interface PersonalContext {
   name?: string;
   email?: string;
   /** Allow additional fields for flexibility */
-  [key: string]: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  [key: string]: unknown;
   /** Developer profile information */
   profile?: {
     name?: string;
@@ -136,7 +136,7 @@ export interface ProjectContext {
 
 export interface PromptsContext {
   /** Support for both array and object types for backward compatibility */
-  [key: string]: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  [key: string]: unknown;
   /** System prompts for AI interactions */
   system_prompts?: Array<{
     name: string;

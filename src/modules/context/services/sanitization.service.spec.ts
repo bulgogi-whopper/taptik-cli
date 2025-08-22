@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { CloudMetadata, SanitizationResult } from '../interfaces/cloud.interface';
+import { describe, it, expect, beforeEach } from 'vitest';
 
 import { SanitizationService } from './sanitization.service';
 

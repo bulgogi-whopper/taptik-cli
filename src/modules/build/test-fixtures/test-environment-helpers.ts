@@ -191,10 +191,20 @@ export class TestDataGenerator {
       'web-app': webAppProjectScenario,
       'api': apiServiceProjectScenario,
       'cli': cliToolProjectScenario,
-      // 'minimal': edgeCaseScenarios.emptyProject, // TODO: Add edge case scenarios
-    };
+    } as const;
 
-    const selectedScenario = scenarios[scenario];
+    type ScenarioKey = keyof typeof scenarios;
+    if (scenario === 'minimal') {
+      // Return minimal structure for minimal scenario
+      const files: Record<string, string> = {};
+      const directories: string[] = ['.kiro', '.kiro/settings', '.kiro/steering', '.kiro/hooks'];
+      files['.kiro/settings/context.md'] = '';
+      files['.kiro/settings/user-preferences.md'] = '';
+      files['.kiro/settings/project-spec.md'] = '';
+      return { files, directories };
+    }
+
+    const selectedScenario = scenarios[scenario as ScenarioKey];
     const files: Record<string, string> = {};
     const directories: string[] = ['.kiro', '.kiro/settings', '.kiro/steering', '.kiro/hooks'];
 
@@ -204,12 +214,12 @@ export class TestDataGenerator {
     files['.kiro/settings/project-spec.md'] = selectedScenario.localSettings.projectSpec || '';
 
     // Add steering files
-    selectedScenario.steeringFiles?.forEach(file => {
+    selectedScenario.steeringFiles?.forEach((file: { path: string; content: string }) => {
       files[file.path] = file.content;
     });
 
     // Add hook files
-    selectedScenario.hookFiles?.forEach(file => {
+    selectedScenario.hookFiles?.forEach((file: { path: string; content: string }) => {
       files[file.path] = file.content;
     });
 
@@ -328,23 +338,27 @@ export class TestEnvironmentManager {
    */
   async cleanup(): Promise<void> {
     if (this.config.cleanup) {
-      // Run custom cleanup handlers
-      for (const handler of this.cleanupHandlers) {
+      // Run custom cleanup handlers in parallel
+      const cleanupPromises = this.cleanupHandlers.map(async (handler) => {
         try {
           await handler();
         } catch (error) {
+          // eslint-disable-next-line no-console
           console.warn('Cleanup handler failed:', error);
         }
-      }
+      });
+      await Promise.allSettled(cleanupPromises);
 
-      // Clean up temp directories
-      for (const tempDir of this.tempDirectories) {
+      // Clean up temp directories in parallel
+      const dirCleanupPromises = this.tempDirectories.map(async (tempDir) => {
         try {
           await fs.rmdir(tempDir, { recursive: true });
         } catch (error) {
+          // eslint-disable-next-line no-console
           console.warn(`Failed to clean up temp directory ${tempDir}:`, error);
         }
-      }
+      });
+      await Promise.allSettled(dirCleanupPromises);
     }
 
     if (this.metrics) {
@@ -459,10 +473,10 @@ export class TestAssertions {
   /**
    * Assert that a file system operation completes within expected time
    */
-  static async assertPerformance(
-    operation: () => Promise<any>,
+  static async assertPerformance<T>(
+    operation: () => Promise<T>,
     maxTimeMs: number
-  ): Promise<{ success: boolean; actualTime: number; result?: any }> {
+  ): Promise<{ success: boolean; actualTime: number; result?: T }> {
     const start = Date.now();
     try {
       const result = await operation();
@@ -482,12 +496,12 @@ export class TestAssertions {
    * Assert that an error is properly structured
    */
   static assertErrorStructure(
-    error: any,
+    error: unknown,
     expectedCode?: string,
     expectedMessage?: string
   ): boolean {
     if (!(error instanceof Error)) return false;
-    if (expectedCode && (error as any).code !== expectedCode) return false;
+    if (expectedCode && 'code' in error && (error as { code: string }).code !== expectedCode) return false;
     if (expectedMessage && !error.message.includes(expectedMessage)) return false;
     return true;
   }
@@ -495,23 +509,24 @@ export class TestAssertions {
   /**
    * Assert that taptik output matches schema
    */
-  static assertTaptikOutput(output: any, type: 'personal' | 'project' | 'prompts' | 'manifest'): boolean {
+  static assertTaptikOutput(output: unknown, type: 'personal' | 'project' | 'prompts' | 'manifest'): boolean {
     if (!output || typeof output !== 'object') return false;
+    const obj = output as Record<string, unknown>;
 
     const commonFields = ['taptik_version', 'context_type', 'created_at', 'source_platform'];
     for (const field of commonFields) {
-      if (type !== 'manifest' && !output[field]) return false;
+      if (type !== 'manifest' && !obj[field]) return false;
     }
 
     switch (type) {
       case 'personal':
-        return !!(output.user_info && output.development_environment && output.workflow_preferences);
+        return !!(obj.user_info && obj.development_environment && obj.workflow_preferences);
       case 'project':
-        return !!(output.project_info && output.technical_stack && output.development_guidelines);
+        return !!(obj.project_info && obj.technical_stack && obj.development_guidelines);
       case 'prompts':
-        return !!(Array.isArray(output.templates) && output.metadata);
+        return !!(Array.isArray(obj.templates) && obj.metadata);
       case 'manifest':
-        return !!(output.build_id && Array.isArray(output.categories) && Array.isArray(output.source_files));
+        return !!(obj.build_id && Array.isArray(obj.categories) && Array.isArray(obj.source_files));
       default:
         return false;
     }
@@ -539,7 +554,7 @@ export class TestSuiteUtils {
     timeoutMs: number,
     cleanup?: () => Promise<void>
   ): Promise<T> {
-    let timeoutHandle: NodeJS.Timeout;
+    let timeoutHandle: NodeJS.Timeout | undefined;
     
     const timeoutPromise = new Promise<never>((_, reject) => {
       timeoutHandle = setTimeout(() => {
@@ -549,14 +564,19 @@ export class TestSuiteUtils {
 
     try {
       const result = await Promise.race([operation(), timeoutPromise]);
-      clearTimeout(timeoutHandle);
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle);
+      }
       return result;
     } catch (error) {
-      clearTimeout(timeoutHandle);
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle);
+      }
       if (cleanup) {
         try {
           await cleanup();
         } catch (cleanupError) {
+          // eslint-disable-next-line no-console
           console.warn('Cleanup failed:', cleanupError);
         }
       }
@@ -574,8 +594,10 @@ export class TestSuiteUtils {
   ): Promise<{ result: T; attempts: number }> {
     let lastError: Error;
     
+    // Sequential retry is intentional for exponential backoff strategy
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
+        // eslint-disable-next-line no-await-in-loop
         const result = await operation();
         return { result, attempts: attempt };
       } catch (error) {
@@ -583,6 +605,7 @@ export class TestSuiteUtils {
         
         if (attempt < maxAttempts) {
           const delay = baseDelayMs * Math.pow(2, attempt - 1);
+          // eslint-disable-next-line no-await-in-loop
           await new Promise(resolve => setTimeout(resolve, delay));
         }
       }

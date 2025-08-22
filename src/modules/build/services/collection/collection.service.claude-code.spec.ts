@@ -8,14 +8,14 @@ import * as path from 'node:path';
 
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CollectionService } from './collection.service';
 
 import type {
   ClaudeCodeLocalSettingsData,
   ClaudeCodeGlobalSettingsData,
-  McpServerConfig
+  McpServerConfig,
 } from '../../interfaces/claude-code.interfaces';
 
 // Mock os module

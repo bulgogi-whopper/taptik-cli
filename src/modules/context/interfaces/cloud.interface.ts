@@ -141,7 +141,7 @@ export interface SanitizationResult {
 
 export interface TaptikPackage {
   metadata: CloudMetadata;
-  sanitizedConfig: any;
+  sanitizedConfig: TaptikContext;
   checksum: string;
   format: 'taptik-v1';
   compression: 'gzip' | 'none';

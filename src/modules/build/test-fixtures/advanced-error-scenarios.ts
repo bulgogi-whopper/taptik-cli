@@ -445,7 +445,7 @@ export class ErrorScenarioFactory {
     return new AdvancedMockFileSystem(
       {
         files: Object.fromEntries(Array.from({ length: 100 }, (_, i) => [`/file${i}.txt`, `content ${i}`])
-          .map(( [path, content]) => [path, content])),
+          .map(([path, content]) => [path, content])),
         directories: ['/'],
       },
       { concurrentOperationLimit: 3 }
@@ -569,7 +569,7 @@ export class ErrorScenarioTestUtilities {
    * Test that a function properly handles and retries on EAGAIN errors
    */
   static async testRetryOnEAGAIN(
-    operation: () => Promise<any>,
+    operation: () => Promise<unknown>,
     maxRetries = 3
   ): Promise<{ success: boolean; attempts: number; error?: Error }> {
     let attempts = 0;
@@ -580,14 +580,15 @@ export class ErrorScenarioTestUtilities {
         // eslint-disable-next-line no-await-in-loop
         await operation();
         return { success: true, attempts };
-      } catch (error: any) {
-        if (error.code === 'EAGAIN' && i < maxRetries) {
+      } catch (error: unknown) {
+        const err = error as { code?: string };
+        if (err.code === 'EAGAIN' && i < maxRetries) {
           // Wait before retry
           // eslint-disable-next-line no-await-in-loop
           await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 100));
           continue;
         }
-        return { success: false, attempts, error };
+        return { success: false, attempts, error: error as Error };
       }
     }
     
@@ -598,16 +599,17 @@ export class ErrorScenarioTestUtilities {
    * Test that a function properly handles disk space errors
    */
   static async testDiskSpaceHandling(
-    writeOperation: () => Promise<any>
+    writeOperation: () => Promise<unknown>
   ): Promise<{ handledCorrectly: boolean; errorType?: string }> {
     try {
       await writeOperation();
       return { handledCorrectly: false }; // Should have failed
-    } catch (error: any) {
-      const isDiskSpaceError = error.code === 'ENOSPC' || error.code === 'EFBIG';
+    } catch (error: unknown) {
+      const err = error as { code?: string };
+      const isDiskSpaceError = err.code === 'ENOSPC' || err.code === 'EFBIG';
       return { 
         handledCorrectly: isDiskSpaceError, 
-        errorType: error.code 
+        errorType: err.code 
       };
     }
   }
@@ -616,7 +618,7 @@ export class ErrorScenarioTestUtilities {
    * Test concurrent operation limits
    */
   static async testConcurrencyLimits(
-    operations: (() => Promise<any>)[],
+    operations: (() => Promise<unknown>)[],
     _expectedFailures = 0  
   ): Promise<{ successes: number; failures: number; errors: Error[] }> {
     const results = await Promise.allSettled(
@@ -627,7 +629,7 @@ export class ErrorScenarioTestUtilities {
     const failures = results.filter(r => r.status === 'rejected').length;
     const errors = results
       .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
-      .map(r => r.reason);
+      .map(r => r.reason as Error);
 
     return { successes, failures, errors };
   }
@@ -636,7 +638,7 @@ export class ErrorScenarioTestUtilities {
    * Performance benchmark for file operations
    */
   static async benchmarkOperation(
-    operation: () => Promise<any>,
+    operation: () => Promise<unknown>,
     iterations = 10
   ): Promise<{ 
     averageTime: number; 

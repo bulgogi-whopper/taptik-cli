@@ -16,7 +16,7 @@ interface ComponentAnalysis {
   instructions: number;
 }
 
-interface TagGenerationContext {
+interface _TagGenerationContext {
   context: TaptikContext;
   componentCount: ComponentAnalysis;
   features: string[];
@@ -309,9 +309,6 @@ export class MetadataGeneratorService {
   }
 
   private addLanguageTags(context: TaptikContext, tags: Set<string>): void {
-    const languages = new Set<string>();
-    const categories = new Set<string>();
-    
     // Analyze steering rules
     const steeringRules = [
       ...(context.data?.claudeCode?.local?.steeringRules || []),
@@ -477,7 +474,7 @@ export class MetadataGeneratorService {
     const cmdLower = command.toLowerCase();
     
     // Check for known technology patterns
-    for (const [pattern, tech] of this.TECHNOLOGY_PATTERNS.entries()) {
+    for (const [pattern, tech] of Array.from(this.TECHNOLOGY_PATTERNS.entries())) {
       if (cmdLower.includes(pattern)) {
         technologies.add(tech);
       }
@@ -583,7 +580,7 @@ export class MetadataGeneratorService {
     }
 
     const words = textLower
-      .split(/[\s!"'(),.:;?[\]_{}\-]/g)
+      .split(/[\s!"'(),.:;?[\]_{|}-]/g)
       .filter(word => word.length > 2);
 
     for (const word of words) {

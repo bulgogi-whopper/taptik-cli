@@ -38,14 +38,30 @@ export interface FileSystemError extends Error {
 }
 
 /**
+ * Interface for error objects with a code property
+ */
+interface ErrorWithCode extends Error {
+  code: unknown;
+}
+
+/**
+ * Type guard function to check if error has a code property
+ */
+function hasErrorCode(error: unknown): error is ErrorWithCode {
+  return error instanceof Error && 'code' in error;
+}
+
+/**
  * Type guard function to check if error is a file system error
  */
 function isFileSystemError(error: unknown): error is FileSystemError {
+  if (!hasErrorCode(error)) {
+    return false;
+  }
+  
   return (
-    error instanceof Error &&
-    'code' in error &&
-    typeof (error as any).code === 'string' &&
-    Object.values(FileSystemErrorCode).includes((error as any).code)
+    typeof error.code === 'string' &&
+    Object.values(FileSystemErrorCode).includes(error.code as FileSystemErrorCode)
   );
 }
 
@@ -90,7 +106,8 @@ export class FileSystemErrorHandler {
     }
     
     // Handle generic errors without specific error codes
-    return this.handleGenericError(error as Error, operation, filePath);
+    const genericError = error instanceof Error ? error : new Error(String(error));
+    return this.handleGenericError(genericError, operation, filePath);
   }
 
   /**
@@ -222,7 +239,7 @@ export class FileSystemErrorHandler {
   /**
    * Handle generic/unknown file system errors
    */
-  private static handleGenericError(error: FileSystemError | Error, operation: string, filePath: string): FileSystemErrorResult {
+  private static handleGenericError(error: Error, operation: string, filePath: string): FileSystemErrorResult {
     const errorMessage = error.message || 'Unknown error';
     const userMessage = `File system error when ${operation}: ${filePath} - ${errorMessage}`;
     

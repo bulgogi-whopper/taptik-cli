@@ -1,13 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { 
-  CloudMetadata, 
-  TaptikContext,
-  ClaudeCodeSettings,
-  ClaudeAgent,
-  ClaudeCommand,
-  McpServerConfig
-} from '../interfaces/cloud.interface';
+import { beforeEach, describe, expect, it } from 'vitest';
+
+import { TaptikContext } from '../interfaces/cloud.interface';
 
 import { MetadataGeneratorService } from './metadata-generator.service';
 
