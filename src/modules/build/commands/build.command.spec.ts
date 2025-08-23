@@ -34,6 +34,7 @@ describe('BuildCommand', () => {
     hookFiles: [
       { filename: 'commit.kiro.hook', content: 'hook content', path: '/test/hooks/commit.kiro.hook' }
     ],
+    configFiles: [],
     sourcePath: '/test/.kiro',
     collectedAt: '2025-01-01T00:00:00Z',
   };
@@ -116,12 +117,10 @@ describe('BuildCommand', () => {
         id: 'template-1',
         name: 'Test Template',
         description: 'A test template',
+        category: 'test',
         content: 'Template content',
         variables: [],
-        metadata: {
-          created_at: '2025-01-01T00:00:00Z',
-          version: '1.0.0',
-        },
+        tags: ['test'],
       },
     ],
     metadata: {
