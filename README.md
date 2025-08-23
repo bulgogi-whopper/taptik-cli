@@ -42,8 +42,14 @@ npm run cli -- build
 # Build with specific options
 npm run cli -- build --platform kiro --categories personal,project --verbose
 
-# Build your current configuration
+# Build your current configuration (interactive)
 taptik build
+
+# Build from Claude Code platform
+taptik build --platform=claude-code
+
+# Build from Kiro platform
+taptik build --platform=kiro
 
 # Preview build without creating files (dry run)
 npm run cli -- build --dry-run
@@ -93,11 +99,11 @@ taptik info
 - AI prompt templates and contexts
 - Environment variable configurations
 
-### 🎨 Supported AI IDEs (MVP)
+### 🎨 Supported AI IDEs
 
-- **Cursor** - AI-powered code editor
-- **Kiro** - AI development environment
-- **Claude Code** - Anthropic's AI coding assistant
+- **Claude Code** - Anthropic's AI coding assistant (✅ Full Support)
+- **Kiro** - AI development environment (✅ Full Support)
+- **Cursor** - AI-powered code editor (🚧 Coming Soon)
 
 ## 🛠️ Commands
 
@@ -194,6 +200,43 @@ npm run cli -- build --dry-run --verbose
 # Build for specific output location
 npm run cli -- build --output ~/my-taptik-configs/project-x
 ```
+
+### Claude Code Support
+
+Taptik provides comprehensive support for Claude Code configurations with cloud-ready packaging:
+
+#### Features
+
+- **Complete Configuration Collection**: Settings, agents, commands, MCP servers, steering files
+- **Security-First Approach**: Automatic sanitization of sensitive data before cloud upload
+- **Cloud-Ready Packages**: Generate `.taptik` packages ready for Supabase cloud platform
+- **Rich Metadata**: Auto-tagging and search optimization for community discovery
+
+#### Quick Start
+
+```bash
+# Build Claude Code configuration with cloud features
+taptik build --platform=claude-code
+
+# Build and upload to cloud
+taptik build --platform=claude-code --upload --public --title="My Setup"
+
+# Build specific categories only
+taptik build --platform=claude-code --categories=project-context,prompt-templates
+```
+
+#### Configuration Sources
+
+- **Global Settings**: `~/.claude/settings.json`, agents, commands, MCP config
+- **Project Settings**: `.claude/` directory, `CLAUDE.md`, `.mcp.json`
+- **Steering Files**: `.claude/steering/*.md` for AI behavior customization
+
+#### Documentation
+
+- [Claude Code Build Guide](./docs/claude-code-build-guide.md) - Complete usage guide
+- [Troubleshooting](./docs/claude-code-troubleshooting.md) - Common issues and solutions
+- [Security Guide](./docs/claude-code-security.md) - Best practices for secure sharing
+- [API Reference](./docs/claude-code-api-reference.md) - Developer documentation
 
 ### Authentication
 
