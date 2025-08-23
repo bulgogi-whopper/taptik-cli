@@ -180,10 +180,10 @@ describe('PackageService', () => {
     });
 
     it('should throw error for missing required context fields', async () => {
-      const invalidContext = { ...mockTaptikContext, version: undefined };
+      const invalidContext = { ...mockTaptikContext, version: undefined } as unknown as TaptikContext;
       
       await expect(
-        service.createTaptikPackage(mockMetadata, invalidContext as any)
+        service.createTaptikPackage(mockMetadata, invalidContext)
       ).rejects.toThrow('Invalid context: version is required');
     });
   });
@@ -210,7 +210,11 @@ describe('PackageService', () => {
     });
 
     it('should handle circular references in data', async () => {
-      const data: any = { test: 'data' };
+      interface CircularData {
+        test: string;
+        circular?: CircularData;
+      }
+      const data: CircularData = { test: 'data' };
       data.circular = data;
       
       await expect(service.generateChecksum(data)).resolves.toBeDefined();
@@ -293,11 +297,11 @@ describe('PackageService', () => {
       
       await service.writePackageToFile(mockPackage, outputPath);
       
-      expect(fs.writeFile).toHaveBeenCalledWith(
-        outputPath,
-        expect.any(Buffer),
-        'utf-8'
-      );
+      expect(fs.writeFile).toHaveBeenCalled();
+      const {calls} = vi.mocked(fs.writeFile).mock;
+      expect(calls[0][0]).toBe(outputPath);
+      expect(calls[0][1]).toBeInstanceOf(Buffer);
+      expect(calls[0][2]).toBe('utf-8');
     });
 
     it('should compress package when compression is enabled', async () => {
@@ -559,7 +563,7 @@ describe('PackageService', () => {
     });
 
     it('should throw error for non-existent file', async () => {
-      const error: any = new Error('File not found');
+      const error = new Error('File not found') as NodeJS.ErrnoException;
       error.code = 'ENOENT';
       vi.mocked(fs.readFile).mockRejectedValue(error);
       
