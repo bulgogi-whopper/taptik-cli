@@ -465,7 +465,7 @@ describe('OutputService', () => {
       const fs = await import('node:fs');
       vi.spyOn(fs.promises, 'writeFile').mockImplementation(mockWriteFile);
       vi.spyOn(fs.promises, 'access').mockImplementation(mockAccess);
-      vi.spyOn(fs.promises, 'stat').mockResolvedValue({ size: 100 });
+      vi.spyOn(fs.promises, 'stat').mockResolvedValue({ size: 100 } as any);
 
       const result = await service.writeSanitizationReport(outputPath, mockSanitizationResult);
       

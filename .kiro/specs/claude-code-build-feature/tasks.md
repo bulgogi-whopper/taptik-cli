@@ -299,7 +299,7 @@ Each major feature follows this pattern:
 
 ### Phase 10: End-to-End Testing & CLI Integration
 
-- [ ] 11.1. Write CLI integration tests (RED phase)
+- [x] 11.1. Write CLI integration tests (RED phase)
   - Write failing tests for `taptik build --platform=claude-code` command execution
   - Write failing tests for all CLI options compatibility (--dry-run, --output, --verbose, --quiet, --categories)
   - Write failing tests for end-to-end pipeline with mock Claude Code configurations
@@ -308,7 +308,7 @@ Each major feature follows this pattern:
   - All tests should fail initially (RED phase)
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 5.5_
 
-- [ ] 11.2. Implement CLI integration (GREEN phase)
+- [x] 11.2. Implement CLI integration (GREEN phase)
   - Create integration tests for complete build pipeline functionality
   - Add tests for cloud package generation and validation workflows
   - Implement tests for auto-upload configuration and user prompting
@@ -316,7 +316,7 @@ Each major feature follows this pattern:
   - Focus on making CLI tests pass with functional integration
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 5.5_
 
-- [ ] 11.3. Refactor CLI integration for production quality (REFACTOR phase)
+- [x] 11.3. Refactor CLI integration for production quality (REFACTOR phase)
   - Enhance performance tests with realistic large configuration scenarios
   - Improve user interaction tests with comprehensive flow validation
   - Add sophisticated regression testing to prevent feature conflicts
