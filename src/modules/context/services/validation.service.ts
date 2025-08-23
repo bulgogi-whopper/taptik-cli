@@ -42,7 +42,8 @@ export class ValidationService {
   } as const;
 
   // Format and platform constants
-  private readonly SUPPORTED_FORMAT = 'taptik-v1';
+  private readonly SUPPORTED_FORMATS = ['taptik-v1', 'taptik-v2'] as const;
+  private readonly SUPPORTED_FORMAT = 'taptik-v2'; // Default for new packages
   private readonly SUPPORTED_IDES = ['claude-code', 'kiro-ide', 'cursor-ide'] as const;
   private readonly KNOWN_FEATURES = [
     'gitIntegration',
@@ -55,14 +56,26 @@ export class ValidationService {
     'containerization',
   ] as const;
 
-  // Component thresholds for warnings
+  // Component thresholds for warnings (production-optimized)
   private readonly COMPONENT_THRESHOLDS: ComponentThresholds = {
-    agents: 1000,
-    commands: 1000,
-    mcpServers: 100,
-    steeringRules: 1000,
-    instructions: 100,
+    agents: 500, // Reduced for better performance
+    commands: 500,
+    mcpServers: 50,
+    steeringRules: 500,
+    instructions: 50,
   };
+
+  // Supabase-specific limits
+  private readonly SUPABASE_LIMITS = {
+    STORAGE_MAX_FILE_SIZE: 50 * 1024 * 1024, // 50MB per file
+    EDGE_FUNCTION_TIMEOUT: 150000, // 150 seconds
+    EDGE_FUNCTION_MEMORY: 512, // MB
+    MAX_CONCURRENT_UPLOADS: 10,
+    MAX_METADATA_SIZE: 1024 * 1024, // 1MB for metadata
+  } as const;
+
+  // Performance metrics
+  private performanceMetrics = new Map<string, number>();
 
   // Cache settings
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -83,7 +96,7 @@ export class ValidationService {
   private readonly ERROR_MESSAGES = {
     NULL_PACKAGE: 'Invalid package: package is null or undefined',
     CIRCULAR_REFERENCE: 'Invalid package structure: circular reference detected',
-    INVALID_FORMAT: (format: string) => `Unsupported package format: ${format}. Expected: ${this.SUPPORTED_FORMAT}`,
+    INVALID_FORMAT: (format: string) => `Unsupported package format: ${format}. Expected: ${this.SUPPORTED_FORMATS.join(' or ')}`,
     CHECKSUM_MISMATCH: 'Checksum mismatch: package integrity compromised',
     SIZE_EXCEEDED: (limit: string) => `Package size exceeds maximum limit of ${limit}`,
     MISSING_FIELD: (field: string) => `Missing required field: ${field}`,
@@ -92,6 +105,9 @@ export class ValidationService {
     EMPTY_VALUE: (field: string) => `${field} cannot be empty`,
     INVALID_COMPLEXITY: (level: string) => `Invalid complexity level: ${level}`,
     INVALID_DATE: (field: string) => `Invalid date format for ${field}`,
+    SUPABASE_LIMIT: (type: string) => `Exceeds Supabase ${type} limit`,
+    COMPRESSION_INVALID: 'Invalid or unsupported compression format',
+    METADATA_TOO_LARGE: 'Metadata exceeds maximum allowed size for cloud storage',
   };
 
   // Warning messages
@@ -119,6 +135,10 @@ export class ValidationService {
     OPTIMIZE_COMPONENTS: 'Consider optimizing the number of components for better performance',
     VALIDATE_SECURITY: 'Review and sanitize potentially unsafe content',
     UPDATE_METADATA: 'Ensure all metadata fields are properly filled',
+    USE_BROTLI: 'Use Brotli compression for better size reduction',
+    ENABLE_CHUNKING: 'Enable chunked upload for large packages',
+    OPTIMIZE_FOR_EDGE: 'Optimize package for Supabase Edge Functions processing',
+    CHECK_FEATURE_COMPATIBILITY: 'Verify all features are supported by target IDEs',
   };
 
   /**
@@ -128,6 +148,7 @@ export class ValidationService {
     taptikPackage: TaptikPackage,
     isPremiumUser = false,
   ): Promise<ValidationResult> {
+    const startTime = Date.now();
     try {
       // Initialize validation context
       const context = this.initializeValidationContext(taptikPackage, isPremiumUser);
@@ -146,13 +167,24 @@ export class ValidationService {
         return cachedResult;
       }
 
-      // Perform validation steps
+      // Perform validation steps with performance tracking
       await this.performValidation(context);
+
+      // Validate Supabase-specific requirements
+      await this.validateSupabaseCompatibility(context);
+
+      // Calculate validation score
+      context.result.validationScore = this.calculateValidationScore(context);
 
       // Cache the result
       if (taptikPackage.checksum) {
         this.cacheResult(taptikPackage.checksum, context.result);
       }
+
+      // Track performance metrics
+      const validationTime = Date.now() - startTime;
+      this.performanceMetrics.set(taptikPackage.checksum || 'unknown', validationTime);
+      this.logger.debug(`Validation completed in ${validationTime}ms`);
 
       return context.result;
     } catch (error) {
@@ -378,9 +410,9 @@ export class ValidationService {
   private validateFormat(context: ValidationContext): void {
     const { package: pkg, result } = context;
 
-    if (pkg.format && pkg.format !== this.SUPPORTED_FORMAT) {
+    if (pkg.format && !this.SUPPORTED_FORMATS.includes(pkg.format as typeof this.SUPPORTED_FORMATS[number])) {
       result.isValid = false;
-      result.errors.push(`Unsupported package format: ${pkg.format}`);
+      result.errors.push(this.ERROR_MESSAGES.INVALID_FORMAT(pkg.format));
     }
   }
 
@@ -903,5 +935,203 @@ export class ValidationService {
 
     // Remove duplicates
     return [...new Set(recommendations)];
+  }
+
+  /**
+   * Validate Supabase-specific compatibility requirements
+   */
+  private async validateSupabaseCompatibility(context: ValidationContext): Promise<void> {
+    const { package: pkg, result } = context;
+    
+    // Check Supabase storage limits
+    if (pkg.size > this.SUPABASE_LIMITS.STORAGE_MAX_FILE_SIZE) {
+      result.isValid = false;
+      result.cloudCompatible = false;
+      result.errors.push(this.ERROR_MESSAGES.SUPABASE_LIMIT('storage'));
+      result.recommendations.push(this.RECOMMENDATIONS.ENABLE_CHUNKING);
+    }
+    
+    // Check metadata size
+    const metadataSize = Buffer.from(JSON.stringify(pkg.metadata)).length;
+    if (metadataSize > this.SUPABASE_LIMITS.MAX_METADATA_SIZE) {
+      result.isValid = false;
+      result.errors.push(this.ERROR_MESSAGES.METADATA_TOO_LARGE);
+      result.recommendations.push(this.RECOMMENDATIONS.REDUCE_SIZE);
+    }
+    
+    // Validate compression format for cloud
+    if (pkg.compression && !['gzip', 'brotli', 'none'].includes(pkg.compression)) {
+      result.warnings.push(this.ERROR_MESSAGES.COMPRESSION_INVALID);
+      result.recommendations.push(this.RECOMMENDATIONS.USE_BROTLI);
+    }
+    
+    // Check for Edge Functions compatibility
+    const estimatedProcessingTime = this.estimateProcessingTime(pkg);
+    if (estimatedProcessingTime > this.SUPABASE_LIMITS.EDGE_FUNCTION_TIMEOUT) {
+      result.warnings.push(
+        `Package may exceed Edge Function timeout (estimated: ${Math.ceil(estimatedProcessingTime / 1000)}s)`
+      );
+      result.recommendations.push(this.RECOMMENDATIONS.OPTIMIZE_FOR_EDGE);
+    }
+    
+    // Validate feature compatibility across target IDEs
+    await this.validateCrossIdeCompatibility(context);
+  }
+
+  /**
+   * Validate cross-IDE feature compatibility
+   */
+  private async validateCrossIdeCompatibility(context: ValidationContext): Promise<void> {
+    const { package: pkg, result } = context;
+    
+    if (!pkg.metadata?.targetIdes || pkg.metadata.targetIdes.length === 0) return;
+    
+    const features = pkg.metadata.features || [];
+    
+    // Define IDE feature support matrix
+    const ideFeatureSupport: Record<string, string[]> = {
+      'claude-code': ['agents', 'commands', 'mcpServers', 'steeringRules', 'instructions', 'aiAssistance'],
+      'kiro-ide': ['gitIntegration', 'dockerSupport', 'kubernetesIntegration', 'autocomplete'],
+      'cursor-ide': ['aiAssistance', 'autocomplete', 'collaborativeEditing', 'remoteDebugging'],
+    };
+    
+    // Check each target IDE
+    for (const targetIde of pkg.metadata.targetIdes) {
+      const supportedFeatures = ideFeatureSupport[targetIde] || [];
+      
+      for (const feature of features) {
+        if (!supportedFeatures.includes(feature)) {
+          result.warnings.push(
+            `Feature "${feature}" may not be fully supported in ${targetIde}`
+          );
+        }
+      }
+      
+      // Check component compatibility
+      if (pkg.metadata.componentCount) {
+        const { agents, mcpServers, steeringRules } = pkg.metadata.componentCount;
+        
+        if (targetIde !== 'claude-code' && (agents > 0 || mcpServers > 0 || steeringRules > 0)) {
+          result.warnings.push(
+            `Claude Code specific components may not work in ${targetIde}`
+          );
+          result.recommendations.push(this.RECOMMENDATIONS.CHECK_FEATURE_COMPATIBILITY);
+        }
+      }
+    }
+  }
+
+  /**
+   * Calculate validation score for package quality assessment
+   */
+  private calculateValidationScore(context: ValidationContext): number {
+    const { result } = context;
+    let score = 100;
+    
+    // Deduct points for errors (10 points each)
+    score -= result.errors.length * 10;
+    
+    // Deduct points for warnings (3 points each)
+    score -= result.warnings.length * 3;
+    
+    // Bonus points for optimizations
+    if (context.package.compression === 'brotli') score += 5;
+    if (context.package.size < this.SIZE_LIMITS.DEFAULT * 0.5) score += 5;
+    if (result.schemaCompliant) score += 10;
+    if (result.cloudCompatible) score += 10;
+    
+    // Ensure score is between 0 and 100
+    return Math.max(0, Math.min(100, score));
+  }
+
+  /**
+   * Estimate processing time for Edge Functions
+   */
+  private estimateProcessingTime(pkg: TaptikPackage): number {
+    // Base time in milliseconds
+    let time = 1000;
+    
+    // Add time based on size (1ms per KB)
+    time += pkg.size / 1024;
+    
+    // Add time based on components
+    if (pkg.metadata?.componentCount) {
+      const { agents, commands, mcpServers, steeringRules, instructions } = pkg.metadata.componentCount;
+      time += (agents * 100) + (commands * 50) + (mcpServers * 200) + (steeringRules * 75) + (instructions * 150);
+    }
+    
+    // Add time for complex features
+    if (pkg.metadata?.features) {
+      time += pkg.metadata.features.length * 100;
+    }
+    
+    return time;
+  }
+
+  /**
+   * Get advanced validation report with detailed metrics
+   */
+  async getValidationReport(
+    taptikPackage: TaptikPackage,
+    isPremiumUser = false
+  ): Promise<{
+    result: ValidationResult;
+    metrics: {
+      validationTime: number;
+      checksPerformed: number;
+      cacheHit: boolean;
+      score: number;
+      estimatedUploadTime: number;
+      supabaseReady: boolean;
+    };
+  }> {
+    const startTime = Date.now();
+    const cacheHit = !!this.getCachedResult(taptikPackage.checksum);
+    
+    const result = await this.validateForCloudUpload(taptikPackage, isPremiumUser);
+    
+    const validationTime = Date.now() - startTime;
+    const checksPerformed = result.errors.length + result.warnings.length + 10; // Base checks
+    const estimatedUploadTime = Math.ceil(taptikPackage.size / 1024 / 100); // 100KB/s estimate
+    const score = result.validationScore || this.calculateValidationScore({ 
+      package: taptikPackage, 
+      isPremiumUser, 
+      result 
+    });
+    
+    return {
+      result,
+      metrics: {
+        validationTime,
+        checksPerformed,
+        cacheHit,
+        score,
+        estimatedUploadTime,
+        supabaseReady: result.cloudCompatible && result.isValid,
+      },
+    };
+  }
+
+  /**
+   * Batch validate multiple packages
+   */
+  async batchValidate(
+    packages: TaptikPackage[],
+    isPremiumUser = false
+  ): Promise<ValidationResult[]> {
+    const results = await Promise.all(
+      packages.map(pkg => this.validateForCloudUpload(pkg, isPremiumUser))
+    );
+    
+    // Log batch validation metrics
+    const totalTime = Array.from(this.performanceMetrics.values()).reduce((a, b) => a + b, 0);
+    const avgTime = totalTime / packages.length;
+    
+    this.logger.log(
+      `Batch validation completed: ${packages.length} packages, ` +
+      `avg time: ${avgTime.toFixed(2)}ms`
+    );
+    
+    return results;
   }
 }

@@ -1,6 +1,8 @@
 import * as crypto from 'crypto';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { Readable, Transform } from 'stream';
+import { pipeline } from 'stream/promises';
 import { promisify } from 'util';
 import * as zlib from 'zlib';
 
@@ -14,13 +16,19 @@ import {
 
 const gzip = promisify(zlib.gzip);
 const gunzip = promisify(zlib.gunzip);
+const brotliCompress = promisify(zlib.brotliCompress);
+const brotliDecompress = promisify(zlib.brotliDecompress);
 
 export interface PackageOptions {
-  compression?: 'gzip' | 'none';
+  compression?: 'gzip' | 'brotli' | 'none';
   optimizeSize?: boolean;
   maxSize?: number;
   validateIntegrity?: boolean;
   includeSourceMap?: boolean;
+  streamingThreshold?: number;
+  chunkSize?: number;
+  enableChunking?: boolean;
+  parallelProcessing?: boolean;
 }
 
 export interface ValidationResult {
@@ -37,15 +45,21 @@ export interface PackageMetrics {
   fileCount: number;
   directoryCount: number;
   processingTime: number;
+  compressionAlgorithm?: string;
+  chunkCount?: number;
+  streamingUsed?: boolean;
 }
 
 @Injectable()
 export class PackageService {
   private readonly logger = new Logger(PackageService.name);
   private readonly MAX_PACKAGE_SIZE = 50 * 1024 * 1024; // 50MB default
-  private readonly MIN_COMPRESSION_RATIO = 0.1; // Minimum 10% compression
-  private readonly PACKAGE_VERSION = 'taptik-v1';
+  private readonly PACKAGE_VERSION = 'taptik-v2'; // Updated for enhanced features
   private readonly SUPPORTED_FORMATS = ['taptik-v1', 'taptik-v2'];
+  private readonly STREAMING_THRESHOLD = 10 * 1024 * 1024; // 10MB for streaming
+  private readonly DEFAULT_CHUNK_SIZE = 1024 * 1024; // 1MB chunks
+  private readonly compressionCache = new Map<string, Buffer>();
+  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
 
   async createTaptikPackage(
     metadata: CloudMetadata,
@@ -71,7 +85,7 @@ export class PackageService {
         );
       }
 
-      const compression = options.compression || 'gzip';
+      const compression = options.compression || 'brotli'; // Default to brotli for better compression
       const maxSize = options.maxSize || this.MAX_PACKAGE_SIZE;
 
       // Optimize package with advanced techniques
@@ -398,15 +412,30 @@ export class PackageService {
       let outputData: Buffer;
       let compressionRatio = 1;
 
-      // Apply compression based on type
-      switch (taptikPackage.compression) {
-        case 'gzip':
-          outputData = await gzip(jsonData, { level: 9 });
-          compressionRatio = outputData.length / originalSize;
-          break;
-        default:
-          outputData = Buffer.from(jsonData);
+      // Apply compression based on type with performance optimization
+      const shouldStream = originalSize > (this.STREAMING_THRESHOLD || 10 * 1024 * 1024);
+      
+      if (shouldStream) {
+        this.logger.debug('Using streaming compression for large package');
+        outputData = await this.compressWithStreaming(jsonData, taptikPackage.compression as 'gzip' | 'brotli' | 'none');
+      } else {
+        switch (taptikPackage.compression) {
+          case 'brotli':
+            outputData = await brotliCompress(jsonData, {
+              params: {
+                [zlib.constants.BROTLI_PARAM_QUALITY]: zlib.constants.BROTLI_MAX_QUALITY,
+              },
+            });
+            break;
+          case 'gzip':
+            outputData = await gzip(jsonData, { level: 9 });
+            break;
+          default:
+            outputData = Buffer.from(jsonData);
+        }
       }
+      
+      compressionRatio = outputData.length / originalSize;
 
       // Validate compression effectiveness
       if (compressionRatio > 0.9 && taptikPackage.compression !== 'none') {
@@ -435,16 +464,40 @@ export class PackageService {
 
   async compressPackage(
     data: unknown,
-    compression: 'gzip' | 'none' = 'gzip'
+    compression: 'gzip' | 'brotli' | 'none' = 'brotli'
   ): Promise<Buffer> {
     const jsonString = JSON.stringify(data, null, 2);
+    const cacheKey = `${compression}-${crypto.createHash('md5').update(jsonString).digest('hex')}`;
     
-    switch (compression) {
-      case 'gzip':
-        return gzip(jsonString, { level: 9 });
-      default:
-        return Buffer.from(jsonString);
+    // Check cache first
+    if (this.compressionCache.has(cacheKey)) {
+      const cached = this.compressionCache.get(cacheKey)!;
+      this.logger.debug('Using cached compression result');
+      return cached;
     }
+    
+    let result: Buffer;
+    switch (compression) {
+      case 'brotli':
+        result = await brotliCompress(jsonString, {
+          params: {
+            [zlib.constants.BROTLI_PARAM_QUALITY]: zlib.constants.BROTLI_MAX_QUALITY,
+            [zlib.constants.BROTLI_PARAM_SIZE_HINT]: jsonString.length,
+          },
+        });
+        break;
+      case 'gzip':
+        result = await gzip(jsonString, { level: 9 });
+        break;
+      default:
+        result = Buffer.from(jsonString);
+    }
+    
+    // Cache result with TTL
+    this.compressionCache.set(cacheKey, result);
+    setTimeout(() => this.compressionCache.delete(cacheKey), this.CACHE_TTL);
+    
+    return result;
   }
 
   async validatePackageIntegrity(taptikPackage: TaptikPackage): Promise<boolean> {
@@ -526,15 +579,22 @@ export class PackageService {
       let jsonString: string;
       let detectedCompression = 'none';
 
-      // Try decompression
+      // Try decompression with multiple algorithms
       try {
-        // Try gzip
-        const decompressed = await gunzip(fileData);
+        // Try brotli first (newer format)
+        const decompressed = await brotliDecompress(fileData);
         jsonString = decompressed.toString();
-        detectedCompression = 'gzip';
+        detectedCompression = 'brotli';
       } catch {
-        // Not compressed, treat as plain JSON
-        jsonString = fileData.toString();
+        try {
+          // Try gzip
+          const decompressed = await gunzip(fileData);
+          jsonString = decompressed.toString();
+          detectedCompression = 'gzip';
+        } catch {
+          // Not compressed, treat as plain JSON
+          jsonString = fileData.toString();
+        }
       }
 
       const taptikPackage = JSON.parse(jsonString) as TaptikPackage;
@@ -817,7 +877,7 @@ export class PackageService {
     const originalSize = Buffer.from(JSON.stringify(taptikPackage.sanitizedConfig)).length;
     const compressedData = await this.compressPackage(
       taptikPackage.sanitizedConfig,
-      taptikPackage.compression as 'gzip' | 'none'
+      taptikPackage.compression as 'gzip' | 'brotli' | 'none'
     );
     const compressedSize = compressedData.length;
 
@@ -828,6 +888,156 @@ export class PackageService {
       fileCount: taptikPackage.manifest.files.length,
       directoryCount: taptikPackage.manifest.directories.length,
       processingTime: 0, // Processing time not available in legacy packages
+      compressionAlgorithm: taptikPackage.compression,
+      streamingUsed: originalSize > this.STREAMING_THRESHOLD,
     };
   }
+
+  /**
+   * Compress data using streaming for large packages
+   */
+  private async compressWithStreaming(
+    data: string,
+    compression: 'gzip' | 'brotli' | 'none'
+  ): Promise<Buffer> {
+    const chunks: Buffer[] = [];
+    const input = Readable.from([data]);
+    
+    let compressor: Transform;
+    switch (compression) {
+      case 'brotli':
+        compressor = zlib.createBrotliCompress({
+          params: {
+            [zlib.constants.BROTLI_PARAM_QUALITY]: zlib.constants.BROTLI_MAX_QUALITY,
+          },
+        });
+        break;
+      case 'gzip':
+        compressor = zlib.createGzip({ level: 9 });
+        break;
+      default:
+        // No compression, just collect the data
+        return Buffer.from(data);
+    }
+
+    const outputStream = new Transform({
+      transform(chunk, _encoding, callback) {
+        chunks.push(chunk);
+        callback();
+      },
+    });
+
+    await pipeline(input, compressor, outputStream);
+    return Buffer.concat(chunks);
+  }
+
+  /**
+   * Split large packages into chunks for resumable uploads
+   */
+  async createChunkedPackage(
+    taptikPackage: TaptikPackage,
+    chunkSize: number = this.DEFAULT_CHUNK_SIZE
+  ): Promise<{
+    chunks: Buffer[];
+    metadata: {
+      totalChunks: number;
+      chunkSize: number;
+      totalSize: number;
+      checksum: string;
+    };
+  }> {
+    const packageData = await this.compressPackage(
+      taptikPackage,
+      taptikPackage.compression as 'gzip' | 'brotli' | 'none'
+    );
+    
+    const chunks: Buffer[] = [];
+    const totalSize = packageData.length;
+    let offset = 0;
+    
+    while (offset < totalSize) {
+      const end = Math.min(offset + chunkSize, totalSize);
+      chunks.push(packageData.subarray(offset, end));
+      offset = end;
+    }
+    
+    const checksum = crypto
+      .createHash('sha256')
+      .update(packageData)
+      .digest('hex');
+    
+    this.logger.debug(
+      `Created ${chunks.length} chunks of ${chunkSize} bytes each ` +
+      `for package of ${totalSize} bytes`
+    );
+    
+    return {
+      chunks,
+      metadata: {
+        totalChunks: chunks.length,
+        chunkSize,
+        totalSize,
+        checksum,
+      },
+    };
+  }
+
+  /**
+   * Reassemble chunks into a complete package
+   */
+  async reassembleChunks(
+    chunks: Buffer[],
+    expectedChecksum: string
+  ): Promise<Buffer> {
+    const reassembled = Buffer.concat(chunks);
+    const actualChecksum = crypto
+      .createHash('sha256')
+      .update(reassembled)
+      .digest('hex');
+    
+    if (actualChecksum !== expectedChecksum) {
+      throw new Error(
+        `Chunk reassembly failed: checksum mismatch ` +
+        `(expected: ${expectedChecksum}, actual: ${actualChecksum})`
+      );
+    }
+    
+    return reassembled;
+  }
+
+  /**
+   * Optimize package for Supabase Edge Functions
+   */
+  async prepareForEdgeFunctions(
+    taptikPackage: TaptikPackage
+  ): Promise<{
+    package: TaptikPackage;
+    edgeMetadata: {
+      processable: boolean;
+      estimatedProcessingTime: number;
+      recommendedTimeout: number;
+      memoryRequirement: number;
+    };
+  }> {
+    const {size} = taptikPackage;
+    
+    // Estimate processing requirements
+    const estimatedProcessingTime = Math.ceil(size / 1024 / 100); // ~100KB/sec processing
+    const recommendedTimeout = Math.max(estimatedProcessingTime * 2, 10); // Min 10 seconds
+    const memoryRequirement = Math.ceil(size / 1024 / 1024 * 2); // 2x package size in MB
+    
+    const processable = size < 10 * 1024 * 1024 && // Less than 10MB
+                       recommendedTimeout < 60; // Less than 1 minute
+    
+    return {
+      package: taptikPackage,
+      edgeMetadata: {
+        processable,
+        estimatedProcessingTime,
+        recommendedTimeout,
+        memoryRequirement,
+      },
+    };
+  }
+
 }

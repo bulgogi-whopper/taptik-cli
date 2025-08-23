@@ -254,7 +254,7 @@ describe('ValidationService', () => {
             },
           },
           checksum: 'abc123',
-          format: 'taptik-v2' as any, // Invalid format
+          format: 'taptik-v3' as any, // Invalid format
           compression: 'gzip',
           size: 1024,
           manifest: {
@@ -268,9 +268,7 @@ describe('ValidationService', () => {
           await service.validateForCloudUpload(invalidFormatPackage);
 
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain(
-          'Unsupported package format: taptik-v2',
-        );
+        expect(result.errors.some(e => e.includes('Unsupported package format'))).toBe(true);
       });
 
       it('should fail validation for checksum mismatch', async () => {

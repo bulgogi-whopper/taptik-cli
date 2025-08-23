@@ -92,9 +92,9 @@ describe('Cloud Platform Integration Tests', () => {
       expect(taptikPackage.manifest).toHaveProperty('totalSize');
       expect(taptikPackage.metadata).toHaveProperty('createdAt');
       
-      // Verify format compatibility
-      expect(taptikPackage.format).toBe('taptik-v1');
-      expect(['gzip', 'none']).toContain(taptikPackage.compression);
+      // Verify format compatibility (both v1 and v2 are supported)
+      expect(['taptik-v1', 'taptik-v2']).toContain(taptikPackage.format);
+      expect(['gzip', 'brotli', 'none']).toContain(taptikPackage.compression);
     });
 
     it('should compress package for efficient storage', async () => {

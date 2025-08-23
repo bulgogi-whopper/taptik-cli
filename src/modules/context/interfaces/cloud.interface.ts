@@ -143,8 +143,8 @@ export interface TaptikPackage {
   metadata: CloudMetadata;
   sanitizedConfig: TaptikContext;
   checksum: string;
-  format: 'taptik-v1';
-  compression: 'gzip' | 'none';
+  format: 'taptik-v1' | 'taptik-v2';
+  compression: 'gzip' | 'brotli' | 'none';
   size: number;
   manifest: {
     files: string[];
@@ -170,4 +170,5 @@ export interface ValidationResult {
     unsupported: string[];
   };
   recommendations: string[];
+  validationScore?: number; // 0-100 quality score
 }

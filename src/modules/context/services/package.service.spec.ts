@@ -115,8 +115,8 @@ describe('PackageService', () => {
 
       expect(result).toMatchObject({
         metadata: mockMetadata,
-        format: 'taptik-v1',
-        compression: 'gzip',
+        format: 'taptik-v2',
+        compression: 'brotli', // Default changed to brotli
       });
       expect(result.sanitizedConfig).toBeDefined();
       expect(result.checksum).toBeDefined();
@@ -132,6 +132,13 @@ describe('PackageService', () => {
         { compression: 'gzip' }
       );
       expect(resultGzip.compression).toBe('gzip');
+
+      const resultBrotli = await service.createTaptikPackage(
+        mockMetadata,
+        mockTaptikContext,
+        { compression: 'brotli' }
+      );
+      expect(resultBrotli.compression).toBe('brotli');
 
       const resultNone = await service.createTaptikPackage(
         mockMetadata,
@@ -674,6 +681,209 @@ describe('PackageService', () => {
       const optimized = await service.optimizePackageSize(whitespaceContext);
       
       expect(optimized.data.claudeCode.local.instructions.global).not.toMatch(/\s{2,}/);
+    });
+  });
+
+  describe('Production Features - Brotli Compression', () => {
+    it('should compress with Brotli algorithm', async () => {
+      const data = { test: 'data', content: 'x'.repeat(1000) };
+      
+      const result = await service.compressPackage(data, 'brotli');
+      
+      expect(result).toBeInstanceOf(Buffer);
+      expect(result.length).toBeGreaterThan(0);
+      // Brotli should achieve better compression than gzip for text
+      const gzipResult = await service.compressPackage(data, 'gzip');
+      expect(result.length).toBeLessThanOrEqual(gzipResult.length);
+    });
+
+    it('should use compression cache for repeated operations', async () => {
+      const data = { test: 'cacheable data' };
+      
+      const start = Date.now();
+      const result1 = await service.compressPackage(data, 'brotli');
+      const firstTime = Date.now() - start;
+      
+      const cacheStart = Date.now();
+      const result2 = await service.compressPackage(data, 'brotli');
+      const cachedTime = Date.now() - cacheStart;
+      
+      expect(result1).toEqual(result2);
+      // Cached should be faster (though this might be flaky in CI)
+      expect(cachedTime).toBeLessThanOrEqual(firstTime + 1);
+    });
+  });
+
+  describe('Production Features - Chunked Packages', () => {
+    it('should create chunked package for large data', async () => {
+      const largePackage = await service.createTaptikPackage(
+        mockMetadata,
+        mockTaptikContext,
+        { compression: 'brotli' }
+      );
+      
+      const chunked = await service.createChunkedPackage(
+        largePackage,
+        512 // Small chunk size for testing
+      );
+      
+      expect(chunked.chunks).toBeInstanceOf(Array);
+      expect(chunked.chunks.length).toBeGreaterThan(0);
+      expect(chunked.metadata.totalChunks).toBe(chunked.chunks.length);
+      expect(chunked.metadata.checksum).toMatch(/^[\da-f]{64}$/);
+    });
+
+    it('should reassemble chunks correctly', async () => {
+      const originalData = Buffer.from('x'.repeat(2000));
+      const checksum = (await import('crypto'))
+        .createHash('sha256')
+        .update(originalData)
+        .digest('hex');
+      
+      // Split into chunks
+      const chunks: Buffer[] = [];
+      for (let i = 0; i < originalData.length; i += 500) {
+        chunks.push(originalData.subarray(i, Math.min(i + 500, originalData.length)));
+      }
+      
+      const reassembled = await service.reassembleChunks(chunks, checksum);
+      
+      expect(reassembled).toEqual(originalData);
+    });
+
+    it('should detect corrupted chunks during reassembly', async () => {
+      const chunks = [
+        Buffer.from('chunk1'),
+        Buffer.from('chunk2'),
+        Buffer.from('corrupted'),
+      ];
+      
+      await expect(
+        service.reassembleChunks(chunks, 'wrong-checksum')
+      ).rejects.toThrow('checksum mismatch');
+    });
+  });
+
+  describe('Production Features - Edge Functions Preparation', () => {
+    it('should prepare package for Supabase Edge Functions', async () => {
+      const taptikPackage = await service.createTaptikPackage(
+        mockMetadata,
+        mockTaptikContext
+      );
+      
+      const prepared = await service.prepareForEdgeFunctions(taptikPackage);
+      
+      expect(prepared.edgeMetadata).toBeDefined();
+      expect(prepared.edgeMetadata.processable).toBe(true);
+      expect(prepared.edgeMetadata.estimatedProcessingTime).toBeGreaterThan(0);
+      expect(prepared.edgeMetadata.recommendedTimeout).toBeGreaterThanOrEqual(10);
+      expect(prepared.edgeMetadata.memoryRequirement).toBeGreaterThan(0);
+    });
+
+    it('should mark large packages as non-processable', async () => {
+      const largeContext = {
+        ...mockTaptikContext,
+        data: {
+          claudeCode: {
+            local: {
+              agents: Array(1000).fill(null).map((_, i) => ({
+                id: `agent${i}`,
+                name: `Agent ${i}`,
+                prompt: 'x'.repeat(10000),
+              })),
+            },
+          },
+        },
+      };
+      
+      const largePackage = await service.createTaptikPackage(
+        mockMetadata,
+        largeContext
+      );
+      
+      // Mock the size to be over 10MB
+      largePackage.size = 11 * 1024 * 1024;
+      
+      const prepared = await service.prepareForEdgeFunctions(largePackage);
+      
+      expect(prepared.edgeMetadata.processable).toBe(false);
+    });
+
+    it('should calculate complexity based on components', async () => {
+      const complexContext = {
+        ...mockTaptikContext,
+        data: {
+          claudeCode: {
+            local: {
+              agents: Array(10).fill(null).map((_, i) => ({ id: `agent${i}` })),
+              commands: Array(10).fill(null).map((_, i) => ({ name: `cmd${i}` })),
+              mcpServers: {
+                server1: {},
+                server2: {},
+                server3: {},
+              },
+            },
+          },
+        },
+      };
+      
+      const complexPackage = await service.createTaptikPackage(
+        mockMetadata,
+        complexContext
+      );
+      
+      const prepared = await service.prepareForEdgeFunctions(complexPackage);
+      
+      expect(prepared.edgeMetadata.estimatedProcessingTime).toBeGreaterThan(0);
+      // More complex packages should have higher processing estimates
+      const simplePackage = await service.createTaptikPackage(
+        mockMetadata,
+        mockTaptikContext
+      );
+      const simplePrepared = await service.prepareForEdgeFunctions(simplePackage);
+      
+      expect(prepared.edgeMetadata.estimatedProcessingTime)
+        .toBeGreaterThanOrEqual(simplePrepared.edgeMetadata.estimatedProcessingTime);
+    });
+  });
+
+  describe('Production Features - Package Metrics', () => {
+    it('should include enhanced metrics with compression details', async () => {
+      const taptikPackage = await service.createTaptikPackage(
+        mockMetadata,
+        mockTaptikContext,
+        { compression: 'brotli' }
+      );
+      
+      const metrics = await service.getPackageMetrics(taptikPackage);
+      
+      expect(metrics.compressionAlgorithm).toBe('brotli');
+      expect(metrics.streamingUsed).toBeDefined();
+      expect(metrics.compressionRatio).toBeLessThanOrEqual(1);
+    });
+
+    it('should detect when streaming should be used', async () => {
+      const largeContext = {
+        ...mockTaptikContext,
+        data: {
+          claudeCode: {
+            local: {
+              instructions: {
+                global: 'x'.repeat(15 * 1024 * 1024), // 15MB of data
+              },
+            },
+          },
+        },
+      };
+      
+      const largePackage = await service.createTaptikPackage(
+        mockMetadata,
+        largeContext
+      );
+      
+      const metrics = await service.getPackageMetrics(largePackage);
+      
+      expect(metrics.streamingUsed).toBe(true);
     });
   });
 });
