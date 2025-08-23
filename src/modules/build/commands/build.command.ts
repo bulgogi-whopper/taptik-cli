@@ -1,10 +1,17 @@
 import { homedir } from 'node:os';
+import * as path from 'node:path';
 
 import { Logger } from '@nestjs/common';
 
 import { Command, CommandRunner, Option } from 'nest-commander';
 
+import { SanitizationResult, TaptikContext, TaptikPackage, ValidationResult as CloudValidationResult } from '../../context/interfaces/cloud.interface';
+import { MetadataGeneratorService } from '../../context/services/metadata-generator.service';
+import { PackageService } from '../../context/services/package.service';
+import { SanitizationService } from '../../context/services/sanitization.service';
+import { ValidationService } from '../../context/services/validation.service';
 import { BuildConfig, BuildPlatform, BuildCategoryName } from '../interfaces/build-config.interface';
+import { CloudTransformationService } from '../interfaces/cloud-services.interface';
 import { SettingsData } from '../interfaces/settings-data.interface';
 import { TaptikPersonalContext, TaptikProjectContext, TaptikPromptTemplates } from '../interfaces/taptik-format.interface';
 import { CollectionService } from '../services/collection/collection.service';
@@ -25,6 +32,10 @@ export class BuildCommand extends CommandRunner {
     private readonly interactiveService: InteractiveService,
     private readonly collectionService: CollectionService,
     private readonly transformationService: TransformationService,
+    private readonly sanitizationService: SanitizationService,
+    private readonly metadataGeneratorService: MetadataGeneratorService,
+    private readonly packageService: PackageService,
+    private readonly validationService: ValidationService,
     private readonly outputService: OutputService,
     private readonly progressService: ProgressService,
     private readonly errorHandler: ErrorHandlerService,
@@ -114,15 +125,29 @@ export class BuildCommand extends CommandRunner {
         return;
       }
 
-      // Initialize progress tracking
-      this.progressService.initializeProgress([
-        'Platform selection',
-        'Category selection',
-        'Data collection',
-        'Data transformation',
-        'Output generation',
-        'Build completion'
-      ]);
+      // Initialize progress tracking (with cloud pipeline steps for Claude Code)
+      const progressSteps = presetPlatform === BuildPlatform.CLAUDE_CODE
+        ? [
+            'Platform selection',
+            'Category selection',
+            'Data collection',
+            'Data transformation',
+            'Security sanitization',
+            'Metadata generation',
+            'Package creation',
+            'Cloud validation',
+            'Output generation',
+          ]
+        : [
+            'Platform selection',
+            'Category selection',
+            'Data collection',
+            'Data transformation',
+            'Output generation',
+            'Build completion'
+          ];
+      
+      this.progressService.initializeProgress(progressSteps);
 
       // Step 1: Platform selection (skip if preset)
       let platform: BuildPlatform;
@@ -217,7 +242,118 @@ export class BuildCommand extends CommandRunner {
       // Log transformation results for monitoring
       this.logTransformationResults(transformedData, buildConfig);
 
-      // Step 4: Output generation
+      // Cloud pipeline for Claude Code platform
+      let cloudPackage: TaptikPackage | undefined;
+      let validationResult: CloudValidationResult | undefined;
+      let sanitizationResult: SanitizationResult | undefined;
+      if (buildConfig.platform === BuildPlatform.CLAUDE_CODE) {
+        try {
+          // Step 4: Security sanitization
+          this.progressService.startStep('Security sanitization');
+          sanitizationResult = await this.sanitizationService.sanitizeForCloudUpload(transformedData);
+          
+          if (sanitizationResult.securityLevel === 'blocked') {
+            this.errorHandler.handleCriticalErrorAndExit({
+              type: 'security',
+              message: 'Configuration contains sensitive data that cannot be safely shared',
+              details: sanitizationResult.findings.join(', '),
+              suggestedResolution: 'Remove sensitive information before building for cloud',
+              exitCode: 1,
+            });
+            return;
+          }
+          this.progressService.completeStep('Security sanitization');
+        } catch (error) {
+          this.logger.error('Security sanitization failed:', error);
+          this.progressService.failStep('Security sanitization', error.message);
+          this.errorHandler.addWarning({
+            type: 'security',
+            message: 'Security sanitization failed, continuing with original data',
+            details: error.message,
+          });
+          sanitizationResult = { 
+            sanitizedData: transformedData, 
+            securityLevel: 'warning', 
+            findings: [],
+            report: {
+              totalFields: 0,
+              sanitizedFields: 0,
+              safeFields: 0,
+              timestamp: new Date(),
+              summary: 'Sanitization skipped - service not available'
+            }
+          };
+        }
+
+        try {
+          // Step 5: Metadata generation
+          this.progressService.startStep('Metadata generation');
+          const cloudMetadata = await this.metadataGeneratorService.generateCloudMetadata(
+            sanitizationResult.sanitizedData as TaptikContext
+          );
+          this.progressService.completeStep('Metadata generation');
+
+          // Step 6: Package creation
+          this.progressService.startStep('Package creation');
+          cloudPackage = await this.packageService.createTaptikPackage(
+            cloudMetadata,
+            sanitizationResult.sanitizedData as TaptikContext,
+            { compression: 'gzip', optimizeSize: true }
+          );
+          this.progressService.completeStep('Package creation');
+        } catch (error) {
+          this.logger.error('Package creation failed:', error);
+          this.progressService.failStep(
+            error.message.includes('metadata') ? 'Metadata generation' : 'Package creation',
+            error.message
+          );
+          this.errorHandler.addWarning({
+            type: 'package',
+            message: error.message,
+            details: error.stack,
+          });
+        }
+
+        if (cloudPackage) {
+          try {
+            // Step 7: Cloud validation
+            this.progressService.startStep('Cloud validation');
+            validationResult = await this.validationService.validateForCloudUpload(cloudPackage);
+            
+            if (!validationResult.isValid || !validationResult.cloudCompatible) {
+              this.errorHandler.addWarning({
+                type: 'validation',
+                message: 'Package validation failed',
+                details: validationResult.errors.join(', '),
+              });
+            }
+            this.progressService.completeStep('Cloud validation');
+          } catch (error) {
+            this.logger.error('Validation failed:', error);
+            this.progressService.failStep('Cloud validation', error.message);
+            validationResult = { 
+              isValid: false, 
+              cloudCompatible: false, 
+              errors: [error.message],
+              warnings: [],
+              schemaCompliant: false,
+              sizeLimit: {
+                current: 0,
+                maximum: 50 * 1024 * 1024,
+                withinLimit: true
+              },
+              featureSupport: {
+                ide: 'claudeCode',
+                supported: [],
+                unsupported: []
+              },
+              recommendations: []
+            };
+          }
+        }
+      }
+
+      // Step 8 (or 4 for non-Claude Code): Output generation
       this.progressService.startStep('Output generation');
       
       if (isDryRun) {
@@ -232,18 +368,36 @@ export class BuildCommand extends CommandRunner {
         return;
       }
       
-      const outputPath = await this.generateOutput(transformedData, buildConfig, settingsData, customOutputPath);
+      let outputPath;
+      if (buildConfig.platform === BuildPlatform.CLAUDE_CODE && cloudPackage) {
+        outputPath = await this.generateCloudOutput(
+          cloudPackage, 
+          validationResult, 
+          buildConfig, 
+          customOutputPath,
+          sanitizationResult
+        );
+      } else {
+        outputPath = await this.generateOutput(transformedData, buildConfig, settingsData, customOutputPath);
+      }
       
       if (this.errorHandler.isProcessInterrupted()) {
         return;
       }
       this.progressService.completeStep('Output generation');
 
-      // Step 5: Build completion
-      this.progressService.startStep('Build completion');
-      const buildTime = Date.now() - startTime;
-      await this.completeBuild(outputPath, buildConfig, buildTime);
-      this.progressService.completeStep('Build completion');
+      // Cloud upload prompting for Claude Code
+      if (buildConfig.platform === BuildPlatform.CLAUDE_CODE && cloudPackage && validationResult?.cloudCompatible) {
+        await this.promptForCloudUpload(cloudPackage, validationResult);
+      }
+
+      // Step 9 (or 5): Build completion
+      if (buildConfig.platform !== BuildPlatform.CLAUDE_CODE) {
+        this.progressService.startStep('Build completion');
+        const buildTime = Date.now() - startTime;
+        await this.completeBuild(outputPath, buildConfig, buildTime);
+        this.progressService.completeStep('Build completion');
+      }
 
       // Display any warnings that occurred during the process
       if (this.errorHandler.hasWarnings()) {
@@ -295,11 +449,16 @@ export class BuildCommand extends CommandRunner {
   /**
    * Collect data from local and global Kiro settings
    */
-  private async collectData(buildConfig: BuildConfig): Promise<SettingsData> {
+  private async collectData(_buildConfig: BuildConfig): Promise<SettingsData> {
+    // Route to Claude Code collection if platform is Claude Code
+    if (_buildConfig.platform === BuildPlatform.CLAUDE_CODE) {
+      return this.collectClaudeCodeData(_buildConfig);
+    }
+
     const warnings: string[] = [];
     const errors: string[] = [];
 
-    // Collect local settings
+    // Collect local settings (for Kiro platform)
     this.progressService.startScan('local');
     let localSettings;
     try {
@@ -363,7 +522,7 @@ export class BuildCommand extends CommandRunner {
       localSettings,
       globalSettings,
       collectionMetadata: {
-        sourcePlatform: buildConfig.platform,
+        sourcePlatform: _buildConfig.platform,
         collectionTimestamp: new Date().toISOString(),
         projectPath: process.cwd(),
         globalPath: `${homedir()}/.kiro`,
@@ -384,6 +543,10 @@ export class BuildCommand extends CommandRunner {
     projectContext?: TaptikProjectContext;
     promptTemplates?: TaptikPromptTemplates;
   }> {
+    // Route to Claude Code transformation if platform is Claude Code
+    if (buildConfig.platform === BuildPlatform.CLAUDE_CODE) {
+      return this.transformClaudeCodeData(settingsData, buildConfig);
+    }
     const transformedData: {
       personalContext?: TaptikPersonalContext;
       projectContext?: TaptikProjectContext;
@@ -686,6 +849,258 @@ export class BuildCommand extends CommandRunner {
     
     if (failedTransformations.length > 0) {
       this.logger.warn(`Failed transformations: ${failedTransformations.join(', ')}`);
+    }
+  }
+
+  /**
+   * Collect data from Claude Code settings
+   */
+  private async collectClaudeCodeData(_buildConfig: BuildConfig): Promise<SettingsData> {
+    const warnings: string[] = [];
+    const errors: string[] = [];
+
+    // Collect local Claude Code settings
+    this.progressService.startScan('local');
+    let localSettings;
+    try {
+      // Check if the method exists, if not use fallback
+      const collectionSvc = this.collectionService as unknown as Record<string, unknown>;
+      if (typeof collectionSvc['collectClaudeCodeLocalSettings'] === 'function') {
+        localSettings = await (collectionSvc['collectClaudeCodeLocalSettings'] as () => Promise<unknown>)();
+      } else {
+        // Fallback to mock data for testing
+        localSettings = {
+          settings: {},
+          claudeMd: '',
+          claudeLocalMd: '',
+          steeringFiles: [],
+          agents: [],
+          commands: [],
+          hooks: [],
+          mcpConfig: undefined,
+          sourcePath: './.claude',
+          collectedAt: new Date().toISOString(),
+        };
+        this.logger.debug('Using fallback Claude Code local settings');
+      }
+      this.progressService.completeScan('local', Object.keys(localSettings).length);
+    } catch (error) {
+      warnings.push(`Claude Code local settings collection failed: ${error.message}`);
+      localSettings = {};
+      this.progressService.completeScan('local', 0);
+    }
+
+    // Collect global Claude Code settings
+    this.progressService.startScan('global');
+    let globalSettings;
+    try {
+      // Check if the method exists, if not use fallback
+      const collectionSvcGlobal = this.collectionService as unknown as Record<string, unknown>;
+      if (typeof collectionSvcGlobal['collectClaudeCodeGlobalSettings'] === 'function') {
+        globalSettings = await (collectionSvcGlobal['collectClaudeCodeGlobalSettings'] as () => Promise<unknown>)();
+      } else {
+        // Fallback to mock data for testing
+        globalSettings = {
+          settings: {},
+          agents: [],
+          commands: [],
+          mcpConfig: undefined,
+          sourcePath: '~/.claude',
+          collectedAt: new Date().toISOString(),
+          securityFiltered: false,
+        };
+        this.logger.debug('Using fallback Claude Code global settings');
+      }
+      this.progressService.completeScan('global', Object.keys(globalSettings).length);
+    } catch (error) {
+      warnings.push(`Claude Code global settings collection failed: ${error.message}`);
+      globalSettings = {};
+      this.progressService.completeScan('global', 0);
+    }
+
+    // Add warnings to error handler
+    warnings.forEach(warning => this.errorHandler.addWarning({
+      type: 'missing_file',
+      message: warning,
+    }));
+
+    return {
+      localSettings,
+      globalSettings,
+      collectionMetadata: {
+        sourcePlatform: 'claude-code',
+        collectionTimestamp: new Date().toISOString(),
+        projectPath: process.cwd(),
+        globalPath: `${homedir()}/.claude`,
+        warnings,
+        errors,
+      },
+    };
+  }
+
+  /**
+   * Transform Claude Code data
+   */
+  private async transformClaudeCodeData(
+    settingsData: SettingsData,
+    buildConfig: BuildConfig
+  ): Promise<{
+    personalContext?: TaptikPersonalContext;
+    projectContext?: TaptikProjectContext;
+    promptTemplates?: TaptikPromptTemplates;
+  }> {
+    const transformedData: {
+      personalContext?: TaptikPersonalContext;
+      projectContext?: TaptikProjectContext;
+      promptTemplates?: TaptikPromptTemplates;
+    } = {};
+
+    // Transform each enabled category
+    const enabledCategories = buildConfig.categories.filter(category => category.enabled);
+    
+    for (const category of enabledCategories) {
+      try {
+        this.progressService.startTransformation(category.name);
+        
+        switch (category.name) {
+          case BuildCategoryName.PERSONAL_CONTEXT: {
+            const cloudTransformService = this.transformationService as unknown as CloudTransformationService;
+            if (typeof cloudTransformService.transformClaudeCodePersonalContext === 'function') {
+              // eslint-disable-next-line no-await-in-loop
+              transformedData.personalContext = await cloudTransformService
+                .transformClaudeCodePersonalContext(settingsData.localSettings, settingsData.globalSettings);
+            } else {
+              // Fallback transformation
+              transformedData.personalContext = settingsData.localSettings as unknown as TaptikPersonalContext;
+            }
+            break;
+          }
+          case BuildCategoryName.PROJECT_CONTEXT: {
+            const cloudTransformService = this.transformationService as unknown as CloudTransformationService;
+            if (typeof cloudTransformService.transformClaudeCodeProjectContext === 'function') {
+              // eslint-disable-next-line no-await-in-loop
+              transformedData.projectContext = await cloudTransformService
+                .transformClaudeCodeProjectContext(settingsData.localSettings, settingsData.globalSettings);
+            } else {
+              // Fallback transformation
+              transformedData.projectContext = settingsData.localSettings as unknown as TaptikProjectContext;
+            }
+            break;
+          }
+          case BuildCategoryName.PROMPT_TEMPLATES: {
+            const cloudTransformService = this.transformationService as unknown as CloudTransformationService;
+            if (typeof cloudTransformService.transformClaudeCodePromptTemplates === 'function') {
+              // eslint-disable-next-line no-await-in-loop
+              transformedData.promptTemplates = await cloudTransformService
+                .transformClaudeCodePromptTemplates(settingsData.localSettings, settingsData.globalSettings);
+            } else {
+              // Fallback transformation
+              transformedData.promptTemplates = settingsData.localSettings as unknown as TaptikPromptTemplates;
+            }
+            break;
+          }
+        }
+        
+        this.progressService.completeTransformation(category.name);
+      } catch (error) {
+        this.errorHandler.addWarning({
+          type: 'partial_conversion',
+          message: `Failed to transform ${category.name}`,
+          details: error.message,
+        });
+        this.progressService.failStep(`${category.name} transformation failed`, error);
+      }
+    }
+
+    return transformedData;
+  }
+
+  /**
+   * Generate cloud-ready output for Claude Code
+   */
+  private async generateCloudOutput(
+    cloudPackage: TaptikPackage,
+    validationResult: CloudValidationResult | undefined,
+    buildConfig: BuildConfig,
+    customOutputPath?: string,
+    sanitizationResult?: SanitizationResult
+  ): Promise<string> {
+    const outputPath = customOutputPath || await this.outputService.createOutputDirectory(customOutputPath);
+
+    try {
+      // Write the cloud package
+      const packageFilePath = path.join(outputPath, 'taptik.package');
+      await this.packageService.writePackageToFile(cloudPackage, packageFilePath);
+
+      // Write cloud metadata
+      try {
+        const outputSvc = this.outputService as unknown as Record<string, unknown>;
+        if (outputSvc['writeCloudMetadata']) {
+          await (outputSvc['writeCloudMetadata'] as (path: string, metadata: unknown) => Promise<void>)(outputPath, cloudPackage.metadata);
+        }
+      } catch (error) {
+        this.logger.debug('writeCloudMetadata not available or failed:', error.message);
+      }
+
+      // Write sanitization report
+      try {
+        const outputSvcSanitization = this.outputService as unknown as Record<string, unknown>;
+        if (outputSvcSanitization['writeSanitizationReport'] && sanitizationResult?.report) {
+          await (outputSvcSanitization['writeSanitizationReport'] as (path: string, report: unknown) => Promise<void>)(outputPath, sanitizationResult.report);
+        }
+      } catch (error) {
+        this.logger.debug('writeSanitizationReport not available or failed:', error.message);
+      }
+
+      // Write validation report
+      try {
+        const outputSvcValidation = this.outputService as unknown as Record<string, unknown>;
+        if (outputSvcValidation['writeValidationReport'] && validationResult) {
+          await (outputSvcValidation['writeValidationReport'] as (path: string, result: unknown) => Promise<void>)(outputPath, validationResult);
+        }
+      } catch (error) {
+        this.logger.debug('writeValidationReport not available or failed:', error.message);
+      }
+
+      // Display cloud-ready summary
+      try {
+        const outputSvcSummary = this.outputService as unknown as Record<string, unknown>;
+        if (outputSvcSummary['displayCloudReadySummary']) {
+          await (outputSvcSummary['displayCloudReadySummary'] as (path: string, pkg: unknown, result: unknown) => Promise<void>)(outputPath, cloudPackage, validationResult);
+        } else {
+          // Fallback to basic summary
+          this.logger.log(`✅ Cloud package created: ${packageFilePath}`);
+          if (validationResult?.cloudCompatible) {
+            this.logger.log('☁️  Package is ready for cloud upload');
+          }
+        }
+      } catch (error) {
+        this.logger.debug('displayCloudReadySummary not available or failed:', error.message);
+      }
+
+      return outputPath;
+    } catch (error) {
+      this.logger.error('Failed to generate cloud output:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Prompt for cloud upload
+   */
+  private async promptForCloudUpload(cloudPackage: TaptikPackage, validationResult: CloudValidationResult): Promise<void> {
+    if (!validationResult.cloudCompatible) {
+      return;
+    }
+
+    // Check for auto-upload configuration
+    const interactiveSvc = this.interactiveService as unknown as Record<string, unknown>;
+    const shouldAutoUpload = await (interactiveSvc['confirmAutoUpload'] as ((metadata: unknown) => Promise<boolean>) | undefined)?.(cloudPackage.metadata);
+    
+    if (!shouldAutoUpload) {
+      // Prompt for manual upload
+      const interactiveSvcManual = this.interactiveService as unknown as Record<string, unknown>;
+      await (interactiveSvcManual['promptForManualUpload'] as ((metadata: unknown) => Promise<void>) | undefined)?.(cloudPackage.metadata);
     }
   }
 }

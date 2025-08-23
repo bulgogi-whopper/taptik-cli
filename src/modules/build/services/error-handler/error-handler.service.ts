@@ -9,7 +9,7 @@ export interface ErrorSummary {
 }
 
 export interface CriticalError {
-  type: 'file_system' | 'conversion' | 'validation' | 'system';
+  type: 'file_system' | 'conversion' | 'validation' | 'system' | 'security';
   message: string;
   details?: string;
   suggestedResolution?: string;
@@ -17,7 +17,7 @@ export interface CriticalError {
 }
 
 export interface Warning {
-  type: 'missing_file' | 'permission_denied' | 'partial_conversion' | 'validation_warning';
+  type: 'missing_file' | 'permission_denied' | 'partial_conversion' | 'validation_warning' | 'package' | 'security' | 'validation';
   message: string;
   details?: string;
 }

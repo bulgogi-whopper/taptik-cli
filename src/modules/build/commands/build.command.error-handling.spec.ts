@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi, Mock, Mocked } from 'vitest';
 
+import { MetadataGeneratorService } from '../../context/services/metadata-generator.service';
+import { PackageService } from '../../context/services/package.service';
+import { SanitizationService } from '../../context/services/sanitization.service';
+import { ValidationService } from '../../context/services/validation.service';
 import { CollectionService } from '../services/collection/collection.service';
 import { ErrorHandlerService } from '../services/error-handler/error-handler.service';
 import { InteractiveService } from '../services/interactive/interactive.service';
@@ -16,6 +20,10 @@ describe('BuildCommand Error Handling', () => {
   let errorHandler: Mocked<ErrorHandlerService>;
   let collectionService: Mocked<CollectionService>;
   let transformationService: Mocked<TransformationService>;
+  let sanitizationService: Mocked<SanitizationService>;
+  let metadataGeneratorService: Mocked<MetadataGeneratorService>;
+  let packageService: Mocked<PackageService>;
+  let validationService: Mocked<ValidationService>;
   let outputService: Mocked<OutputService>;
   let progressService: Mocked<ProgressService>;
 
@@ -46,6 +54,23 @@ describe('BuildCommand Error Handling', () => {
       transformPersonalContext: vi.fn().mockResolvedValue({}),
       transformProjectContext: vi.fn().mockResolvedValue({}),
       transformPromptTemplates: vi.fn().mockResolvedValue({}),
+    } as any;
+
+    sanitizationService = {
+      sanitizeForCloudUpload: vi.fn(),
+    } as any;
+
+    metadataGeneratorService = {
+      generateCloudMetadata: vi.fn(),
+    } as any;
+
+    packageService = {
+      createTaptikPackage: vi.fn(),
+      writePackageToFile: vi.fn(),
+    } as any;
+
+    validationService = {
+      validateForCloudUpload: vi.fn(),
     } as any;
 
     outputService = {
@@ -84,7 +109,18 @@ describe('BuildCommand Error Handling', () => {
     } as any;
 
     // Create command with mocked dependencies
-    command = new BuildCommand(interactiveService, collectionService, transformationService, outputService, progressService, errorHandler);
+    command = new BuildCommand(
+      interactiveService,
+      collectionService,
+      transformationService,
+      sanitizationService,
+      metadataGeneratorService,
+      packageService,
+      validationService,
+      outputService,
+      progressService,
+      errorHandler
+    );
 
     // Clear all mocks
     vi.clearAllMocks();

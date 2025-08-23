@@ -3,6 +3,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { describe, it, expect, beforeEach, vi, Mock, Mocked } from 'vitest';
 
+import { MetadataGeneratorService } from '../../context/services/metadata-generator.service';
+import { PackageService } from '../../context/services/package.service';
+import { SanitizationService } from '../../context/services/sanitization.service';
+import { ValidationService } from '../../context/services/validation.service';
 import { BuildPlatform, BuildCategoryName } from '../interfaces/build-config.interface';
 import { CollectionService } from '../services/collection/collection.service';
 import { ErrorHandlerService } from '../services/error-handler/error-handler.service';
@@ -20,6 +24,10 @@ describe('BuildCommand', () => {
   let interactiveService: Mocked<InteractiveService>;
   let collectionService: Mocked<CollectionService>;
   let transformationService: Mocked<TransformationService>;
+  let sanitizationService: Mocked<SanitizationService>;
+  let metadataGeneratorService: Mocked<MetadataGeneratorService>;
+  let packageService: Mocked<PackageService>;
+  let validationService: Mocked<ValidationService>;
   let outputService: Mocked<OutputService>;
   let progressService: Mocked<ProgressService>;
   let errorHandler: Mocked<ErrorHandlerService>;
@@ -175,6 +183,23 @@ describe('BuildCommand', () => {
       displayBuildSummary: vi.fn(),
     };
 
+    const mockSanitizationService = {
+      sanitizeForCloudUpload: vi.fn(),
+    };
+
+    const mockMetadataGeneratorService = {
+      generateCloudMetadata: vi.fn(),
+    };
+
+    const mockPackageService = {
+      createTaptikPackage: vi.fn(),
+      writePackageToFile: vi.fn(),
+    };
+
+    const mockValidationService = {
+      validateForCloudUpload: vi.fn(),
+    };
+
     const mockErrorHandler = {
       isProcessInterrupted: vi.fn().mockReturnValue(false),
       addWarning: vi.fn(),
@@ -203,6 +228,22 @@ describe('BuildCommand', () => {
           useValue: mockTransformationService,
         },
         {
+          provide: SanitizationService,
+          useValue: mockSanitizationService,
+        },
+        {
+          provide: MetadataGeneratorService,
+          useValue: mockMetadataGeneratorService,
+        },
+        {
+          provide: PackageService,
+          useValue: mockPackageService,
+        },
+        {
+          provide: ValidationService,
+          useValue: mockValidationService,
+        },
+        {
           provide: OutputService,
           useValue: mockOutputService,
         },
@@ -221,6 +262,10 @@ describe('BuildCommand', () => {
     interactiveService = module.get(InteractiveService);
     collectionService = module.get(CollectionService);
     transformationService = module.get(TransformationService);
+    sanitizationService = module.get(SanitizationService);
+    metadataGeneratorService = module.get(MetadataGeneratorService);
+    packageService = module.get(PackageService);
+    validationService = module.get(ValidationService);
     outputService = module.get(OutputService);
     progressService = module.get(ProgressService);
     errorHandler = module.get(ErrorHandlerService);
@@ -230,6 +275,10 @@ describe('BuildCommand', () => {
       interactiveService,
       collectionService,
       transformationService,
+      sanitizationService,
+      metadataGeneratorService,
+      packageService,
+      validationService,
       outputService,
       progressService,
       errorHandler,
@@ -506,6 +555,10 @@ describe('BuildCommand', () => {
         interactiveService,
         collectionService,
         transformationService,
+        sanitizationService,
+        metadataGeneratorService,
+        packageService,
+        validationService,
         outputService,
         progressService,
         errorHandler
@@ -515,6 +568,10 @@ describe('BuildCommand', () => {
         interactiveService,
         collectionService,
         transformationService,
+        sanitizationService,
+        metadataGeneratorService,
+        packageService,
+        validationService,
         outputService,
         progressService,
         errorHandler
