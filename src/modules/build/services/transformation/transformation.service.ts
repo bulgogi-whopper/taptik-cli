@@ -2,6 +2,16 @@ import { randomUUID } from 'node:crypto';
 
 import { Injectable, Logger } from '@nestjs/common';
 
+import {
+  ClaudeCodeLocalSettings,
+  ClaudeCodeGlobalSettings,
+  ClaudeCodeSettings,
+  ClaudeAgent,
+  ClaudeCommand,
+  McpConfig,
+  McpServerConfig,
+  SteeringRule,
+} from '../../../context/interfaces/cloud.interface';
 import { HookFile, SettingsData } from '../../interfaces/settings-data.interface';
 import {
   TaptikPersonalContext,
@@ -1859,5 +1869,386 @@ export class TransformationService {
     }
 
     return tags;
+  }
+
+  /**
+   * Transform Claude Code personal context data to Taptik format
+   */
+  async transformClaudeCodePersonalContext(
+    localData: ClaudeCodeLocalSettings,
+    globalData: ClaudeCodeGlobalSettings,
+  ): Promise<TaptikPersonalContext> {
+    return {
+      user_id: this.generateUserId({ collectionMetadata: { sourcePlatform: 'claude-code' } } as SettingsData),
+      preferences: {
+        preferred_languages: this.extractLanguagesFromClaudeCode(localData, globalData),
+        coding_style: {
+          indentation: '2 spaces',
+          naming_convention: 'camelCase',
+          comment_style: 'minimal',
+          code_organization: 'feature-based',
+        },
+        tools_and_frameworks: this.extractToolsFromClaudeCode(localData, globalData),
+        development_environment: ['claude-code'],
+      },
+      work_style: {
+        preferred_workflow: 'agile',
+        problem_solving_approach: 'incremental',
+        documentation_level: 'minimal',
+        testing_approach: 'unit-first',
+      },
+      communication: {
+        preferred_explanation_style: 'concise',
+        technical_depth: 'intermediate',
+        feedback_style: 'direct',
+      },
+      metadata: {
+        source_platform: 'claude-code',
+        created_at: new Date().toISOString(),
+        version: '1.0.0',
+      },
+    };
+  }
+
+  /**
+   * Transform Claude Code project context data to Taptik format
+   */
+  async transformClaudeCodeProjectContext(
+    localData: ClaudeCodeLocalSettings,
+    globalData: ClaudeCodeGlobalSettings,
+  ): Promise<TaptikProjectContext> {
+    const mergedMcp = this.mergeMcpConfigurations(localData?.mcpServers, globalData?.mcpServers);
+    const mergedCommands = this.mergeClaudeCommands(localData?.commands, globalData?.commands);
+    
+    return {
+      project_id: `claude-project-${randomUUID().slice(0, 8)}`,
+      project_info: {
+        name: 'Claude Code Project',
+        description: 'Project configured with Claude Code',
+        version: '1.0.0',
+        repository: '',
+      },
+      technical_stack: {
+        primary_language: 'typescript',
+        frameworks: [],
+        databases: [],
+        tools: [
+          ...this.extractMcpTools(mergedMcp),
+          ...this.extractCommandTools(mergedCommands),
+        ],
+        deployment: [],
+      },
+      development_guidelines: {
+        coding_standards: this.extractStandardsFromSteeringRules(localData?.steeringRules),
+        testing_requirements: this.extractTestingFromSteeringRules(localData?.steeringRules),
+        documentation_standards: [],
+        review_process: [],
+      },
+      metadata: {
+        source_platform: 'claude-code',
+        source_path: '',
+        created_at: new Date().toISOString(),
+        version: '1.0.0',
+      },
+    };
+  }
+
+  /**
+   * Transform Claude Code prompt templates
+   */
+  async transformClaudeCodePromptTemplates(
+    localData: ClaudeCodeLocalSettings,
+    globalData: ClaudeCodeGlobalSettings,
+  ): Promise<TaptikPromptTemplates> {
+    const templates: PromptTemplateEntry[] = [];
+
+    // Transform agents to templates
+    const allAgents = this.mergeClaudeAgents(localData?.agents, globalData?.agents);
+    for (const agent of allAgents) {
+      if (agent && agent.name && agent.prompt) {
+        templates.push({
+          id: agent.id || this.generateTemplateIdFromName(agent.name),
+          name: agent.name,
+          description: (typeof agent.description === 'string' ? agent.description : 'Claude Code Agent'),
+          category: 'claude-agent',
+          content: agent.prompt,
+          variables: this.extractVariablesFromContent(agent.prompt || ''),
+          tags: ['claude-code', 'agent'],
+        });
+      }
+    }
+
+    // Transform steering rules to templates
+    const steeringRules = localData?.steeringRules || [];
+    for (const rule of steeringRules) {
+      if (rule && rule.rule) {
+        templates.push({
+          id: this.generateTemplateIdFromName(`steering-${rule.pattern}`),
+          name: `Steering Rule: ${rule.pattern}`,
+          description: 'Claude Code Steering Rule',
+          category: 'steering-rule',
+          content: rule.rule,
+          variables: [],
+          tags: ['claude-code', 'steering'],
+        });
+      }
+    }
+
+    // Transform instructions to template
+    const mergedInstructions = this.mergeClaudeInstructions(
+      localData?.instructions?.global,
+      localData?.instructions?.local,
+    );
+    if (mergedInstructions) {
+      templates.push({
+        id: 'claude-instructions',
+        name: 'Claude Code Instructions',
+        description: 'Merged Claude Code instructions',
+        category: 'instructions',
+        content: mergedInstructions,
+        variables: [],
+        tags: ['claude-code', 'instructions'],
+      });
+    }
+
+    return {
+      templates,
+      metadata: {
+        source_platform: 'claude-code',
+        created_at: new Date().toISOString(),
+        version: '1.0.0',
+        total_templates: templates.length,
+      },
+    };
+  }
+
+  /**
+   * Merge MCP configurations with local precedence
+   */
+  mergeMcpConfigurations(localConfig: McpConfig | undefined, globalConfig: McpConfig | undefined): McpConfig {
+    if (!localConfig && !globalConfig) {
+      return { servers: [] };
+    }
+
+    const servers = new Map<string, McpServerConfig>();
+
+    // Add global servers first
+    if (globalConfig?.servers) {
+      for (const server of globalConfig.servers) {
+        if (server?.name) {
+          servers.set(server.name, server);
+        }
+      }
+    }
+
+    // Override with local servers
+    if (localConfig?.servers) {
+      for (const server of localConfig.servers) {
+        if (server?.name) {
+          servers.set(server.name, server);
+        }
+      }
+    }
+
+    return { servers: Array.from(servers.values()) };
+  }
+
+  /**
+   * Merge Claude instruction files
+   */
+  mergeClaudeInstructions(globalInstructions: string | undefined, localInstructions: string | undefined): string {
+    if (!globalInstructions && !localInstructions) {
+      return '';
+    }
+
+    if (!globalInstructions) {
+      return localInstructions || '';
+    }
+
+    if (!localInstructions) {
+      return globalInstructions || '';
+    }
+
+    return `# Claude Code Instructions
+
+## Global Configuration
+${globalInstructions}
+
+## Local Configuration
+${localInstructions}`;
+  }
+
+  // Helper methods for Claude Code transformations
+  private mergeClaudeSettings(localSettings: ClaudeCodeSettings | undefined, globalSettings: ClaudeCodeSettings | undefined): ClaudeCodeSettings {
+    return { ...globalSettings, ...localSettings } as ClaudeCodeSettings;
+  }
+
+  private extractLanguagesFromClaudeCode(localData: ClaudeCodeLocalSettings, globalData: ClaudeCodeGlobalSettings): string[] {
+    const languages = new Set<string>();
+    
+    // Extract from settings - safely handle unknown type
+    if (localData?.settings) {
+      const langs = (localData.settings as Record<string, unknown>).languages;
+      if (Array.isArray(langs)) {
+        for (const lang of langs) {
+          if (typeof lang === 'string') {
+            languages.add(lang);
+          }
+        }
+      }
+    }
+    
+    if (globalData?.settings) {
+      const langs = (globalData.settings as Record<string, unknown>).languages;
+      if (Array.isArray(langs)) {
+        for (const lang of langs) {
+          if (typeof lang === 'string') {
+            languages.add(lang);
+          }
+        }
+      }
+    }
+
+    return languages.size > 0 ? Array.from(languages) : ['typescript'];
+  }
+
+  private extractToolsFromClaudeCode(localData: ClaudeCodeLocalSettings, globalData: ClaudeCodeGlobalSettings): string[] {
+    const tools = new Set<string>();
+    
+    // Extract from settings - safely handle unknown type
+    if (localData?.settings) {
+      const toolList = (localData.settings as Record<string, unknown>).tools;
+      if (Array.isArray(toolList)) {
+        for (const tool of toolList) {
+          if (typeof tool === 'string') {
+            tools.add(tool);
+          }
+        }
+      }
+    }
+    
+    if (globalData?.settings) {
+      const toolList = (globalData.settings as Record<string, unknown>).tools;
+      if (Array.isArray(toolList)) {
+        for (const tool of toolList) {
+          if (typeof tool === 'string') {
+            tools.add(tool);
+          }
+        }
+      }
+    }
+
+    return Array.from(tools);
+  }
+
+  private extractAiPreferencesFromAgents(agents: ClaudeAgent[] | undefined): string[] {
+    if (!agents || !Array.isArray(agents)) {
+      return [];
+    }
+
+    return agents
+      .filter(agent => agent && agent.name)
+      .map(agent => agent.name);
+  }
+
+  private mergeClaudeAgents(localAgents: ClaudeAgent[] | undefined, globalAgents: ClaudeAgent[] | undefined): ClaudeAgent[] {
+    const agents = new Map<string, ClaudeAgent>();
+
+    // Add global agents first
+    if (globalAgents && Array.isArray(globalAgents)) {
+      for (const agent of globalAgents) {
+        if (agent?.id) {
+          agents.set(agent.id, agent);
+        }
+      }
+    }
+
+    // Override with local agents
+    if (localAgents && Array.isArray(localAgents)) {
+      for (const agent of localAgents) {
+        if (agent?.id) {
+          agents.set(agent.id, agent);
+        }
+      }
+    }
+
+    return Array.from(agents.values());
+  }
+
+  private mergeClaudeCommands(localCommands: ClaudeCommand[] | undefined, globalCommands: ClaudeCommand[] | undefined): ClaudeCommand[] {
+    const commands = new Map<string, ClaudeCommand>();
+
+    // Add global commands first
+    if (globalCommands && Array.isArray(globalCommands)) {
+      for (const command of globalCommands) {
+        if (command?.name) {
+          commands.set(command.name, command);
+        }
+      }
+    }
+
+    // Override with local commands
+    if (localCommands && Array.isArray(localCommands)) {
+      for (const command of localCommands) {
+        if (command?.name) {
+          commands.set(command.name, command);
+        }
+      }
+    }
+
+    return Array.from(commands.values());
+  }
+
+  private extractMcpTools(mcpConfig: McpConfig): string[] {
+    if (!mcpConfig?.servers || !Array.isArray(mcpConfig.servers)) {
+      return [];
+    }
+
+    return mcpConfig.servers
+      .filter((server) => {
+        const serverWithDisabled = server as McpServerConfig & { disabled?: boolean };
+        return server && server.name && !serverWithDisabled.disabled;
+      })
+      .map((server) => `${server.name}: ${server.command || server.url || 'configured'}`);
+  }
+
+  private extractCommandTools(commands: ClaudeCommand[]): string[] {
+    if (!commands || !Array.isArray(commands)) {
+      return [];
+    }
+
+    return commands
+      .filter(cmd => cmd && cmd.name && cmd.command)
+      .map(cmd => `${cmd.name}: ${cmd.command}`);
+  }
+
+  private extractStandardsFromSteeringRules(steeringRules: SteeringRule[] | undefined): string[] {
+    if (!steeringRules || !Array.isArray(steeringRules)) {
+      return [];
+    }
+
+    return steeringRules
+      .filter(rule => rule && rule.rule)
+      .filter(rule => 
+        rule.rule.toLowerCase().includes('standard') ||
+        rule.rule.toLowerCase().includes('convention') ||
+        rule.rule.toLowerCase().includes('style')
+      )
+      .map(rule => rule.rule);
+  }
+
+  private extractTestingFromSteeringRules(steeringRules: SteeringRule[] | undefined): string[] {
+    if (!steeringRules || !Array.isArray(steeringRules)) {
+      return [];
+    }
+
+    return steeringRules
+      .filter(rule => rule && rule.rule)
+      .filter(rule => 
+        rule.rule.toLowerCase().includes('test') ||
+        rule.rule.toLowerCase().includes('tdd') ||
+        rule.rule.toLowerCase().includes('coverage')
+      )
+      .map(rule => rule.rule);
   }
 }
