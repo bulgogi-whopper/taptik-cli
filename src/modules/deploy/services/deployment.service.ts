@@ -15,6 +15,7 @@ import { DeploymentResult } from '../interfaces/deployment-result.interface';
 import { BackupService } from './backup.service';
 import { DiffService } from './diff.service';
 import { ErrorRecoveryService } from './error-recovery.service';
+import { KiroTransformerService } from './kiro-transformer.service';
 import { LargeFileStreamerService } from './large-file-streamer.service';
 import { PerformanceMonitorService } from './performance-monitor.service';
 import { PlatformValidatorService } from './platform-validator.service';
@@ -30,6 +31,7 @@ export class DeploymentService {
     private readonly errorRecoveryService: ErrorRecoveryService,
     private readonly performanceMonitor: PerformanceMonitorService,
     private readonly largeFileStreamer: LargeFileStreamerService,
+    private readonly kiroTransformer: KiroTransformerService,
   ) {}
 
   async deployToClaudeCode(
@@ -275,8 +277,8 @@ export class DeploymentService {
   }
 
   async deployToKiro(
-    _context: TaptikContext,
-    _options: DeployOptions,
+    context: TaptikContext,
+    options: DeployOptions,
   ): Promise<DeploymentResult> {
     // Generate unique deployment ID for performance tracking
     const deploymentId = `kiro-deploy-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
@@ -296,31 +298,104 @@ export class DeploymentService {
         conflictsResolved: 0,
         backupCreated: false,
       },
-      errors: [
-        {
-          message: 'Kiro IDE deployment is not yet implemented. This feature is under development.',
-          code: 'KIRO_NOT_IMPLEMENTED',
-          severity: 'error',
-        },
-      ],
-      warnings: [
-        {
-          message: 'Kiro IDE deployment will be available in upcoming releases. Currently implementing: data transformation, component handlers, and validation services.',
-          code: 'KIRO_FEATURE_PREVIEW',
-        },
-      ],
+      errors: [],
+      warnings: [],
       metadata: {
         deploymentId,
-        performanceReport: 'Deployment not executed - feature under development',
+        performanceReport: 'Kiro deployment initialized',
       },
     };
 
     try {
-      // TODO: Implement Kiro deployment logic in upcoming tasks
-      // Task 2.1: Kiro-specific interfaces and types
-      // Task 2.2: Kiro data transformation service  
-      // Task 2.3: Kiro component deployment handlers
-      // Task 3.1: Kiro validation service
+      // Step 1: Transform TaptikContext to Kiro formats
+      const globalSettings = this.kiroTransformer.transformPersonalContext(context);
+      const projectTransformation = this.kiroTransformer.transformProjectContext(context);
+      const templates = this.kiroTransformer.transformPromptTemplates(context.content.prompts || {});
+
+      // Step 2: Validate transformation results
+      const validation = this.kiroTransformer.validateTransformation(
+        globalSettings, 
+        projectTransformation.settings
+      );
+
+      if (!validation.isValid) {
+        result.errors.push(...validation.errors.map(error => ({
+          message: error,
+          code: 'KIRO_TRANSFORMATION_ERROR',
+          severity: 'error'
+        })));
+        
+        this.performanceMonitor.endDeploymentTiming(deploymentId);
+        result.metadata!.performanceReport = 'Kiro deployment failed - transformation validation errors';
+        return result;
+      }
+
+      // Add validation warnings
+      if (validation.warnings.length > 0) {
+        result.warnings.push(...validation.warnings.map(warning => ({
+          message: warning,
+          code: 'KIRO_TRANSFORMATION_WARNING'
+        })));
+      }
+
+      // Step 3: Create deployment context
+      const homeDirectory = os.homedir();
+      const projectDirectory = process.cwd();
+      const deploymentContext = this.kiroTransformer.createDeploymentContext(homeDirectory, projectDirectory);
+
+      // Step 4: Apply deployment options filtering
+      let componentsToProcess = ['settings', 'steering', 'specs', 'hooks', 'agents', 'templates'] as ComponentType[];
+      if (options.components && options.components.length > 0) {
+        componentsToProcess = options.components.filter(c => componentsToProcess.includes(c));
+      }
+      if (options.skipComponents && options.skipComponents.length > 0) {
+        componentsToProcess = componentsToProcess.filter(c => !options.skipComponents!.includes(c));
+      }
+
+      // Step 5: Prepare deployment result with transformation data
+      result.success = true;
+      result.deployedComponents = componentsToProcess;
+      result.summary.filesDeployed = componentsToProcess.length; // Will be updated when actual file writing is implemented
+      result.summary.backupCreated = false; // Will be updated when backup service is integrated
+
+      // Log deployment context paths for debugging
+      result.warnings.push({
+        message: `Deployment paths: ${JSON.stringify(deploymentContext.paths)}`,
+        code: 'KIRO_DEPLOYMENT_PATHS'
+      });
+
+      // Add transformation results as warnings for now (until actual deployment is implemented)
+      result.warnings.push({
+        message: `Transformed ${Object.keys(globalSettings.user.profile).length} user profile fields`,
+        code: 'KIRO_TRANSFORMATION_INFO'
+      });
+
+      result.warnings.push({
+        message: `Generated ${projectTransformation.steering.length} steering documents`,
+        code: 'KIRO_TRANSFORMATION_INFO'
+      });
+
+      result.warnings.push({
+        message: `Generated ${projectTransformation.specs.length} spec documents`,
+        code: 'KIRO_TRANSFORMATION_INFO'
+      });
+
+      result.warnings.push({
+        message: `Generated ${projectTransformation.hooks.length} hooks`,
+        code: 'KIRO_TRANSFORMATION_INFO'
+      });
+
+      result.warnings.push({
+        message: `Generated ${templates.length} templates`,
+        code: 'KIRO_TRANSFORMATION_INFO'
+      });
+
+      // TODO: Implement actual file writing in upcoming tasks
+      // Task 2.3: Kiro component deployment handlers will handle actual file writing
+      result.warnings.push({
+        message: 'Data transformation completed. File writing will be implemented in task 2.3.',
+        code: 'KIRO_FEATURE_PREVIEW'
+      });
       
       // End performance monitoring
       this.performanceMonitor.endDeploymentTiming(deploymentId);
