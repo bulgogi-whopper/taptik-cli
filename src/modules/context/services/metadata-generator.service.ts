@@ -156,7 +156,7 @@ export class MetadataGeneratorService {
       author: context.metadata?.exportedBy || 'unknown',
       createdAt: context.metadata?.timestamp || new Date().toISOString(),
       fileSize: 0,
-      checksum: '',
+      checksum: 'pending',  // Will be set by package service
     };
   }
 

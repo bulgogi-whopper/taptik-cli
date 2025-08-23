@@ -83,6 +83,9 @@ export class PackageService {
       const checksum = await this.generateChecksum(sanitizedConfig);
       const checksumSha512 = await this.generateChecksum(sanitizedConfig, 'sha512');
 
+      // Update metadata with the actual checksum
+      metadata.checksum = checksum;
+
       // Create enhanced manifest with detailed metadata
       const manifest = await this.createEnhancedManifest(sanitizedConfig, metadata);
 
@@ -719,7 +722,7 @@ export class PackageService {
     }
 
     // Claude Code specific validation
-    if (context.data.claudeCode) {
+    if (context.data && context.data.claudeCode) {
       const claude = context.data.claudeCode;
       if (!claude.local && !claude.global) {
         warnings.push('No Claude Code configuration data found');

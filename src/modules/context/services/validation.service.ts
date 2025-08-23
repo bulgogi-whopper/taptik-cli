@@ -331,7 +331,7 @@ export class ValidationService {
     }
 
     // Checksum validation
-    if (metadata.checksum === '') {
+    if (!metadata.checksum || metadata.checksum === '' || metadata.checksum === 'pending') {
       result.isValid = false;
       result.errors.push(this.ERROR_MESSAGES.EMPTY_VALUE('Checksum'));
     }
@@ -748,11 +748,28 @@ export class ValidationService {
       }
     }
 
-    // Check features
+    // Auto-detect supported features based on sourceIde and componentCount
+    if (sourceIde === 'claude-code' && metadata.componentCount) {
+      const { agents, commands, mcpServers, steeringRules, instructions } = metadata.componentCount;
+      
+      // Add base features for Claude Code
+      if (agents > 0) result.supportedFeatures.push('agents');
+      if (commands > 0) result.supportedFeatures.push('commands');
+      if (mcpServers > 0) result.supportedFeatures.push('mcpServers');
+      if (steeringRules > 0) result.supportedFeatures.push('steeringRules');
+      if (instructions > 0) result.supportedFeatures.push('instructions');
+      
+      // Add general supported features
+      result.supportedFeatures.push('settings', 'themes', 'preferences');
+    }
+
+    // Check explicitly declared features
     const features = metadata.features || [];
     for (const feature of features) {
       if (this.KNOWN_FEATURES.includes(feature as typeof this.KNOWN_FEATURES[number])) {
-        result.supportedFeatures.push(feature);
+        if (!result.supportedFeatures.includes(feature)) {
+          result.supportedFeatures.push(feature);
+        }
       } else {
         result.unsupportedFeatures.push(feature);
         // Check if targeting unsupported IDE
