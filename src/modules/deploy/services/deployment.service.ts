@@ -275,8 +275,8 @@ export class DeploymentService {
   }
 
   async deployToKiro(
-    context: TaptikContext,
-    options: DeployOptions,
+    _context: TaptikContext,
+    _options: DeployOptions,
   ): Promise<DeploymentResult> {
     // Generate unique deployment ID for performance tracking
     const deploymentId = `kiro-deploy-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;

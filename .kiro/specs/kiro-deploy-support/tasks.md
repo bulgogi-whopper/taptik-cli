@@ -50,7 +50,7 @@ This document outlines the implementation plan for adding Kiro IDE deployment su
   - _Requirements: 1.2, 1.3_
   - _Estimated: 1 day_
 
-- [ ] 2.1 Create Kiro-specific interfaces and types
+- [x] 2.1 Create Kiro-specific interfaces and types
   - Create `src/modules/deploy/interfaces/kiro-deployment.interface.ts` for Kiro deployment types
   - Define `KiroDeploymentOptions`, `KiroComponentType`, `KiroConflictStrategy` interfaces
   - Add Kiro-specific configuration models (settings, steering, specs, hooks, agents)
