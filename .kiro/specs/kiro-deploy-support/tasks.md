@@ -69,7 +69,7 @@ This document outlines the implementation plan for adding Kiro IDE deployment su
   - _Requirements: 9.1, 9.2, 9.3, 17.1, 17.2, 17.3_
   - _Estimated: 3 days_
 
-- [ ] 2.3 Create Kiro component deployment handlers
+- [x] 2.3 Create Kiro component deployment handlers
   - Create `src/modules/deploy/services/kiro-component-handler.service.ts`
   - Implement `deploySettings()` - deploy to `~/.kiro/settings.json` and `.kiro/settings.json`
   - Implement `deploySteering()` - deploy steering documents to `.kiro/steering/`

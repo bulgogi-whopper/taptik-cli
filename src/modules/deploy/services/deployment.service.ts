@@ -15,6 +15,7 @@ import { DeploymentResult } from '../interfaces/deployment-result.interface';
 import { BackupService } from './backup.service';
 import { DiffService } from './diff.service';
 import { ErrorRecoveryService } from './error-recovery.service';
+import { KiroComponentHandlerService } from './kiro-component-handler.service';
 import { KiroTransformerService } from './kiro-transformer.service';
 import { LargeFileStreamerService } from './large-file-streamer.service';
 import { PerformanceMonitorService } from './performance-monitor.service';
@@ -32,6 +33,7 @@ export class DeploymentService {
     private readonly performanceMonitor: PerformanceMonitorService,
     private readonly largeFileStreamer: LargeFileStreamerService,
     private readonly kiroTransformer: KiroTransformerService,
+    private readonly kiroComponentHandler: KiroComponentHandlerService,
   ) {}
 
   async deployToClaudeCode(
@@ -344,12 +346,12 @@ export class DeploymentService {
       const deploymentContext = this.kiroTransformer.createDeploymentContext(homeDirectory, projectDirectory);
 
       // Step 4: Apply deployment options filtering
-      let componentsToProcess = ['settings', 'steering', 'specs', 'hooks', 'agents', 'templates'] as ComponentType[];
+      let componentsToProcess = ['settings', 'steering', 'specs', 'hooks', 'agents', 'templates'];
       if (options.components && options.components.length > 0) {
         componentsToProcess = options.components.filter(c => componentsToProcess.includes(c));
       }
       if (options.skipComponents && options.skipComponents.length > 0) {
-        componentsToProcess = componentsToProcess.filter(c => !options.skipComponents!.includes(c));
+        componentsToProcess = componentsToProcess.filter(c => !options.skipComponents!.includes(c as ComponentType));
       }
 
       // Step 5: Prepare deployment result with transformation data
@@ -390,12 +392,125 @@ export class DeploymentService {
         code: 'KIRO_TRANSFORMATION_INFO'
       });
 
-      // TODO: Implement actual file writing in upcoming tasks
-      // Task 2.3: Kiro component deployment handlers will handle actual file writing
-      result.warnings.push({
-        message: 'Data transformation completed. File writing will be implemented in task 2.3.',
-        code: 'KIRO_FEATURE_PREVIEW'
-      });
+      // Step 6: Deploy components using component handler
+      if (!options.dryRun) {
+        const kiroOptions = {
+          platform: 'kiro-ide' as const,
+          conflictStrategy: options.conflictStrategy,
+          dryRun: options.dryRun,
+          validateOnly: options.validateOnly,
+          globalSettings: true,
+          projectSettings: true,
+          preserveTaskStatus: true,
+          mergeStrategy: 'deep-merge' as const
+        };
+
+        let actualFilesDeployed = 0;
+
+        // Deploy settings if included
+        if (componentsToProcess.includes('settings')) {
+          const settingsResult = await this.kiroComponentHandler.deploySettings(
+            globalSettings,
+            projectTransformation.settings,
+            deploymentContext,
+            kiroOptions
+          );
+          
+          if (settingsResult.globalDeployed || settingsResult.projectDeployed) {
+            actualFilesDeployed += (settingsResult.globalDeployed ? 1 : 0) + (settingsResult.projectDeployed ? 1 : 0);
+          }
+          
+          result.errors.push(...settingsResult.errors);
+          result.warnings.push(...settingsResult.warnings);
+        }
+
+        // Deploy steering documents if included
+        if (componentsToProcess.includes('steering') && projectTransformation.steering.length > 0) {
+          const steeringResult = await this.kiroComponentHandler.deploySteering(
+            projectTransformation.steering,
+            deploymentContext,
+            kiroOptions
+          );
+          
+          actualFilesDeployed += steeringResult.deployedFiles.length;
+          result.errors.push(...steeringResult.errors);
+          result.warnings.push(...steeringResult.warnings);
+        }
+
+        // Deploy specs if included
+        if (componentsToProcess.includes('specs') && projectTransformation.specs.length > 0) {
+          const specsResult = await this.kiroComponentHandler.deploySpecs(
+            projectTransformation.specs,
+            deploymentContext,
+            kiroOptions
+          );
+          
+          actualFilesDeployed += specsResult.deployedFiles.length;
+          result.errors.push(...specsResult.errors);
+          result.warnings.push(...specsResult.warnings);
+        }
+
+        // Deploy hooks if included
+        if (componentsToProcess.includes('hooks') && projectTransformation.hooks.length > 0) {
+          const hooksResult = await this.kiroComponentHandler.deployHooks(
+            projectTransformation.hooks,
+            deploymentContext,
+            kiroOptions
+          );
+          
+          actualFilesDeployed += hooksResult.deployedFiles.length;
+          result.errors.push(...hooksResult.errors);
+          result.warnings.push(...hooksResult.warnings);
+        }
+
+        // Deploy agents if included
+        if (componentsToProcess.includes('agents') && globalSettings.agents && globalSettings.agents.length > 0) {
+          const agentsResult = await this.kiroComponentHandler.deployAgents(
+            globalSettings.agents,
+            deploymentContext,
+            kiroOptions
+          );
+          
+          actualFilesDeployed += agentsResult.deployedFiles.length;
+          result.errors.push(...agentsResult.errors);
+          result.warnings.push(...agentsResult.warnings);
+        }
+
+        // Deploy templates if included
+        if (componentsToProcess.includes('templates') && templates.length > 0) {
+          const templatesResult = await this.kiroComponentHandler.deployTemplates(
+            templates,
+            deploymentContext,
+            kiroOptions
+          );
+          
+          actualFilesDeployed += templatesResult.deployedFiles.length;
+          result.errors.push(...templatesResult.errors);
+          result.warnings.push(...templatesResult.warnings);
+        }
+
+        // Update deployment summary with actual results
+        result.summary.filesDeployed = actualFilesDeployed;
+        
+        if (result.errors.length > 0) {
+          result.success = false;
+          result.warnings.push({
+            message: `Deployment completed with ${result.errors.length} errors`,
+            code: 'KIRO_DEPLOYMENT_PARTIAL_SUCCESS'
+          });
+        } else {
+          result.warnings.push({
+            message: `Successfully deployed ${actualFilesDeployed} files to Kiro IDE`,
+            code: 'KIRO_DEPLOYMENT_SUCCESS'
+          });
+        }
+
+      } else {
+        result.warnings.push({
+          message: 'Dry run mode - no files were actually written to disk',
+          code: 'KIRO_DRY_RUN'
+        });
+      }
       
       // End performance monitoring
       this.performanceMonitor.endDeploymentTiming(deploymentId);
