@@ -1,229 +1,170 @@
 # Implementation Plan
 
-- [ ] 1. Set up Kiro platform detection and routing infrastructure
-  - Extend PlatformType enum to include 'kiro' option
-  - Implement platform detection logic in deploy command
-  - Create platform-specific service factory for Kiro components
-  - Add command-line option parsing for `--platform kiro`
-  - _Requirements: 1.2, 1.3, 4.1_
+## Overview
 
-- [ ] 2. Implement core Kiro deployment service architecture
-- [ ] 2.1 Create KiroDeploymentService with basic deployment workflow
-  - Implement IKiroDeploymentService interface
-  - Add deployment orchestration logic with component handling
-  - Integrate with existing Import Service for Supabase data retrieval
-  - Create deployment result tracking and reporting
-  - _Requirements: 1.1, 2.1, 9.1_
+This document outlines the implementation plan for adding Kiro IDE deployment support to the existing Taptik CLI. The current codebase already has significant infrastructure in place, including platform type definitions, build system support for Kiro, and deployment architecture. This plan focuses on the remaining tasks needed to enable Kiro deployment functionality.
 
-- [ ] 2.2 Implement KiroValidatorService for configuration validation
-  - Create validation engine for Taptik common format schema compliance
-  - Add Kiro-specific component validation rules
-  - Implement business rule validation for required fields
-  - Create detailed validation reporting with field-level errors
-  - _Requirements: 3.1, 3.2, 3.3, 11.1, 11.2, 11.3_
+## Current State Analysis
 
-- [ ] 2.3 Implement KiroTransformerService for data transformation
-  - Create transformation logic for TaptikPersonalContext to Kiro format
-  - Implement TaptikProjectContext to Kiro steering/specs transformation
-  - Add TaptikPromptTemplates to Kiro templates transformation
-  - Handle missing fields with sensible defaults and warnings
-  - _Requirements: 9.1, 9.2, 9.3, 9.4, 17.1, 17.2, 17.3, 17.4_
+✅ **Already Implemented:**
 
-- [ ] 3. Implement Kiro-specific component deployment handlers
-- [ ] 3.1 Create settings component deployment handler
-  - Implement global settings deployment to ~/.kiro/settings.json
-  - Add project settings deployment to .kiro/settings.json
-  - Create intelligent merging with existing Kiro configurations
-  - Preserve user customizations during merge operations
-  - _Requirements: 2.2, 10.5, 12.2, 17.1_
+- Platform type definitions include 'kiro' support (`SupportedPlatform`)
+- Complete build system with Kiro as primary platform
+- Deployment infrastructure (services, interfaces, error handling)
+- Deploy command structure with Claude Code support
 
-- [ ] 3.2 Create steering component deployment handler
-  - Implement steering documents deployment to .kiro/steering/ directory
-  - Create all required steering files (persona.md, principle.md, etc.)
-  - Add intelligent content merging for existing steering documents
-  - Implement cross-reference validation between steering documents
-  - _Requirements: 2.3, 10.1, 12.3, 17.5_
+🔄 **Needs Implementation:**
 
-- [ ] 3.3 Create specs component deployment handler
-  - Implement specs deployment with directory structure creation
-  - Create requirements.md, design.md, and tasks.md files per spec
-  - Preserve existing task completion status during updates
-  - Add cross-reference validation between spec components
-  - _Requirements: 2.5, 10.2, 12.4_
+- Kiro-specific deployment logic and transformations
+- Kiro component handlers and file writers
+- Platform routing to support multiple targets
+- Kiro-specific validation and conflict resolution
 
-- [ ] 3.4 Create hooks component deployment handler
-  - Implement hooks deployment to .kiro/hooks/ directory
-  - Transform Claude Code commands to Kiro hook configurations
-  - Add dependency validation and security scanning
-  - Create hook execution safety mechanisms
-  - _Requirements: 2.4, 10.3, 12.5, 17.3_
+## Implementation Priority
 
-- [ ] 3.5 Create agents component deployment handler
-  - Implement agents deployment to ~/.kiro/agents/ directory
-  - Transform Claude Code agents to Kiro agent definitions
-  - Create metadata registry for agent management
-  - Add security scanning and capability validation
-  - _Requirements: 2.6, 10.4, 17.2_
+1. **Core Kiro Deployment**: Platform routing and basic Kiro deployment service
+2. **Component Handlers**: Kiro-specific component deployment logic
+3. **Data Transformation**: Taptik format to Kiro format conversion
+4. **Validation & Conflict Resolution**: Kiro-specific validation and file conflict handling
+5. **Testing & Documentation**: Comprehensive test coverage and documentation
 
-- [ ] 4. Implement conflict resolution and file management
-- [ ] 4.1 Create conflict detection and resolution system
-  - Implement file conflict detection for existing Kiro installations
+- [x] 1.1 Platform type definitions for Kiro support
+  - ✅ `SupportedPlatform` already includes 'kiro' in `src/modules/deploy/interfaces/component-types.interface.ts`
+  - ✅ Build system already supports Kiro as primary platform
+  - _Requirements: 1.2_
+
+- [ ] 1.2 Add Kiro platform support to deploy command
+  - Update `src/modules/deploy/commands/deploy.command.ts` to accept and handle `--platform kiro`
+  - Remove hardcoded Claude Code restriction
+  - Add Kiro platform validation in `parsePlatform` method
+  - Update command description and help text
+  - _Requirements: 1.1, 1.3, 4.1_
+  - _Estimated: 0.5 days_
+
+- [ ] 1.3 Implement platform routing in deployment service
+  - Add `deployToKiro` method to `DeploymentService`
+  - Update deploy command to route to appropriate deployment method based on platform
+  - Create platform-specific deployment options handling
+  - Add basic error handling for unsupported platform combinations
+  - _Dependencies: 1.2_
+  - _Requirements: 1.2, 1.3_
+  - _Estimated: 1 day_
+
+- [ ] 2.1 Create Kiro-specific interfaces and types
+  - Create `src/modules/deploy/interfaces/kiro-deployment.interface.ts` for Kiro deployment types
+  - Define `KiroDeploymentOptions`, `KiroComponentType`, `KiroConflictStrategy` interfaces
+  - Add Kiro-specific configuration models (settings, steering, specs, hooks, agents)
+  - Update existing interfaces to support Kiro platform
+  - _Dependencies: 1.3_
+  - _Requirements: 2.1, 10.1_
+  - _Estimated: 1 day_
+
+- [ ] 2.2 Implement Kiro data transformation service
+  - Create `src/modules/deploy/services/kiro-transformer.service.ts`
+  - Implement `transformPersonalContext()` - TaptikPersonalContext to Kiro global settings
+  - Implement `transformProjectContext()` - TaptikProjectContext to Kiro project settings and steering
+  - Implement `transformPromptTemplates()` - TaptikPromptTemplates to Kiro templates
+  - Add transformation validation and error handling
+  - _Dependencies: 2.1_
+  - _Requirements: 9.1, 9.2, 9.3, 17.1, 17.2, 17.3_
+  - _Estimated: 3 days_
+
+- [ ] 2.3 Create Kiro component deployment handlers
+  - Create `src/modules/deploy/services/kiro-component-handler.service.ts`
+  - Implement `deploySettings()` - deploy to `~/.kiro/settings.json` and `.kiro/settings.json`
+  - Implement `deploySteering()` - deploy steering documents to `.kiro/steering/`
+  - Implement `deploySpecs()` - deploy specs to `.kiro/specs/` with proper structure
+  - Implement `deployHooks()` - deploy hooks to `.kiro/hooks/`
+  - Implement `deployAgents()` - deploy agents to `~/.kiro/agents/`
+  - _Dependencies: 2.2_
+  - _Requirements: 2.2, 2.3, 2.4, 2.5, 2.6, 10.1, 10.2, 10.3, 10.4_
+  - _Estimated: 4 days_
+
+- [ ] 3.1 Implement Kiro validation service
+  - Create `src/modules/deploy/services/kiro-validator.service.ts`
+  - Implement `validateForKiro()` method similar to existing `validateForPlatform()`
+  - Add Kiro-specific schema validation for components
+  - Implement business rule validation (required fields, file size limits, etc.)
+  - Add validation reporting with actionable error messages
+  - _Dependencies: 2.3_
+  - _Requirements: 3.1, 3.2, 3.3, 11.1, 11.2_
+  - _Estimated: 2 days_
+
+- [ ] 3.2 Create Kiro file conflict resolution service
+  - Create `src/modules/deploy/services/kiro-conflict-resolver.service.ts`
+  - Implement conflict detection for Kiro configuration files
+  - Add intelligent merging for JSON settings files
+  - Implement content-aware merging for markdown steering documents
   - Add conflict resolution strategies (prompt, merge, backup, skip, overwrite)
-  - Create intelligent merging algorithms for configuration files
-  - Implement user prompting for conflict resolution decisions
-  - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6_
+  - Handle task completion status preservation in specs
+  - _Dependencies: 2.3_
+  - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 12.3, 12.4_
+  - _Estimated: 3 days_
 
-- [ ] 4.2 Implement backup and rollback mechanisms
-  - Create backup system for existing Kiro files before deployment
-  - Implement checkpoint creation for deployment state tracking
-  - Add automatic rollback on deployment failures
-  - Create manual recovery instructions for failed rollbacks
-  - _Requirements: 6.2, 6.3, 6.4, 13.5_
+- [ ] 3.3 Implement Kiro security scanning
+  - Extend existing `SecurityScannerService` to support Kiro components
+  - Add Kiro-specific security rules for hooks, agents, and templates
+  - Implement malicious pattern detection for Kiro hook configurations
+  - Add agent capability validation and security scanning
+  - Create security violation reporting and quarantine system
+  - _Dependencies: 2.3_
+  - _Requirements: 7.1, 7.2, 17.3_
+  - _Estimated: 2 days_
 
-- [ ] 4.3 Create file system operations manager
-  - Implement secure file writing with permission validation
-  - Add directory creation with proper permissions
-  - Create file content validation before writing
-  - Implement path sanitization to prevent directory traversal
-  - _Requirements: 6.5, 7.1, 7.2_
+- [ ] 4.1 Integrate Kiro deployment into main deployment service
+  - Add `deployToKiro()` method to existing `DeploymentService`
+  - Implement Kiro deployment orchestration using existing infrastructure
+  - Integrate with existing backup, security, and performance monitoring services
+  - Add Kiro-specific error handling and recovery
+  - Update deployment result reporting for Kiro components
+  - _Dependencies: 3.3_
+  - _Requirements: 2.1, 6.1, 6.2, 13.1, 13.2_
+  - _Estimated: 2 days_
 
-- [ ] 5. Implement validation and error handling systems
-- [ ] 5.1 Create comprehensive validation engine
-  - Implement schema validation against Kiro configuration schemas
-  - Add business rule validation for component-specific requirements
-  - Create data integrity validation between source and transformed data
-  - Generate detailed validation reports with actionable suggestions
-  - _Requirements: 3.4, 3.6, 11.4, 11.5, 11.6_
+- [ ] 4.2 Implement Kiro installation detection and compatibility
+  - Create `src/modules/deploy/services/kiro-installation-detector.service.ts`
+  - Implement Kiro installation detection and version checking
+  - Add existing configuration analysis and compatibility validation
+  - Create migration support for different Kiro versions
+  - Add installation health checks and recommendations
+  - _Dependencies: 4.1_
+  - _Requirements: 12.1, 12.6, 14.1, 14.2_
+  - _Estimated: 2 days_
 
-- [ ] 5.2 Implement error recovery and rollback system
-  - Create error classification system for different failure types
-  - Implement recovery strategies for each error type
-  - Add automatic retry with exponential backoff for network failures
-  - Create partial deployment continuation for component failures
-  - _Requirements: 6.1, 13.1, 13.2, 13.3, 13.4_
-
-- [ ] 5.3 Add deployment interruption and resume capabilities
-  - Implement deployment state persistence for interruption recovery
-  - Create checkpoint-based resume functionality
-  - Add deployment progress tracking and reporting
-  - Implement graceful shutdown handling
-  - _Requirements: 13.4, 13.6_
-
-- [ ] 6. Implement performance optimization features
-- [ ] 6.1 Create streaming and batching processors
-  - Implement streaming processing for large configuration files (>10MB)
-  - Add batch file operations for optimal I/O performance
-  - Create parallel component processing where safe
-  - Implement memory-efficient processing for large deployments
-  - _Requirements: 15.1, 15.2, 15.3, 15.4_
-
-- [ ] 6.2 Add performance monitoring and optimization
-  - Implement deployment performance metrics collection
-  - Create progress indicators for long-running operations
-  - Add estimated completion time calculations
-  - Generate performance reports and optimization suggestions
-  - _Requirements: 7.4, 15.5, 15.6_
-
-- [ ] 7. Implement security and compliance features
-- [ ] 7.1 Create Kiro-specific security enforcement
-  - Implement security scanning for hooks, agents, and templates
-  - Add content scanning for malicious patterns
-  - Create security policy enforcement based on security levels
-  - Implement quarantine system for security violations
-  - _Requirements: 7.1, 7.2_
-
-- [ ] 7.2 Add audit logging and compliance tracking
-  - Implement comprehensive audit logging for all deployment operations
-  - Create security event logging with SIEM compatibility
-  - Add compliance rule enforcement for different standards
-  - Generate security reports and violation notifications
-  - _Requirements: 7.3, 7.6_
-
-- [ ] 8. Implement bidirectional compatibility support
-- [ ] 8.1 Create reverse conversion metadata preservation
-  - Implement metadata preservation for reverse conversion to Taptik format
-  - Add transformation rule tracking for bidirectional compatibility
-  - Create audit trail maintenance for all transformations
-  - Implement lossy transformation detection and warnings
-  - _Requirements: 16.1, 16.5_
-
-- [ ] 8.2 Implement change detection and synchronization
-  - Create change detection between original and modified configurations
-  - Add conflict detection for bidirectional changes
-  - Implement three-way diff views for conflict resolution
-  - Create incremental update optimization for repeated deployments
-  - _Requirements: 16.2, 16.3, 16.4, 16.6_
-
-- [ ] 9. Implement command-line interface enhancements
-- [ ] 9.1 Extend deploy command with Kiro platform support
-  - Add --platform kiro option to deploy command
-  - Implement Kiro-specific command-line options and flags
-  - Create help documentation for Kiro deployment options
-  - Add validation for Kiro-specific option combinations
-  - _Requirements: 1.1, 4.2, 4.3, 4.4, 8.1, 8.2_
-
-- [ ] 9.2 Implement deployment preview and dry-run functionality
-  - Add --dry-run support for Kiro platform deployments
-  - Create deployment preview with detailed change summaries
-  - Implement --validate-only flag for validation without deployment
-  - Add component-specific deployment options (--components, --skip-components)
-  - _Requirements: 3.4, 4.1, 4.2, 4.3_
-
-- [ ] 9.3 Create user feedback and help systems
-  - Implement helpful error messages with suggested fixes
-  - Add component name suggestions for invalid inputs
-  - Create deployment success summaries with deployed components
-  - Generate clear documentation and help for Kiro-specific features
-  - _Requirements: 8.3, 8.4, 8.5_
-
-- [ ] 10. Implement integration and compatibility features
-- [ ] 10.1 Create existing Kiro installation detection and integration
-  - Implement Kiro installation detection and analysis
-  - Add existing configuration structure analysis
-  - Create compatibility checking with current Kiro versions
-  - Implement integration testing with real Kiro installations
-  - _Requirements: 12.1, 12.6_
-
-- [ ] 10.2 Add platform compatibility mapping
-  - Implement component compatibility mapping between platforms
-  - Create platform-specific component transformation rules
-  - Add incompatible component detection and guidance
-  - Implement alternative suggestion system for incompatible features
-  - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5, 14.6_
-
-- [ ] 11. Create comprehensive testing suite
-- [ ] 11.1 Implement unit tests for all Kiro deployment services
-  - Create unit tests for KiroDeploymentService with mocked dependencies
-  - Add unit tests for KiroTransformerService with transformation scenarios
-  - Implement unit tests for KiroValidatorService with validation cases
-  - Create unit tests for all component deployment handlers
+- [ ] 5.1 Add comprehensive unit tests for Kiro services
+  - Create unit tests for `KiroTransformerService` with all transformation scenarios
+  - Add unit tests for `KiroComponentHandlerService` with mock file system
+  - Create unit tests for `KiroValidatorService` with validation edge cases
+  - Add unit tests for `KiroConflictResolverService` with different conflict types
+  - Test error handling and edge cases for all Kiro services
+  - _Dependencies: 4.2_
   - _Requirements: All requirements - testing coverage_
+  - _Estimated: 3 days_
 
-- [ ] 11.2 Create integration tests for end-to-end deployment workflows
-  - Implement integration tests with real file system operations
-  - Add integration tests with Supabase data import
-  - Create integration tests for conflict resolution scenarios
-  - Implement integration tests for error recovery and rollback
+- [ ] 5.2 Create integration tests for Kiro deployment workflows
+  - Add end-to-end integration tests for complete Kiro deployment
+  - Test integration between transformation, validation, and deployment services
+  - Create tests for conflict resolution and backup/rollback scenarios
+  - Add performance tests for large Kiro configurations
+  - Test compatibility with different Kiro installation states
+  - _Dependencies: 5.1_
   - _Requirements: All requirements - integration testing_
+  - _Estimated: 3 days_
 
-- [ ] 11.3 Add performance and security testing
-  - Create performance tests for large configuration deployments
-  - Implement security tests for malicious content detection
-  - Add stress tests for concurrent deployment scenarios
-  - Create compatibility tests with different Kiro versions
-  - _Requirements: 7.1, 7.2, 15.1, 15.2, 15.3_
+- [ ] 6.1 Update CLI help and documentation
+  - Update deploy command help text to include Kiro platform option
+  - Add Kiro-specific CLI option documentation
+  - Create usage examples for Kiro deployment scenarios
+  - Update error messages to include Kiro-specific guidance
+  - _Dependencies: 5.2_
+  - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
+  - _Estimated: 1 day_
 
-- [ ] 12. Finalize documentation and deployment
-- [ ] 12.1 Create comprehensive documentation
-  - Write user documentation for Kiro deployment features
-  - Create developer documentation for Kiro deployment architecture
-  - Add troubleshooting guides for common deployment issues
-  - Generate API documentation for all Kiro deployment interfaces
-  - _Requirements: 8.1, 8.2, 8.3_
-
-- [ ] 12.2 Implement deployment validation and quality assurance
-  - Create end-to-end validation tests with real Kiro installations
-  - Add backward compatibility validation with existing Claude deployments
-  - Implement deployment quality gates and acceptance criteria
-  - Create deployment monitoring and health check systems
-  - _Requirements: All requirements - final validation_
+- [ ] 6.2 Create user documentation and guides
+  - Write comprehensive user guide for Kiro deployment
+  - Create step-by-step deployment examples
+  - Add troubleshooting guide for common Kiro deployment issues
+  - Document Kiro-specific component mapping and transformation rules
+  - _Dependencies: 6.1_
+  - _Requirements: 8.1, 8.2_
+  - _Estimated: 2 days_
