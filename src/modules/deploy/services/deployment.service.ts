@@ -274,6 +274,75 @@ export class DeploymentService {
     }
   }
 
+  async deployToKiro(
+    context: TaptikContext,
+    options: DeployOptions,
+  ): Promise<DeploymentResult> {
+    // Generate unique deployment ID for performance tracking
+    const deploymentId = `kiro-deploy-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    
+    // Start performance monitoring
+    this.performanceMonitor.startDeploymentTiming(deploymentId);
+    this.performanceMonitor.recordMemoryUsage(deploymentId, 'start');
+
+    const result: DeploymentResult = {
+      success: false,
+      platform: 'kiro-ide',
+      deployedComponents: [] as string[],
+      conflicts: [],
+      summary: {
+        filesDeployed: 0,
+        filesSkipped: 0,
+        conflictsResolved: 0,
+        backupCreated: false,
+      },
+      errors: [
+        {
+          message: 'Kiro IDE deployment is not yet implemented. This feature is under development.',
+          code: 'KIRO_NOT_IMPLEMENTED',
+          severity: 'error',
+        },
+      ],
+      warnings: [
+        {
+          message: 'Kiro IDE deployment will be available in upcoming releases. Currently implementing: data transformation, component handlers, and validation services.',
+          code: 'KIRO_FEATURE_PREVIEW',
+        },
+      ],
+      metadata: {
+        deploymentId,
+        performanceReport: 'Deployment not executed - feature under development',
+      },
+    };
+
+    try {
+      // TODO: Implement Kiro deployment logic in upcoming tasks
+      // Task 2.1: Kiro-specific interfaces and types
+      // Task 2.2: Kiro data transformation service  
+      // Task 2.3: Kiro component deployment handlers
+      // Task 3.1: Kiro validation service
+      
+      // End performance monitoring
+      this.performanceMonitor.endDeploymentTiming(deploymentId);
+      result.metadata.performanceReport = 'Kiro deployment completed - feature under development';
+      
+      return result;
+    } catch (error) {
+      // Add error to result
+      result.errors.push({
+        message: `Unexpected error during Kiro deployment: ${(error as Error).message}`,
+        code: 'KIRO_UNEXPECTED_ERROR',
+        severity: 'error',
+      });
+      
+      // End performance monitoring even on error
+      this.performanceMonitor.endDeploymentTiming(deploymentId);
+      result.metadata.performanceReport = 'Kiro deployment failed - feature under development';
+      
+      return result;
+    }
+  }
+
   /**
    * Deploy large configuration using streaming optimization
    */

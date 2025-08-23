@@ -4,6 +4,7 @@ import { Command, CommandRunner, Option } from 'nest-commander';
 
 import { ComponentType } from '../interfaces/component-types.interface';
 import { SupportedPlatform, ConflictStrategy } from '../interfaces/deploy-options.interface';
+import { DeploymentResult } from '../interfaces/deployment-result.interface';
 import { DeploymentService } from '../services/deployment.service';
 import { ImportService } from '../services/import.service';
 
@@ -46,13 +47,7 @@ export class DeployCommand extends CommandRunner {
         process.exit(1);
       }
 
-      // Check if Kiro deployment is implemented
-      if (platform === 'kiro-ide') {
-        console.error(
-          '❌ Kiro IDE deployment is not yet implemented. Currently only Claude Code is supported.',
-        );
-        process.exit(1);
-      }
+      // Note: Kiro deployment will show feature development status in results
 
       console.log(`🚀 Starting deployment to ${platform}...`);
 
@@ -90,10 +85,22 @@ export class DeployCommand extends CommandRunner {
         console.log(`🚀 Deploying to ${platform === 'claude-code' ? 'Claude Code' : 'Kiro IDE'}...`);
       }
 
-      const result = await this.deploymentService.deployToClaudeCode(
-        context,
-        deployOptions,
-      );
+      // Step 3: Route to appropriate deployment method based on platform
+      let result: DeploymentResult;
+      if (platform === 'claude-code') {
+        result = await this.deploymentService.deployToClaudeCode(
+          context,
+          deployOptions,
+        );
+      } else if (platform === 'kiro-ide') {
+        result = await this.deploymentService.deployToKiro(
+          context,
+          deployOptions,
+        );
+      } else {
+        console.error(`❌ Platform '${platform}' deployment is not implemented yet.`);
+        process.exit(5); // Platform Error exit code
+      }
 
       // Step 4: Display results
       if (result.success) {
