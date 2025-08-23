@@ -86,8 +86,9 @@ describe.skip('BuildCommand CLI Integration Tests', () => {
           timeout: 60_000,
         });
         throw new Error('Should have thrown an error for invalid platform');
-      } catch (error: any) {
-        expect(error.stderr || error.stdout).toContain('Invalid platform');
+      } catch (error: unknown) {
+        const err = error as { stderr?: string; stdout?: string };
+        expect(err.stderr || err.stdout).toContain('Invalid platform');
       }
     });
 
@@ -98,8 +99,9 @@ describe.skip('BuildCommand CLI Integration Tests', () => {
           timeout: 60_000,
         });
         throw new Error('Should have thrown an error for invalid category');
-      } catch (error: any) {
-        expect(error.stderr || error.stdout).toContain('Invalid category');
+      } catch (error: unknown) {
+        const err = error as { stderr?: string; stdout?: string };
+        expect(err.stderr || err.stdout).toContain('Invalid category');
       }
     });
 
@@ -287,9 +289,10 @@ describe.skip('BuildCommand CLI Integration Tests', () => {
 
         // Should complete with warnings, not fail completely
         expect(stdout).toContain('Dry run');
-      } catch (error: any) {
+      } catch (error: unknown) {
         // If it fails, it should be a graceful failure with helpful message
-        expect(error.stderr || error.stdout).toContain('settings');
+        const err = error as { stderr?: string; stdout?: string };
+        expect(err.stderr || err.stdout).toContain('settings');
       } finally {
         await fs.rm(emptyTemporaryDirectory, { recursive: true });
       }
@@ -310,9 +313,10 @@ describe.skip('BuildCommand CLI Integration Tests', () => {
 
       try {
         await childProcess;
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Should exit with interrupt code or handle gracefully
-        expect([130, 1]).toContain(error.code); // 130 is standard SIGINT exit code
+        const err = error as { code?: number };
+        expect([130, 1]).toContain(err.code); // 130 is standard SIGINT exit code
       }
     });
 

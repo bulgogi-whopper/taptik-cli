@@ -28,15 +28,15 @@ const mockProcessExit = vi.spyOn(process, 'exit').mockImplementation((_code) =>
 
 describe('ErrorHandlerService', () => {
   let service: ErrorHandlerService;
-  let originalProcessListeners: { [key: string]: ((...arguments_: any[]) => void)[] };
+  let originalProcessListeners: { [key: string]: ((...arguments_: unknown[]) => void)[] };
 
   beforeEach(async () => {
     // Store original process listeners
     originalProcessListeners = {
-      SIGINT: [...(process.listeners('SIGINT') as ((...arguments_: any[]) => void)[])],
-      SIGTERM: [...(process.listeners('SIGTERM') as ((...arguments_: any[]) => void)[])],
-      uncaughtException: [...(process.listeners('uncaughtException') as ((...arguments_: any[]) => void)[])],
-      unhandledRejection: [...(process.listeners('unhandledRejection') as ((...arguments_: any[]) => void)[])],
+      SIGINT: [...(process.listeners('SIGINT') as ((...arguments_: unknown[]) => void)[])],
+      SIGTERM: [...(process.listeners('SIGTERM') as ((...arguments_: unknown[]) => void)[])],
+      uncaughtException: [...(process.listeners('uncaughtException') as ((...arguments_: unknown[]) => void)[])],
+      unhandledRejection: [...(process.listeners('unhandledRejection') as ((...arguments_: unknown[]) => void)[])],
     };
 
     // Remove existing listeners

@@ -15,7 +15,7 @@ vi.mock('../../utils/data-processing-error-handler');
 
 describe('TransformationService - Error Handling', () => {
   let service: TransformationService;
-  let mockLogger: any;
+  let mockLogger: { error: ReturnType<typeof vi.fn>; warn: ReturnType<typeof vi.fn>; log: ReturnType<typeof vi.fn>; debug?: ReturnType<typeof vi.fn> };
 
   const mockSettingsData: SettingsData = {
     localSettings: {
@@ -322,7 +322,7 @@ describe('TransformationService - Error Handling', () => {
       vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(mockErrorResult);
       vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(() => {});
 
-      const processor = (item: any, _index: number) => {
+      const processor = (item: { valid?: boolean; value?: string; name?: string }, _index: number) => {
         if (!item.valid) {
           throw new Error('Invalid item');
         }

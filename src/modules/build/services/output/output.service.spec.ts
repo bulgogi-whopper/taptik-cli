@@ -10,7 +10,7 @@ import {
 } from '../../../context/interfaces/cloud.interface';
 import { BuildConfig, BuildCategoryName, BuildPlatform } from '../../interfaces/build-config.interface';
 import { SettingsData } from '../../interfaces/settings-data.interface';
-import { TaptikPersonalContext } from '../../interfaces/taptik-format.interface';
+import { TaptikPersonalContext, OutputFile } from '../../interfaces/taptik-format.interface';
 
 import { OutputService } from './output.service';
 
@@ -289,7 +289,7 @@ describe('OutputService', () => {
 
     it('should handle empty output files gracefully', async () => {
       const outputPath = '/test/output';
-      const emptyOutputFiles: any[] = [];
+      const emptyOutputFiles: OutputFile[] = [];
       
       service['fileExists'] = vi.fn().mockResolvedValue(false);
 
