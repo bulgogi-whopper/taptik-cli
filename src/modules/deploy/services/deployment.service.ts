@@ -236,7 +236,7 @@ export class DeploymentService {
         try {
           const recoveryResult =
             await this.errorRecoveryService.recoverFromFailure(result, {
-              platform: 'claudeCode',
+              platform: 'claude-code',
               backupId: result.metadata.backupCreated,
               forceRecovery: true,
             });

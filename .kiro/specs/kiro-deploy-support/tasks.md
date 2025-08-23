@@ -33,7 +33,7 @@ This document outlines the implementation plan for adding Kiro IDE deployment su
   - ✅ Build system already supports Kiro as primary platform
   - _Requirements: 1.2_
 
-- [ ] 1.2 Add Kiro platform support to deploy command
+- [x] 1.2 Add Kiro platform support to deploy command
   - Update `src/modules/deploy/commands/deploy.command.ts` to accept and handle `--platform kiro`
   - Remove hardcoded Claude Code restriction
   - Add Kiro platform validation in `parsePlatform` method
