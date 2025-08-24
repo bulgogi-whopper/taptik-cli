@@ -14,6 +14,37 @@ import { getSupabaseClient } from '../../../supabase/supabase-client';
 import { AuthService } from '../../auth/auth.service';
 
 /**
+ * Custom error classes for better error handling
+ * Based on Requirements 6.1, 6.2, 6.3
+ */
+export class NetworkError extends Error {
+  constructor(
+    message: string = 'Unable to connect to Taptik cloud. Please check your internet connection.',
+  ) {
+    super(message);
+    this.name = 'NetworkError';
+  }
+}
+
+export class AuthenticationError extends Error {
+  constructor(
+    message: string = "Authentication failed. Please run 'taptik login' first.",
+  ) {
+    super(message);
+    this.name = 'AuthenticationError';
+  }
+}
+
+export class ServerError extends Error {
+  constructor(
+    message: string = 'Taptik cloud is temporarily unavailable. Please try again later.',
+  ) {
+    super(message);
+    this.name = 'ServerError';
+  }
+}
+
+/**
  * Service for configuration listing and discovery
  * Handles business logic for listing public and liked configurations
  */
@@ -22,6 +53,77 @@ export class ListService {
   private supabase = getSupabaseClient();
 
   constructor(private readonly authService: AuthService) {}
+
+  /**
+   * Check if user is authenticated for liked configurations
+   * Implements Requirement 5.2: Authentication check for liked configurations
+   */
+  async requireAuthentication(): Promise<string> {
+    const user = await this.authService.getCurrentUser();
+    if (!user) {
+      throw new AuthenticationError();
+    }
+    return user.id;
+  }
+
+  /**
+   * Handle database errors with appropriate error types
+   * Implements Requirements 6.1, 6.2, 6.3: Specific error handling
+   */
+  private handleDatabaseError(error: unknown): never {
+    const errorObj = error as { code?: string | number; message?: string };
+
+    // Network connectivity errors
+    if (
+      errorObj.code === 'PGRST301' ||
+      errorObj.message?.includes('connection') ||
+      errorObj.message?.includes('network')
+    ) {
+      throw new NetworkError();
+    }
+
+    // Authentication errors
+    if (
+      errorObj.code === '401' ||
+      errorObj.message?.includes('unauthorized') ||
+      errorObj.message?.includes('authentication')
+    ) {
+      throw new AuthenticationError();
+    }
+
+    // Server errors (5xx status codes)
+    if (
+      (typeof errorObj.code === 'number' && errorObj.code >= 500) ||
+      errorObj.message?.includes('server error') ||
+      errorObj.message?.includes('internal error')
+    ) {
+      throw new ServerError();
+    }
+
+    // Rate limiting or other client errors
+    if (errorObj.code === '429') {
+      throw new ServerError(
+        'Taptik cloud is experiencing high traffic. Please try again in a moment.',
+      );
+    }
+
+    // Generic database error
+    throw new Error(
+      `Database operation failed: ${errorObj.message || 'Unknown error'}`,
+    );
+  }
+
+  /**
+   * Sanitize filter input to prevent injection attacks
+   * Implements security considerations from design document
+   */
+  private sanitizeFilter(filter: string): string {
+    if (!filter || typeof filter !== 'string') {
+      return '';
+    }
+    // Remove potentially dangerous characters and trim whitespace
+    return filter.replace(/["';\\]/g, '').trim();
+  }
 
   /**
    * List public configurations with filtering, sorting, and pagination
@@ -56,9 +158,12 @@ export class ListService {
         query = query.or(`is_public.eq.true,user_id.eq.${finalOptions.userId}`);
       }
 
-      // Apply title filter if provided
+      // Apply title filter if provided (with sanitization)
       if (finalOptions.filter && finalOptions.filter.trim()) {
-        query = query.ilike('title', `%${finalOptions.filter.trim()}%`);
+        const sanitizedFilter = this.sanitizeFilter(finalOptions.filter);
+        if (sanitizedFilter) {
+          query = query.ilike('title', `%${sanitizedFilter}%`);
+        }
       }
 
       // Apply sorting
@@ -75,7 +180,7 @@ export class ListService {
       const { data, error, count } = await query;
 
       if (error) {
-        throw new Error(`Database query failed: ${error.message}`);
+        this.handleDatabaseError(error);
       }
 
       if (!data) {
@@ -97,6 +202,15 @@ export class ListService {
         hasMore: (count || 0) > finalOptions.limit,
       };
     } catch (error) {
+      // Re-throw custom errors as-is
+      if (
+        error instanceof NetworkError ||
+        error instanceof AuthenticationError ||
+        error instanceof ServerError
+      ) {
+        throw error;
+      }
+
       if (error instanceof Error) {
         throw error;
       }
@@ -106,12 +220,14 @@ export class ListService {
 
   /**
    * List configurations liked by the authenticated user
-   * Implements Requirements: 5.1
+   * Implements Requirements: 5.1, 5.2
    */
   async listLikedConfigurations(
-    userId: string,
     options: ListOptions = {},
   ): Promise<ConfigurationListResult> {
+    // Require authentication first (Requirement 5.2)
+    const userId = await this.requireAuthentication();
+
     // Validate input options
     const validation = validateListOptions(options);
     if (!validation.isValid) {
@@ -137,9 +253,12 @@ export class ListService {
         )
         .eq('user_likes.user_id', userId);
 
-      // Apply title filter if provided
+      // Apply title filter if provided (with sanitization)
       if (finalOptions.filter && finalOptions.filter.trim()) {
-        query = query.ilike('title', `%${finalOptions.filter.trim()}%`);
+        const sanitizedFilter = this.sanitizeFilter(finalOptions.filter);
+        if (sanitizedFilter) {
+          query = query.ilike('title', `%${sanitizedFilter}%`);
+        }
       }
 
       // Apply sorting - for liked configs, we can sort by like date or config name/date
@@ -159,7 +278,7 @@ export class ListService {
       const { data, error, count } = await query;
 
       if (error) {
-        throw new Error(`Database query failed: ${error.message}`);
+        this.handleDatabaseError(error);
       }
 
       if (!data) {
@@ -182,6 +301,15 @@ export class ListService {
         hasMore: (count || 0) > finalOptions.limit,
       };
     } catch (error) {
+      // Re-throw custom errors as-is
+      if (
+        error instanceof NetworkError ||
+        error instanceof AuthenticationError ||
+        error instanceof ServerError
+      ) {
+        throw error;
+      }
+
       if (error instanceof Error) {
         throw error;
       }

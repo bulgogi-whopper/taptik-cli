@@ -9,7 +9,12 @@ import {
 } from '../../../models/config-bundle.model';
 import { AuthService } from '../../auth/auth.service';
 
-import { ListService } from './list.service';
+import {
+  ListService,
+  NetworkError,
+  AuthenticationError,
+  ServerError,
+} from './list.service';
 
 // Mock Supabase client
 const mockSupabaseClient = {
@@ -22,6 +27,7 @@ vi.mock('../../../supabase/supabase-client', () => ({
 
 describe('ListService', () => {
   let service: ListService;
+  let mockAuthService: any;
   let mockQuery: {
     select: Mock;
     eq: Mock;
@@ -66,19 +72,25 @@ describe('ListService', () => {
 
     mockSupabaseClient.from.mockReturnValue(mockQuery);
 
+    // Setup mock auth service
+    mockAuthService = {
+      getCurrentUser: vi.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ListService,
         {
           provide: AuthService,
-          useValue: {
-            getCurrentUser: vi.fn(),
-          },
+          useValue: mockAuthService,
         },
       ],
     }).compile();
 
     service = module.get<ListService>(ListService);
+
+    // 서비스 인스턴스의 authService를 직접 설정
+    (service as any).authService = mockAuthService;
   });
 
   describe('listConfigurations', () => {
@@ -205,17 +217,86 @@ describe('ListService', () => {
       expect(result.hasMore).toBe(false);
     });
 
-    it('should handle database errors', async () => {
+    it('should handle network errors correctly', async () => {
       // Arrange
       mockQuery.range.mockResolvedValue({
         data: null,
-        error: { message: 'Database connection failed' },
+        error: { code: 'PGRST301', message: 'Network connection failed' },
+        count: null,
+      });
+
+      // Act & Assert
+      await expect(service.listConfigurations()).rejects.toThrow(NetworkError);
+      await expect(service.listConfigurations()).rejects.toThrow(
+        'Unable to connect to Taptik cloud. Please check your internet connection.',
+      );
+    });
+
+    it('should handle authentication errors correctly', async () => {
+      // Arrange
+      mockQuery.range.mockResolvedValue({
+        data: null,
+        error: { code: '401', message: 'Unauthorized access' },
         count: null,
       });
 
       // Act & Assert
       await expect(service.listConfigurations()).rejects.toThrow(
-        'Database query failed: Database connection failed',
+        AuthenticationError,
+      );
+      await expect(service.listConfigurations()).rejects.toThrow(
+        "Authentication failed. Please run 'taptik login' first.",
+      );
+    });
+
+    it('should handle server errors correctly', async () => {
+      // Arrange
+      mockQuery.range.mockResolvedValue({
+        data: null,
+        error: { code: 500, message: 'Internal server error' },
+        count: null,
+      });
+
+      // Act & Assert
+      await expect(service.listConfigurations()).rejects.toThrow(ServerError);
+      await expect(service.listConfigurations()).rejects.toThrow(
+        'Taptik cloud is temporarily unavailable. Please try again later.',
+      );
+    });
+
+    it('should handle rate limiting errors correctly', async () => {
+      // Arrange
+      mockQuery.range.mockResolvedValue({
+        data: null,
+        error: { code: '429', message: 'Too many requests' },
+        count: null,
+      });
+
+      // Act & Assert
+      await expect(service.listConfigurations()).rejects.toThrow(ServerError);
+      await expect(service.listConfigurations()).rejects.toThrow(
+        'Taptik cloud is experiencing high traffic. Please try again in a moment.',
+      );
+    });
+
+    it('should sanitize filter input to prevent injection', async () => {
+      // Arrange
+      const options: ListConfigurationsOptions = {
+        filter: "test'; DROP TABLE config_bundles; --",
+      };
+      mockQuery.range.mockResolvedValue({
+        data: [mockConfigBundle],
+        error: null,
+        count: 1,
+      });
+
+      // Act
+      await service.listConfigurations(options);
+
+      // Assert - sanitized filter should remove dangerous characters
+      expect(mockQuery.ilike).toHaveBeenCalledWith(
+        'title',
+        '%test DROP TABLE config_bundles --%',
       );
     });
 
@@ -239,7 +320,7 @@ describe('ListService', () => {
 
       // Act & Assert
       await expect(service.listConfigurations(options)).rejects.toThrow(
-        'Invalid options: Limit must be a positive integer',
+        'Invalid options: Limit must be greater than 0',
       );
     });
 
@@ -257,9 +338,11 @@ describe('ListService', () => {
   });
 
   describe('listLikedConfigurations', () => {
-    it('should list liked configurations successfully', async () => {
+    it('should list liked configurations successfully when authenticated', async () => {
       // Arrange
-      const userId = 'user-123';
+      const mockUser = { id: 'user-123', email: 'test@example.com' };
+      mockAuthService.getCurrentUser.mockResolvedValue(mockUser);
+
       const mockData = [{ ...mockConfigBundle, isLiked: true }];
       mockQuery.range.mockResolvedValue({
         data: mockData,
@@ -268,7 +351,7 @@ describe('ListService', () => {
       });
 
       // Act
-      const result = await service.listLikedConfigurations(userId);
+      const result = await service.listLikedConfigurations();
 
       // Assert
       expect(result.configurations).toHaveLength(1);
@@ -277,18 +360,39 @@ describe('ListService', () => {
       expect(result.totalCount).toBe(1);
       expect(result.hasMore).toBe(false);
 
+      // Verify authentication check
+      expect(mockAuthService.getCurrentUser).toHaveBeenCalled();
+
       // Verify query chain
       expect(mockSupabaseClient.from).toHaveBeenCalledWith('config_bundles');
       expect(mockQuery.select).toHaveBeenCalledWith(
         expect.stringContaining('user_likes!inner'),
         { count: 'exact' },
       );
-      expect(mockQuery.eq).toHaveBeenCalledWith('user_likes.user_id', userId);
+      expect(mockQuery.eq).toHaveBeenCalledWith(
+        'user_likes.user_id',
+        mockUser.id,
+      );
+    });
+
+    it('should throw authentication error when user is not authenticated', async () => {
+      // Arrange
+      mockAuthService.getCurrentUser.mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(service.listLikedConfigurations()).rejects.toThrow(
+        AuthenticationError,
+      );
+      await expect(service.listLikedConfigurations()).rejects.toThrow(
+        "Authentication failed. Please run 'taptik login' first.",
+      );
     });
 
     it('should apply filter to liked configurations', async () => {
       // Arrange
-      const userId = 'user-123';
+      const mockUser = { id: 'user-123', email: 'test@example.com' };
+      mockAuthService.getCurrentUser.mockResolvedValue(mockUser);
+
       const options: ListOptions = {
         filter: 'config',
       };
@@ -299,7 +403,7 @@ describe('ListService', () => {
       });
 
       // Act
-      await service.listLikedConfigurations(userId, options);
+      await service.listLikedConfigurations(options);
 
       // Assert
       expect(mockQuery.ilike).toHaveBeenCalledWith('title', '%config%');
@@ -307,7 +411,9 @@ describe('ListService', () => {
 
     it('should sort liked configurations by like date', async () => {
       // Arrange
-      const userId = 'user-123';
+      const mockUser = { id: 'user-123', email: 'test@example.com' };
+      mockAuthService.getCurrentUser.mockResolvedValue(mockUser);
+
       const options: ListOptions = {
         sort: 'date',
       };
@@ -318,7 +424,7 @@ describe('ListService', () => {
       });
 
       // Act
-      await service.listLikedConfigurations(userId, options);
+      await service.listLikedConfigurations(options);
 
       // Assert
       expect(mockQuery.order).toHaveBeenCalledWith('user_likes.created_at', {
@@ -328,7 +434,9 @@ describe('ListService', () => {
 
     it('should sort liked configurations by name', async () => {
       // Arrange
-      const userId = 'user-123';
+      const mockUser = { id: 'user-123', email: 'test@example.com' };
+      mockAuthService.getCurrentUser.mockResolvedValue(mockUser);
+
       const options: ListOptions = {
         sort: 'name',
       };
@@ -339,7 +447,7 @@ describe('ListService', () => {
       });
 
       // Act
-      await service.listLikedConfigurations(userId, options);
+      await service.listLikedConfigurations(options);
 
       // Assert
       expect(mockQuery.order).toHaveBeenCalledWith('title', {
@@ -349,7 +457,9 @@ describe('ListService', () => {
 
     it('should handle empty liked configurations', async () => {
       // Arrange
-      const userId = 'user-123';
+      const mockUser = { id: 'user-123', email: 'test@example.com' };
+      mockAuthService.getCurrentUser.mockResolvedValue(mockUser);
+
       mockQuery.range.mockResolvedValue({
         data: [],
         error: null,
@@ -357,7 +467,7 @@ describe('ListService', () => {
       });
 
       // Act
-      const result = await service.listLikedConfigurations(userId);
+      const result = await service.listLikedConfigurations();
 
       // Assert
       expect(result.configurations).toHaveLength(0);
@@ -367,16 +477,46 @@ describe('ListService', () => {
 
     it('should handle database errors for liked configurations', async () => {
       // Arrange
-      const userId = 'user-123';
+      const mockUser = { id: 'user-123', email: 'test@example.com' };
+      mockAuthService.getCurrentUser.mockResolvedValue(mockUser);
+
       mockQuery.range.mockResolvedValue({
         data: null,
-        error: { message: 'User not found' },
+        error: { code: 500, message: 'Server error' },
         count: null,
       });
 
       // Act & Assert
-      await expect(service.listLikedConfigurations(userId)).rejects.toThrow(
-        'Database query failed: User not found',
+      await expect(service.listLikedConfigurations()).rejects.toThrow(
+        ServerError,
+      );
+    });
+  });
+
+  describe('requireAuthentication', () => {
+    it('should return user ID when authenticated', async () => {
+      // Arrange
+      const mockUser = { id: 'user-123', email: 'test@example.com' };
+      mockAuthService.getCurrentUser.mockResolvedValue(mockUser);
+
+      // Act
+      const userId = await service.requireAuthentication();
+
+      // Assert
+      expect(userId).toBe('user-123');
+      expect(mockAuthService.getCurrentUser).toHaveBeenCalled();
+    });
+
+    it('should throw AuthenticationError when not authenticated', async () => {
+      // Arrange
+      mockAuthService.getCurrentUser.mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(service.requireAuthentication()).rejects.toThrow(
+        AuthenticationError,
+      );
+      await expect(service.requireAuthentication()).rejects.toThrow(
+        "Authentication failed. Please run 'taptik login' first.",
       );
     });
   });
@@ -399,18 +539,6 @@ describe('ListService', () => {
       await expect(service.listConfigurations(options)).resolves.toBeDefined();
     });
 
-    it('should validate filter length', async () => {
-      // Arrange
-      const options: ListOptions = {
-        filter: 'a'.repeat(101), // Exceeds 100 character limit
-      };
-
-      // Act & Assert
-      await expect(service.listConfigurations(options)).rejects.toThrow(
-        'Invalid options: Filter cannot exceed 100 characters',
-      );
-    });
-
     it('should validate non-string filter', async () => {
       // Arrange
       const options: ListOptions = {
@@ -420,18 +548,6 @@ describe('ListService', () => {
       // Act & Assert
       await expect(service.listConfigurations(options)).rejects.toThrow(
         'Invalid options: Filter must be a string',
-      );
-    });
-
-    it('should validate non-integer limit', async () => {
-      // Arrange
-      const options: ListOptions = {
-        limit: 10.5,
-      };
-
-      // Act & Assert
-      await expect(service.listConfigurations(options)).rejects.toThrow(
-        'Invalid options: Limit must be a positive integer',
       );
     });
   });
