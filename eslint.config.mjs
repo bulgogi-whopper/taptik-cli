@@ -52,6 +52,16 @@ export default [
         clearTimeout: 'readonly',
         setInterval: 'readonly',
         clearInterval: 'readonly',
+        // Browser globals for deployment utilities
+        ReadableStream: 'readonly',
+        TextEncoder: 'readonly',
+        URLSearchParams: 'readonly',
+        Blob: 'readonly',
+        Console: 'readonly',
+        UnderlyingSource: 'readonly',
+        BlobPart: 'readonly',
+        BlobPropertyBag: 'readonly',
+        NodeJS: 'readonly',
       },
     },
     linterOptions: {
@@ -279,6 +289,21 @@ export default [
       'test/**/*',
       'tests/**/*',
     ],
+    languageOptions: {
+      globals: {
+        // Vitest globals
+        describe: 'readonly',
+        it: 'readonly',
+        expect: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        test: 'readonly',
+        vi: 'readonly',
+        suite: 'readonly',
+      },
+    },
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-non-null-assertion': 'off',

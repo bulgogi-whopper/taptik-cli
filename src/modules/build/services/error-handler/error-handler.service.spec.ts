@@ -14,25 +14,29 @@ vi.mock('fs', () => ({
   },
 }));
 
-// Mock console methods
-const mockConsoleLog = vi.spyOn(console, 'log').mockImplementation(() => {});
+// Mock logger methods
+const mockLoggerLog = vi.fn();
+const mockLoggerError = vi.fn();
+const mockLoggerWarn = vi.fn();
+const mockLoggerDebug = vi.fn();
 
 // Mock process methods
-const mockProcessExit = vi.spyOn(process, 'exit').mockImplementation(() => {
-  throw new Error('process.exit called');
-});
+const mockProcessExit = vi.spyOn(process, 'exit').mockImplementation((_code) => 
+  // Silent mock - don't throw to avoid unhandled rejections
+   undefined as never
+);
 
 describe('ErrorHandlerService', () => {
   let service: ErrorHandlerService;
-  let originalProcessListeners: { [key: string]: ((...arguments_: any[]) => void)[] };
+  let originalProcessListeners: { [key: string]: ((...arguments_: unknown[]) => void)[] };
 
   beforeEach(async () => {
     // Store original process listeners
     originalProcessListeners = {
-      SIGINT: [...(process.listeners('SIGINT') as ((...arguments_: any[]) => void)[])],
-      SIGTERM: [...(process.listeners('SIGTERM') as ((...arguments_: any[]) => void)[])],
-      uncaughtException: [...(process.listeners('uncaughtException') as ((...arguments_: any[]) => void)[])],
-      unhandledRejection: [...(process.listeners('unhandledRejection') as ((...arguments_: any[]) => void)[])],
+      SIGINT: [...(process.listeners('SIGINT') as ((...arguments_: unknown[]) => void)[])],
+      SIGTERM: [...(process.listeners('SIGTERM') as ((...arguments_: unknown[]) => void)[])],
+      uncaughtException: [...(process.listeners('uncaughtException') as ((...arguments_: unknown[]) => void)[])],
+      unhandledRejection: [...(process.listeners('unhandledRejection') as ((...arguments_: unknown[]) => void)[])],
     };
 
     // Remove existing listeners
@@ -47,8 +51,24 @@ describe('ErrorHandlerService', () => {
 
     service = module.get<ErrorHandlerService>(ErrorHandlerService);
 
+    // Mock the logger methods on the service instance
+    const {logger} = (service as any);
+    mockLoggerLog.mockImplementation(logger.log.bind(logger));
+    mockLoggerError.mockImplementation(logger.error.bind(logger));
+    mockLoggerWarn.mockImplementation(logger.warn.bind(logger));
+    mockLoggerDebug.mockImplementation(logger.debug.bind(logger));
+    
+    vi.spyOn(logger, 'log').mockImplementation(mockLoggerLog);
+    vi.spyOn(logger, 'error').mockImplementation(mockLoggerError);
+    vi.spyOn(logger, 'warn').mockImplementation(mockLoggerWarn);
+    vi.spyOn(logger, 'debug').mockImplementation(mockLoggerDebug);
+
     // Clear all mocks
     vi.clearAllMocks();
+    mockLoggerLog.mockClear();
+    mockLoggerError.mockClear();
+    mockLoggerWarn.mockClear();
+    mockLoggerDebug.mockClear();
     
     // Suppress unhandled rejection warnings during tests
     process.on('unhandledRejection', () => {
@@ -72,6 +92,10 @@ describe('ErrorHandlerService', () => {
 
     // Clear all mocks
     vi.clearAllMocks();
+    mockLoggerLog.mockClear();
+    mockLoggerError.mockClear();
+    mockLoggerWarn.mockClear();
+    mockLoggerDebug.mockClear();
   });
 
   describe('Critical Error Management', () => {
@@ -120,9 +144,9 @@ describe('ErrorHandlerService', () => {
         exitCode: 1,
       };
 
-      expect(() => service.handleCriticalErrorAndExit(error)).toThrow('process.exit called');
+      service.handleCriticalErrorAndExit(error);
       expect(mockProcessExit).toHaveBeenCalledWith(1);
-      expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('Critical Errors'));
+      expect(mockLoggerError).toHaveBeenCalledWith(expect.stringContaining('Critical Errors'));
     });
   });
 
@@ -224,11 +248,7 @@ describe('ErrorHandlerService', () => {
       // Mock the cleanup to avoid actual process.exit
       const performCleanupSpy = vi.spyOn(service as any, 'performCleanup').mockResolvedValue(undefined);
       
-      try {
-        await sigintHandler(undefined);
-      } catch {
-        // Expected due to process.exit mock
-      }
+      await sigintHandler(undefined);
 
       expect(performCleanupSpy).toHaveBeenCalled();
     });
@@ -303,15 +323,11 @@ describe('ErrorHandlerService', () => {
       
       const sigintHandler = process.listeners('SIGINT')[0];
       
-      try {
-        await sigintHandler(undefined);
-      } catch {
-        // Expected due to process.exit mock
-      }
+      await sigintHandler(undefined);
 
       expect(performCleanupSpy).toHaveBeenCalled();
       expect(mockProcessExit).toHaveBeenCalledWith(130);
-      expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('interrupted by user'));
+      expect(mockLoggerWarn).toHaveBeenCalledWith(expect.stringContaining('interrupted by user'));
     });
 
     it('should handle SIGTERM with cleanup', async () => {
@@ -319,39 +335,27 @@ describe('ErrorHandlerService', () => {
       
       const sigtermHandler = process.listeners('SIGTERM')[0];
       
-      try {
-        await sigtermHandler(undefined);
-      } catch {
-        // Expected due to process.exit mock
-      }
+      await sigtermHandler(undefined);
 
       expect(performCleanupSpy).toHaveBeenCalled();
       expect(mockProcessExit).toHaveBeenCalledWith(143);
-      expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('terminated'));
+      expect(mockLoggerWarn).toHaveBeenCalledWith(expect.stringContaining('terminated'));
     });
 
     it('should force exit on second SIGINT', async () => {
       const sigintHandler = process.listeners('SIGINT')[0];
       
       // First SIGINT - should start cleanup
-      try {
-        await sigintHandler(undefined);
-      } catch {
-        // Expected due to process.exit mock
-      }
+      await sigintHandler(undefined);
 
       // Reset the mock to test second call
       mockProcessExit.mockClear();
       
       // Second SIGINT - should force exit
-      try {
-        await sigintHandler(undefined);
-      } catch {
-        // Expected due to process.exit mock
-      }
+      await sigintHandler(undefined);
 
       expect(mockProcessExit).toHaveBeenCalledWith(130);
-      expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('Force exit'));
+      expect(mockLoggerWarn).toHaveBeenCalledWith(expect.stringContaining('Force exit'));
     });
   });
 
@@ -368,11 +372,11 @@ describe('ErrorHandlerService', () => {
       service.addCriticalError(error);
       service.displayErrorSummary();
 
-      expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('Build Summary'));
-      expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('Critical Errors'));
-      expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('File not found'));
-      expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('test.txt missing'));
-      expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('Create the file'));
+      expect(mockLoggerLog).toHaveBeenCalledWith(expect.stringContaining('Build Summary'));
+      expect(mockLoggerError).toHaveBeenCalledWith(expect.stringContaining('Critical Errors'));
+      expect(mockLoggerError).toHaveBeenCalledWith(expect.stringContaining('File not found'));
+      expect(mockLoggerError).toHaveBeenCalledWith(expect.stringContaining('test.txt missing'));
+      expect(mockLoggerLog).toHaveBeenCalledWith(expect.stringContaining('Create the file'));
     });
 
     it('should display warnings', () => {
@@ -385,15 +389,15 @@ describe('ErrorHandlerService', () => {
       service.addWarning(warning);
       service.displayErrorSummary();
 
-      expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('Warnings'));
-      expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('Optional file missing'));
-      expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('config.json not found'));
+      expect(mockLoggerWarn).toHaveBeenCalledWith(expect.stringContaining('Warnings'));
+      expect(mockLoggerWarn).toHaveBeenCalledWith(expect.stringContaining('Optional file missing'));
+      expect(mockLoggerWarn).toHaveBeenCalledWith(expect.stringContaining('config.json not found'));
     });
 
     it('should not display summary when no errors or warnings', () => {
       service.displayErrorSummary();
 
-      expect(mockConsoleLog).not.toHaveBeenCalledWith(expect.stringContaining('Build Summary'));
+      expect(mockLoggerLog).not.toHaveBeenCalledWith(expect.stringContaining('Build Summary'));
     });
   });
 
@@ -403,37 +407,33 @@ describe('ErrorHandlerService', () => {
       service.addCriticalError({ type: 'conversion', message: 'Error 2', exitCode: 126 });
       service.addCriticalError({ type: 'system', message: 'Error 3', exitCode: 1 });
 
-      expect(() => service.exitWithAppropriateCode()).toThrow('process.exit called');
+      service.exitWithAppropriateCode();
       expect(mockProcessExit).toHaveBeenCalledWith(126);
     });
 
     it('should exit with 0 when only warnings', () => {
       service.addWarning({ type: 'missing_file', message: 'Warning' });
 
-      expect(() => service.exitWithAppropriateCode()).toThrow('process.exit called');
+      service.exitWithAppropriateCode();
       expect(mockProcessExit).toHaveBeenCalledWith(0);
-      expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('completed with warnings'));
+      expect(mockLoggerLog).toHaveBeenCalledWith(expect.stringContaining('completed with warnings'));
     });
 
     it('should exit with 0 when no errors or warnings', () => {
-      expect(() => service.exitWithAppropriateCode()).toThrow('process.exit called');
+      service.exitWithAppropriateCode();
       expect(mockProcessExit).toHaveBeenCalledWith(0);
-      expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('completed successfully'));
+      expect(mockLoggerLog).toHaveBeenCalledWith(expect.stringContaining('completed successfully'));
     });
   });
 
   describe('Process Interruption State', () => {
-    it('should track interruption state', () => {
+    it('should track interruption state', async () => {
       expect(service.isProcessInterrupted()).toBe(false);
 
       // Simulate interruption by triggering SIGINT
       const sigintHandler = process.listeners('SIGINT')[0];
       
-      try {
-        sigintHandler(undefined);
-      } catch {
-        // Expected due to process.exit mock
-      }
+      await sigintHandler(undefined);
 
       expect(service.isProcessInterrupted()).toBe(true);
     });

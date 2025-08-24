@@ -86,7 +86,7 @@ describe('DataProcessingErrorHandler', () => {
         { ...mockContext, rawData: undefined }
       );
       
-      expect(result.partialData).toBeNull();
+      expect(result.partialData).toBeUndefined();
     });
   });
 
@@ -256,7 +256,12 @@ describe('DataProcessingErrorHandler', () => {
   });
 
   describe('Logging functionality', () => {
-    let mockLogger: any;
+    let mockLogger: {
+      error: ReturnType<typeof vi.fn>;
+      warn: ReturnType<typeof vi.fn>;
+      log: ReturnType<typeof vi.fn>;
+      debug: ReturnType<typeof vi.fn>;
+    };
 
     beforeEach(() => {
       mockLogger = {
@@ -265,7 +270,8 @@ describe('DataProcessingErrorHandler', () => {
         log: vi.fn(),
         debug: vi.fn(),
       };
-      (DataProcessingErrorHandler as any).logger = mockLogger;
+      // Use type assertion to set private static property
+      (DataProcessingErrorHandler as unknown as { logger: typeof mockLogger }).logger = mockLogger;
     });
 
     it('should log critical errors with full details', () => {
@@ -333,8 +339,8 @@ More content here.`;
     it('should handle empty or invalid markdown content', () => {
       const {extractPartialMarkdownData} = (DataProcessingErrorHandler as any);
       
-      expect(extractPartialMarkdownData(undefined)).toBeNull();
-      expect(extractPartialMarkdownData('')).toBeNull();
+      expect(extractPartialMarkdownData(undefined)).toBeUndefined();
+      expect(extractPartialMarkdownData('')).toBeUndefined();
       expect(extractPartialMarkdownData('###')).toBeDefined();
     });
   });

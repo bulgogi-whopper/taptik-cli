@@ -38,14 +38,30 @@ export interface FileSystemError extends Error {
 }
 
 /**
+ * Interface for error objects with a code property
+ */
+interface ErrorWithCode extends Error {
+  code: unknown;
+}
+
+/**
+ * Type guard function to check if error has a code property
+ */
+function hasErrorCode(error: unknown): error is ErrorWithCode {
+  return error instanceof Error && 'code' in error;
+}
+
+/**
  * Type guard function to check if error is a file system error
  */
 function isFileSystemError(error: unknown): error is FileSystemError {
+  if (!hasErrorCode(error)) {
+    return false;
+  }
+  
   return (
-    error instanceof Error &&
-    'code' in error &&
-    typeof (error as any).code === 'string' &&
-    Object.values(FileSystemErrorCode).includes((error as any).code)
+    typeof error.code === 'string' &&
+    Object.values(FileSystemErrorCode).includes(error.code as FileSystemErrorCode)
   );
 }
 
@@ -90,7 +106,7 @@ export class FileSystemErrorHandler {
     }
     
     // Handle generic errors without specific error codes
-    return this.handleGenericError(error as Error, operation, filePath);
+    return this.handleGenericError(error, operation, filePath);
   }
 
   /**
@@ -222,11 +238,32 @@ export class FileSystemErrorHandler {
   /**
    * Handle generic/unknown file system errors
    */
-  private static handleGenericError(error: FileSystemError | Error, operation: string, filePath: string): FileSystemErrorResult {
-    const errorMessage = error.message || 'Unknown error';
+  private static handleGenericError(error: unknown, operation: string, filePath: string): FileSystemErrorResult {
+    // Extract error message from various error formats
+    let errorMessage = 'Unknown error';
+    let errorStack: string | undefined;
+
+    if (error instanceof Error) {
+      errorMessage = error.message || 'Unknown error';
+      errorStack = error.stack;
+    } else if (error && typeof error === 'object') {
+      // Handle plain objects with message property
+      const errorObj = error as Record<string, unknown>;
+      if (typeof errorObj.message === 'string') {
+        errorMessage = errorObj.message;
+      }
+      if (typeof errorObj.stack === 'string') {
+        errorStack = errorObj.stack;
+      }
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    } else {
+      errorMessage = String(error);
+    }
+
     const userMessage = `File system error when ${operation}: ${filePath} - ${errorMessage}`;
     
-    this.logger.error(userMessage, error.stack);
+    this.logger.error(userMessage, errorStack);
     
     return {
       shouldContinue: false,

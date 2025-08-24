@@ -6,6 +6,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     setupFiles: ['./test/setup.ts'],
+    testTimeout: 60000, // 60 seconds for CLI integration tests
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

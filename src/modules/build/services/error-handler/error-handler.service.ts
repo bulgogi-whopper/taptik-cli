@@ -9,7 +9,7 @@ export interface ErrorSummary {
 }
 
 export interface CriticalError {
-  type: 'file_system' | 'conversion' | 'validation' | 'system';
+  type: 'file_system' | 'conversion' | 'validation' | 'system' | 'security';
   message: string;
   details?: string;
   suggestedResolution?: string;
@@ -17,7 +17,7 @@ export interface CriticalError {
 }
 
 export interface Warning {
-  type: 'missing_file' | 'permission_denied' | 'partial_conversion' | 'validation_warning';
+  type: 'missing_file' | 'permission_denied' | 'partial_conversion' | 'validation_warning' | 'package' | 'security' | 'validation';
   message: string;
   details?: string;
 }
@@ -45,34 +45,34 @@ export class ErrorHandlerService {
     process.on('SIGINT', async () => {
       if (this.isInterrupted) {
         // Force exit if already interrupted once
-        console.log('\n⚠️  Force exit requested. Terminating immediately...');
+        this.logger.warn('\n⚠️  Force exit requested. Terminating immediately...');
         process.exit(130); // Standard exit code for SIGINT
       }
 
       this.isInterrupted = true;
-      console.log('\n⚠️  Build process interrupted by user (Ctrl+C)');
-      console.log('🧹 Cleaning up partial files...');
+      this.logger.warn('\n⚠️  Build process interrupted by user (Ctrl+C)');
+      this.logger.log('🧹 Cleaning up partial files...');
 
       try {
         await this.performCleanup();
-        console.log('✅ Cleanup completed successfully');
+        this.logger.log('✅ Cleanup completed successfully');
         process.exit(130); // Standard exit code for SIGINT
       } catch (error) {
-        console.error('❌ Error during cleanup:', error.message);
+        this.logger.error('❌ Error during cleanup:', error.message);
         process.exit(1);
       }
     });
 
     // Handle SIGTERM (termination signal)
     process.on('SIGTERM', async () => {
-      console.log('\n⚠️  Build process terminated');
-      console.log('🧹 Cleaning up partial files...');
+      this.logger.warn('\n⚠️  Build process terminated');
+      this.logger.log('🧹 Cleaning up partial files...');
 
       try {
         await this.performCleanup();
         process.exit(143); // Standard exit code for SIGTERM
       } catch (error) {
-        console.error('❌ Error during cleanup:', error.message);
+        this.logger.error('❌ Error during cleanup:', error.message);
         process.exit(1);
       }
     });
@@ -87,8 +87,8 @@ export class ErrorHandlerService {
         exitCode: 1,
       });
 
-      console.error('\n💥 Critical system error occurred:');
-      console.error(error.message);
+      this.logger.error('\n💥 Critical system error occurred:');
+      this.logger.error(error.message);
       
       await this.performCleanup();
       this.displayErrorSummary();
@@ -105,8 +105,8 @@ export class ErrorHandlerService {
         exitCode: 1,
       });
 
-      console.error('\n💥 Unhandled promise rejection:');
-      console.error(reason);
+      this.logger.error('\n💥 Unhandled promise rejection:');
+      this.logger.error(reason);
       
       await this.performCleanup();
       this.displayErrorSummary();
@@ -224,37 +224,37 @@ export class ErrorHandlerService {
    */
   displayErrorSummary(): void {
     if (this.hasCriticalErrors() || this.hasWarnings()) {
-      console.log('\n📋 Build Summary:');
-      console.log('═'.repeat(50));
+      this.logger.log('\n📋 Build Summary:');
+      this.logger.log('═'.repeat(50));
     }
 
     // Display critical errors
     if (this.hasCriticalErrors()) {
-      console.log('\n❌ Critical Errors:');
+      this.logger.error('\n❌ Critical Errors:');
       for (const error of this.errorSummary.criticalErrors) {
-        console.log(`  • ${error.message}`);
+        this.logger.error(`  • ${error.message}`);
         if (error.details) {
-          console.log(`    Details: ${error.details}`);
+          this.logger.error(`    Details: ${error.details}`);
         }
         if (error.suggestedResolution) {
-          console.log(`    💡 Suggestion: ${error.suggestedResolution}`);
+          this.logger.log(`    💡 Suggestion: ${error.suggestedResolution}`);
         }
       }
     }
 
     // Display warnings
     if (this.hasWarnings()) {
-      console.log('\n⚠️  Warnings:');
+      this.logger.warn('\n⚠️  Warnings:');
       for (const warning of this.errorSummary.warnings) {
-        console.log(`  • ${warning.message}`);
+        this.logger.warn(`  • ${warning.message}`);
         if (warning.details) {
-          console.log(`    Details: ${warning.details}`);
+          this.logger.warn(`    Details: ${warning.details}`);
         }
       }
     }
 
     if (this.hasCriticalErrors() || this.hasWarnings()) {
-      console.log('═'.repeat(50));
+      this.logger.log('═'.repeat(50));
     }
   }
 
@@ -282,13 +282,13 @@ export class ErrorHandlerService {
     }
 
     if (this.hasWarnings()) {
+      this.logger.log('\n✅ Build completed with warnings');
       console.log('\n✅ Build completed with warnings');
-       
       process.exit(0);
     }
 
+    this.logger.log('\n✅ Build completed successfully');
     console.log('\n✅ Build completed successfully');
-     
     process.exit(0);
   }
 

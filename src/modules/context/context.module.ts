@@ -1,11 +1,28 @@
 import { Module } from '@nestjs/common';
 
+import { ConfigLoaderService } from './services/config-loader.service';
+import { ConfigPromptService } from './services/config-prompt.service';
+import { MetadataGeneratorService } from './services/metadata-generator.service';
+import { PackageService } from './services/package.service';
+import { SanitizationService } from './services/sanitization.service';
+import { ValidationService } from './services/validation.service';
+
 @Module({
   providers: [
-    // Services will be added as they are implemented
+    SanitizationService,
+    MetadataGeneratorService,
+    PackageService,
+    ValidationService,
+    ConfigLoaderService,
+    ConfigPromptService,
   ],
   exports: [
-    // Services will be exported as they are implemented
+    SanitizationService,
+    MetadataGeneratorService,
+    PackageService,
+    ValidationService,
+    ConfigLoaderService,
+    ConfigPromptService,
   ],
 })
 export class ContextModule {}

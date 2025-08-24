@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi, Mock, Mocked } from 'vitest';
 
+import { MetadataGeneratorService } from '../../context/services/metadata-generator.service';
+import { PackageService } from '../../context/services/package.service';
+import { SanitizationService } from '../../context/services/sanitization.service';
+import { ValidationService } from '../../context/services/validation.service';
 import { CollectionService } from '../services/collection/collection.service';
 import { ErrorHandlerService } from '../services/error-handler/error-handler.service';
 import { InteractiveService } from '../services/interactive/interactive.service';
@@ -16,6 +20,10 @@ describe('BuildCommand Error Handling', () => {
   let errorHandler: Mocked<ErrorHandlerService>;
   let collectionService: Mocked<CollectionService>;
   let transformationService: Mocked<TransformationService>;
+  let sanitizationService: Mocked<SanitizationService>;
+  let metadataGeneratorService: Mocked<MetadataGeneratorService>;
+  let packageService: Mocked<PackageService>;
+  let validationService: Mocked<ValidationService>;
   let outputService: Mocked<OutputService>;
   let progressService: Mocked<ProgressService>;
 
@@ -24,6 +32,66 @@ describe('BuildCommand Error Handling', () => {
     interactiveService = {
       selectPlatform: vi.fn(),
       selectCategories: vi.fn(),
+    } as any;
+
+    collectionService = {
+      collectLocalSettings: vi.fn().mockResolvedValue({
+        context: 'mock context',
+        userPreferences: 'mock preferences',
+        projectSpec: 'mock spec',
+        steeringFiles: [],
+        hookFiles: [],
+      }),
+      collectGlobalSettings: vi.fn().mockResolvedValue({
+        userConfig: {},
+        globalPreferences: {},
+        promptTemplates: [],
+        configFiles: [],
+      }),
+    } as any;
+
+    transformationService = {
+      transformPersonalContext: vi.fn().mockResolvedValue({}),
+      transformProjectContext: vi.fn().mockResolvedValue({}),
+      transformPromptTemplates: vi.fn().mockResolvedValue({}),
+    } as any;
+
+    sanitizationService = {
+      sanitizeForCloudUpload: vi.fn(),
+    } as any;
+
+    metadataGeneratorService = {
+      generateCloudMetadata: vi.fn(),
+    } as any;
+
+    packageService = {
+      createTaptikPackage: vi.fn(),
+      writePackageToFile: vi.fn(),
+    } as any;
+
+    validationService = {
+      validateForCloudUpload: vi.fn(),
+    } as any;
+
+    outputService = {
+      createOutputDirectory: vi.fn().mockResolvedValue('/mock/output/path'),
+      writeOutputFiles: vi.fn().mockResolvedValue([]),
+      generateManifest: vi.fn().mockResolvedValue(undefined),
+      displayBuildSummary: vi.fn().mockResolvedValue(undefined),
+    } as any;
+
+    progressService = {
+      initializeProgress: vi.fn(),
+      startStep: vi.fn(),
+      completeStep: vi.fn(),
+      startScan: vi.fn(),
+      completeScan: vi.fn(),
+      startTransformation: vi.fn(),
+      completeTransformation: vi.fn(),
+      startOutput: vi.fn(),
+      completeOutput: vi.fn(),
+      displayBuildSummary: vi.fn(),
+      failStep: vi.fn(),
     } as any;
 
     errorHandler = {
@@ -36,10 +104,23 @@ describe('BuildCommand Error Handling', () => {
       handleCriticalErrorAndExit: vi.fn().mockImplementation(() => {
         throw new Error('process.exit called');
       }),
+      addWarning: vi.fn(),
+      getErrorSummary: vi.fn().mockReturnValue({ warnings: [], criticalErrors: [] }),
     } as any;
 
     // Create command with mocked dependencies
-    command = new BuildCommand(interactiveService, collectionService, transformationService, outputService, progressService, errorHandler);
+    command = new BuildCommand(
+      interactiveService,
+      collectionService,
+      transformationService,
+      sanitizationService,
+      metadataGeneratorService,
+      packageService,
+      validationService,
+      outputService,
+      progressService,
+      errorHandler
+    );
 
     // Clear all mocks
     vi.clearAllMocks();
@@ -77,8 +158,9 @@ describe('BuildCommand Error Handling', () => {
         { name: 'personal-context', enabled: true },
       ]);
       (errorHandler.isProcessInterrupted as Mock)
-        .mockReturnValueOnce(false) // Before platform selection
-        .mockReturnValueOnce(false) // After platform selection
+        .mockReturnValueOnce(false) // Before starting
+        .mockReturnValueOnce(false) // After platform selection (in else branch)
+        .mockReturnValueOnce(false) // After platform selection (duplicate check)
         .mockReturnValueOnce(true); // After category selection
 
       await command.run([], {});
@@ -211,11 +293,15 @@ describe('BuildCommand Error Handling', () => {
 
       await expect(command.run([], {})).rejects.toThrow('process.exit called');
 
-      // Should check for interruption 3 times:
-      // 1. Before platform selection
-      // 2. After platform selection
-      // 3. After category selection
-      expect(errorHandler.isProcessInterrupted).toHaveBeenCalledTimes(3);
+      // Should check for interruption 7 times:
+      // 1. Before starting
+      // 2. After platform selection (in else branch)
+      // 3. After platform selection (duplicate check)
+      // 4. After category selection
+      // 5. After data collection
+      // 6. After data transformation
+      // 7. After output generation
+      expect(errorHandler.isProcessInterrupted).toHaveBeenCalledTimes(7);
     });
   });
 });

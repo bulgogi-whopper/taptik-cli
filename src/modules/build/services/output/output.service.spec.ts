@@ -2,9 +2,15 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { 
+  CloudMetadata, 
+  SanitizationResult, 
+  ValidationResult, 
+  TaptikPackage 
+} from '../../../context/interfaces/cloud.interface';
 import { BuildConfig, BuildCategoryName, BuildPlatform } from '../../interfaces/build-config.interface';
 import { SettingsData } from '../../interfaces/settings-data.interface';
-import { TaptikPersonalContext } from '../../interfaces/taptik-format.interface';
+import { TaptikPersonalContext, OutputFile } from '../../interfaces/taptik-format.interface';
 
 import { OutputService } from './output.service';
 
@@ -283,7 +289,7 @@ describe('OutputService', () => {
 
     it('should handle empty output files gracefully', async () => {
       const outputPath = '/test/output';
-      const emptyOutputFiles: any[] = [];
+      const emptyOutputFiles: OutputFile[] = [];
       
       service['fileExists'] = vi.fn().mockResolvedValue(false);
 
@@ -303,6 +309,338 @@ describe('OutputService', () => {
 
       // Should not throw error - build summary errors are non-critical
       await expect(service.displayBuildSummary(outputPath, mockOutputFiles)).resolves.toBeUndefined();
+    });
+  });
+
+  describe('writeCloudMetadata', () => {
+    it('should write cloud metadata to file', async () => {
+      const outputPath = '/test/output';
+      const mockMetadata: CloudMetadata = {
+        title: 'Test Claude Code Configuration',
+        description: 'Test configuration for Claude Code',
+        tags: ['test', 'claude-code'],
+        author: 'test-user',
+        version: '1.0.0',
+        createdAt: new Date().toISOString(),
+        sourceIde: 'claude-code',
+        targetIdes: ['claude-code', 'cursor'],
+        complexityLevel: 'intermediate',
+        componentCount: {
+          agents: 2,
+          commands: 3,
+          mcpServers: 1,
+          steeringRules: 4,
+          instructions: 2
+        },
+        features: ['mcp', 'agents', 'commands'],
+        compatibility: ['claude-code-v1', 'cursor-v2'],
+        searchKeywords: ['ai', 'development', 'claude'],
+        fileSize: 1024,
+        checksum: 'abc123',
+        isPublic: true
+      };
+
+      // Mock fs operations
+      const mockWriteFile = vi.fn().mockResolvedValue(undefined);
+      const mockAccess = vi.fn().mockResolvedValue(undefined);
+      const mockStat = vi.fn().mockResolvedValue({ size: 512 });
+      const fs = await import('node:fs');
+      vi.spyOn(fs.promises, 'writeFile').mockImplementation(mockWriteFile);
+      vi.spyOn(fs.promises, 'access').mockImplementation(mockAccess);
+      vi.spyOn(fs.promises, 'stat').mockImplementation(mockStat);
+
+      const result = await service.writeCloudMetadata(outputPath, mockMetadata);
+      
+      expect(result).toBeDefined();
+      expect(mockWriteFile).toHaveBeenCalledWith(
+        expect.stringContaining('cloud-metadata.json'),
+        expect.stringContaining('"title": "Test Claude Code Configuration"'),
+        'utf8'
+      );
+    });
+
+    it('should handle errors when writing cloud metadata', async () => {
+      const outputPath = '/test/output';
+      const mockMetadata: CloudMetadata = {
+        title: 'Test Configuration',
+        tags: [],
+        version: '1.0.0',
+        createdAt: new Date().toISOString(),
+        sourceIde: 'claude-code',
+        targetIdes: ['claude-code'],
+        complexityLevel: 'basic',
+        componentCount: {
+          agents: 0,
+          commands: 0,
+          mcpServers: 0,
+          steeringRules: 0,
+          instructions: 0
+        },
+        features: [],
+        compatibility: [],
+        searchKeywords: [],
+        fileSize: 0,
+        checksum: ''
+      };
+
+      // Mock fs operations - access succeeds but writeFile fails
+      const fs = await import('node:fs');
+      vi.spyOn(fs.promises, 'access').mockResolvedValue(undefined);
+      vi.spyOn(fs.promises, 'writeFile').mockRejectedValue(new Error('Write failed'));
+
+      await expect(service.writeCloudMetadata(outputPath, mockMetadata))
+        .rejects.toThrow();
+    });
+  });
+
+  describe('writeSanitizationReport', () => {
+    it('should write sanitization report to file', async () => {
+      const outputPath = '/test/output';
+      const mockSanitizationResult: SanitizationResult = {
+        sanitizedData: { test: 'data' },
+        securityLevel: 'safe',
+        findings: ['Removed API key from configuration'],
+        report: {
+          totalFields: 100,
+          sanitizedFields: 5,
+          safeFields: 95,
+          timestamp: new Date(),
+          summary: 'Configuration sanitized successfully',
+          processingTimeMs: 150,
+          detailedFindings: [
+            {
+              category: 'credentials',
+              severity: 'high',
+              count: 2,
+              path: '.claude/settings.json'
+            }
+          ]
+        },
+        severityBreakdown: {
+          safe: 95,
+          low: 3,
+          medium: 1,
+          critical: 1
+        },
+        recommendations: ['Review API key management', 'Use environment variables']
+      };
+
+      // Mock fs operations
+      const mockWriteFile = vi.fn().mockResolvedValue(undefined);
+      const mockAccess = vi.fn().mockResolvedValue(undefined);
+      const mockStat = vi.fn().mockResolvedValue({ size: 256 });
+      const fs = await import('node:fs');
+      vi.spyOn(fs.promises, 'writeFile').mockImplementation(mockWriteFile);
+      vi.spyOn(fs.promises, 'access').mockImplementation(mockAccess);
+      vi.spyOn(fs.promises, 'stat').mockImplementation(mockStat);
+
+      const result = await service.writeSanitizationReport(outputPath, mockSanitizationResult);
+      
+      expect(result).toBeDefined();
+      expect(mockWriteFile).toHaveBeenCalledWith(
+        expect.stringContaining('sanitization-report.json'),
+        expect.any(String),
+        'utf8'
+      );
+    });
+
+    it('should handle empty sanitization report', async () => {
+      const outputPath = '/test/output';
+      const mockSanitizationResult: SanitizationResult = {
+        sanitizedData: {},
+        securityLevel: 'safe',
+        findings: [],
+        report: {
+          totalFields: 0,
+          sanitizedFields: 0,
+          safeFields: 0,
+          timestamp: new Date(),
+          summary: 'No sanitization needed'
+        }
+      };
+
+      // Mock fs operations
+      const mockWriteFile = vi.fn().mockResolvedValue(undefined);
+      const mockAccess = vi.fn().mockResolvedValue(undefined);
+      const fs = await import('node:fs');
+      vi.spyOn(fs.promises, 'writeFile').mockImplementation(mockWriteFile);
+      vi.spyOn(fs.promises, 'access').mockImplementation(mockAccess);
+      vi.spyOn(fs.promises, 'stat').mockResolvedValue({ size: 100 } as any);
+
+      const result = await service.writeSanitizationReport(outputPath, mockSanitizationResult);
+      
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('writeValidationReport', () => {
+    it('should write validation report to file', async () => {
+      const outputPath = '/test/output';
+      const mockValidationResult: ValidationResult = {
+        isValid: true,
+        errors: [],
+        warnings: ['Consider upgrading to latest schema'],
+        cloudCompatible: true,
+        schemaCompliant: true,
+        sizeLimit: {
+          current: 1024,
+          maximum: 10240,
+          withinLimit: true
+        },
+        featureSupport: {
+          ide: 'claude-code',
+          supported: ['mcp', 'agents', 'commands'],
+          unsupported: ['advanced-hooks']
+        },
+        recommendations: ['Add more metadata for better discoverability']
+      };
+
+      // Mock fs operations
+      const mockWriteFile = vi.fn().mockResolvedValue(undefined);
+      const mockAccess = vi.fn().mockResolvedValue(undefined);
+      const mockStat = vi.fn().mockResolvedValue({ size: 128 });
+      const fs = await import('node:fs');
+      vi.spyOn(fs.promises, 'writeFile').mockImplementation(mockWriteFile);
+      vi.spyOn(fs.promises, 'access').mockImplementation(mockAccess);
+      vi.spyOn(fs.promises, 'stat').mockImplementation(mockStat);
+
+      const result = await service.writeValidationReport(outputPath, mockValidationResult);
+      
+      expect(result).toBeDefined();
+      expect(mockWriteFile).toHaveBeenCalledWith(
+        expect.stringContaining('validation-report.json'),
+        expect.any(String),
+        'utf8'
+      );
+    });
+
+    it('should handle validation errors in report', async () => {
+      const outputPath = '/test/output';
+      const mockValidationResult: ValidationResult = {
+        isValid: false,
+        errors: ['Schema validation failed', 'Required field missing'],
+        warnings: [],
+        cloudCompatible: false,
+        schemaCompliant: false,
+        sizeLimit: {
+          current: 20480,
+          maximum: 10240,
+          withinLimit: false
+        },
+        featureSupport: {
+          ide: 'claude-code',
+          supported: [],
+          unsupported: ['mcp', 'agents']
+        },
+        recommendations: ['Fix schema errors', 'Reduce package size']
+      };
+
+      // Mock fs operations
+      const mockWriteFile = vi.fn().mockResolvedValue(undefined);
+      const mockAccess = vi.fn().mockResolvedValue(undefined);
+      const mockStat = vi.fn().mockResolvedValue({ size: 200 });
+      const fs = await import('node:fs');
+      vi.spyOn(fs.promises, 'writeFile').mockImplementation(mockWriteFile);
+      vi.spyOn(fs.promises, 'access').mockImplementation(mockAccess);
+      vi.spyOn(fs.promises, 'stat').mockImplementation(mockStat);
+
+      const result = await service.writeValidationReport(outputPath, mockValidationResult);
+      
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('displayBuildSummary with cloud features', () => {
+    it('should display cloud package information in build summary', async () => {
+      const outputPath = '/test/output';
+      const mockOutputFiles = [
+        { filename: 'personal-context.json', category: 'personal-context', size: 1024 },
+        { filename: 'project-context.json', category: 'project-context', size: 2048 },
+        { filename: 'cloud-metadata.json', category: 'cloud-metadata', size: 512 },
+        { filename: 'sanitization-report.json', category: 'sanitization-report', size: 256 }
+      ];
+      const mockCloudPackage: TaptikPackage = {
+        metadata: {
+          title: 'Test Package',
+          tags: ['test'],
+          version: '1.0.0',
+          createdAt: new Date().toISOString(),
+          sourceIde: 'claude-code',
+          targetIdes: ['claude-code'],
+          complexityLevel: 'basic',
+          componentCount: {
+            agents: 1,
+            commands: 2,
+            mcpServers: 0,
+            steeringRules: 3,
+            instructions: 1
+          },
+          features: ['basic'],
+          compatibility: ['claude-code-v1'],
+          searchKeywords: ['test'],
+          fileSize: 3840,
+          checksum: 'test-checksum'
+        },
+        sanitizedConfig: {
+          version: '1.0',
+          sourceIde: 'claude-code',
+          targetIdes: ['claude-code'],
+          data: {},
+          metadata: {
+            timestamp: new Date().toISOString()
+          }
+        },
+        checksum: 'test-checksum',
+        format: 'taptik-v1',
+        compression: 'gzip',
+        size: 3840,
+        manifest: {
+          files: ['test.json'],
+          directories: ['.claude'],
+          totalSize: 3840
+        }
+      };
+
+      // Mock file existence
+      service['fileExists'] = vi.fn().mockResolvedValue(true);
+
+      // Mock fs.stat
+      const fs = await import('node:fs');
+      vi.spyOn(fs.promises, 'stat').mockResolvedValue({ 
+        size: 512,
+        mtime: new Date(),
+        isFile: () => true,
+        isDirectory: () => false 
+      } as any);
+
+      // This test expects the enhanced displayBuildSummary to handle cloud package
+      // It will fail as the method doesn't have cloud support yet (RED phase)
+      await expect(
+        (service as any).displayBuildSummary(outputPath, mockOutputFiles, [], [], 1000, mockCloudPackage)
+      ).resolves.toBeUndefined();
+    });
+
+    it('should handle cloud-ready output directory structure', async () => {
+      const outputPath = '/test/output';
+      
+      // Mock fs.mkdir and fs.access
+      const mockMkdir = vi.fn().mockResolvedValue(undefined);
+      const mockAccess = vi.fn().mockResolvedValue(undefined);
+      const fs = await import('node:fs');
+      vi.spyOn(fs.promises, 'mkdir').mockImplementation(mockMkdir);
+      vi.spyOn(fs.promises, 'access').mockImplementation(mockAccess);
+      
+      const cloudStructure = await service.createCloudReadyOutputStructure(outputPath);
+      
+      expect(cloudStructure).toBeDefined();
+      expect(cloudStructure.directories).toContain('cloud');
+      expect(cloudStructure.directories).toContain('reports');
+      expect(cloudStructure.directories).toContain('metadata');
+      expect(cloudStructure.paths).toBeDefined();
+      expect(cloudStructure.paths.cloud).toBe('/test/output/cloud');
+      expect(cloudStructure.paths.reports).toBe('/test/output/reports');
+      expect(cloudStructure.paths.metadata).toBe('/test/output/metadata');
+      expect(mockMkdir).toHaveBeenCalledTimes(3);
     });
   });
 

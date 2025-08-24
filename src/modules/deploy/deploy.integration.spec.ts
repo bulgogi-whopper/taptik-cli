@@ -45,11 +45,11 @@ describe('Deploy Module Integration Tests', () => {
         agents: [
           {
             name: 'test-agent',
-            description: 'Test agent',
-            commands: ['test-command'],
+            content: 'Test agent content',
+            metadata: { description: 'Test agent', commands: ['test-command'] },
           },
         ],
-        mcpServers: [
+        mcp_servers: [
           {
             name: 'test-mcp',
             command: 'test-command',
@@ -62,8 +62,15 @@ describe('Deploy Module Integration Tests', () => {
           settings: {
             permissions: ['read', 'write'],
           },
-          statusLine: 'Test status',
         },
+      },
+    },
+    security: {
+      hasApiKeys: false,
+      filteredFields: [],
+      scanResults: {
+        passed: true,
+        warnings: [],
       },
     },
   };

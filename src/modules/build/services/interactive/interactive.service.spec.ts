@@ -62,20 +62,20 @@ describe('InteractiveService', () => {
       expect(result).toBe(BuildPlatform.CLAUDE_CODE);
     });
 
-    it('should have disabled options for cursor and claude-code', async () => {
+    it('should have disabled option for cursor only', async () => {
       const { select } = await import('@inquirer/prompts');
       (select as any).mockResolvedValue(BuildPlatform.KIRO);
 
       await service.selectPlatform();
 
-      const selectCall = (select as any).mock.calls[0][0];
+      const selectCall = (select as ReturnType<typeof vi.fn>).mock.calls[0][0];
       const {choices} = selectCall;
       
-      const cursorChoice = choices.find((c: any) => c.value === BuildPlatform.CURSOR);
-      const claudeCodeChoice = choices.find((c: any) => c.value === BuildPlatform.CLAUDE_CODE);
+      const cursorChoice = choices.find((c: { value: BuildPlatform; disabled?: string }) => c.value === BuildPlatform.CURSOR);
+      const claudeCodeChoice = choices.find((c: { value: BuildPlatform; disabled?: string }) => c.value === BuildPlatform.CLAUDE_CODE);
       
       expect(cursorChoice.disabled).toBe('(Coming soon)');
-      expect(claudeCodeChoice.disabled).toBe('(Coming soon)');
+      expect(claudeCodeChoice.disabled).toBeUndefined();
     });
   });
 

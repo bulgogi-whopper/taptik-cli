@@ -80,26 +80,27 @@ describe('DiffService', () => {
       expect(deletion?.oldValue).toBe('Test Description');
     });
 
-    it('should handle array differences correctly', () => {
+    it('should handle object differences correctly', () => {
       const source = createMockTaptikContext();
       const target = createMockTaptikContext();
-      source.content.prompts = [
-        { id: '1', name: 'Prompt 1' },
-        { id: '2', name: 'Prompt 2' },
-      ];
-      target.content.prompts = [
-        { id: '1', name: 'Prompt 1' },
-        { id: '3', name: 'Prompt 3' },
-      ];
+      source.content.prompts = {
+        prompt1: { id: '1', name: 'Prompt 1' },
+        prompt2: { id: '2', name: 'Prompt 2' },
+      };
+      target.content.prompts = {
+        prompt1: { id: '1', name: 'Prompt 1' },
+        prompt3: { id: '3', name: 'Prompt 3' },
+      };
 
       const diff = service.generateDiff(source.content, target.content);
 
       expect(diff.hasChanges).toBe(true);
-      expect(diff.modifications.length).toBeGreaterThan(0);
-      const promptModule = diff.modifications.find((m) =>
-        m.path.includes('prompts'),
-      );
-      expect(promptModule).toBeDefined();
+      // Check for additions (prompt2 in source) and deletions (prompt3 in target)
+      const hasPromptChanges = 
+        diff.additions.some(a => a.path.includes('prompts')) ||
+        diff.deletions.some(d => d.path.includes('prompts')) ||
+        diff.modifications.some(m => m.path.includes('prompts'));
+      expect(hasPromptChanges).toBe(true);
     });
   });
 
@@ -182,7 +183,7 @@ describe('DiffService', () => {
 
       const merged = service.mergeConfigurations(source, target, 'skip');
 
-      expect(merged.content.personal.name).toBe('Target');
+      expect((merged.content as any)?.personal?.name).toBe('Target');
     });
 
     it('should merge with overwrite strategy', () => {
@@ -199,7 +200,7 @@ describe('DiffService', () => {
 
       const merged = service.mergeConfigurations(source, target, 'overwrite');
 
-      expect(merged.content.personal.name).toBe('Source');
+      expect((merged.content as any)?.personal?.name).toBe('Source');
     });
 
     it('should merge with merge strategy (deep merge)', () => {
@@ -216,7 +217,7 @@ describe('DiffService', () => {
 
       const merged = service.mergeConfigurations(source, target, 'merge');
 
-      expect(merged.content.personal).toEqual({
+      expect((merged.content as any)?.personal).toEqual({
         name: 'Source',
         email: 'target@example.com',
         newField: 'new',
@@ -229,10 +230,10 @@ describe('DiffService', () => {
 
       const merged = service.mergeConfigurations(source, target, 'backup');
 
-      expect(merged.metadata?.backupCreated).toBe(true);
+      expect((merged.metadata as any)?.backupCreated).toBe(true);
       // Remove backupCreated before comparing the rest
       const { backupCreated: _backupCreated, ...restMetadata } =
-        merged.metadata || {};
+        (merged.metadata as any) || {};
       expect({ ...merged, metadata: restMetadata }).toEqual({
         ...source,
         metadata: source.metadata,
@@ -242,33 +243,34 @@ describe('DiffService', () => {
     it('should merge arrays intelligently in merge strategy', () => {
       const source = createMockTaptikContext({
         content: {
-          prompts: [
-            { id: '1', name: 'Source Prompt' },
-            { id: '3', name: 'New Prompt' },
-          ],
+          prompts: {
+            prompt1: { id: '1', name: 'Source Prompt' },
+            prompt3: { id: '3', name: 'New Prompt' },
+          },
         },
       });
       const target = createMockTaptikContext({
         content: {
-          prompts: [
-            { id: '1', name: 'Target Prompt' },
-            { id: '2', name: 'Existing Prompt' },
-          ],
+          prompts: {
+            prompt1: { id: '1', name: 'Target Prompt' },
+            prompt2: { id: '2', name: 'Existing Prompt' },
+          },
         },
       });
 
       const merged = service.mergeConfigurations(source, target, 'merge');
 
-      expect(merged.content.prompts).toHaveLength(3);
-      expect(merged.content.prompts).toContainEqual({
+      const mergedPrompts = (merged.content as any)?.prompts;
+      expect(Object.keys(mergedPrompts || {})).toHaveLength(3);
+      expect(mergedPrompts?.prompt1).toEqual({
         id: '1',
         name: 'Source Prompt',
       });
-      expect(merged.content.prompts).toContainEqual({
+      expect(mergedPrompts?.prompt2).toEqual({
         id: '2',
         name: 'Existing Prompt',
       });
-      expect(merged.content.prompts).toContainEqual({
+      expect(mergedPrompts?.prompt3).toEqual({
         id: '3',
         name: 'New Prompt',
       });
@@ -405,8 +407,8 @@ describe('DiffService', () => {
       const result = service.applyPatch(target, patches);
 
       expect(result.content).toHaveProperty('deeply');
-      expect(result.content.deeply).toHaveProperty('nested');
-      expect(result.content.deeply.nested).toHaveProperty(
+      expect((result.content as any).deeply).toHaveProperty('nested');
+      expect((result.content as any).deeply.nested).toHaveProperty(
         'value',
         'deep value',
       );

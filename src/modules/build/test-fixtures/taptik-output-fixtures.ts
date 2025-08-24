@@ -736,68 +736,127 @@ export const taptikSchemaValidators = {
   /**
    * Validate that a personal context object matches expected structure
    */
-  validatePersonalContext: (object: any): object is TaptikPersonalContext => (
-      object &&
-      object.taptik_version === '1.0.0' &&
-      object.context_type === 'personal' &&
-      typeof object.created_at === 'string' &&
-      typeof object.source_platform === 'string' &&
-      object.user_info &&
-      object.development_environment &&
-      object.coding_preferences &&
-      object.workflow_preferences &&
-      object.ai_interaction_preferences
-    ),
+  validatePersonalContext: (object: unknown): object is TaptikPersonalContext => {
+    if (!object || typeof object !== 'object') return false;
+    const obj = object as Record<string, unknown>;
+    
+    // Check metadata structure
+    const metadata = obj.metadata as Record<string, unknown> | undefined;
+    const hasValidMetadata = metadata && 
+      typeof metadata.source_platform === 'string' &&
+      typeof metadata.created_at === 'string' &&
+      typeof metadata.version === 'string';
+    
+    // Check preferences structure
+    const preferences = obj.preferences as Record<string, unknown> | undefined;
+    const hasValidPreferences = preferences &&
+      Array.isArray(preferences.preferred_languages) &&
+      preferences.coding_style &&
+      Array.isArray(preferences.tools_and_frameworks) &&
+      Array.isArray(preferences.development_environment);
+      
+    return !!(
+      typeof obj.user_id === 'string' &&
+      hasValidPreferences &&
+      obj.work_style &&
+      obj.communication &&
+      hasValidMetadata
+    );
+  },
 
   /**
    * Validate that a project context object matches expected structure
    */
-  validateProjectContext: (object: any): object is TaptikProjectContext => (
-      object &&
-      object.taptik_version === '1.0.0' &&
-      object.context_type === 'project' &&
-      typeof object.created_at === 'string' &&
-      typeof object.source_platform === 'string' &&
-      object.project_info &&
-      object.technical_stack &&
-      object.development_guidelines &&
-      Array.isArray(object.architecture_patterns)
-    ),
+  validateProjectContext: (object: unknown): object is TaptikProjectContext => {
+    if (!object || typeof object !== 'object') return false;
+    const obj = object as Record<string, unknown>;
+    
+    // Check metadata structure
+    const metadata = obj.metadata as Record<string, unknown> | undefined;
+    const hasValidMetadata = metadata &&
+      typeof metadata.source_platform === 'string' &&
+      typeof metadata.created_at === 'string' &&
+      typeof metadata.version === 'string' &&
+      typeof metadata.source_path === 'string';
+    
+    // Check project_info structure
+    const projectInfo = obj.project_info as Record<string, unknown> | undefined;
+    const hasValidProjectInfo = projectInfo &&
+      typeof projectInfo.name === 'string' &&
+      typeof projectInfo.description === 'string' &&
+      typeof projectInfo.version === 'string' &&
+      typeof projectInfo.repository === 'string';
+    
+    // Check technical_stack structure
+    const technicalStack = obj.technical_stack as Record<string, unknown> | undefined;
+    const hasValidTechnicalStack = technicalStack &&
+      typeof technicalStack.primary_language === 'string' &&
+      Array.isArray(technicalStack.frameworks) &&
+      Array.isArray(technicalStack.databases) &&
+      Array.isArray(technicalStack.tools) &&
+      Array.isArray(technicalStack.deployment);
+      
+    return !!(
+      typeof obj.project_id === 'string' &&
+      hasValidProjectInfo &&
+      hasValidTechnicalStack &&
+      obj.development_guidelines &&
+      hasValidMetadata
+    );
+  },
 
   /**
    * Validate that a prompt templates object matches expected structure
    */
-  validatePromptTemplates: (object: any): object is TaptikPromptTemplates => (
-      object &&
-      object.taptik_version === '1.0.0' &&
-      object.context_type === 'prompt_templates' &&
-      typeof object.created_at === 'string' &&
-      typeof object.source_platform === 'string' &&
-      Array.isArray(object.templates) &&
-      object.metadata &&
-      object.templates.every((template: any) =>
-        template.id &&
-        template.name &&
-        template.description &&
-        template.category &&
-        template.content &&
-        Array.isArray(template.variables) &&
-        Array.isArray(template.tags)
-      )
-    ),
+  validatePromptTemplates: (object: unknown): object is TaptikPromptTemplates => {
+    if (!object || typeof object !== 'object') return false;
+    const obj = object as Record<string, unknown>;
+    
+    // Check metadata structure
+    const metadata = obj.metadata as Record<string, unknown> | undefined;
+    const hasValidMetadata = metadata &&
+      typeof metadata.source_platform === 'string' &&
+      typeof metadata.created_at === 'string' &&
+      typeof metadata.version === 'string' &&
+      typeof metadata.total_templates === 'number';
+    
+    // Validate templates array
+    const { templates } = obj;
+    const hasValidTemplates = Array.isArray(templates) &&
+      templates.every((template: unknown) => {
+        if (!template || typeof template !== 'object') return false;
+        const tmpl = template as Record<string, unknown>;
+        return !!(
+          typeof tmpl.id === 'string' &&
+          typeof tmpl.name === 'string' &&
+          typeof tmpl.description === 'string' &&
+          typeof tmpl.category === 'string' &&
+          typeof tmpl.content === 'string' &&
+          Array.isArray(tmpl.variables) &&
+          Array.isArray(tmpl.tags)
+        );
+      });
+      
+    return !!(
+      hasValidTemplates &&
+      hasValidMetadata
+    );
+  },
 
   /**
    * Validate that a manifest object matches expected structure
    */
-  validateManifest: (object: any): object is TaptikManifest => (
-      object &&
-      typeof object.build_id === 'string' &&
-      object.taptik_version === '1.0.0' &&
-      typeof object.source_platform === 'string' &&
-      Array.isArray(object.categories) &&
-      typeof object.created_at === 'string' &&
-      Array.isArray(object.source_files) &&
-      Array.isArray(object.output_files) &&
-      object.build_metadata
-    ),
+  validateManifest: (object: unknown): object is TaptikManifest => {
+    if (!object || typeof object !== 'object') return false;
+    const obj = object as Record<string, unknown>;
+    return !!(
+      typeof obj.build_id === 'string' &&
+      obj.taptik_version === '1.0.0' &&
+      typeof obj.source_platform === 'string' &&
+      Array.isArray(obj.categories) &&
+      typeof obj.created_at === 'string' &&
+      Array.isArray(obj.source_files) &&
+      Array.isArray(obj.output_files)
+    );
+  },
 };

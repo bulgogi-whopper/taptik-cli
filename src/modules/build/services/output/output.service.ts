@@ -4,6 +4,12 @@ import { join, resolve } from 'node:path';
 
 import { Injectable, Logger } from '@nestjs/common';
 
+import {
+  CloudMetadata,
+  SanitizationResult,
+  TaptikPackage,
+  ValidationResult,
+} from '../../../context/interfaces/cloud.interface';
 import { BuildConfig } from '../../interfaces/build-config.interface';
 import { SettingsData } from '../../interfaces/settings-data.interface';
 import {
@@ -420,12 +426,242 @@ export class OutputService {
   }
 
   /**
+   * Generic method to write JSON data to file
+   * @param outputPath Path to the output directory
+   * @param filename Name of the file to write
+   * @param data Data to write (will be JSON stringified)
+   * @param category Category for the output file
+   * @param description Human-readable description for logging
+   * @returns Output file information
+   */
+  private async writeJsonFile(
+    outputPath: string,
+    filename: string,
+    data: unknown,
+    category: string,
+    description: string,
+  ): Promise<OutputFile> {
+    const filePath = join(outputPath, filename);
+    
+    try {
+      // Validate output path exists
+      await this.validateOutputPath(outputPath);
+      
+      // Convert data to JSON with proper formatting
+      const content = JSON.stringify(data, null, 2);
+      
+      // Write file with progress indicator
+      this.logger.debug(`Writing ${description} to ${filePath}...`);
+      await fs.writeFile(filePath, content, 'utf8');
+      
+      // Get file stats for size information
+      const stats = await fs.stat(filePath);
+      const outputFile: OutputFile = {
+        filename,
+        category,
+        size: stats.size,
+      };
+      
+      // Log success with formatted size
+      this.logger.log(
+        `✅ Written ${description}: ${filename} (${this.formatBytes(stats.size)})`,
+      );
+      
+      return outputFile;
+    } catch (error) {
+      const errorResult = FileSystemErrorHandler.handleError(
+        error,
+        `writing ${description}`,
+        filePath,
+      );
+      
+      FileSystemErrorHandler.logErrorResult(errorResult);
+      
+      // Enhanced error message with actionable guidance
+      const enhancedMessage = this.enhanceErrorMessage(
+        errorResult.userMessage,
+        errorResult.suggestions,
+        filePath,
+      );
+      
+      throw new Error(enhancedMessage);
+    }
+  }
+
+  /**
+   * Validate that output path exists and is writable
+   * @param outputPath Path to validate
+   */
+  private async validateOutputPath(outputPath: string): Promise<void> {
+    try {
+      await fs.access(outputPath, fs.constants.W_OK);
+    } catch {
+      // Try to create the directory if it doesn't exist
+      await fs.mkdir(outputPath, { recursive: true });
+    }
+  }
+
+  /**
+   * Enhance error messages with more context and guidance
+   * @param baseMessage Base error message
+   * @param suggestions Array of suggestions
+   * @param path Related file path
+   * @returns Enhanced error message
+   */
+  private enhanceErrorMessage(
+    baseMessage: string,
+    suggestions: string[],
+    path: string,
+  ): string {
+    const enhancedSuggestions = [
+      ...suggestions,
+      `Path: ${path}`,
+      'Ensure the directory exists and has write permissions',
+      'Check available disk space',
+    ];
+    
+    return `${baseMessage}\n💡 Suggestions:\n${enhancedSuggestions.map(s => `  • ${s}`).join('\n')}`;
+  }
+
+  /**
+   * Write cloud metadata to JSON file
+   * @param outputPath Path to the output directory
+   * @param metadata Cloud metadata to write
+   * @returns Output file information
+   */
+  async writeCloudMetadata(
+    outputPath: string,
+    metadata: CloudMetadata,
+  ): Promise<OutputFile> {
+    return this.writeJsonFile(
+      outputPath,
+      'cloud-metadata.json',
+      metadata,
+      'cloud-metadata',
+      'cloud metadata',
+    );
+  }
+
+  /**
+   * Write sanitization report to JSON file
+   * @param outputPath Path to the output directory
+   * @param sanitizationResult Sanitization result to write
+   * @returns Output file information
+   */
+  async writeSanitizationReport(
+    outputPath: string,
+    sanitizationResult: SanitizationResult,
+  ): Promise<OutputFile> {
+    // Create a serializable version of the report
+    const reportData = {
+      securityLevel: sanitizationResult.securityLevel,
+      findings: sanitizationResult.findings,
+      report: {
+        ...sanitizationResult.report,
+        timestamp: sanitizationResult.report.timestamp instanceof Date
+          ? sanitizationResult.report.timestamp.toISOString()
+          : sanitizationResult.report.timestamp,
+      },
+      severityBreakdown: sanitizationResult.severityBreakdown,
+      recommendations: sanitizationResult.recommendations,
+    };
+
+    return this.writeJsonFile(
+      outputPath,
+      'sanitization-report.json',
+      reportData,
+      'sanitization-report',
+      'sanitization report',
+    );
+  }
+
+  /**
+   * Write validation report to JSON file
+   * @param outputPath Path to the output directory
+   * @param validationResult Validation result to write
+   * @returns Output file information
+   */
+  async writeValidationReport(
+    outputPath: string,
+    validationResult: ValidationResult,
+  ): Promise<OutputFile> {
+    return this.writeJsonFile(
+      outputPath,
+      'validation-report.json',
+      validationResult,
+      'validation-report',
+      'validation report',
+    );
+  }
+
+  /**
+   * Create cloud-ready output directory structure
+   * @param outputPath Base output path
+   * @returns Structure information with full paths
+   */
+  async createCloudReadyOutputStructure(
+    outputPath: string,
+  ): Promise<{ directories: string[]; paths: Record<string, string> }> {
+    try {
+      // Define directory structure with descriptions
+      const directoryConfig = [
+        { name: 'cloud', description: 'Cloud package files' },
+        { name: 'reports', description: 'Sanitization and validation reports' },
+        { name: 'metadata', description: 'Cloud metadata and manifests' },
+      ];
+      
+      // Validate base output path
+      await this.validateOutputPath(outputPath);
+      
+      // Create all directories in parallel with progress logging
+      this.logger.debug('Creating cloud output directory structure...');
+      
+      const createPromises = directoryConfig.map(async ({ name, description }) => {
+        const dirPath = join(outputPath, name);
+        await fs.mkdir(dirPath, { recursive: true });
+        this.logger.debug(`  📁 ${name}/ - ${description}`);
+        return { name, path: dirPath };
+      });
+
+      const results = await Promise.all(createPromises);
+      
+      // Build response with directory names and full paths
+      const directories = results.map(r => r.name);
+      const paths = results.reduce((acc, { name, path }) => {
+        acc[name] = path;
+        return acc;
+      }, {} as Record<string, string>);
+      
+      this.logger.log('✅ Cloud output structure created successfully');
+
+      return { directories, paths };
+    } catch (error) {
+      const errorResult = FileSystemErrorHandler.handleError(
+        error,
+        'creating cloud output structure',
+        outputPath,
+      );
+
+      FileSystemErrorHandler.logErrorResult(errorResult);
+      
+      const enhancedMessage = this.enhanceErrorMessage(
+        errorResult.userMessage,
+        errorResult.suggestions,
+        outputPath,
+      );
+      
+      throw new Error(enhancedMessage);
+    }
+  }
+
+  /**
    * Display comprehensive build summary and completion information
    * @param outputPath Path to the output directory
    * @param outputFiles Generated output files
    * @param warnings Optional array of warning messages
    * @param errors Optional array of error messages
    * @param buildTime Optional build duration in milliseconds
+   * @param cloudPackage Optional cloud package information
    */
   async displayBuildSummary(
     outputPath: string,
@@ -433,6 +669,7 @@ export class OutputService {
     warnings: string[] = [],
     errors: string[] = [],
     buildTime?: number,
+    cloudPackage?: TaptikPackage,
   ): Promise<void> {
     try {
       const totalSize = outputFiles.reduce((sum, file) => sum + file.size, 0);
@@ -471,6 +708,11 @@ export class OutputService {
         this.logger.log(`  • manifest.json: ${manifestSize}`);
       }
 
+      // Display cloud package information if available
+      if (cloudPackage) {
+        this.displayCloudPackageSummary(cloudPackage);
+      }
+
       // Display warnings and errors if any
       if (warnings.length > 0 || errors.length > 0) {
         this.displayIssuesSummary(warnings, errors);
@@ -481,6 +723,82 @@ export class OutputService {
       this.logger.error('Failed to display summary', error.stack);
       // Don't throw error for display issues - build was successful
     }
+  }
+
+  /**
+   * Display cloud package summary with enhanced formatting
+   * @param cloudPackage Cloud package information
+   */
+  private displayCloudPackageSummary(cloudPackage: TaptikPackage): void {
+    this.logger.log('');
+    this.logger.log('☁️  Cloud Package Information:');
+    this.logger.log('─'.repeat(50));
+    
+    // Basic Information
+    this.logger.log(`  📦 Title: ${cloudPackage.metadata.title || 'Untitled Package'}`);
+    
+    // Tags with better formatting
+    if (cloudPackage.metadata.tags && cloudPackage.metadata.tags.length > 0) {
+      this.logger.log(`  🏷️  Tags: ${cloudPackage.metadata.tags.join(', ')}`);
+    }
+    
+    // Component breakdown with detailed counts
+    const components = cloudPackage.metadata.componentCount;
+    const componentParts: string[] = [];
+    
+    if (components.agents > 0) {
+      componentParts.push(`${components.agents} agent${components.agents > 1 ? 's' : ''}`);
+    }
+    if (components.commands > 0) {
+      componentParts.push(`${components.commands} command${components.commands > 1 ? 's' : ''}`);
+    }
+    if (components.mcpServers > 0) {
+      componentParts.push(`${components.mcpServers} MCP server${components.mcpServers > 1 ? 's' : ''}`);
+    }
+    if (components.steeringRules > 0) {
+      componentParts.push(`${components.steeringRules} steering rule${components.steeringRules > 1 ? 's' : ''}`);
+    }
+    
+    if (componentParts.length > 0) {
+      this.logger.log(`  📊 Components: ${componentParts.join(', ')}`);
+    } else {
+      this.logger.log('  📊 Components: No components configured');
+    }
+    
+    // Security status with color coding (through emoji)
+    const securityStatus = cloudPackage.sanitizedConfig 
+      ? '✅ Sanitized (safe for sharing)'
+      : '⚠️  Not sanitized (may contain sensitive data)';
+    this.logger.log(`  🔒 Security: ${securityStatus}`);
+    
+    // Package details
+    this.logger.log(`  💾 Package Size: ${this.formatBytes(cloudPackage.size)}`);
+    this.logger.log(`  📦 Format: ${cloudPackage.format || 'taptik-v1'}`);
+    this.logger.log(`  🗜️  Compression: ${cloudPackage.compression || 'none'}`);
+    
+    // Target compatibility
+    if (cloudPackage.metadata.targetIdes && cloudPackage.metadata.targetIdes.length > 0) {
+      const targets = cloudPackage.metadata.targetIdes
+        .map(ide => ide.replace('-', ' '))
+        .map(ide => ide.charAt(0).toUpperCase() + ide.slice(1))
+        .join(', ');
+      this.logger.log(`  🎯 Compatible IDEs: ${targets}`);
+    }
+    
+    // Complexity level indicator
+    if (cloudPackage.metadata.complexityLevel) {
+      const complexityEmoji = {
+        minimal: '🟢',
+        basic: '🟢',
+        intermediate: '🟡',
+        advanced: '🟠',
+        expert: '🔴',
+      }[cloudPackage.metadata.complexityLevel] || '⚪';
+      
+      this.logger.log(`  📈 Complexity: ${complexityEmoji} ${cloudPackage.metadata.complexityLevel}`);
+    }
+    
+    this.logger.log('─'.repeat(50));
   }
 
   /**

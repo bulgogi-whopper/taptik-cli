@@ -27,8 +27,9 @@ describe('ImportService', () => {
       getClient: vi.fn().mockReturnValue(mockSupabaseClient),
     } as any;
 
-    // Create service instance directly with mock dependency
-    service = new ImportService(mockSupabaseService);
+    // Create service instance directly with mock dependencies
+    const mockLargeFileStreamer = { stream: vi.fn() } as any;
+    service = new ImportService(mockSupabaseService, mockLargeFileStreamer);
 
     // Reset mock delay to speed up tests
     vi.spyOn(service as any, 'delay').mockResolvedValue(undefined);
