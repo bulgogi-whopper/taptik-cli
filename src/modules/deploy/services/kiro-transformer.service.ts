@@ -60,10 +60,9 @@ export class KiroTransformerService {
         }
       },
       ide: {
-        default_project_template: ide.default_project_template,
-        auto_save: ide.auto_save,
-        backup_frequency: ide.backup_frequency,
-        extensions: ide.extensions
+        default_project_template: ide.settings['default_project_template'] as string,
+        auto_save: ide.settings['auto_save'] as boolean,
+        backup_frequency: ide.settings['backup_frequency'] as string,
       }
     };
 
