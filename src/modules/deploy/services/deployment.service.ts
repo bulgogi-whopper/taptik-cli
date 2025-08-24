@@ -16,6 +16,7 @@ import { BackupService } from './backup.service';
 import { DiffService } from './diff.service';
 import { ErrorRecoveryService } from './error-recovery.service';
 import { KiroComponentHandlerService } from './kiro-component-handler.service';
+import { KiroInstallationDetectorService } from './kiro-installation-detector.service';
 import { KiroTransformerService } from './kiro-transformer.service';
 import { LargeFileStreamerService } from './large-file-streamer.service';
 import { PerformanceMonitorService } from './performance-monitor.service';
@@ -34,6 +35,7 @@ export class DeploymentService {
     private readonly largeFileStreamer: LargeFileStreamerService,
     private readonly kiroTransformer: KiroTransformerService,
     private readonly kiroComponentHandler: KiroComponentHandlerService,
+    private readonly kiroInstallationDetector: KiroInstallationDetectorService,
   ) {}
 
   async deployToClaudeCode(
@@ -309,7 +311,67 @@ export class DeploymentService {
     };
 
     try {
-      // Step 1: Validate configuration for Kiro platform
+      // Step 1: Check Kiro installation and compatibility
+      this.performanceMonitor.recordMemoryUsage(deploymentId, 'installation-check-start');
+      
+      const installationInfo = await this.kiroInstallationDetector.detectKiroInstallation();
+      
+      if (!installationInfo.isInstalled) {
+        result.errors.push({
+          message: 'Kiro IDE is not installed or not found in expected locations',
+          code: 'KIRO_NOT_INSTALLED',
+          severity: 'CRITICAL',
+        });
+        this.performanceMonitor.endDeploymentTiming(deploymentId);
+        result.metadata!.performanceReport = 'Kiro deployment failed - installation not found';
+        return result;
+      }
+
+      // Add installation info to warnings for user visibility
+      result.warnings.push({
+        message: `Kiro IDE detected: v${installationInfo.version || 'unknown'} at ${installationInfo.installationPath}`,
+        code: 'KIRO_INSTALLATION_DETECTED',
+      });
+
+      // Check compatibility
+      if (!installationInfo.isCompatible) {
+        const compatibilityResult = await this.kiroInstallationDetector.checkCompatibility(installationInfo.version);
+        
+        // Add compatibility issues as warnings or errors based on severity
+        for (const issue of compatibilityResult.issues) {
+          if (issue.severity === 'critical') {
+            result.errors.push({
+              message: `Compatibility issue: ${issue.message}`,
+              code: 'KIRO_COMPATIBILITY_ERROR',
+              severity: 'HIGH',
+            });
+          } else {
+            result.warnings.push({
+              message: `Compatibility warning: ${issue.message}`,
+              code: 'KIRO_COMPATIBILITY_WARNING',
+            });
+          }
+        }
+
+        // Stop deployment if critical compatibility issues exist
+        if (compatibilityResult.issues.some(issue => issue.severity === 'critical')) {
+          this.performanceMonitor.endDeploymentTiming(deploymentId);
+          result.metadata!.performanceReport = 'Kiro deployment failed - compatibility issues';
+          return result;
+        }
+
+        // Add recommendations
+        for (const recommendation of compatibilityResult.recommendations) {
+          result.warnings.push({
+            message: `Recommendation: ${recommendation}`,
+            code: 'KIRO_RECOMMENDATION',
+          });
+        }
+      }
+
+      this.performanceMonitor.recordMemoryUsage(deploymentId, 'installation-check-end');
+
+      // Step 2: Validate configuration for Kiro platform
       this.performanceMonitor.recordMemoryUsage(deploymentId, 'validation-start');
       const validationResult = await this.validatorService.validateForPlatform(
         context,
@@ -337,7 +399,7 @@ export class DeploymentService {
         }));
       }
 
-      // Step 2: Return early for validation-only mode
+      // Step 3: Return early for validation-only mode
       if (options.validateOnly) {
         result.success = true;
         result.metadata!.performanceReport = 'Kiro validation completed successfully';
@@ -345,7 +407,7 @@ export class DeploymentService {
         return result;
       }
 
-      // Step 3: Security scan for Kiro components
+      // Step 4: Security scan for Kiro components
       this.performanceMonitor.recordMemoryUsage(deploymentId, 'security-start');
       
       // Transform TaptikContext to Kiro formats for security scanning
@@ -407,7 +469,7 @@ export class DeploymentService {
         });
       }
 
-      // Step 4: Validate transformation results
+      // Step 5: Validate transformation results
       const validation = this.kiroTransformer.validateTransformation(
         globalSettings, 
         projectTransformation.settings
@@ -433,12 +495,12 @@ export class DeploymentService {
         })));
       }
 
-      // Step 5: Create deployment context
+      // Step 6: Create deployment context
       const homeDirectory = os.homedir();
       const projectDirectory = process.cwd();
       const deploymentContext = this.kiroTransformer.createDeploymentContext(homeDirectory, projectDirectory);
 
-      // Step 6: Apply deployment options filtering
+      // Step 7: Apply deployment options filtering
       let componentsToProcess = ['settings', 'steering', 'specs', 'hooks', 'agents', 'templates'];
       if (options.components && options.components.length > 0) {
         componentsToProcess = options.components.filter(c => componentsToProcess.includes(c));
@@ -447,7 +509,7 @@ export class DeploymentService {
         componentsToProcess = componentsToProcess.filter(c => !options.skipComponents!.includes(c as ComponentType));
       }
 
-      // Step 7: Prepare deployment result with transformation data
+      // Step 8: Prepare deployment result with transformation data
       result.success = true;
       result.deployedComponents = componentsToProcess;
       result.summary.filesDeployed = componentsToProcess.length; // Will be updated when actual file writing is implemented
@@ -485,7 +547,7 @@ export class DeploymentService {
         code: 'KIRO_TRANSFORMATION_INFO'
       });
 
-      // Step 7: Handle backup strategy
+      // Step 9: Handle backup strategy
       if (options.conflictStrategy === 'backup') {
         try {
           const backupPath = await this.createKiroBackup();
@@ -503,7 +565,7 @@ export class DeploymentService {
         }
       }
 
-      // Step 8: Return early for dry-run mode  
+      // Step 10: Return early for dry-run mode
       if (options.dryRun) {
         result.success = true;
         result.warnings.push({
@@ -515,7 +577,7 @@ export class DeploymentService {
         return result;
       }
 
-      // Step 9: Deploy components using component handler
+      // Step 11: Deploy components using component handler
       const kiroOptions = {
         platform: 'kiro-ide' as const,
         conflictStrategy: options.conflictStrategy,

@@ -111,7 +111,7 @@ This document outlines the implementation plan for adding Kiro IDE deployment su
   - _Requirements: 7.1, 7.2, 17.3_
   - _Estimated: 2 days_
 
-- [ ] 4.1 Integrate Kiro deployment into main deployment service
+- [x] 4.1 Integrate Kiro deployment into main deployment service
   - Add `deployToKiro()` method to existing `DeploymentService`
   - Implement Kiro deployment orchestration using existing infrastructure
   - Integrate with existing backup, security, and performance monitoring services
@@ -121,7 +121,7 @@ This document outlines the implementation plan for adding Kiro IDE deployment su
   - _Requirements: 2.1, 6.1, 6.2, 13.1, 13.2_
   - _Estimated: 2 days_
 
-- [ ] 4.2 Implement Kiro installation detection and compatibility
+- [x] 4.2 Implement Kiro installation detection and compatibility
   - Create `src/modules/deploy/services/kiro-installation-detector.service.ts`
   - Implement Kiro installation detection and version checking
   - Add existing configuration analysis and compatibility validation
