@@ -345,10 +345,67 @@ export class DeploymentService {
         return result;
       }
 
-      // Step 3: Transform TaptikContext to Kiro formats
+      // Step 3: Security scan for Kiro components
+      this.performanceMonitor.recordMemoryUsage(deploymentId, 'security-start');
+      
+      // Transform TaptikContext to Kiro formats for security scanning
       const globalSettings = this.kiroTransformer.transformPersonalContext(context);
       const projectTransformation = this.kiroTransformer.transformProjectContext(context);
       const templates = this.kiroTransformer.transformPromptTemplates(context.content.prompts || {});
+
+      // Prepare components for security scanning
+      const componentsForScan = [
+        ...projectTransformation.hooks.map(hook => ({ type: 'hooks' as const, name: hook.name, content: hook })),
+        ...templates.map(template => ({ type: 'templates' as const, name: template.name, content: template })),
+        { type: 'settings' as const, name: 'global-settings', content: globalSettings },
+        { type: 'settings' as const, name: 'project-settings', content: projectTransformation.settings },
+        ...projectTransformation.steering.map((doc, index) => ({ type: 'steering' as const, name: `steering-${index}`, content: doc })),
+        ...projectTransformation.specs.map((spec, index) => ({ type: 'specs' as const, name: `spec-${index}`, content: spec })),
+      ];
+
+      const securityOptions = {
+        platform: 'kiro-ide' as const,
+        conflictStrategy: options.conflictStrategy,
+        dryRun: options.dryRun,
+        validateOnly: options.validateOnly,
+      };
+
+      const securityResult = await this.securityService.scanKiroComponents(componentsForScan, securityOptions);
+      this.performanceMonitor.recordMemoryUsage(deploymentId, 'security-end');
+
+      if (!securityResult.isSafe || !securityResult.passed) {
+        const quarantinedComponents = securityResult.quarantinedComponents || [];
+        const securityViolations = securityResult.securityViolations || [];
+        
+        result.errors.push({
+          message: `Kiro security check failed: ${quarantinedComponents.length} component(s) quarantined, ${securityViolations.length} violation(s) found`,
+          code: 'KIRO_SECURITY_CHECK_FAILED',
+          severity: 'HIGH',
+        });
+        
+        // Add detailed security violation information
+        for (const violation of securityViolations) {
+          result.warnings.push({
+            message: `${violation.component} (${violation.componentType}): ${violation.description}`,
+            code: `KIRO_SECURITY_${violation.severity.toUpperCase()}`,
+          });
+        }
+
+        return result;
+      }
+
+      // Add security scan summary to warnings
+      if (securityResult.summary && securityResult.summary.totalIssues === 0) {
+        result.warnings.push({
+          message: 'Kiro security scan passed - no issues found',
+          code: 'KIRO_SECURITY_PASSED',
+        });
+      } else if (securityResult.summary) {
+        result.warnings.push({
+          message: `Kiro security scan: ${securityResult.summary.totalIssues} total issues (${securityResult.summary.highSeverity} high, ${securityResult.summary.mediumSeverity} medium, ${securityResult.summary.lowSeverity} low)`,
+          code: 'KIRO_SECURITY_SUMMARY',
+        });
+      }
 
       // Step 4: Validate transformation results
       const validation = this.kiroTransformer.validateTransformation(
@@ -428,18 +485,47 @@ export class DeploymentService {
         code: 'KIRO_TRANSFORMATION_INFO'
       });
 
-      // Step 8: Deploy components using component handler
-      if (!options.dryRun) {
-        const kiroOptions = {
-          platform: 'kiro-ide' as const,
-          conflictStrategy: options.conflictStrategy,
-          dryRun: options.dryRun,
-          validateOnly: options.validateOnly,
-          globalSettings: true,
-          projectSettings: true,
-          preserveTaskStatus: true,
-          mergeStrategy: 'deep-merge' as const
-        };
+      // Step 7: Handle backup strategy
+      if (options.conflictStrategy === 'backup') {
+        try {
+          const backupPath = await this.createKiroBackup();
+          result.summary.backupCreated = true;
+          result.backupPath = backupPath;
+          result.warnings.push({
+            message: `Backup created at: ${backupPath}`,
+            code: 'KIRO_BACKUP_CREATED',
+          });
+        } catch (backupError) {
+          result.warnings.push({
+            message: `Failed to create backup: ${(backupError as Error).message}`,
+            code: 'KIRO_BACKUP_FAILED',
+          });
+        }
+      }
+
+      // Step 8: Return early for dry-run mode  
+      if (options.dryRun) {
+        result.success = true;
+        result.warnings.push({
+          message: 'Dry run mode - no files were actually written to disk',
+          code: 'KIRO_DRY_RUN'
+        });
+        this.performanceMonitor.endDeploymentTiming(deploymentId);
+        result.metadata!.performanceReport = 'Kiro dry-run completed successfully';
+        return result;
+      }
+
+      // Step 9: Deploy components using component handler
+      const kiroOptions = {
+        platform: 'kiro-ide' as const,
+        conflictStrategy: options.conflictStrategy,
+        dryRun: options.dryRun,
+        validateOnly: options.validateOnly,
+        globalSettings: true,
+        projectSettings: true,
+        preserveTaskStatus: true,
+        mergeStrategy: 'deep-merge' as const
+      };
 
         let actualFilesDeployed = 0;
 
@@ -541,16 +627,25 @@ export class DeploymentService {
           });
         }
 
-      } else {
-        result.warnings.push({
-          message: 'Dry run mode - no files were actually written to disk',
-          code: 'KIRO_DRY_RUN'
-        });
-      }
+        // Update deployment summary with actual results
+        result.summary.filesDeployed = actualFilesDeployed;
+        
+        if (result.errors.length > 0) {
+          result.success = false;
+          result.warnings.push({
+            message: `Deployment completed with ${result.errors.length} errors`,
+            code: 'KIRO_DEPLOYMENT_PARTIAL_SUCCESS'
+          });
+        } else {
+          result.warnings.push({
+            message: `Successfully deployed ${actualFilesDeployed} files to Kiro IDE`,
+            code: 'KIRO_DEPLOYMENT_SUCCESS'
+          });
+        }
       
       // End performance monitoring
       this.performanceMonitor.endDeploymentTiming(deploymentId);
-      result.metadata.performanceReport = 'Kiro deployment completed - feature under development';
+      result.metadata.performanceReport = `Kiro deployment completed: ${result.summary.filesDeployed} files deployed`;
       
       return result;
     } catch (error) {
@@ -558,14 +653,54 @@ export class DeploymentService {
       result.errors.push({
         message: `Unexpected error during Kiro deployment: ${(error as Error).message}`,
         code: 'KIRO_UNEXPECTED_ERROR',
-        severity: 'error',
+        severity: 'HIGH',
       });
+
+      // Attempt error recovery if backup was created
+      if (result.summary.backupCreated && result.backupPath) {
+        try {
+          const recoveryResult = await this.errorRecoveryService.recoverFromFailure(
+            result,
+            {
+              platform: 'kiro-ide',
+              backupId: result.backupPath ? path.basename(result.backupPath) : undefined,
+              forceRecovery: true,
+            },
+          );
+          
+          const recoverySuccess = recoveryResult.success;
+          
+          if (recoverySuccess) {
+            result.warnings.push({
+              message: 'Deployment failed but was successfully recovered from backup',
+              code: 'KIRO_RECOVERED_FROM_BACKUP',
+            });
+          } else {
+            result.errors.push({
+              message: 'Recovery from backup also failed',
+              code: 'KIRO_RECOVERY_FAILED',
+              severity: 'CRITICAL',
+            });
+          }
+        } catch (recoveryError) {
+          result.errors.push({
+            message: `Recovery failed: ${(recoveryError as Error).message}`,
+            code: 'KIRO_RECOVERY_ERROR', 
+            severity: 'CRITICAL',
+          });
+        }
+      }
       
       // End performance monitoring even on error
       this.performanceMonitor.endDeploymentTiming(deploymentId);
-      result.metadata.performanceReport = 'Kiro deployment failed - feature under development';
+      result.metadata.performanceReport = 'Kiro deployment failed with error recovery attempted';
       
       return result;
+    } finally {
+      // Clear metrics after a delay to allow for inspection
+      setTimeout(() => {
+        this.performanceMonitor.clearMetrics(deploymentId);
+      }, 60000); // Clear after 1 minute
     }
   }
 
@@ -1039,5 +1174,34 @@ export class DeploymentService {
     } catch {
       return null;
     }
+  }
+
+  private async createKiroBackup(): Promise<string> {
+    // Create backup of existing Kiro configuration
+    const homeDirectory = os.homedir();
+    const projectDirectory = process.cwd();
+    const kiroPaths = [
+      path.join(homeDirectory, '.kiro', 'settings.json'),
+      path.join(homeDirectory, '.kiro', 'agents'),
+      path.join(projectDirectory, '.kiro', 'settings.json'),
+      path.join(projectDirectory, '.kiro', 'steering'),
+      path.join(projectDirectory, '.kiro', 'specs'),
+      path.join(projectDirectory, '.kiro', 'hooks'),
+      path.join(projectDirectory, '.kiro', 'templates'),
+    ];
+
+    // Find the first existing path to use as backup base
+    for (const kiroPath of kiroPaths) {
+      try {
+        await fs.access(kiroPath);
+        return await this.backupService.createBackup(kiroPath);
+      } catch {
+        // Path doesn't exist, continue checking
+        continue;
+      }
+    }
+
+    // No existing Kiro config found, create empty backup
+    return '';
   }
 }

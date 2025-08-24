@@ -101,7 +101,7 @@ This document outlines the implementation plan for adding Kiro IDE deployment su
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 12.3, 12.4_
   - _Estimated: 3 days_
 
-- [ ] 3.3 Implement Kiro security scanning
+- [x] 3.3 Implement Kiro security scanning
   - Extend existing `SecurityScannerService` to support Kiro components
   - Add Kiro-specific security rules for hooks, agents, and templates
   - Implement malicious pattern detection for Kiro hook configurations
