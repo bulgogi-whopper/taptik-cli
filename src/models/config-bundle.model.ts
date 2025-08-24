@@ -128,7 +128,9 @@ export interface ConfigurationQuery {
  * Transform ConfigBundle to DisplayConfiguration
  * Converts raw database data to display-friendly format
  */
-export function toDisplayConfiguration(bundle: ConfigBundle): DisplayConfiguration {
+export function toDisplayConfiguration(
+  bundle: ConfigBundle,
+): DisplayConfiguration {
   return {
     id: bundle.id,
     title: bundle.title,
@@ -147,11 +149,14 @@ export function toDisplayConfiguration(bundle: ConfigBundle): DisplayConfigurati
  */
 export function formatFileSize(bytes: number): string {
   if (bytes === 0) return '0 B';
-  
+
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
-  
+  const i = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(k)),
+    sizes.length - 1,
+  );
+
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
@@ -164,16 +169,22 @@ export function validateListOptions(options: ListOptions): ValidationResult {
 
   // Validate sort option
   if (options.sort && !['date', 'name'].includes(options.sort)) {
-    errors.push(`Invalid sort option '${options.sort}'. Valid options: date, name`);
+    errors.push(
+      `Invalid sort option '${options.sort}'. Valid options: date, name`,
+    );
   }
 
   // Validate limit option
   if (options.limit !== undefined) {
-    if (options.limit <= 0) {
-      errors.push('Limit must be greater than 0');
-    }
-    if (options.limit > 100) {
-      errors.push('Limit cannot exceed 100');
+    if (typeof options.limit !== 'number' || !Number.isInteger(options.limit)) {
+      errors.push('Limit must be a positive integer');
+    } else {
+      if (options.limit <= 0) {
+        errors.push('Limit must be greater than 0');
+      }
+      if (options.limit > 100) {
+        errors.push('Limit cannot exceed 100');
+      }
     }
   }
 

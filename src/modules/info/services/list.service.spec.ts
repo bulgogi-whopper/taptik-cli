@@ -14,6 +14,7 @@ import {
   NetworkError,
   AuthenticationError,
   ServerError,
+  ValidationError,
 } from './list.service';
 
 // Mock Supabase client
@@ -308,6 +309,9 @@ describe('ListService', () => {
 
       // Act & Assert
       await expect(service.listConfigurations(options)).rejects.toThrow(
+        ValidationError,
+      );
+      await expect(service.listConfigurations(options)).rejects.toThrow(
         "Invalid options: Invalid sort option 'invalid'. Valid options: date, name",
       );
     });
@@ -319,6 +323,9 @@ describe('ListService', () => {
       };
 
       // Act & Assert
+      await expect(service.listConfigurations(options)).rejects.toThrow(
+        ValidationError,
+      );
       await expect(service.listConfigurations(options)).rejects.toThrow(
         'Invalid options: Limit must be greater than 0',
       );
@@ -332,7 +339,25 @@ describe('ListService', () => {
 
       // Act & Assert
       await expect(service.listConfigurations(options)).rejects.toThrow(
+        ValidationError,
+      );
+      await expect(service.listConfigurations(options)).rejects.toThrow(
         'Invalid options: Limit cannot exceed 100',
+      );
+    });
+
+    it('should validate non-integer limit', async () => {
+      // Arrange
+      const options: ListConfigurationsOptions = {
+        limit: 10.5,
+      };
+
+      // Act & Assert
+      await expect(service.listConfigurations(options)).rejects.toThrow(
+        ValidationError,
+      );
+      await expect(service.listConfigurations(options)).rejects.toThrow(
+        'Invalid options: Limit must be a positive integer',
       );
     });
   });
@@ -547,8 +572,79 @@ describe('ListService', () => {
 
       // Act & Assert
       await expect(service.listConfigurations(options)).rejects.toThrow(
+        ValidationError,
+      );
+      await expect(service.listConfigurations(options)).rejects.toThrow(
         'Invalid options: Filter must be a string',
       );
+    });
+  });
+
+  describe('exit codes', () => {
+    it('should have correct exit code for network errors', async () => {
+      // Arrange
+      mockQuery.range.mockResolvedValue({
+        data: null,
+        error: { code: 'PGRST301', message: 'Network connection failed' },
+        count: null,
+      });
+
+      // Act & Assert
+      try {
+        await service.listConfigurations();
+      } catch (error: any) {
+        expect(error).toBeInstanceOf(NetworkError);
+        expect(error.exitCode).toBe(3); // EXIT_CODES.NETWORK_ERROR
+      }
+    });
+
+    it('should have correct exit code for authentication errors', async () => {
+      // Arrange
+      mockQuery.range.mockResolvedValue({
+        data: null,
+        error: { code: '401', message: 'Unauthorized access' },
+        count: null,
+      });
+
+      // Act & Assert
+      try {
+        await service.listConfigurations();
+      } catch (error: any) {
+        expect(error).toBeInstanceOf(AuthenticationError);
+        expect(error.exitCode).toBe(4); // EXIT_CODES.AUTH_ERROR
+      }
+    });
+
+    it('should have correct exit code for server errors', async () => {
+      // Arrange
+      mockQuery.range.mockResolvedValue({
+        data: null,
+        error: { code: 500, message: 'Internal server error' },
+        count: null,
+      });
+
+      // Act & Assert
+      try {
+        await service.listConfigurations();
+      } catch (error: any) {
+        expect(error).toBeInstanceOf(ServerError);
+        expect(error.exitCode).toBe(5); // EXIT_CODES.SERVER_ERROR
+      }
+    });
+
+    it('should have correct exit code for validation errors', async () => {
+      // Arrange
+      const options: ListConfigurationsOptions = {
+        sort: 'invalid' as any,
+      };
+
+      // Act & Assert
+      try {
+        await service.listConfigurations(options);
+      } catch (error: any) {
+        expect(error).toBeInstanceOf(ValidationError);
+        expect(error.exitCode).toBe(2); // EXIT_CODES.INVALID_ARGUMENT
+      }
     });
   });
 

@@ -12,35 +12,43 @@ import {
 } from '../../../models/config-bundle.model';
 import { getSupabaseClient } from '../../../supabase/supabase-client';
 import { AuthService } from '../../auth/auth.service';
+import { EXIT_CODES, CLIError } from '../constants/exit-codes.constants';
 
 /**
  * Custom error classes for better error handling
- * Based on Requirements 6.1, 6.2, 6.3
+ * Based on Requirements 6.1, 6.2, 6.3, 6.5
  */
-export class NetworkError extends Error {
+export class NetworkError extends CLIError {
   constructor(
     message: string = 'Unable to connect to Taptik cloud. Please check your internet connection.',
   ) {
-    super(message);
+    super(message, EXIT_CODES.NETWORK_ERROR);
     this.name = 'NetworkError';
   }
 }
 
-export class AuthenticationError extends Error {
+export class AuthenticationError extends CLIError {
   constructor(
     message: string = "Authentication failed. Please run 'taptik login' first.",
   ) {
-    super(message);
+    super(message, EXIT_CODES.AUTH_ERROR);
     this.name = 'AuthenticationError';
   }
 }
 
-export class ServerError extends Error {
+export class ServerError extends CLIError {
   constructor(
     message: string = 'Taptik cloud is temporarily unavailable. Please try again later.',
   ) {
-    super(message);
+    super(message, EXIT_CODES.SERVER_ERROR);
     this.name = 'ServerError';
+  }
+}
+
+export class ValidationError extends CLIError {
+  constructor(message: string) {
+    super(message, EXIT_CODES.INVALID_ARGUMENT);
+    this.name = 'ValidationError';
   }
 }
 
@@ -135,7 +143,9 @@ export class ListService {
     // Validate input options
     const validation = validateListOptions(options);
     if (!validation.isValid) {
-      throw new Error(`Invalid options: ${validation.errors.join(', ')}`);
+      throw new ValidationError(
+        `Invalid options: ${validation.errors.join(', ')}`,
+      );
     }
 
     // Apply defaults
@@ -206,7 +216,8 @@ export class ListService {
       if (
         error instanceof NetworkError ||
         error instanceof AuthenticationError ||
-        error instanceof ServerError
+        error instanceof ServerError ||
+        error instanceof ValidationError
       ) {
         throw error;
       }
@@ -231,7 +242,9 @@ export class ListService {
     // Validate input options
     const validation = validateListOptions(options);
     if (!validation.isValid) {
-      throw new Error(`Invalid options: ${validation.errors.join(', ')}`);
+      throw new ValidationError(
+        `Invalid options: ${validation.errors.join(', ')}`,
+      );
     }
 
     // Apply defaults
@@ -305,7 +318,8 @@ export class ListService {
       if (
         error instanceof NetworkError ||
         error instanceof AuthenticationError ||
-        error instanceof ServerError
+        error instanceof ServerError ||
+        error instanceof ValidationError
       ) {
         throw error;
       }
