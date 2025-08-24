@@ -80,7 +80,7 @@ This document outlines the implementation plan for adding Kiro IDE deployment su
   - _Requirements: 2.2, 2.3, 2.4, 2.5, 2.6, 10.1, 10.2, 10.3, 10.4_
   - _Estimated: 4 days_
 
-- [ ] 3.1 Implement Kiro validation service
+- [x] 3.1 Implement Kiro validation service
   - Create `src/modules/deploy/services/kiro-validator.service.ts`
   - Implement `validateForKiro()` method similar to existing `validateForPlatform()`
   - Add Kiro-specific schema validation for components

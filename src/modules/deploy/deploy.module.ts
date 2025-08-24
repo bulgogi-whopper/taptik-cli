@@ -12,6 +12,7 @@ import { ErrorRecoveryService } from './services/error-recovery.service';
 import { ImportService } from './services/import.service';
 import { KiroComponentHandlerService } from './services/kiro-component-handler.service';
 import { KiroTransformerService } from './services/kiro-transformer.service';
+import { KiroValidatorService } from './services/kiro-validator.service';
 import { LargeFileStreamerService } from './services/large-file-streamer.service';
 import { LockingService } from './services/locking.service';
 import { PerformanceMonitorService } from './services/performance-monitor.service';
@@ -36,6 +37,7 @@ import { PerformanceOptimizer } from './utils/performance-optimizer.utility';
     ImportService,
     KiroComponentHandlerService,
     KiroTransformerService,
+    KiroValidatorService,
     LargeFileStreamerService,
     LockingService,
     PerformanceMonitorService,

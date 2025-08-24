@@ -309,12 +309,48 @@ export class DeploymentService {
     };
 
     try {
-      // Step 1: Transform TaptikContext to Kiro formats
+      // Step 1: Validate configuration for Kiro platform
+      this.performanceMonitor.recordMemoryUsage(deploymentId, 'validation-start');
+      const validationResult = await this.validatorService.validateForPlatform(
+        context,
+        'kiro-ide',
+        options,
+      );
+      this.performanceMonitor.recordMemoryUsage(deploymentId, 'validation-end');
+
+      if (!validationResult.isValid) {
+        result.errors = validationResult.errors.map((error) => ({
+          message: error.message,
+          code: error.code || 'VALIDATION_ERROR',
+          severity: error.severity,
+        }));
+        this.performanceMonitor.endDeploymentTiming(deploymentId);
+        result.metadata!.performanceReport = 'Kiro deployment failed - validation errors';
+        return result;
+      }
+
+      // Add validation warnings
+      if (validationResult.warnings && validationResult.warnings.length > 0) {
+        result.warnings = validationResult.warnings.map((warn) => ({
+          message: warn.message,
+          code: warn.code || 'WARNING',
+        }));
+      }
+
+      // Step 2: Return early for validation-only mode
+      if (options.validateOnly) {
+        result.success = true;
+        result.metadata!.performanceReport = 'Kiro validation completed successfully';
+        this.performanceMonitor.endDeploymentTiming(deploymentId);
+        return result;
+      }
+
+      // Step 3: Transform TaptikContext to Kiro formats
       const globalSettings = this.kiroTransformer.transformPersonalContext(context);
       const projectTransformation = this.kiroTransformer.transformProjectContext(context);
       const templates = this.kiroTransformer.transformPromptTemplates(context.content.prompts || {});
 
-      // Step 2: Validate transformation results
+      // Step 4: Validate transformation results
       const validation = this.kiroTransformer.validateTransformation(
         globalSettings, 
         projectTransformation.settings
@@ -340,12 +376,12 @@ export class DeploymentService {
         })));
       }
 
-      // Step 3: Create deployment context
+      // Step 5: Create deployment context
       const homeDirectory = os.homedir();
       const projectDirectory = process.cwd();
       const deploymentContext = this.kiroTransformer.createDeploymentContext(homeDirectory, projectDirectory);
 
-      // Step 4: Apply deployment options filtering
+      // Step 6: Apply deployment options filtering
       let componentsToProcess = ['settings', 'steering', 'specs', 'hooks', 'agents', 'templates'];
       if (options.components && options.components.length > 0) {
         componentsToProcess = options.components.filter(c => componentsToProcess.includes(c));
@@ -354,7 +390,7 @@ export class DeploymentService {
         componentsToProcess = componentsToProcess.filter(c => !options.skipComponents!.includes(c as ComponentType));
       }
 
-      // Step 5: Prepare deployment result with transformation data
+      // Step 7: Prepare deployment result with transformation data
       result.success = true;
       result.deployedComponents = componentsToProcess;
       result.summary.filesDeployed = componentsToProcess.length; // Will be updated when actual file writing is implemented
@@ -392,7 +428,7 @@ export class DeploymentService {
         code: 'KIRO_TRANSFORMATION_INFO'
       });
 
-      // Step 6: Deploy components using component handler
+      // Step 8: Deploy components using component handler
       if (!options.dryRun) {
         const kiroOptions = {
           platform: 'kiro-ide' as const,
