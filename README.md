@@ -1,18 +1,14 @@
 # Taptik CLI
 
-A CLI tool that enables seamless migration and synchronization of settings between various AI
-development tools like Cursor, Kiro, and Claude Code. Simplify your AI IDE workflow with one-click
-context and configuration sharing.
+A CLI tool that enables seamless migration and synchronization of settings between various AI development tools like Cursor, Kiro, and Claude Code. Simplify your AI IDE workflow with one-click context and configuration sharing.
 
 ## 🎯 Overview
 
-New AI IDEs and LLM tools are emerging rapidly, but switching between them means constantly
-re-sharing your context and reconfiguring settings. Taptik CLI solves this by providing:
+New AI IDEs and LLM tools are emerging rapidly, but switching between them means constantly re-sharing your context and reconfiguring settings. Taptik CLI solves this by providing:
 
 - **Easy Migration**: One-click migration between AI IDEs
 - **Context Sharing**: Share your developer context (experience, domain, preferences) across tools
-- **Configuration Sync**: Sync prompts, templates, and settings between different AI development
-  environments
+- **Configuration Sync**: Sync prompts, templates, and settings between different AI development environments
 - **Community Marketplace**: Import and share prompt sets like Docker Hub for configurations
 
 ## 🚀 Quick Start
@@ -109,8 +105,7 @@ taptik info
 
 ### Build Command
 
-The `build` command converts your Kiro configuration files into taptik-compatible format for use
-with various AI development tools.
+The `build` command converts your Kiro configuration files into taptik-compatible format for use with various AI development tools.
 
 #### Interactive Mode (Default)
 
@@ -178,12 +173,9 @@ taptik-build-20240115-103000/
 
 #### Supported Categories
 
-- **Personal Context**: Development environment, coding preferences, workflow practices, AI
-  interaction preferences
-- **Project Context**: Technical stack, architecture patterns, development guidelines, security
-  requirements
-- **Prompt Templates**: Code review templates, debugging guides, architecture reviews, performance
-  analysis
+- **Personal Context**: Development environment, coding preferences, workflow practices, AI interaction preferences
+- **Project Context**: Technical stack, architecture patterns, development guidelines, security requirements
+- **Prompt Templates**: Code review templates, debugging guides, architecture reviews, performance analysis
 
 #### Examples
 

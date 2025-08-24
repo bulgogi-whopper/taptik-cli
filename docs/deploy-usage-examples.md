@@ -485,24 +485,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
-          
+
       - name: Install Taptik CLI
         run: npm install -g @taptik/cli
-        
+
       - name: Authenticate
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: taptik auth login --token ${{ secrets.TAPTIK_TOKEN }}
-        
+
       - name: Validate Configuration
         run: taptik deploy --validate-only
-        
+
       - name: Deploy
         run: |
           taptik deploy \
@@ -524,12 +524,12 @@ CONFIG_IDS=("dev-config" "staging-config" "prod-config")
 for i in "${!ENVIRONMENTS[@]}"; do
     ENV="${ENVIRONMENTS[$i]}"
     CONFIG="${CONFIG_IDS[$i]}"
-    
+
     echo "Deploying to $ENV environment..."
-    
+
     # Set environment
     export TAPTIK_ENV="$ENV"
-    
+
     # Validate
     if taptik deploy --context-id "$CONFIG" --validate-only; then
         # Deploy
@@ -537,7 +537,7 @@ for i in "${!ENVIRONMENTS[@]}"; do
             --context-id "$CONFIG" \
             --conflict-strategy backup \
             --force
-        
+
         echo "✅ $ENV deployment successful"
     else
         echo "❌ $ENV validation failed, skipping"

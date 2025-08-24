@@ -8,7 +8,6 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 import { ConfigLoaderService } from './config-loader.service';
 
-
 vi.mock('fs', () => ({
   promises: {
     readFile: vi.fn(),
@@ -85,7 +84,9 @@ preferences:
 
       expect(config).toBeDefined();
       expect(config.autoUpload.enabled).toBe(false); // Default value
-      expect(logger.debug).toHaveBeenCalledWith(expect.stringContaining('Configuration file not found'));
+      expect(logger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('Configuration file not found'),
+      );
     });
 
     it('should validate authentication tokens', async () => {
@@ -102,7 +103,9 @@ auth:
       const isValid = service.validateAuthentication(config);
 
       expect(isValid).toBe(false);
-      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Authentication token not configured'));
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Authentication token not configured'),
+      );
     });
 
     it('should merge user configuration with defaults', async () => {
@@ -146,8 +149,8 @@ autoUpload:
         'normal.json',
       ];
 
-      const shouldExclude = testFiles.map(file => 
-        service.shouldExclude(file, config.autoUpload.exclude)
+      const shouldExclude = testFiles.map((file) =>
+        service.shouldExclude(file, config.autoUpload.exclude),
       );
 
       expect(shouldExclude[0]).toBe(true); // config.secret
@@ -197,12 +200,12 @@ autoUpload:
 
       expect(fs.mkdir).toHaveBeenCalledWith(
         path.join('/home/user', '.taptik'),
-        { recursive: true }
+        { recursive: true },
       );
       expect(fs.writeFile).toHaveBeenCalledWith(
         path.join('/home/user', '.taptik', 'config.yaml'),
         expect.stringContaining('autoUpload:'),
-        'utf-8'
+        'utf-8',
       );
     });
 
@@ -223,14 +226,26 @@ autoUpload:
         },
       };
 
-      const validationResult = service.validateConfiguration(invalidConfig as any);
+      const validationResult = service.validateConfiguration(
+        invalidConfig as any,
+      );
 
       expect(validationResult.isValid).toBe(false);
-      expect(validationResult.errors).toContain('autoUpload.enabled must be a boolean');
-      expect(validationResult.errors).toContain('autoUpload.visibility must be "public" or "private"');
-      expect(validationResult.errors).toContain('autoUpload.tags must be an array');
-      expect(validationResult.errors).toContain('auth.supabaseToken must be a string');
-      expect(validationResult.errors).toContain('preferences.compressionLevel must be "low", "medium", or "high"');
+      expect(validationResult.errors).toContain(
+        'autoUpload.enabled must be a boolean',
+      );
+      expect(validationResult.errors).toContain(
+        'autoUpload.visibility must be "public" or "private"',
+      );
+      expect(validationResult.errors).toContain(
+        'autoUpload.tags must be an array',
+      );
+      expect(validationResult.errors).toContain(
+        'auth.supabaseToken must be a string',
+      );
+      expect(validationResult.errors).toContain(
+        'preferences.compressionLevel must be "low", "medium", or "high"',
+      );
     });
 
     it('should support environment variable overrides', async () => {

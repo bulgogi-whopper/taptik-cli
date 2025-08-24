@@ -3,7 +3,10 @@ import { Injectable } from '@nestjs/common';
 import { Command, CommandRunner, Option } from 'nest-commander';
 
 import { ComponentType } from '../interfaces/component-types.interface';
-import { SupportedPlatform, ConflictStrategy } from '../interfaces/deploy-options.interface';
+import {
+  SupportedPlatform,
+  ConflictStrategy,
+} from '../interfaces/deploy-options.interface';
 import { DeploymentResult } from '../interfaces/deployment-result.interface';
 import { DeploymentService } from '../services/deployment.service';
 import { ImportService } from '../services/import.service';
@@ -21,7 +24,8 @@ interface DeployCommandOptions {
 
 @Command({
   name: 'deploy',
-  description: 'Deploy Taptik context to target platform (Claude Code, Kiro IDE)',
+  description:
+    'Deploy Taptik context to target platform (Claude Code, Kiro IDE)',
 })
 @Injectable()
 export class DeployCommand extends CommandRunner {
@@ -82,7 +86,9 @@ export class DeployCommand extends CommandRunner {
       } else if (options.dryRun) {
         console.log('🧪 Running in dry-run mode...');
       } else {
-        console.log(`🚀 Deploying to ${platform === 'claude-code' ? 'Claude Code' : 'Kiro IDE'}...`);
+        console.log(
+          `🚀 Deploying to ${platform === 'claude-code' ? 'Claude Code' : 'Kiro IDE'}...`,
+        );
       }
 
       // Step 3: Route to appropriate deployment method based on platform
@@ -98,7 +104,9 @@ export class DeployCommand extends CommandRunner {
           deployOptions,
         );
       } else {
-        console.error(`❌ Platform '${platform}' deployment is not implemented yet.`);
+        console.error(
+          `❌ Platform '${platform}' deployment is not implemented yet.`,
+        );
         process.exit(5); // Platform Error exit code
       }
 
@@ -154,7 +162,9 @@ export class DeployCommand extends CommandRunner {
   parsePlatform(value: string): SupportedPlatform {
     const supportedPlatforms: SupportedPlatform[] = ['claude-code', 'kiro-ide'];
     if (!supportedPlatforms.includes(value as SupportedPlatform)) {
-      throw new Error(`Unsupported platform: ${value}. Supported platforms: ${supportedPlatforms.join(', ')}`);
+      throw new Error(
+        `Unsupported platform: ${value}. Supported platforms: ${supportedPlatforms.join(', ')}`,
+      );
     }
     return value as SupportedPlatform;
   }

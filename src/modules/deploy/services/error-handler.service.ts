@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 import {
   DeployError,
@@ -23,6 +23,7 @@ interface ErrorRecoveryStrategy {
 
 @Injectable()
 export class ErrorHandlerService {
+  private readonly logger = new Logger(ErrorHandlerService.name);
   private readonly defaultRetryConfig: ErrorRetryConfig = {
     maxAttempts: 3,
     initialDelay: 1000,
@@ -93,9 +94,10 @@ export class ErrorHandlerService {
         }
 
         // Log retry attempt
-        console.log( // eslint-disable-line no-console
+        this.logger.log(
+           
           `⏳ Retry attempt ${attempt}/${config.maxAttempts} after ${delay}ms...`,
-        );  
+        );
 
         // Wait before retry with exponential backoff
         await this.delay(delay); // eslint-disable-line no-await-in-loop

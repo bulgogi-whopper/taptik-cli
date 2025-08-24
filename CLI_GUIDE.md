@@ -25,17 +25,17 @@ npm run cli -- --help
 
 ### Package.json Scripts Reference
 
-| Script | Description | Usage |
-|--------|-------------|-------|
-| `cli` | Run CLI with ts-node | `npm run cli -- build` |
-| `cli:build` | Build and run from dist | `npm run cli:build -- --help` |
-| `cli:dev` | Quick development build | `npm run cli:dev` |
-| `cli:help` | Show main CLI help | `npm run cli:help` |
-| `cli:build-help` | Show build command help | `npm run cli:build-help` |
-| `cli:test` | Test CLI health check | `npm run cli:test` |
-| `build:kiro` | Run build command | `npm run build:kiro` |
-| `build:test` | Test build functionality | `npm run build:test` |
-| `test:cli` | Run CLI integration tests | `npm run test:cli` |
+| Script           | Description               | Usage                         |
+| ---------------- | ------------------------- | ----------------------------- |
+| `cli`            | Run CLI with ts-node      | `npm run cli -- build`        |
+| `cli:build`      | Build and run from dist   | `npm run cli:build -- --help` |
+| `cli:dev`        | Quick development build   | `npm run cli:dev`             |
+| `cli:help`       | Show main CLI help        | `npm run cli:help`            |
+| `cli:build-help` | Show build command help   | `npm run cli:build-help`      |
+| `cli:test`       | Test CLI health check     | `npm run cli:test`            |
+| `build:kiro`     | Run build command         | `npm run build:kiro`          |
+| `build:test`     | Test build functionality  | `npm run build:test`          |
+| `test:cli`       | Run CLI integration tests | `npm run test:cli`            |
 
 ## 🏗️ Build Command Deep Dive
 
@@ -66,11 +66,12 @@ BuildCommand (Controller)
 ### Configuration Sources
 
 #### Local Settings (Project-level)
+
 ```
 .kiro/
 ├── settings/
 │   ├── context.md           # Project context and description
-│   ├── user-preferences.md  # User preferences for this project  
+│   ├── user-preferences.md  # User preferences for this project
 │   └── project-spec.md      # Project specifications
 ├── steering/               # Development guidelines
 │   ├── git.md              # Git workflow standards
@@ -82,6 +83,7 @@ BuildCommand (Controller)
 ```
 
 #### Global Settings (User-level)
+
 ```
 ~/.kiro/
 ├── config/
@@ -113,45 +115,51 @@ npm run cli -- build --platform kiro --output ./dist/taptik-config --quiet
 
 # 5. Specific use case builds
 npm run cli -- build --categories personal     # User context only
-npm run cli -- build --categories project      # Project context only  
+npm run cli -- build --categories project      # Project context only
 npm run cli -- build --categories prompts      # Templates only
 ```
 
 ### Advanced Options
 
 #### Dry Run Mode (`--dry-run`)
+
 - Performs all processing steps except file creation
 - Shows preview of what would be generated
 - Displays estimated file sizes
 - Useful for validation and debugging
 
 #### Custom Output Path (`--output <path>`)
+
 - Specify exact output directory
 - Can use relative or absolute paths
 - Directory will be created if it doesn't exist
 - Useful for CI/CD pipelines and automation
 
 #### Platform Preset (`--platform <platform>`)
+
 - Skip interactive platform selection
 - Supported values: `kiro`, `cursor`, `claude-code`
 - Case-insensitive
 - Useful for automation and batch processing
 
 #### Category Filtering (`--categories <list>`)
+
 - Build only specified categories
 - Comma-separated list: `personal,project,prompts`
 - Maps to internal category names:
   - `personal` → Personal Context
-  - `project` → Project Context  
+  - `project` → Project Context
   - `prompts` → Prompt Templates
 
 #### Verbose Mode (`--verbose`)
+
 - Shows detailed progress information
 - Displays configuration objects
 - Useful for debugging and development
 - Shows timing information for each step
 
 #### Quiet Mode (`--quiet`)
+
 - Suppresses non-essential output
 - Only shows errors and final results
 - Useful for automation and scripts
@@ -209,7 +217,7 @@ npm run cli -- build --platform kiro --categories personal --dry-run
 ```typescript
 interface PersonalContext {
   taptik_version: string;
-  context_type: "personal";
+  context_type: 'personal';
   created_at: string;
   source_platform: string;
   user_info: {
@@ -233,7 +241,7 @@ interface PersonalContext {
 ```typescript
 interface ProjectContext {
   taptik_version: string;
-  context_type: "project";
+  context_type: 'project';
   created_at: string;
   source_platform: string;
   project_info: {
@@ -256,7 +264,7 @@ interface ProjectContext {
 ```typescript
 interface PromptTemplates {
   taptik_version: string;
-  context_type: "prompt_templates";
+  context_type: 'prompt_templates';
   created_at: string;
   source_platform: string;
   templates: Array<{
@@ -306,6 +314,7 @@ interface Manifest {
 ### Common Issues
 
 #### "Permission Denied" Errors
+
 ```bash
 # Check file permissions
 ls -la .kiro/
@@ -317,6 +326,7 @@ chmod -R 755 ~/.kiro/
 ```
 
 #### "No Such File or Directory"
+
 ```bash
 # Initialize Kiro structure
 mkdir -p .kiro/{settings,steering,hooks}
@@ -324,6 +334,7 @@ mkdir -p ~/.kiro/{config,preferences,prompts}
 ```
 
 #### "Invalid Platform" Error
+
 ```bash
 # Use correct platform names (case-insensitive)
 npm run cli -- build --platform kiro     # ✓ Correct
@@ -332,6 +343,7 @@ npm run cli -- build --platform invalid  # ✗ Error
 ```
 
 #### "Invalid Category" Error
+
 ```bash
 # Use correct category names
 npm run cli -- build --categories personal,project,prompts  # ✓ Correct
@@ -347,6 +359,7 @@ npm run cli -- build --verbose
 ```
 
 This will show:
+
 - CLI options parsing
 - Configuration objects
 - File system operations
@@ -372,6 +385,7 @@ npm run cli:build-help
 ### Git Hooks Integration
 
 Add to your `.git/hooks/pre-commit`:
+
 ```bash
 #!/bin/bash
 # Ensure taptik config is up to date
@@ -386,7 +400,7 @@ npm run cli -- build --dry-run --quiet || echo "Warning: taptik build would fail
   run: |
     npm install
     npm run cli -- build --platform kiro --output ./taptik-config --quiet
-    
+
 - name: Upload Taptik Artifacts
   uses: actions/upload-artifact@v3
   with:
@@ -397,6 +411,7 @@ npm run cli -- build --dry-run --quiet || echo "Warning: taptik build would fail
 ### NPM Scripts Integration
 
 Add to your project's `package.json`:
+
 ```json
 {
   "scripts": {
@@ -412,6 +427,7 @@ Add to your project's `package.json`:
 ### Large Projects
 
 For projects with many files:
+
 - Use `--categories` to build only what you need
 - Consider using `--quiet` mode to reduce output overhead
 - Monitor memory usage with large Kiro configurations
@@ -419,6 +435,7 @@ For projects with many files:
 ### Automation
 
 For automated builds:
+
 - Always use `--platform` and `--categories` to avoid interactive prompts
 - Use `--quiet` to minimize log output
 - Set appropriate timeout values for your CI/CD system

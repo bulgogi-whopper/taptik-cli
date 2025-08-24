@@ -1,4 +1,3 @@
-
 /**
  * Mock file system utilities for testing with advanced error scenarios
  */
@@ -32,7 +31,8 @@ export interface MockFileSystemConfig {
 export class MockFileSystem {
   protected files: Map<string, string> = new Map();
   protected directories: Set<string> = new Set();
-  protected permissions: Map<string, { readable: boolean; writable: boolean }> = new Map();
+  protected permissions: Map<string, { readable: boolean; writable: boolean }> =
+    new Map();
   protected errors: Map<string, Error> = new Map();
 
   constructor(config: MockFileSystemConfig) {
@@ -72,7 +72,7 @@ export class MockFileSystem {
     if (perms && !perms.readable) {
       const error: FileSystemError = Object.assign(
         new Error(`EACCES: permission denied, open '${filePath}'`),
-        { code: 'EACCES' }
+        { code: 'EACCES' },
       );
       throw error;
     }
@@ -81,7 +81,7 @@ export class MockFileSystem {
     if (!this.files.has(filePath)) {
       const error: FileSystemError = Object.assign(
         new Error(`ENOENT: no such file or directory, open '${filePath}'`),
-        { code: 'ENOENT' }
+        { code: 'ENOENT' },
       );
       throw error;
     }
@@ -100,7 +100,7 @@ export class MockFileSystem {
     if (perms && !perms.writable) {
       const error: FileSystemError = Object.assign(
         new Error(`EACCES: permission denied, open '${filePath}'`),
-        { code: 'EACCES' }
+        { code: 'EACCES' },
       );
       throw error;
     }
@@ -117,8 +117,10 @@ export class MockFileSystem {
     // Check if directory exists
     if (!this.directories.has(directoryPath)) {
       const error: FileSystemError = Object.assign(
-        new Error(`ENOENT: no such file or directory, scandir '${directoryPath}'`),
-        { code: 'ENOENT' }
+        new Error(
+          `ENOENT: no such file or directory, scandir '${directoryPath}'`,
+        ),
+        { code: 'ENOENT' },
       );
       throw error;
     }
@@ -127,8 +129,10 @@ export class MockFileSystem {
     const filesInDirectory: string[] = [];
     const filePathsArray = Array.from(this.files.keys());
     for (const filePath of filePathsArray) {
-      if (filePath.startsWith(`${directoryPath  }/`)) {
-        const relativePath = filePath.slice(Math.max(0, directoryPath.length + 1));
+      if (filePath.startsWith(`${directoryPath}/`)) {
+        const relativePath = filePath.slice(
+          Math.max(0, directoryPath.length + 1),
+        );
         if (!relativePath.includes('/')) {
           filesInDirectory.push(relativePath);
         }
@@ -138,7 +142,10 @@ export class MockFileSystem {
     return filesInDirectory;
   }
 
-  async mkdir(directoryPath: string, options?: { recursive?: boolean }): Promise<void> {
+  async mkdir(
+    directoryPath: string,
+    options?: { recursive?: boolean },
+  ): Promise<void> {
     // Check for errors first
     if (this.errors.has(directoryPath)) {
       throw this.errors.get(directoryPath);
@@ -149,7 +156,7 @@ export class MockFileSystem {
     if (perms && !perms.writable) {
       const error: FileSystemError = Object.assign(
         new Error(`EACCES: permission denied, mkdir '${directoryPath}'`),
-        { code: 'EACCES' }
+        { code: 'EACCES' },
       );
       throw error;
     }
@@ -162,7 +169,7 @@ export class MockFileSystem {
       let currentPath = '';
       for (const part of parts) {
         if (part) {
-          currentPath += `/${  part}`;
+          currentPath += `/${part}`;
           this.directories.add(currentPath);
         }
       }
@@ -194,7 +201,7 @@ export class MockFileSystem {
 
     const error: FileSystemError = Object.assign(
       new Error(`ENOENT: no such file or directory, stat '${filePath}'`),
-      { code: 'ENOENT' }
+      { code: 'ENOENT' },
     );
     throw error;
   }
@@ -263,11 +270,16 @@ export function createMockFileSystemWithErrors(): MockFileSystem {
     },
     directories: ['.kiro', '.kiro/settings'],
     permissions: {
-      '.kiro/settings/user-preferences.md': { readable: false, writable: false },
+      '.kiro/settings/user-preferences.md': {
+        readable: false,
+        writable: false,
+      },
       '~/.kiro': { readable: false, writable: false },
     },
     errors: {
-      '.kiro/settings/project-spec.md': new Error('ENOENT: no such file or directory'),
+      '.kiro/settings/project-spec.md': new Error(
+        'ENOENT: no such file or directory',
+      ),
     },
   });
 }

@@ -2,15 +2,22 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { 
-  CloudMetadata, 
-  SanitizationResult, 
-  ValidationResult, 
-  TaptikPackage 
+import {
+  CloudMetadata,
+  SanitizationResult,
+  ValidationResult,
+  TaptikPackage,
 } from '../../../context/interfaces/cloud.interface';
-import { BuildConfig, BuildCategoryName, BuildPlatform } from '../../interfaces/build-config.interface';
+import {
+  BuildConfig,
+  BuildCategoryName,
+  BuildPlatform,
+} from '../../interfaces/build-config.interface';
 import { SettingsData } from '../../interfaces/settings-data.interface';
-import { TaptikPersonalContext, OutputFile } from '../../interfaces/taptik-format.interface';
+import {
+  TaptikPersonalContext,
+  OutputFile,
+} from '../../interfaces/taptik-format.interface';
 
 import { OutputService } from './output.service';
 
@@ -32,7 +39,7 @@ describe('OutputService', () => {
   it('should generate timestamp in correct format', () => {
     const timestamp = service['generateTimestamp']();
     expect(timestamp).toMatch(/^\d{8}-\d{6}$/);
-    
+
     // Verify timestamp components
     const parts = timestamp.split('-');
     expect(parts).toHaveLength(2);
@@ -57,11 +64,11 @@ describe('OutputService', () => {
       vi.spyOn(fs.promises, 'mkdir').mockImplementation(mockMkdir);
 
       const outputPath = await service.createOutputDirectory();
-      
+
       expect(outputPath).toMatch(/taptik-build-\d{8}-\d{6}$/);
       expect(mockMkdir).toHaveBeenCalledWith(
         expect.stringMatching(/taptik-build-\d{8}-\d{6}$/),
-        { recursive: true }
+        { recursive: true },
       );
 
       // Restore original method
@@ -82,11 +89,11 @@ describe('OutputService', () => {
       vi.spyOn(fs.promises, 'mkdir').mockImplementation(mockMkdir);
 
       const outputPath = await service.createOutputDirectory();
-      
+
       expect(outputPath).toMatch(/taptik-build-\d{8}-\d{6}-1$/);
       expect(mockMkdir).toHaveBeenCalledWith(
         expect.stringMatching(/taptik-build-\d{8}-\d{6}-1$/),
-        { recursive: true }
+        { recursive: true },
       );
     });
 
@@ -95,7 +102,7 @@ describe('OutputService', () => {
       service['directoryExists'] = vi.fn().mockResolvedValue(true);
 
       await expect(service.createOutputDirectory()).rejects.toThrow(
-        'Unable to create unique directory after 1000 attempts'
+        'Unable to create unique directory after 1000 attempts',
       );
     });
 
@@ -104,12 +111,14 @@ describe('OutputService', () => {
       service['directoryExists'] = vi.fn().mockResolvedValue(false);
 
       // Mock fs.mkdir to throw an error
-      const mockMkdir = vi.fn().mockRejectedValue(new Error('Permission denied'));
+      const mockMkdir = vi
+        .fn()
+        .mockRejectedValue(new Error('Permission denied'));
       const fs = await import('node:fs');
       vi.spyOn(fs.promises, 'mkdir').mockImplementation(mockMkdir);
 
       await expect(service.createOutputDirectory()).rejects.toThrow(
-        'File system error when creating output directory'
+        'File system error when creating output directory',
       );
     });
   });
@@ -117,9 +126,9 @@ describe('OutputService', () => {
   describe('writeOutputFiles', () => {
     it('should return empty array when no files provided', async () => {
       const mockOutputPath = '/test/path';
-      
+
       const result = await service.writeOutputFiles(mockOutputPath);
-      
+
       expect(result).toEqual([]);
     });
 
@@ -163,8 +172,11 @@ describe('OutputService', () => {
       vi.spyOn(fs.promises, 'writeFile').mockImplementation(mockWriteFile);
       vi.spyOn(fs.promises, 'stat').mockImplementation(mockStat);
 
-      const result = await service.writeOutputFiles(mockOutputPath, mockPersonalContext);
-      
+      const result = await service.writeOutputFiles(
+        mockOutputPath,
+        mockPersonalContext,
+      );
+
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual({
         filename: 'personal-context.json',
@@ -174,7 +186,7 @@ describe('OutputService', () => {
       expect(mockWriteFile).toHaveBeenCalledWith(
         '/test/path/personal-context.json',
         expect.stringContaining('"user_id": "test-user"'),
-        'utf8'
+        'utf8',
       );
     });
   });
@@ -192,7 +204,7 @@ describe('OutputService', () => {
         timestamp: '2025-01-04T10:30:00Z',
         buildId: 'build-123',
       };
-      
+
       const mockSettingsData: SettingsData = {
         localSettings: {
           steeringFiles: [],
@@ -212,7 +224,11 @@ describe('OutputService', () => {
       };
 
       const mockOutputFiles = [
-        { filename: 'personal-context.json', category: 'personal-context', size: 1024 },
+        {
+          filename: 'personal-context.json',
+          category: 'personal-context',
+          size: 1024,
+        },
       ];
 
       // Mock fs operations
@@ -222,7 +238,12 @@ describe('OutputService', () => {
       vi.spyOn(fs.promises, 'writeFile').mockImplementation(mockWriteFile);
       vi.spyOn(fs.promises, 'stat').mockImplementation(mockStat);
 
-      await service.generateManifest(mockOutputPath, mockConfig, mockSettingsData, mockOutputFiles);
+      await service.generateManifest(
+        mockOutputPath,
+        mockConfig,
+        mockSettingsData,
+        mockOutputFiles,
+      );
 
       const manifestContent = mockWriteFile.mock.calls[0][1];
       expect(manifestContent).toContain('"source_platform": "kiro"');
@@ -237,7 +258,7 @@ describe('OutputService', () => {
     it('should generate unique build IDs', () => {
       const id1 = service['generateBuildId']();
       const id2 = service['generateBuildId']();
-      
+
       expect(id1).toMatch(/^build(?:-[\da-z]+){2}$/);
       expect(id2).toMatch(/^build(?:-[\da-z]+){2}$/);
       expect(id1).not.toBe(id2);
@@ -253,8 +274,16 @@ describe('OutputService', () => {
 
   describe('displayBuildSummary', () => {
     const mockOutputFiles = [
-      { filename: 'personal-context.json', category: 'personal-context', size: 1024 },
-      { filename: 'project-context.json', category: 'project-context', size: 2048 },
+      {
+        filename: 'personal-context.json',
+        category: 'personal-context',
+        size: 1024,
+      },
+      {
+        filename: 'project-context.json',
+        category: 'project-context',
+        size: 2048,
+      },
     ];
 
     it('should display comprehensive build summary with warnings and errors', async () => {
@@ -269,7 +298,13 @@ describe('OutputService', () => {
       vi.spyOn(fs.promises, 'stat').mockImplementation(mockStat);
       service['fileExists'] = vi.fn().mockResolvedValue(true);
 
-      await service.displayBuildSummary(outputPath, mockOutputFiles, warnings, errors, buildTime);
+      await service.displayBuildSummary(
+        outputPath,
+        mockOutputFiles,
+        warnings,
+        errors,
+        buildTime,
+      );
 
       // Basic verification that the method executes without errors
       expect(service).toBeDefined();
@@ -277,7 +312,7 @@ describe('OutputService', () => {
 
     it('should display build summary without warnings and errors', async () => {
       const outputPath = '/test/output';
-      
+
       // Mock file existence
       service['fileExists'] = vi.fn().mockResolvedValue(false);
 
@@ -290,7 +325,7 @@ describe('OutputService', () => {
     it('should handle empty output files gracefully', async () => {
       const outputPath = '/test/output';
       const emptyOutputFiles: OutputFile[] = [];
-      
+
       service['fileExists'] = vi.fn().mockResolvedValue(false);
 
       await service.displayBuildSummary(outputPath, emptyOutputFiles);
@@ -303,12 +338,16 @@ describe('OutputService', () => {
       const mockOutputFiles = [
         { filename: 'test.json', category: 'test', size: 1024 },
       ];
-      
+
       // Mock file existence to throw an error
-      service['fileExists'] = vi.fn().mockRejectedValue(new Error('File access error'));
+      service['fileExists'] = vi
+        .fn()
+        .mockRejectedValue(new Error('File access error'));
 
       // Should not throw error - build summary errors are non-critical
-      await expect(service.displayBuildSummary(outputPath, mockOutputFiles)).resolves.toBeUndefined();
+      await expect(
+        service.displayBuildSummary(outputPath, mockOutputFiles),
+      ).resolves.toBeUndefined();
     });
   });
 
@@ -330,14 +369,14 @@ describe('OutputService', () => {
           commands: 3,
           mcpServers: 1,
           steeringRules: 4,
-          instructions: 2
+          instructions: 2,
         },
         features: ['mcp', 'agents', 'commands'],
         compatibility: ['claude-code-v1', 'cursor-v2'],
         searchKeywords: ['ai', 'development', 'claude'],
         fileSize: 1024,
         checksum: 'abc123',
-        isPublic: true
+        isPublic: true,
       };
 
       // Mock fs operations
@@ -350,12 +389,12 @@ describe('OutputService', () => {
       vi.spyOn(fs.promises, 'stat').mockImplementation(mockStat);
 
       const result = await service.writeCloudMetadata(outputPath, mockMetadata);
-      
+
       expect(result).toBeDefined();
       expect(mockWriteFile).toHaveBeenCalledWith(
         expect.stringContaining('cloud-metadata.json'),
         expect.stringContaining('"title": "Test Claude Code Configuration"'),
-        'utf8'
+        'utf8',
       );
     });
 
@@ -374,22 +413,25 @@ describe('OutputService', () => {
           commands: 0,
           mcpServers: 0,
           steeringRules: 0,
-          instructions: 0
+          instructions: 0,
         },
         features: [],
         compatibility: [],
         searchKeywords: [],
         fileSize: 0,
-        checksum: ''
+        checksum: '',
       };
 
       // Mock fs operations - access succeeds but writeFile fails
       const fs = await import('node:fs');
       vi.spyOn(fs.promises, 'access').mockResolvedValue(undefined);
-      vi.spyOn(fs.promises, 'writeFile').mockRejectedValue(new Error('Write failed'));
+      vi.spyOn(fs.promises, 'writeFile').mockRejectedValue(
+        new Error('Write failed'),
+      );
 
-      await expect(service.writeCloudMetadata(outputPath, mockMetadata))
-        .rejects.toThrow();
+      await expect(
+        service.writeCloudMetadata(outputPath, mockMetadata),
+      ).rejects.toThrow();
     });
   });
 
@@ -412,17 +454,20 @@ describe('OutputService', () => {
               category: 'credentials',
               severity: 'high',
               count: 2,
-              path: '.claude/settings.json'
-            }
-          ]
+              path: '.claude/settings.json',
+            },
+          ],
         },
         severityBreakdown: {
           safe: 95,
           low: 3,
           medium: 1,
-          critical: 1
+          critical: 1,
         },
-        recommendations: ['Review API key management', 'Use environment variables']
+        recommendations: [
+          'Review API key management',
+          'Use environment variables',
+        ],
       };
 
       // Mock fs operations
@@ -434,13 +479,16 @@ describe('OutputService', () => {
       vi.spyOn(fs.promises, 'access').mockImplementation(mockAccess);
       vi.spyOn(fs.promises, 'stat').mockImplementation(mockStat);
 
-      const result = await service.writeSanitizationReport(outputPath, mockSanitizationResult);
-      
+      const result = await service.writeSanitizationReport(
+        outputPath,
+        mockSanitizationResult,
+      );
+
       expect(result).toBeDefined();
       expect(mockWriteFile).toHaveBeenCalledWith(
         expect.stringContaining('sanitization-report.json'),
         expect.any(String),
-        'utf8'
+        'utf8',
       );
     });
 
@@ -455,8 +503,8 @@ describe('OutputService', () => {
           sanitizedFields: 0,
           safeFields: 0,
           timestamp: new Date(),
-          summary: 'No sanitization needed'
-        }
+          summary: 'No sanitization needed',
+        },
       };
 
       // Mock fs operations
@@ -467,8 +515,11 @@ describe('OutputService', () => {
       vi.spyOn(fs.promises, 'access').mockImplementation(mockAccess);
       vi.spyOn(fs.promises, 'stat').mockResolvedValue({ size: 100 } as any);
 
-      const result = await service.writeSanitizationReport(outputPath, mockSanitizationResult);
-      
+      const result = await service.writeSanitizationReport(
+        outputPath,
+        mockSanitizationResult,
+      );
+
       expect(result).toBeDefined();
     });
   });
@@ -485,14 +536,14 @@ describe('OutputService', () => {
         sizeLimit: {
           current: 1024,
           maximum: 10240,
-          withinLimit: true
+          withinLimit: true,
         },
         featureSupport: {
           ide: 'claude-code',
           supported: ['mcp', 'agents', 'commands'],
-          unsupported: ['advanced-hooks']
+          unsupported: ['advanced-hooks'],
         },
-        recommendations: ['Add more metadata for better discoverability']
+        recommendations: ['Add more metadata for better discoverability'],
       };
 
       // Mock fs operations
@@ -504,13 +555,16 @@ describe('OutputService', () => {
       vi.spyOn(fs.promises, 'access').mockImplementation(mockAccess);
       vi.spyOn(fs.promises, 'stat').mockImplementation(mockStat);
 
-      const result = await service.writeValidationReport(outputPath, mockValidationResult);
-      
+      const result = await service.writeValidationReport(
+        outputPath,
+        mockValidationResult,
+      );
+
       expect(result).toBeDefined();
       expect(mockWriteFile).toHaveBeenCalledWith(
         expect.stringContaining('validation-report.json'),
         expect.any(String),
-        'utf8'
+        'utf8',
       );
     });
 
@@ -525,14 +579,14 @@ describe('OutputService', () => {
         sizeLimit: {
           current: 20480,
           maximum: 10240,
-          withinLimit: false
+          withinLimit: false,
         },
         featureSupport: {
           ide: 'claude-code',
           supported: [],
-          unsupported: ['mcp', 'agents']
+          unsupported: ['mcp', 'agents'],
         },
-        recommendations: ['Fix schema errors', 'Reduce package size']
+        recommendations: ['Fix schema errors', 'Reduce package size'],
       };
 
       // Mock fs operations
@@ -544,8 +598,11 @@ describe('OutputService', () => {
       vi.spyOn(fs.promises, 'access').mockImplementation(mockAccess);
       vi.spyOn(fs.promises, 'stat').mockImplementation(mockStat);
 
-      const result = await service.writeValidationReport(outputPath, mockValidationResult);
-      
+      const result = await service.writeValidationReport(
+        outputPath,
+        mockValidationResult,
+      );
+
       expect(result).toBeDefined();
     });
   });
@@ -554,10 +611,26 @@ describe('OutputService', () => {
     it('should display cloud package information in build summary', async () => {
       const outputPath = '/test/output';
       const mockOutputFiles = [
-        { filename: 'personal-context.json', category: 'personal-context', size: 1024 },
-        { filename: 'project-context.json', category: 'project-context', size: 2048 },
-        { filename: 'cloud-metadata.json', category: 'cloud-metadata', size: 512 },
-        { filename: 'sanitization-report.json', category: 'sanitization-report', size: 256 }
+        {
+          filename: 'personal-context.json',
+          category: 'personal-context',
+          size: 1024,
+        },
+        {
+          filename: 'project-context.json',
+          category: 'project-context',
+          size: 2048,
+        },
+        {
+          filename: 'cloud-metadata.json',
+          category: 'cloud-metadata',
+          size: 512,
+        },
+        {
+          filename: 'sanitization-report.json',
+          category: 'sanitization-report',
+          size: 256,
+        },
       ];
       const mockCloudPackage: TaptikPackage = {
         metadata: {
@@ -573,13 +646,13 @@ describe('OutputService', () => {
             commands: 2,
             mcpServers: 0,
             steeringRules: 3,
-            instructions: 1
+            instructions: 1,
           },
           features: ['basic'],
           compatibility: ['claude-code-v1'],
           searchKeywords: ['test'],
           fileSize: 3840,
-          checksum: 'test-checksum'
+          checksum: 'test-checksum',
         },
         sanitizedConfig: {
           version: '1.0',
@@ -587,8 +660,8 @@ describe('OutputService', () => {
           targetIdes: ['claude-code'],
           data: {},
           metadata: {
-            timestamp: new Date().toISOString()
-          }
+            timestamp: new Date().toISOString(),
+          },
         },
         checksum: 'test-checksum',
         format: 'taptik-v1',
@@ -597,8 +670,8 @@ describe('OutputService', () => {
         manifest: {
           files: ['test.json'],
           directories: ['.claude'],
-          totalSize: 3840
-        }
+          totalSize: 3840,
+        },
       };
 
       // Mock file existence
@@ -606,32 +679,40 @@ describe('OutputService', () => {
 
       // Mock fs.stat
       const fs = await import('node:fs');
-      vi.spyOn(fs.promises, 'stat').mockResolvedValue({ 
+      vi.spyOn(fs.promises, 'stat').mockResolvedValue({
         size: 512,
         mtime: new Date(),
         isFile: () => true,
-        isDirectory: () => false 
+        isDirectory: () => false,
       } as any);
 
       // This test expects the enhanced displayBuildSummary to handle cloud package
       // It will fail as the method doesn't have cloud support yet (RED phase)
       await expect(
-        (service as any).displayBuildSummary(outputPath, mockOutputFiles, [], [], 1000, mockCloudPackage)
+        (service as any).displayBuildSummary(
+          outputPath,
+          mockOutputFiles,
+          [],
+          [],
+          1000,
+          mockCloudPackage,
+        ),
       ).resolves.toBeUndefined();
     });
 
     it('should handle cloud-ready output directory structure', async () => {
       const outputPath = '/test/output';
-      
+
       // Mock fs.mkdir and fs.access
       const mockMkdir = vi.fn().mockResolvedValue(undefined);
       const mockAccess = vi.fn().mockResolvedValue(undefined);
       const fs = await import('node:fs');
       vi.spyOn(fs.promises, 'mkdir').mockImplementation(mockMkdir);
       vi.spyOn(fs.promises, 'access').mockImplementation(mockAccess);
-      
-      const cloudStructure = await service.createCloudReadyOutputStructure(outputPath);
-      
+
+      const cloudStructure =
+        await service.createCloudReadyOutputStructure(outputPath);
+
       expect(cloudStructure).toBeDefined();
       expect(cloudStructure.directories).toContain('cloud');
       expect(cloudStructure.directories).toContain('reports');
@@ -647,7 +728,7 @@ describe('OutputService', () => {
   describe('helper methods for summary', () => {
     it('should format bytes correctly', () => {
       const formatBytes = (service as any).formatBytes.bind(service);
-      
+
       expect(formatBytes(0)).toBe('0 B');
       expect(formatBytes(512)).toBe('512 B');
       expect(formatBytes(1024)).toBe('1 KB');
@@ -667,7 +748,9 @@ describe('OutputService', () => {
     });
 
     it('should display issues summary correctly', () => {
-      const displayIssuesSummary = (service as any).displayIssuesSummary.bind(service);
+      const displayIssuesSummary = (service as any).displayIssuesSummary.bind(
+        service,
+      );
       const warnings = ['Test warning'];
       const errors = ['Test error'];
 

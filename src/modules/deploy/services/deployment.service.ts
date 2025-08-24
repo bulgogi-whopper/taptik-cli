@@ -44,15 +44,15 @@ export class DeploymentService {
   ): Promise<DeploymentResult> {
     // Generate unique deployment ID for performance tracking
     const deploymentId = `deploy-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-    
+
     // Check if this is a large configuration that should use streaming
     const contextSize = Buffer.byteLength(JSON.stringify(context), 'utf8');
     const isLargeConfig = contextSize > 10 * 1024 * 1024; // 10MB threshold
-    
+
     if (isLargeConfig && options.enableLargeFileStreaming !== false) {
       return this.deployLargeConfiguration(context, options, deploymentId);
     }
-    
+
     // Start performance monitoring
     this.performanceMonitor.startDeploymentTiming(deploymentId);
     this.performanceMonitor.recordMemoryUsage(deploymentId, 'start');
@@ -78,7 +78,10 @@ export class DeploymentService {
 
     try {
       // Step 1: Validate configuration for platform
-      this.performanceMonitor.recordMemoryUsage(deploymentId, 'validation-start');
+      this.performanceMonitor.recordMemoryUsage(
+        deploymentId,
+        'validation-start',
+      );
       const validationResult = await this.validatorService.validateForPlatform(
         context,
         'claude-code',
@@ -164,7 +167,7 @@ export class DeploymentService {
         try {
           // Start component timing
           this.performanceMonitor.startComponentTiming(deploymentId, component);
-          
+
           if (component === 'settings') {
             // Deploy settings even if empty for testing purposes
             const settings = context.content.ide?.claudeCode?.settings || {};
@@ -187,13 +190,14 @@ export class DeploymentService {
             context.content.project &&
             Object.keys(context.content.project).length > 0
           ) {
-            await this.deployProjectSettings( // eslint-disable-line no-await-in-loop 
+            await this.deployProjectSettings( // eslint-disable-line no-await-in-loop
+               
               context.content.project as Record<string, unknown>,
             );
             (result.deployedComponents as string[]).push('project');
             result.summary.filesDeployed++;
           }
-          
+
           // End component timing
           this.performanceMonitor.endComponentTiming(deploymentId, component);
         } catch (componentError) {
@@ -207,18 +211,20 @@ export class DeploymentService {
       }
 
       result.success = true;
-      
+
       // End performance monitoring and generate report
       this.performanceMonitor.endDeploymentTiming(deploymentId);
       this.performanceMonitor.recordMemoryUsage(deploymentId, 'end');
-      
-      const performanceReport = this.performanceMonitor.generatePerformanceReport(deploymentId);
-      const performanceViolations = this.performanceMonitor.checkPerformanceThresholds(deploymentId);
-      
+
+      const performanceReport =
+        this.performanceMonitor.generatePerformanceReport(deploymentId);
+      const performanceViolations =
+        this.performanceMonitor.checkPerformanceThresholds(deploymentId);
+
       if (result.metadata) {
         result.metadata.performanceReport = performanceReport;
       }
-      
+
       // Add performance warnings if there are violations
       for (const violation of performanceViolations) {
         result.warnings.push({
@@ -226,7 +232,7 @@ export class DeploymentService {
           code: `PERFORMANCE_${violation.type.toUpperCase()}`,
         });
       }
-      
+
       return result;
     } catch (error) {
       result.errors = [
@@ -286,7 +292,7 @@ export class DeploymentService {
   ): Promise<DeploymentResult> {
     // Generate unique deployment ID for performance tracking
     const deploymentId = `kiro-deploy-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-    
+
     // Start performance monitoring
     this.performanceMonitor.startDeploymentTiming(deploymentId);
     this.performanceMonitor.recordMemoryUsage(deploymentId, 'start');
@@ -312,18 +318,24 @@ export class DeploymentService {
 
     try {
       // Step 1: Check Kiro installation and compatibility
-      this.performanceMonitor.recordMemoryUsage(deploymentId, 'installation-check-start');
-      
-      const installationInfo = await this.kiroInstallationDetector.detectKiroInstallation();
-      
+      this.performanceMonitor.recordMemoryUsage(
+        deploymentId,
+        'installation-check-start',
+      );
+
+      const installationInfo =
+        await this.kiroInstallationDetector.detectKiroInstallation();
+
       if (!installationInfo.isInstalled) {
         result.errors.push({
-          message: 'Kiro IDE is not installed or not found in expected locations',
+          message:
+            'Kiro IDE is not installed or not found in expected locations',
           code: 'KIRO_NOT_INSTALLED',
           severity: 'CRITICAL',
         });
         this.performanceMonitor.endDeploymentTiming(deploymentId);
-        result.metadata!.performanceReport = 'Kiro deployment failed - installation not found';
+        result.metadata!.performanceReport =
+          'Kiro deployment failed - installation not found';
         return result;
       }
 
@@ -335,8 +347,11 @@ export class DeploymentService {
 
       // Check compatibility
       if (!installationInfo.isCompatible) {
-        const compatibilityResult = await this.kiroInstallationDetector.checkCompatibility(installationInfo.version);
-        
+        const compatibilityResult =
+          await this.kiroInstallationDetector.checkCompatibility(
+            installationInfo.version,
+          );
+
         // Add compatibility issues as warnings or errors based on severity
         for (const issue of compatibilityResult.issues) {
           if (issue.severity === 'critical') {
@@ -354,9 +369,14 @@ export class DeploymentService {
         }
 
         // Stop deployment if critical compatibility issues exist
-        if (compatibilityResult.issues.some(issue => issue.severity === 'critical')) {
+        if (
+          compatibilityResult.issues.some(
+            (issue) => issue.severity === 'critical',
+          )
+        ) {
           this.performanceMonitor.endDeploymentTiming(deploymentId);
-          result.metadata!.performanceReport = 'Kiro deployment failed - compatibility issues';
+          result.metadata!.performanceReport =
+            'Kiro deployment failed - compatibility issues';
           return result;
         }
 
@@ -369,10 +389,16 @@ export class DeploymentService {
         }
       }
 
-      this.performanceMonitor.recordMemoryUsage(deploymentId, 'installation-check-end');
+      this.performanceMonitor.recordMemoryUsage(
+        deploymentId,
+        'installation-check-end',
+      );
 
       // Step 2: Validate configuration for Kiro platform
-      this.performanceMonitor.recordMemoryUsage(deploymentId, 'validation-start');
+      this.performanceMonitor.recordMemoryUsage(
+        deploymentId,
+        'validation-start',
+      );
       const validationResult = await this.validatorService.validateForPlatform(
         context,
         'kiro-ide',
@@ -387,7 +413,8 @@ export class DeploymentService {
           severity: error.severity,
         }));
         this.performanceMonitor.endDeploymentTiming(deploymentId);
-        result.metadata!.performanceReport = 'Kiro deployment failed - validation errors';
+        result.metadata!.performanceReport =
+          'Kiro deployment failed - validation errors';
         return result;
       }
 
@@ -402,27 +429,56 @@ export class DeploymentService {
       // Step 3: Return early for validation-only mode
       if (options.validateOnly) {
         result.success = true;
-        result.metadata!.performanceReport = 'Kiro validation completed successfully';
+        result.metadata!.performanceReport =
+          'Kiro validation completed successfully';
         this.performanceMonitor.endDeploymentTiming(deploymentId);
         return result;
       }
 
       // Step 4: Security scan for Kiro components
       this.performanceMonitor.recordMemoryUsage(deploymentId, 'security-start');
-      
+
       // Transform TaptikContext to Kiro formats for security scanning
-      const globalSettings = this.kiroTransformer.transformPersonalContext(context);
-      const projectTransformation = this.kiroTransformer.transformProjectContext(context);
-      const templates = this.kiroTransformer.transformPromptTemplates(context.content.prompts || {});
+      const globalSettings =
+        this.kiroTransformer.transformPersonalContext(context);
+      const projectTransformation =
+        this.kiroTransformer.transformProjectContext(context);
+      const templates = this.kiroTransformer.transformPromptTemplates(
+        context.content.prompts || {},
+      );
 
       // Prepare components for security scanning
       const componentsForScan = [
-        ...projectTransformation.hooks.map(hook => ({ type: 'hooks' as const, name: hook.name, content: hook })),
-        ...templates.map(template => ({ type: 'templates' as const, name: template.name, content: template })),
-        { type: 'settings' as const, name: 'global-settings', content: globalSettings },
-        { type: 'settings' as const, name: 'project-settings', content: projectTransformation.settings },
-        ...projectTransformation.steering.map((doc, index) => ({ type: 'steering' as const, name: `steering-${index}`, content: doc })),
-        ...projectTransformation.specs.map((spec, index) => ({ type: 'specs' as const, name: `spec-${index}`, content: spec })),
+        ...projectTransformation.hooks.map((hook) => ({
+          type: 'hooks' as const,
+          name: hook.name,
+          content: hook,
+        })),
+        ...templates.map((template) => ({
+          type: 'templates' as const,
+          name: template.name,
+          content: template,
+        })),
+        {
+          type: 'settings' as const,
+          name: 'global-settings',
+          content: globalSettings,
+        },
+        {
+          type: 'settings' as const,
+          name: 'project-settings',
+          content: projectTransformation.settings,
+        },
+        ...projectTransformation.steering.map((doc, index) => ({
+          type: 'steering' as const,
+          name: `steering-${index}`,
+          content: doc,
+        })),
+        ...projectTransformation.specs.map((spec, index) => ({
+          type: 'specs' as const,
+          name: `spec-${index}`,
+          content: spec,
+        })),
       ];
 
       const securityOptions = {
@@ -432,19 +488,23 @@ export class DeploymentService {
         validateOnly: options.validateOnly,
       };
 
-      const securityResult = await this.securityService.scanKiroComponents(componentsForScan, securityOptions);
+      const securityResult = await this.securityService.scanKiroComponents(
+        componentsForScan,
+        securityOptions,
+      );
       this.performanceMonitor.recordMemoryUsage(deploymentId, 'security-end');
 
       if (!securityResult.isSafe || !securityResult.passed) {
-        const quarantinedComponents = securityResult.quarantinedComponents || [];
+        const quarantinedComponents =
+          securityResult.quarantinedComponents || [];
         const securityViolations = securityResult.securityViolations || [];
-        
+
         result.errors.push({
           message: `Kiro security check failed: ${quarantinedComponents.length} component(s) quarantined, ${securityViolations.length} violation(s) found`,
           code: 'KIRO_SECURITY_CHECK_FAILED',
           severity: 'HIGH',
         });
-        
+
         // Add detailed security violation information
         for (const violation of securityViolations) {
           result.warnings.push({
@@ -471,42 +531,61 @@ export class DeploymentService {
 
       // Step 5: Validate transformation results
       const validation = this.kiroTransformer.validateTransformation(
-        globalSettings, 
-        projectTransformation.settings
+        globalSettings,
+        projectTransformation.settings,
       );
 
       if (!validation.isValid) {
-        result.errors.push(...validation.errors.map(error => ({
-          message: error,
-          code: 'KIRO_TRANSFORMATION_ERROR',
-          severity: 'error'
-        })));
-        
+        result.errors.push(
+          ...validation.errors.map((error) => ({
+            message: error,
+            code: 'KIRO_TRANSFORMATION_ERROR',
+            severity: 'error',
+          })),
+        );
+
         this.performanceMonitor.endDeploymentTiming(deploymentId);
-        result.metadata!.performanceReport = 'Kiro deployment failed - transformation validation errors';
+        result.metadata!.performanceReport =
+          'Kiro deployment failed - transformation validation errors';
         return result;
       }
 
       // Add validation warnings
       if (validation.warnings.length > 0) {
-        result.warnings.push(...validation.warnings.map(warning => ({
-          message: warning,
-          code: 'KIRO_TRANSFORMATION_WARNING'
-        })));
+        result.warnings.push(
+          ...validation.warnings.map((warning) => ({
+            message: warning,
+            code: 'KIRO_TRANSFORMATION_WARNING',
+          })),
+        );
       }
 
       // Step 6: Create deployment context
       const homeDirectory = os.homedir();
       const projectDirectory = process.cwd();
-      const deploymentContext = this.kiroTransformer.createDeploymentContext(homeDirectory, projectDirectory);
+      const deploymentContext = this.kiroTransformer.createDeploymentContext(
+        homeDirectory,
+        projectDirectory,
+      );
 
       // Step 7: Apply deployment options filtering
-      let componentsToProcess = ['settings', 'steering', 'specs', 'hooks', 'agents', 'templates'];
+      let componentsToProcess = [
+        'settings',
+        'steering',
+        'specs',
+        'hooks',
+        'agents',
+        'templates',
+      ];
       if (options.components && options.components.length > 0) {
-        componentsToProcess = options.components.filter(c => componentsToProcess.includes(c));
+        componentsToProcess = options.components.filter((c) =>
+          componentsToProcess.includes(c),
+        );
       }
       if (options.skipComponents && options.skipComponents.length > 0) {
-        componentsToProcess = componentsToProcess.filter(c => !options.skipComponents!.includes(c as ComponentType));
+        componentsToProcess = componentsToProcess.filter(
+          (c) => !options.skipComponents!.includes(c as ComponentType),
+        );
       }
 
       // Step 8: Prepare deployment result with transformation data
@@ -518,33 +597,33 @@ export class DeploymentService {
       // Log deployment context paths for debugging
       result.warnings.push({
         message: `Deployment paths: ${JSON.stringify(deploymentContext.paths)}`,
-        code: 'KIRO_DEPLOYMENT_PATHS'
+        code: 'KIRO_DEPLOYMENT_PATHS',
       });
 
       // Add transformation results as warnings for now (until actual deployment is implemented)
       result.warnings.push({
         message: `Transformed ${Object.keys(globalSettings.user.profile).length} user profile fields`,
-        code: 'KIRO_TRANSFORMATION_INFO'
+        code: 'KIRO_TRANSFORMATION_INFO',
       });
 
       result.warnings.push({
         message: `Generated ${projectTransformation.steering.length} steering documents`,
-        code: 'KIRO_TRANSFORMATION_INFO'
+        code: 'KIRO_TRANSFORMATION_INFO',
       });
 
       result.warnings.push({
         message: `Generated ${projectTransformation.specs.length} spec documents`,
-        code: 'KIRO_TRANSFORMATION_INFO'
+        code: 'KIRO_TRANSFORMATION_INFO',
       });
 
       result.warnings.push({
         message: `Generated ${projectTransformation.hooks.length} hooks`,
-        code: 'KIRO_TRANSFORMATION_INFO'
+        code: 'KIRO_TRANSFORMATION_INFO',
       });
 
       result.warnings.push({
         message: `Generated ${templates.length} templates`,
-        code: 'KIRO_TRANSFORMATION_INFO'
+        code: 'KIRO_TRANSFORMATION_INFO',
       });
 
       // Step 9: Handle backup strategy
@@ -570,10 +649,11 @@ export class DeploymentService {
         result.success = true;
         result.warnings.push({
           message: 'Dry run mode - no files were actually written to disk',
-          code: 'KIRO_DRY_RUN'
+          code: 'KIRO_DRY_RUN',
         });
         this.performanceMonitor.endDeploymentTiming(deploymentId);
-        result.metadata!.performanceReport = 'Kiro dry-run completed successfully';
+        result.metadata!.performanceReport =
+          'Kiro dry-run completed successfully';
         return result;
       }
 
@@ -586,129 +666,144 @@ export class DeploymentService {
         globalSettings: true,
         projectSettings: true,
         preserveTaskStatus: true,
-        mergeStrategy: 'deep-merge' as const
+        mergeStrategy: 'deep-merge' as const,
       };
 
-        let actualFilesDeployed = 0;
+      let actualFilesDeployed = 0;
 
-        // Deploy settings if included
-        if (componentsToProcess.includes('settings')) {
-          const settingsResult = await this.kiroComponentHandler.deploySettings(
-            globalSettings,
-            projectTransformation.settings,
-            deploymentContext,
-            kiroOptions
-          );
-          
-          if (settingsResult.globalDeployed || settingsResult.projectDeployed) {
-            actualFilesDeployed += (settingsResult.globalDeployed ? 1 : 0) + (settingsResult.projectDeployed ? 1 : 0);
-          }
-          
-          result.errors.push(...settingsResult.errors);
-          result.warnings.push(...settingsResult.warnings);
+      // Deploy settings if included
+      if (componentsToProcess.includes('settings')) {
+        const settingsResult = await this.kiroComponentHandler.deploySettings(
+          globalSettings,
+          projectTransformation.settings,
+          deploymentContext,
+          kiroOptions,
+        );
+
+        if (settingsResult.globalDeployed || settingsResult.projectDeployed) {
+          actualFilesDeployed +=
+            (settingsResult.globalDeployed ? 1 : 0) +
+            (settingsResult.projectDeployed ? 1 : 0);
         }
 
-        // Deploy steering documents if included
-        if (componentsToProcess.includes('steering') && projectTransformation.steering.length > 0) {
-          const steeringResult = await this.kiroComponentHandler.deploySteering(
-            projectTransformation.steering,
-            deploymentContext,
-            kiroOptions
-          );
-          
-          actualFilesDeployed += steeringResult.deployedFiles.length;
-          result.errors.push(...steeringResult.errors);
-          result.warnings.push(...steeringResult.warnings);
-        }
+        result.errors.push(...settingsResult.errors);
+        result.warnings.push(...settingsResult.warnings);
+      }
 
-        // Deploy specs if included
-        if (componentsToProcess.includes('specs') && projectTransformation.specs.length > 0) {
-          const specsResult = await this.kiroComponentHandler.deploySpecs(
-            projectTransformation.specs,
-            deploymentContext,
-            kiroOptions
-          );
-          
-          actualFilesDeployed += specsResult.deployedFiles.length;
-          result.errors.push(...specsResult.errors);
-          result.warnings.push(...specsResult.warnings);
-        }
+      // Deploy steering documents if included
+      if (
+        componentsToProcess.includes('steering') &&
+        projectTransformation.steering.length > 0
+      ) {
+        const steeringResult = await this.kiroComponentHandler.deploySteering(
+          projectTransformation.steering,
+          deploymentContext,
+          kiroOptions,
+        );
 
-        // Deploy hooks if included
-        if (componentsToProcess.includes('hooks') && projectTransformation.hooks.length > 0) {
-          const hooksResult = await this.kiroComponentHandler.deployHooks(
-            projectTransformation.hooks,
-            deploymentContext,
-            kiroOptions
-          );
-          
-          actualFilesDeployed += hooksResult.deployedFiles.length;
-          result.errors.push(...hooksResult.errors);
-          result.warnings.push(...hooksResult.warnings);
-        }
+        actualFilesDeployed += steeringResult.deployedFiles.length;
+        result.errors.push(...steeringResult.errors);
+        result.warnings.push(...steeringResult.warnings);
+      }
 
-        // Deploy agents if included
-        if (componentsToProcess.includes('agents') && globalSettings.agents && globalSettings.agents.length > 0) {
-          const agentsResult = await this.kiroComponentHandler.deployAgents(
-            globalSettings.agents,
-            deploymentContext,
-            kiroOptions
-          );
-          
-          actualFilesDeployed += agentsResult.deployedFiles.length;
-          result.errors.push(...agentsResult.errors);
-          result.warnings.push(...agentsResult.warnings);
-        }
+      // Deploy specs if included
+      if (
+        componentsToProcess.includes('specs') &&
+        projectTransformation.specs.length > 0
+      ) {
+        const specsResult = await this.kiroComponentHandler.deploySpecs(
+          projectTransformation.specs,
+          deploymentContext,
+          kiroOptions,
+        );
 
-        // Deploy templates if included
-        if (componentsToProcess.includes('templates') && templates.length > 0) {
-          const templatesResult = await this.kiroComponentHandler.deployTemplates(
-            templates,
-            deploymentContext,
-            kiroOptions
-          );
-          
-          actualFilesDeployed += templatesResult.deployedFiles.length;
-          result.errors.push(...templatesResult.errors);
-          result.warnings.push(...templatesResult.warnings);
-        }
+        actualFilesDeployed += specsResult.deployedFiles.length;
+        result.errors.push(...specsResult.errors);
+        result.warnings.push(...specsResult.warnings);
+      }
 
-        // Update deployment summary with actual results
-        result.summary.filesDeployed = actualFilesDeployed;
-        
-        if (result.errors.length > 0) {
-          result.success = false;
-          result.warnings.push({
-            message: `Deployment completed with ${result.errors.length} errors`,
-            code: 'KIRO_DEPLOYMENT_PARTIAL_SUCCESS'
-          });
-        } else {
-          result.warnings.push({
-            message: `Successfully deployed ${actualFilesDeployed} files to Kiro IDE`,
-            code: 'KIRO_DEPLOYMENT_SUCCESS'
-          });
-        }
+      // Deploy hooks if included
+      if (
+        componentsToProcess.includes('hooks') &&
+        projectTransformation.hooks.length > 0
+      ) {
+        const hooksResult = await this.kiroComponentHandler.deployHooks(
+          projectTransformation.hooks,
+          deploymentContext,
+          kiroOptions,
+        );
 
-        // Update deployment summary with actual results
-        result.summary.filesDeployed = actualFilesDeployed;
-        
-        if (result.errors.length > 0) {
-          result.success = false;
-          result.warnings.push({
-            message: `Deployment completed with ${result.errors.length} errors`,
-            code: 'KIRO_DEPLOYMENT_PARTIAL_SUCCESS'
-          });
-        } else {
-          result.warnings.push({
-            message: `Successfully deployed ${actualFilesDeployed} files to Kiro IDE`,
-            code: 'KIRO_DEPLOYMENT_SUCCESS'
-          });
-        }
-      
+        actualFilesDeployed += hooksResult.deployedFiles.length;
+        result.errors.push(...hooksResult.errors);
+        result.warnings.push(...hooksResult.warnings);
+      }
+
+      // Deploy agents if included
+      if (
+        componentsToProcess.includes('agents') &&
+        globalSettings.agents &&
+        globalSettings.agents.length > 0
+      ) {
+        const agentsResult = await this.kiroComponentHandler.deployAgents(
+          globalSettings.agents,
+          deploymentContext,
+          kiroOptions,
+        );
+
+        actualFilesDeployed += agentsResult.deployedFiles.length;
+        result.errors.push(...agentsResult.errors);
+        result.warnings.push(...agentsResult.warnings);
+      }
+
+      // Deploy templates if included
+      if (componentsToProcess.includes('templates') && templates.length > 0) {
+        const templatesResult = await this.kiroComponentHandler.deployTemplates(
+          templates,
+          deploymentContext,
+          kiroOptions,
+        );
+
+        actualFilesDeployed += templatesResult.deployedFiles.length;
+        result.errors.push(...templatesResult.errors);
+        result.warnings.push(...templatesResult.warnings);
+      }
+
+      // Update deployment summary with actual results
+      result.summary.filesDeployed = actualFilesDeployed;
+
+      if (result.errors.length > 0) {
+        result.success = false;
+        result.warnings.push({
+          message: `Deployment completed with ${result.errors.length} errors`,
+          code: 'KIRO_DEPLOYMENT_PARTIAL_SUCCESS',
+        });
+      } else {
+        result.warnings.push({
+          message: `Successfully deployed ${actualFilesDeployed} files to Kiro IDE`,
+          code: 'KIRO_DEPLOYMENT_SUCCESS',
+        });
+      }
+
+      // Update deployment summary with actual results
+      result.summary.filesDeployed = actualFilesDeployed;
+
+      if (result.errors.length > 0) {
+        result.success = false;
+        result.warnings.push({
+          message: `Deployment completed with ${result.errors.length} errors`,
+          code: 'KIRO_DEPLOYMENT_PARTIAL_SUCCESS',
+        });
+      } else {
+        result.warnings.push({
+          message: `Successfully deployed ${actualFilesDeployed} files to Kiro IDE`,
+          code: 'KIRO_DEPLOYMENT_SUCCESS',
+        });
+      }
+
       // End performance monitoring
       this.performanceMonitor.endDeploymentTiming(deploymentId);
       result.metadata.performanceReport = `Kiro deployment completed: ${result.summary.filesDeployed} files deployed`;
-      
+
       return result;
     } catch (error) {
       // Add error to result
@@ -721,20 +816,21 @@ export class DeploymentService {
       // Attempt error recovery if backup was created
       if (result.summary.backupCreated && result.backupPath) {
         try {
-          const recoveryResult = await this.errorRecoveryService.recoverFromFailure(
-            result,
-            {
+          const recoveryResult =
+            await this.errorRecoveryService.recoverFromFailure(result, {
               platform: 'kiro-ide',
-              backupId: result.backupPath ? path.basename(result.backupPath) : undefined,
+              backupId: result.backupPath
+                ? path.basename(result.backupPath)
+                : undefined,
               forceRecovery: true,
-            },
-          );
-          
+            });
+
           const recoverySuccess = recoveryResult.success;
-          
+
           if (recoverySuccess) {
             result.warnings.push({
-              message: 'Deployment failed but was successfully recovered from backup',
+              message:
+                'Deployment failed but was successfully recovered from backup',
               code: 'KIRO_RECOVERED_FROM_BACKUP',
             });
           } else {
@@ -747,16 +843,17 @@ export class DeploymentService {
         } catch (recoveryError) {
           result.errors.push({
             message: `Recovery failed: ${(recoveryError as Error).message}`,
-            code: 'KIRO_RECOVERY_ERROR', 
+            code: 'KIRO_RECOVERY_ERROR',
             severity: 'CRITICAL',
           });
         }
       }
-      
+
       // End performance monitoring even on error
       this.performanceMonitor.endDeploymentTiming(deploymentId);
-      result.metadata.performanceReport = 'Kiro deployment failed with error recovery attempted';
-      
+      result.metadata.performanceReport =
+        'Kiro deployment failed with error recovery attempted';
+
       return result;
     } finally {
       // Clear metrics after a delay to allow for inspection
@@ -801,39 +898,41 @@ export class DeploymentService {
     try {
       const contextSize = Buffer.byteLength(JSON.stringify(context), 'utf8');
       const sizeMB = Math.round(contextSize / 1024 / 1024);
-      
+
       result.warnings.push({
         message: `Deploying large configuration (${sizeMB}MB) with streaming optimization`,
         code: 'LARGE_CONFIG_DETECTED',
       });
 
       // Progress tracking
-      const onProgress = options.onProgress || ((_progress) => {
-        // Default: log progress (disabled for production - could use logger instead)
-        // if (progress.percentage % 25 === 0) {
-        //   console.log(`Deployment progress: ${progress.percentage}%`);
-        // }
-      });
+      const onProgress =
+        options.onProgress ||
+        ((_progress) => {
+          // Default: log progress (disabled for production - could use logger instead)
+          // if (progress.percentage % 25 === 0) {
+          //   console.log(`Deployment progress: ${progress.percentage}%`);
+          // }
+        });
 
       // Use streaming processor to handle the large configuration
-      const streamResult = await this.largeFileStreamer.streamProcessConfiguration(
-        context,
-        async (chunk: unknown, chunkIndex: number) => 
-          // For deployment, we process chunks by validating and preparing them
-          // The actual file operations happen after streaming processing
-           ({ 
-            processed: true, 
-            chunkIndex,
-            size: Buffer.byteLength(JSON.stringify(chunk), 'utf8'),
-          })
-        ,
-        {
-          chunkSize: 2 * 1024 * 1024, // 2MB chunks for deployment
-          onProgress,
-          enableGarbageCollection: true,
-          memoryThreshold: 100 * 1024 * 1024, // 100MB
-        }
-      );
+      const streamResult =
+        await this.largeFileStreamer.streamProcessConfiguration(
+          context,
+          async (chunk: unknown, chunkIndex: number) =>
+            // For deployment, we process chunks by validating and preparing them
+            // The actual file operations happen after streaming processing
+            ({
+              processed: true,
+              chunkIndex,
+              size: Buffer.byteLength(JSON.stringify(chunk), 'utf8'),
+            }),
+          {
+            chunkSize: 2 * 1024 * 1024, // 2MB chunks for deployment
+            onProgress,
+            enableGarbageCollection: true,
+            memoryThreshold: 100 * 1024 * 1024, // 100MB
+          },
+        );
 
       if (!streamResult.success) {
         result.errors.push({
@@ -844,7 +943,10 @@ export class DeploymentService {
         return result;
       }
 
-      this.performanceMonitor.recordMemoryUsage(deploymentId, 'streaming-complete');
+      this.performanceMonitor.recordMemoryUsage(
+        deploymentId,
+        'streaming-complete',
+      );
 
       // After successful streaming, perform standard validation and deployment
       // Step 1: Validate configuration for platform
@@ -901,7 +1003,10 @@ export class DeploymentService {
       for (const component of componentsToDeploy) {
         try {
           this.performanceMonitor.startComponentTiming(deploymentId, component);
-          this.performanceMonitor.recordMemoryUsage(deploymentId, `component-${component}-start`);
+          this.performanceMonitor.recordMemoryUsage(
+            deploymentId,
+            `component-${component}-start`,
+          );
 
           if (component === 'settings') {
             const settings = context.content.ide?.claudeCode?.settings || {};
@@ -913,26 +1018,38 @@ export class DeploymentService {
             await this.deployAgentsStreaming(context.content.tools.agents); // eslint-disable-line no-await-in-loop
             (result.deployedComponents as string[]).push('agents');
             result.summary.filesDeployed++;
-          } else if (component === 'commands' && context.content.tools?.commands) {
+          } else if (
+            component === 'commands' &&
+            context.content.tools?.commands
+          ) {
             await this.deployCommandsStreaming(context.content.tools.commands); // eslint-disable-line no-await-in-loop
             (result.deployedComponents as string[]).push('commands');
             result.summary.filesDeployed++;
-          } else if (component === 'project' && context.content.project && Object.keys(context.content.project).length > 0) {
-            await this.deployProjectSettings(context.content.project as Record<string, unknown>); // eslint-disable-line no-await-in-loop
+          } else if (
+            component === 'project' &&
+            context.content.project &&
+            Object.keys(context.content.project).length > 0
+          ) {
+            await this.deployProjectSettings( // eslint-disable-line no-await-in-loop
+              context.content.project as Record<string, unknown>,
+            );  
             (result.deployedComponents as string[]).push('project');
             result.summary.filesDeployed++;
           }
 
           this.performanceMonitor.endComponentTiming(deploymentId, component);
-          this.performanceMonitor.recordMemoryUsage(deploymentId, `component-${component}-end`);
+          this.performanceMonitor.recordMemoryUsage(
+            deploymentId,
+            `component-${component}-end`,
+          );
 
           // Trigger memory optimization after each component
           await this.largeFileStreamer.optimizeMemoryUsage({ // eslint-disable-line no-await-in-loop
+             
             memoryThreshold: 100 * 1024 * 1024,
             enableGarbageCollection: true,
             clearCaches: true,
           });
-
         } catch (componentError) {
           result.errors.push({
             message: `Failed to deploy ${component}: ${(componentError as Error).message}`,
@@ -943,14 +1060,16 @@ export class DeploymentService {
       }
 
       result.success = true;
-      
+
       // End performance monitoring
       this.performanceMonitor.endDeploymentTiming(deploymentId);
       this.performanceMonitor.recordMemoryUsage(deploymentId, 'large-end');
-      
-      const performanceReport = this.performanceMonitor.generatePerformanceReport(deploymentId);
-      const performanceViolations = this.performanceMonitor.checkPerformanceThresholds(deploymentId);
-      
+
+      const performanceReport =
+        this.performanceMonitor.generatePerformanceReport(deploymentId);
+      const performanceViolations =
+        this.performanceMonitor.checkPerformanceThresholds(deploymentId);
+
       if (result.metadata) {
         result.metadata.performanceReport = performanceReport;
         result.metadata.streamingMetrics = {
@@ -960,7 +1079,7 @@ export class DeploymentService {
           memoryUsagePeak: streamResult.memoryUsagePeak,
         };
       }
-      
+
       // Add performance warnings
       for (const violation of performanceViolations) {
         result.warnings.push({
@@ -970,7 +1089,6 @@ export class DeploymentService {
       }
 
       return result;
-
     } catch (error) {
       result.errors = [
         {
@@ -980,7 +1098,6 @@ export class DeploymentService {
         },
       ];
       return result;
-
     } finally {
       // Cleanup and memory optimization
       await this.largeFileStreamer.optimizeMemoryUsage({
@@ -988,7 +1105,7 @@ export class DeploymentService {
         enableGarbageCollection: true,
         clearCaches: true,
       });
-      
+
       this.performanceMonitor.endDeploymentTiming(deploymentId);
       setTimeout(() => {
         this.performanceMonitor.clearMetrics(deploymentId);
@@ -1015,7 +1132,7 @@ export class DeploymentService {
 
     for (let i = 0; i < validAgents.length; i += batchSize) {
       const batch = validAgents.slice(i, i + batchSize);
-      
+
       const writePromises = batch.map((agent) => {
         const agentPath = path.join(agentsDirectory, `${agent.name}.md`);
         return fs.writeFile(agentPath, agent.content);
@@ -1049,11 +1166,13 @@ export class DeploymentService {
 
     // Process commands in batches
     const batchSize = 50;
-    const validCommands = commands.filter((command) => command.name && command.content);
+    const validCommands = commands.filter(
+      (command) => command.name && command.content,
+    );
 
     for (let i = 0; i < validCommands.length; i += batchSize) {
       const batch = validCommands.slice(i, i + batchSize);
-      
+
       const writePromises = batch.map((command) => {
         const commandPath = path.join(commandsDirectory, `${command.name}.sh`);
 
@@ -1255,8 +1374,8 @@ export class DeploymentService {
     // Find the first existing path to use as backup base
     for (const kiroPath of kiroPaths) {
       try {
-        await fs.access(kiroPath);
-        return await this.backupService.createBackup(kiroPath);
+        await fs.access(kiroPath); // eslint-disable-line no-await-in-loop
+        return await this.backupService.createBackup(kiroPath); // eslint-disable-line no-await-in-loop
       } catch {
         // Path doesn't exist, continue checking
         continue;

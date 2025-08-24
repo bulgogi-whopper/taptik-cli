@@ -20,7 +20,7 @@ import type {
 
 // Mock os module
 vi.mock('node:os', () => ({
-  homedir: vi.fn(() => '/home/user')
+  homedir: vi.fn(() => '/home/user'),
 }));
 
 // Create spies at module level
@@ -68,7 +68,6 @@ function createMockStats(isDir: boolean) {
   };
 }
 
-
 describe('CollectionService - Claude Code Support (RED Phase)', () => {
   let service: CollectionService;
 
@@ -78,7 +77,7 @@ describe('CollectionService - Claude Code Support (RED Phase)', () => {
     }).compile();
 
     service = module.get<CollectionService>(CollectionService);
-    
+
     // Clear spies before each test
     readFileSpy.mockClear();
     readdirSpy.mockClear();
@@ -86,9 +85,7 @@ describe('CollectionService - Claude Code Support (RED Phase)', () => {
     accessSpy.mockClear();
   });
 
-
   describe('collectClaudeCodeLocalSettings()', () => {
-
     it('should collect settings from .claude directory', async () => {
       // Arrange
       const projectPath = '/project';
@@ -112,52 +109,81 @@ describe('CollectionService - Claude Code Support (RED Phase)', () => {
         }
         return Promise.resolve([]);
       });
-      
+
       statSpy.mockImplementation((filePath: string) => {
-        const isDir = filePath.endsWith('/agents') || filePath.endsWith('/commands') || 
-                      filePath.endsWith('/steering') || filePath.endsWith('/hooks');
+        const isDir =
+          filePath.endsWith('/agents') ||
+          filePath.endsWith('/commands') ||
+          filePath.endsWith('/steering') ||
+          filePath.endsWith('/hooks');
         return Promise.resolve(createMockStats(isDir));
       });
 
       // Set up individual mocks for each file
-      readFileSpy
-        .mockImplementation((filePath: string) => {
-          if (filePath.includes('settings.json')) {
-            return Promise.resolve(JSON.stringify({ theme: 'dark', fontSize: 14 }));
-          }
-          if (filePath.includes('agent1.json')) {
-            return Promise.resolve(JSON.stringify({ name: 'Agent 1', description: 'Test', instructions: 'Do something' }));
-          }
-          if (filePath.includes('agent2.json')) {
-            return Promise.resolve(JSON.stringify({ name: 'Agent 2', description: 'Test', instructions: 'Do something else' }));
-          }
-          if (filePath.includes('cmd1.json')) {
-            return Promise.resolve(JSON.stringify({ name: 'test-cmd', description: 'Test command', command: 'npm test' }));
-          }
-          if (filePath.includes('.mcp.json')) {
-            return Promise.resolve(JSON.stringify({ mcpServers: { filesystem: { command: 'node', args: ['./server.js'] } } }));
-          }
-          if (filePath.includes('CLAUDE.md')) {
-            return Promise.resolve('# Claude Instructions');
-          }
-          if (filePath.includes('CLAUDE.local.md')) {
-            return Promise.resolve('# Local Claude Instructions');
-          }
-          if (filePath.includes('rule1.md')) {
-            return Promise.resolve('# Steering Rule 1');
-          }
-          if (filePath.includes('rule2.md')) {
-            return Promise.resolve('# Steering Rule 2');
-          }
-          if (filePath.includes('pre-commit.sh')) {
-            return Promise.resolve('#!/bin/bash\necho "pre-commit"');
-          }
-          return Promise.resolve('');
-        });
-
+      readFileSpy.mockImplementation((filePath: string) => {
+        if (filePath.includes('settings.json')) {
+          return Promise.resolve(
+            JSON.stringify({ theme: 'dark', fontSize: 14 }),
+          );
+        }
+        if (filePath.includes('agent1.json')) {
+          return Promise.resolve(
+            JSON.stringify({
+              name: 'Agent 1',
+              description: 'Test',
+              instructions: 'Do something',
+            }),
+          );
+        }
+        if (filePath.includes('agent2.json')) {
+          return Promise.resolve(
+            JSON.stringify({
+              name: 'Agent 2',
+              description: 'Test',
+              instructions: 'Do something else',
+            }),
+          );
+        }
+        if (filePath.includes('cmd1.json')) {
+          return Promise.resolve(
+            JSON.stringify({
+              name: 'test-cmd',
+              description: 'Test command',
+              command: 'npm test',
+            }),
+          );
+        }
+        if (filePath.includes('.mcp.json')) {
+          return Promise.resolve(
+            JSON.stringify({
+              mcpServers: {
+                filesystem: { command: 'node', args: ['./server.js'] },
+              },
+            }),
+          );
+        }
+        if (filePath.includes('CLAUDE.md')) {
+          return Promise.resolve('# Claude Instructions');
+        }
+        if (filePath.includes('CLAUDE.local.md')) {
+          return Promise.resolve('# Local Claude Instructions');
+        }
+        if (filePath.includes('rule1.md')) {
+          return Promise.resolve('# Steering Rule 1');
+        }
+        if (filePath.includes('rule2.md')) {
+          return Promise.resolve('# Steering Rule 2');
+        }
+        if (filePath.includes('pre-commit.sh')) {
+          return Promise.resolve('#!/bin/bash\necho "pre-commit"');
+        }
+        return Promise.resolve('');
+      });
 
       // Act
-      const result: ClaudeCodeLocalSettingsData = await (service as any).collectClaudeCodeLocalSettings(projectPath);
+      const result: ClaudeCodeLocalSettingsData = await (
+        service as any
+      ).collectClaudeCodeLocalSettings(projectPath);
 
       // Assert
       expect(result).toBeDefined();
@@ -181,15 +207,19 @@ describe('CollectionService - Claude Code Support (RED Phase)', () => {
       mockFs.access.mockRejectedValue(new Error('ENOENT'));
 
       // Act
-      const result: ClaudeCodeLocalSettingsData = await (service as any).collectClaudeCodeLocalSettings(projectPath);
+      const result: ClaudeCodeLocalSettingsData = await (
+        service as any
+      ).collectClaudeCodeLocalSettings(projectPath);
 
       // Assert
       expect(result).toBeDefined();
       // Now returns default settings instead of undefined
       expect(result.settings).toEqual({
-        theme: 'default'
+        theme: 'default',
       });
-      expect(result.claudeMd).toBe('# Claude Code Configuration\n\nNo Claude Code configuration found. Using defaults.');
+      expect(result.claudeMd).toBe(
+        '# Claude Code Configuration\n\nNo Claude Code configuration found. Using defaults.',
+      );
       expect(result.claudeLocalMd).toBe('');
       expect(result.agents).toEqual([]);
       expect(result.commands).toEqual([]);
@@ -211,7 +241,7 @@ describe('CollectionService - Claude Code Support (RED Phase)', () => {
         }
         return Promise.resolve([]);
       });
-      
+
       mockFs.stat.mockImplementation((filePath: string) => {
         const isDir = filePath.endsWith('/agents');
         return Promise.resolve(createMockStats(isDir));
@@ -228,7 +258,9 @@ describe('CollectionService - Claude Code Support (RED Phase)', () => {
       });
 
       // Act
-      const result: ClaudeCodeLocalSettingsData = await (service as any).collectClaudeCodeLocalSettings(projectPath);
+      const result: ClaudeCodeLocalSettingsData = await (
+        service as any
+      ).collectClaudeCodeLocalSettings(projectPath);
 
       // Assert
       expect(result).toBeDefined();
@@ -243,7 +275,7 @@ describe('CollectionService - Claude Code Support (RED Phase)', () => {
       const projectPath = '/project';
       const permissionError = new Error('EACCES: permission denied');
       (permissionError as any).code = 'EACCES';
-      
+
       mockFs.access.mockResolvedValue(undefined);
       mockFs.readdir.mockImplementation((dir: string) => {
         if (dir === path.join(projectPath, '.claude', 'agents')) {
@@ -254,7 +286,7 @@ describe('CollectionService - Claude Code Support (RED Phase)', () => {
         }
         return Promise.resolve([]);
       });
-      
+
       mockFs.stat.mockImplementation((filePath: string) => {
         const isDir = filePath.includes('agents');
         return Promise.resolve(createMockStats(isDir));
@@ -268,7 +300,9 @@ describe('CollectionService - Claude Code Support (RED Phase)', () => {
       });
 
       // Act
-      const result: ClaudeCodeLocalSettingsData = await (service as any).collectClaudeCodeLocalSettings(projectPath);
+      const result: ClaudeCodeLocalSettingsData = await (
+        service as any
+      ).collectClaudeCodeLocalSettings(projectPath);
 
       // Assert
       expect(result).toBeDefined();
@@ -294,30 +328,53 @@ describe('CollectionService - Claude Code Support (RED Phase)', () => {
         }
         return Promise.resolve([]);
       });
-      
+
       mockFs.stat.mockImplementation((filePath: string) => {
-        const isDir = filePath.includes('agents') || filePath.includes('commands');
+        const isDir =
+          filePath.includes('agents') || filePath.includes('commands');
         return Promise.resolve(createMockStats(isDir));
       });
 
       mockFs.readFile.mockImplementation((filePath: string) => {
         if (filePath.includes('settings.json')) {
-          return Promise.resolve(JSON.stringify({ theme: 'light', apiKey: 'secret' }));
+          return Promise.resolve(
+            JSON.stringify({ theme: 'light', apiKey: 'secret' }),
+          );
         }
         if (filePath.includes('global-agent.json')) {
-          return Promise.resolve(JSON.stringify({ name: 'Global Agent', description: 'Global', instructions: 'Global instructions' }));
+          return Promise.resolve(
+            JSON.stringify({
+              name: 'Global Agent',
+              description: 'Global',
+              instructions: 'Global instructions',
+            }),
+          );
         }
         if (filePath.includes('global-cmd.json')) {
-          return Promise.resolve(JSON.stringify({ name: 'global-cmd', description: 'Global command', command: 'echo global' }));
+          return Promise.resolve(
+            JSON.stringify({
+              name: 'global-cmd',
+              description: 'Global command',
+              command: 'echo global',
+            }),
+          );
         }
         if (filePath.includes('.mcp.json')) {
-          return Promise.resolve(JSON.stringify({ mcpServers: { github: { command: 'python', args: ['./github.py'] } } }));
+          return Promise.resolve(
+            JSON.stringify({
+              mcpServers: {
+                github: { command: 'python', args: ['./github.py'] },
+              },
+            }),
+          );
         }
         return Promise.resolve('');
       });
 
       // Act
-      const result: ClaudeCodeGlobalSettingsData = await (service as any).collectClaudeCodeGlobalSettings();
+      const result: ClaudeCodeGlobalSettingsData = await (
+        service as any
+      ).collectClaudeCodeGlobalSettings();
 
       // Assert
       expect(result).toBeDefined();
@@ -337,7 +394,9 @@ describe('CollectionService - Claude Code Support (RED Phase)', () => {
       mockFs.access.mockRejectedValue(new Error('ENOENT'));
 
       // Act
-      const result: ClaudeCodeGlobalSettingsData = await (service as any).collectClaudeCodeGlobalSettings();
+      const result: ClaudeCodeGlobalSettingsData = await (
+        service as any
+      ).collectClaudeCodeGlobalSettings();
 
       // Assert
       expect(result).toBeDefined();
@@ -357,20 +416,22 @@ describe('CollectionService - Claude Code Support (RED Phase)', () => {
             command: 'node',
             args: ['./fs-server.js'],
             env: { NODE_ENV: 'production' },
-            autoApprove: ['read', 'write']
+            autoApprove: ['read', 'write'],
           },
           github: {
             command: 'python',
             args: ['./github-server.py'],
-            disabled: true
-          }
-        }
+            disabled: true,
+          },
+        },
       };
-      
+
       const configContent = JSON.stringify(mcpConfig);
 
       // Act
-      const result: McpServerConfig | undefined = (service as any).parseMcpConfig(configContent);
+      const result: McpServerConfig | undefined = (
+        service as any
+      ).parseMcpConfig(configContent);
 
       // Assert
       expect(result).toBeDefined();
@@ -385,7 +446,9 @@ describe('CollectionService - Claude Code Support (RED Phase)', () => {
       const invalidContent = '{ invalid json }';
 
       // Act
-      const result: McpServerConfig | undefined = (service as any).parseMcpConfig(invalidContent);
+      const result: McpServerConfig | undefined = (
+        service as any
+      ).parseMcpConfig(invalidContent);
 
       // Assert
       expect(result).toBeUndefined();
@@ -397,7 +460,9 @@ describe('CollectionService - Claude Code Support (RED Phase)', () => {
       const emptyContent = '';
 
       // Act
-      const result: McpServerConfig | undefined = (service as any).parseMcpConfig(emptyContent);
+      const result: McpServerConfig | undefined = (
+        service as any
+      ).parseMcpConfig(emptyContent);
 
       // Assert
       expect(result).toBeUndefined();
@@ -409,24 +474,28 @@ describe('CollectionService - Claude Code Support (RED Phase)', () => {
       // Arrange
       const agentsDir = '/project/.claude/agents';
       const agentFiles = ['agent1.json', 'agent2.json', 'invalid.json'];
-      
+
       mockFs.readdir.mockResolvedValue(agentFiles as any);
       mockFs.stat.mockResolvedValue(createMockStats(false) as any);
       mockFs.readFile.mockImplementation((filePath: string) => {
         if (filePath.includes('agent1.json')) {
-          return Promise.resolve(JSON.stringify({
-            name: 'Code Reviewer',
-            description: 'Reviews code',
-            instructions: 'Review the code for best practices',
-            tools: ['read', 'write']
-          }));
+          return Promise.resolve(
+            JSON.stringify({
+              name: 'Code Reviewer',
+              description: 'Reviews code',
+              instructions: 'Review the code for best practices',
+              tools: ['read', 'write'],
+            }),
+          );
         }
         if (filePath.includes('agent2.json')) {
-          return Promise.resolve(JSON.stringify({
-            name: 'Test Generator',
-            description: 'Generates tests',
-            instructions: 'Generate comprehensive tests'
-          }));
+          return Promise.resolve(
+            JSON.stringify({
+              name: 'Test Generator',
+              description: 'Generates tests',
+              instructions: 'Generate comprehensive tests',
+            }),
+          );
         }
         if (filePath.includes('invalid.json')) {
           return Promise.resolve('not json');
@@ -475,16 +544,18 @@ describe('CollectionService - Claude Code Support (RED Phase)', () => {
       // Arrange
       const agentsDir = '/project/.claude/agents';
       const files = ['agent.json', 'README.md', '.DS_Store'];
-      
+
       mockFs.readdir.mockResolvedValue(files as any);
       mockFs.stat.mockResolvedValue(createMockStats(false) as any);
       mockFs.readFile.mockImplementation((filePath: string) => {
         if (filePath.includes('agent.json')) {
-          return Promise.resolve(JSON.stringify({
-            name: 'Agent',
-            description: 'Test agent',
-            instructions: 'Do something'
-          }));
+          return Promise.resolve(
+            JSON.stringify({
+              name: 'Agent',
+              description: 'Test agent',
+              instructions: 'Do something',
+            }),
+          );
         }
         return Promise.resolve('');
       });
@@ -503,25 +574,29 @@ describe('CollectionService - Claude Code Support (RED Phase)', () => {
       // Arrange
       const commandsDir = '/project/.claude/commands';
       const commandFiles = ['cmd1.json', 'cmd2.json'];
-      
+
       mockFs.readdir.mockResolvedValue(commandFiles as any);
       mockFs.stat.mockResolvedValue(createMockStats(false) as any);
       mockFs.readFile.mockImplementation((filePath: string) => {
         if (filePath.includes('cmd1.json')) {
-          return Promise.resolve(JSON.stringify({
-            name: 'format-code',
-            description: 'Format code with prettier',
-            command: 'prettier',
-            args: ['--write', '.']
-          }));
+          return Promise.resolve(
+            JSON.stringify({
+              name: 'format-code',
+              description: 'Format code with prettier',
+              command: 'prettier',
+              args: ['--write', '.'],
+            }),
+          );
         }
         if (filePath.includes('cmd2.json')) {
-          return Promise.resolve(JSON.stringify({
-            name: 'run-tests',
-            description: 'Run test suite',
-            command: 'npm',
-            args: ['test']
-          }));
+          return Promise.resolve(
+            JSON.stringify({
+              name: 'run-tests',
+              description: 'Run test suite',
+              command: 'npm',
+              args: ['test'],
+            }),
+          );
         }
         return Promise.resolve('');
       });
@@ -542,16 +617,18 @@ describe('CollectionService - Claude Code Support (RED Phase)', () => {
       const commandsDir = '/project/.claude/commands';
       mockFs.readdir.mockResolvedValue(['advanced.json'] as any);
       mockFs.stat.mockResolvedValue(createMockStats(false) as any);
-      mockFs.readFile.mockResolvedValue(JSON.stringify({
-        name: 'deploy',
-        description: 'Deploy to production',
-        command: 'npm',
-        args: ['run', 'deploy'],
-        metadata: {
-          requiresConfirmation: true,
-          environment: 'production'
-        }
-      }));
+      mockFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          name: 'deploy',
+          description: 'Deploy to production',
+          command: 'npm',
+          args: ['run', 'deploy'],
+          metadata: {
+            requiresConfirmation: true,
+            environment: 'production',
+          },
+        }),
+      );
 
       // Act
       const result = await (service as any).parseClaudeCommands(commandsDir);
@@ -574,13 +651,15 @@ describe('CollectionService - Claude Code Support (RED Phase)', () => {
         }
         return Promise.resolve([]);
       });
-      
+
       const readError = new Error('EACCES: permission denied');
       (readError as any).code = 'EACCES';
       mockFs.readFile.mockRejectedValue(readError);
 
       // Act
-      const result: ClaudeCodeLocalSettingsData = await (service as any).collectClaudeCodeLocalSettings(projectPath);
+      const result: ClaudeCodeLocalSettingsData = await (
+        service as any
+      ).collectClaudeCodeLocalSettings(projectPath);
 
       // Assert
       expect(result).toBeDefined();
@@ -603,20 +682,25 @@ describe('CollectionService - Claude Code Support (RED Phase)', () => {
         }
         return Promise.resolve([]);
       });
-      
+
       mockFs.stat.mockImplementation((filePath: string) => {
-        const isDir = filePath.includes('category1') && !filePath.endsWith('.json');
+        const isDir =
+          filePath.includes('category1') && !filePath.endsWith('.json');
         return Promise.resolve(createMockStats(isDir));
       });
 
-      mockFs.readFile.mockResolvedValue(JSON.stringify({
-        name: 'Nested Agent',
-        description: 'Agent in nested directory',
-        instructions: 'Handle nested structure'
-      }));
+      mockFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          name: 'Nested Agent',
+          description: 'Agent in nested directory',
+          instructions: 'Handle nested structure',
+        }),
+      );
 
       // Act
-      const result: ClaudeCodeLocalSettingsData = await (service as any).collectClaudeCodeLocalSettings(projectPath);
+      const result: ClaudeCodeLocalSettingsData = await (
+        service as any
+      ).collectClaudeCodeLocalSettings(projectPath);
 
       // Assert
       expect(result).toBeDefined();
@@ -628,12 +712,12 @@ describe('CollectionService - Claude Code Support (RED Phase)', () => {
       // Arrange
       const projectPath = '/project';
       let callCount = 0;
-      
+
       mockFs.access.mockResolvedValue(undefined);
       mockFs.readdir.mockImplementation(async (dir: string) => {
         // Simulate async delay
-        await new Promise(resolve => setTimeout(resolve, 1));
-        
+        await new Promise((resolve) => setTimeout(resolve, 1));
+
         if (dir === path.join(projectPath, '.claude')) {
           return ['agents', 'commands'] as any;
         }
@@ -645,24 +729,27 @@ describe('CollectionService - Claude Code Support (RED Phase)', () => {
         }
         return [] as any;
       });
-      
+
       mockFs.stat.mockImplementation((filePath: string) => {
-        const isDir = filePath.endsWith('/agents') || filePath.endsWith('/commands');
+        const isDir =
+          filePath.endsWith('/agents') || filePath.endsWith('/commands');
         return Promise.resolve(createMockStats(isDir));
       });
 
       mockFs.readFile.mockImplementation(async () => {
         callCount++;
-        await new Promise(resolve => setTimeout(resolve, 1));
+        await new Promise((resolve) => setTimeout(resolve, 1));
         return JSON.stringify({
           name: `Item ${callCount}`,
           description: 'Test',
-          instructions: 'Test'
+          instructions: 'Test',
         });
       });
 
       // Act
-      const result: ClaudeCodeLocalSettingsData = await (service as any).collectClaudeCodeLocalSettings(projectPath);
+      const result: ClaudeCodeLocalSettingsData = await (
+        service as any
+      ).collectClaudeCodeLocalSettings(projectPath);
 
       // Assert
       expect(result).toBeDefined();

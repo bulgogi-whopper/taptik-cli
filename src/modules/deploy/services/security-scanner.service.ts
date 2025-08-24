@@ -50,7 +50,11 @@ export interface KiroSecurityScanResult extends SecurityScanResult {
 export interface KiroSecurityViolation {
   componentType: KiroComponentType;
   component: string;
-  violationType: 'malicious_code' | 'dangerous_capability' | 'sensitive_data' | 'injection_attempt';
+  violationType:
+    | 'malicious_code'
+    | 'dangerous_capability'
+    | 'sensitive_data'
+    | 'injection_attempt';
   severity: 'low' | 'medium' | 'high' | 'critical';
   description: string;
   recommendation: string;
@@ -343,7 +347,7 @@ export class SecurityScannerService {
   private async validateCommands(
     context: TaptikContext,
   ): Promise<CommandValidationResult> {
-    const ide = context.content.ide as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const ide = context.content.ide as Record<string, unknown> | null | undefined;
     const commands = Array.isArray(ide?.commands) ? ide.commands : [];
 
     if (commands.length === 0) {
@@ -465,7 +469,7 @@ export class SecurityScannerService {
     components: Array<{
       type: KiroComponentType;
       name: string;
-      content: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+      content: unknown;
     }>,
     _options: KiroDeploymentOptions,
   ): Promise<KiroSecurityScanResult> {
@@ -473,30 +477,34 @@ export class SecurityScannerService {
     const quarantinedComponents: string[] = [];
     const blockers: SecurityBlocker[] = [];
 
-    const componentPromises = components.map(component =>
-      this.scanKiroComponent(component.content, component.type, component.name)
+    const componentPromises = components.map((component) =>
+      this.scanKiroComponent(component.content, component.type, component.name),
     );
-    
+
     const allComponentViolations = await Promise.all(componentPromises);
-    
+
     for (let i = 0; i < components.length; i++) {
       const component = components[i];
       const componentViolations = allComponentViolations[i];
-      
+
       violations.push(...componentViolations);
 
       // Quarantine components with critical or high severity violations
-      const highSeverityViolations = componentViolations.filter(v => 
-        v.severity === 'critical' || v.severity === 'high'
+      const highSeverityViolations = componentViolations.filter(
+        (v) => v.severity === 'critical' || v.severity === 'high',
       );
-      
+
       if (highSeverityViolations.length > 0) {
         quarantinedComponents.push(component.name);
-        
+
         for (const violation of highSeverityViolations) {
           blockers.push({
-            type: violation.violationType === 'injection_attempt' ? 'injection' : 
-                  violation.violationType === 'malicious_code' ? 'malicious' : 'unauthorized',
+            type:
+              violation.violationType === 'injection_attempt'
+                ? 'injection'
+                : violation.violationType === 'malicious_code'
+                  ? 'malicious'
+                  : 'unauthorized',
             message: `${component.type}/${component.name}: ${violation.description}`,
             location: component.name,
             details: { violation },
@@ -505,29 +513,41 @@ export class SecurityScannerService {
       }
     }
 
-    const highSeverityCount = violations.filter(v => v.severity === 'high' || v.severity === 'critical').length;
-    const mediumSeverityCount = violations.filter(v => v.severity === 'medium').length;
-    const lowSeverityCount = violations.filter(v => v.severity === 'low').length;
+    const highSeverityCount = violations.filter(
+      (v) => v.severity === 'high' || v.severity === 'critical',
+    ).length;
+    const mediumSeverityCount = violations.filter(
+      (v) => v.severity === 'medium',
+    ).length;
+    const lowSeverityCount = violations.filter(
+      (v) => v.severity === 'low',
+    ).length;
 
     return {
       passed: blockers.length === 0,
       isSafe: blockers.length === 0,
-      hasApiKeys: violations.some(v => v.violationType === 'sensitive_data'),
-      hasMaliciousCommands: violations.some(v => v.violationType === 'malicious_code'),
+      hasApiKeys: violations.some((v) => v.violationType === 'sensitive_data'),
+      hasMaliciousCommands: violations.some(
+        (v) => v.violationType === 'malicious_code',
+      ),
       blockers,
-      warnings: violations.filter(v => v.severity === 'medium').map(v => ({
-        type: 'data' as const,
-        message: v.description,
-        location: v.component,
-        severity: SecuritySeverity.MEDIUM,
-      })),
-      errors: violations.filter(v => v.severity === 'high').map(v => ({
-        type: 'data' as const,
-        message: v.description,
-        location: v.component,
-        severity: SecuritySeverity.HIGH,
-        recoverable: false,
-      })),
+      warnings: violations
+        .filter((v) => v.severity === 'medium')
+        .map((v) => ({
+          type: 'data' as const,
+          message: v.description,
+          location: v.component,
+          severity: SecuritySeverity.MEDIUM,
+        })),
+      errors: violations
+        .filter((v) => v.severity === 'high')
+        .map((v) => ({
+          type: 'data' as const,
+          message: v.description,
+          location: v.component,
+          severity: SecuritySeverity.HIGH,
+          recoverable: false,
+        })),
       quarantinedComponents,
       securityViolations: violations,
       summary: {
@@ -543,7 +563,7 @@ export class SecurityScannerService {
   }
 
   async scanKiroComponent(
-    content: any, // eslint-disable-line @typescript-eslint/no-explicit-any
+    content: unknown,
     componentType: KiroComponentType,
     componentName: string,
   ): Promise<KiroSecurityViolation[]> {
@@ -551,29 +571,51 @@ export class SecurityScannerService {
 
     switch (componentType) {
       case 'hooks':
-        violations.push(...await this.scanKiroHook(content as KiroHookConfiguration, componentName));
+        violations.push(
+          ...(await this.scanKiroHook(
+            content as KiroHookConfiguration,
+            componentName,
+          )),
+        );
         break;
       case 'agents':
-        violations.push(...await this.scanKiroAgent(content as KiroAgentConfiguration, componentName));
+        violations.push(
+          ...(await this.scanKiroAgent(
+            content as KiroAgentConfiguration,
+            componentName,
+          )),
+        );
         break;
       case 'templates':
-        violations.push(...await this.scanKiroTemplate(content as KiroTemplateConfiguration, componentName));
+        violations.push(
+          ...(await this.scanKiroTemplate(
+            content as KiroTemplateConfiguration,
+            componentName,
+          )),
+        );
         break;
       case 'settings':
-        violations.push(...await this.scanKiroSettings(content, componentName));
+        violations.push(
+          ...(await this.scanKiroSettings(content, componentName)),
+        );
         break;
       case 'steering':
-        violations.push(...await this.scanKiroSteering(content, componentName));
+        violations.push(
+          ...(await this.scanKiroSteering(content, componentName)),
+        );
         break;
       case 'specs':
-        violations.push(...await this.scanKiroSpecs(content, componentName));
+        violations.push(...(await this.scanKiroSpecs(content, componentName)));
         break;
     }
 
     return violations;
   }
 
-  async scanKiroHook(hook: KiroHookConfiguration, componentName: string): Promise<KiroSecurityViolation[]> {
+  async scanKiroHook(
+    hook: KiroHookConfiguration,
+    componentName: string,
+  ): Promise<KiroSecurityViolation[]> {
     const violations: KiroSecurityViolation[] = [];
 
     // 1. Scan hook command for dangerous patterns
@@ -623,7 +665,8 @@ export class SecurityScannerService {
               violationType: 'sensitive_data',
               severity: 'medium',
               description: `Hook environment variable may contain sensitive data: ${key}`,
-              recommendation: 'Use environment variable references instead of hardcoded values',
+              recommendation:
+                'Use environment variable references instead of hardcoded values',
               quarantined: false,
             });
             break;
@@ -648,7 +691,7 @@ export class SecurityScannerService {
           violationType: 'dangerous_capability',
           severity: 'medium',
           description: `Hook makes network requests: ${pattern.source}`,
-          recommendation: 'Review network access and ensure it\'s necessary',
+          recommendation: "Review network access and ensure it's necessary",
           quarantined: false,
         });
         break;
@@ -673,7 +716,8 @@ export class SecurityScannerService {
           violationType: 'dangerous_capability',
           severity: 'high',
           description: `Hook accesses sensitive file system location: ${pattern.source}`,
-          recommendation: 'Restrict file system access to necessary directories only',
+          recommendation:
+            'Restrict file system access to necessary directories only',
           quarantined: true,
         });
       }
@@ -682,7 +726,10 @@ export class SecurityScannerService {
     return violations;
   }
 
-  async scanKiroAgent(agent: KiroAgentConfiguration, componentName: string): Promise<KiroSecurityViolation[]> {
+  async scanKiroAgent(
+    agent: KiroAgentConfiguration,
+    componentName: string,
+  ): Promise<KiroSecurityViolation[]> {
     const violations: KiroSecurityViolation[] = [];
 
     // 1. Scan agent prompt for prompt injection patterns
@@ -705,7 +752,8 @@ export class SecurityScannerService {
           violationType: 'injection_attempt',
           severity: 'critical',
           description: `Agent prompt contains potential injection pattern: ${pattern.source}`,
-          recommendation: 'Remove injection attempts and use proper prompt engineering',
+          recommendation:
+            'Remove injection attempts and use proper prompt engineering',
           quarantined: true,
         });
       }
@@ -745,10 +793,10 @@ export class SecurityScannerService {
         'registry_access',
       ];
 
-      const foundDangerous = agent.capabilities.filter(cap => 
-        dangerousCapabilities.some(dangerous => 
-          cap.toLowerCase().includes(dangerous.toLowerCase())
-        )
+      const foundDangerous = agent.capabilities.filter((cap) =>
+        dangerousCapabilities.some((dangerous) =>
+          cap.toLowerCase().includes(dangerous.toLowerCase()),
+        ),
       );
 
       if (foundDangerous.length > 0) {
@@ -758,7 +806,8 @@ export class SecurityScannerService {
           violationType: 'dangerous_capability',
           severity: 'medium',
           description: `Agent has potentially dangerous capabilities: ${foundDangerous.join(', ')}`,
-          recommendation: 'Review and restrict capabilities to minimum necessary',
+          recommendation:
+            'Review and restrict capabilities to minimum necessary',
           quarantined: false,
         });
       }
@@ -788,7 +837,10 @@ export class SecurityScannerService {
     return violations;
   }
 
-  async scanKiroTemplate(template: KiroTemplateConfiguration, componentName: string): Promise<KiroSecurityViolation[]> {
+  async scanKiroTemplate(
+    template: KiroTemplateConfiguration,
+    componentName: string,
+  ): Promise<KiroSecurityViolation[]> {
     const violations: KiroSecurityViolation[] = [];
 
     // 1. Scan template content for injection patterns
@@ -804,14 +856,18 @@ export class SecurityScannerService {
 
     for (const pattern of injectionPatterns) {
       if (pattern.test(template.content)) {
-        const severity = pattern.source.includes('script') || pattern.source.includes('eval') ? 'high' : 'medium';
+        const severity =
+          pattern.source.includes('script') || pattern.source.includes('eval')
+            ? 'high'
+            : 'medium';
         violations.push({
           componentType: 'templates',
           component: componentName,
           violationType: 'injection_attempt',
           severity: severity as 'high' | 'medium',
           description: `Template content contains potential injection pattern: ${pattern.source}`,
-          recommendation: 'Sanitize template content and use safe templating practices',
+          recommendation:
+            'Sanitize template content and use safe templating practices',
           quarantined: severity === 'high',
         });
       }
@@ -862,7 +918,8 @@ export class SecurityScannerService {
                 violationType: 'malicious_code',
                 severity: 'medium',
                 description: `Template variable validation pattern may cause ReDoS: ${variable.name}`,
-                recommendation: 'Use more efficient regex patterns to avoid catastrophic backtracking',
+                recommendation:
+                  'Use more efficient regex patterns to avoid catastrophic backtracking',
                 quarantined: false,
               });
               break;
@@ -875,7 +932,11 @@ export class SecurityScannerService {
     return violations;
   }
 
-  async scanKiroSettings(settings: any, componentName: string): Promise<KiroSecurityViolation[]> { // eslint-disable-line @typescript-eslint/no-explicit-any
+  async scanKiroSettings(
+    settings: unknown,
+    componentName: string,
+  ): Promise<KiroSecurityViolation[]> {
+     
     const violations: KiroSecurityViolation[] = [];
 
     // Convert settings to string for pattern matching
@@ -897,22 +958,29 @@ export class SecurityScannerService {
           violationType: 'sensitive_data',
           severity: 'high',
           description: `Settings contain sensitive data: ${pattern.source}`,
-          recommendation: 'Remove sensitive data from settings or use environment variables',
+          recommendation:
+            'Remove sensitive data from settings or use environment variables',
           quarantined: true,
         });
       }
     }
 
     // 2. Check for dangerous configuration values
-    if (settings.permissions) {
-      if (settings.permissions.defaultMode === 'acceptEdits' && !settings.permissions.allow) {
+    const settingsObj = settings as Record<string, unknown>;
+    if (settingsObj.permissions && typeof settingsObj.permissions === 'object' && settingsObj.permissions !== null) {
+      const permissions = settingsObj.permissions as Record<string, unknown>;
+      if (
+        permissions.defaultMode === 'acceptEdits' &&
+        !permissions.allow
+      ) {
         violations.push({
           componentType: 'settings',
           component: componentName,
           violationType: 'dangerous_capability',
           severity: 'medium',
           description: 'Settings allow unrestricted edit permissions',
-          recommendation: 'Set specific allow patterns instead of blanket acceptEdits',
+          recommendation:
+            'Set specific allow patterns instead of blanket acceptEdits',
           quarantined: false,
         });
       }
@@ -921,11 +989,16 @@ export class SecurityScannerService {
     return violations;
   }
 
-  async scanKiroSteering(steering: any, componentName: string): Promise<KiroSecurityViolation[]> { // eslint-disable-line @typescript-eslint/no-explicit-any
+  async scanKiroSteering(
+    steering: unknown,
+    componentName: string,
+  ): Promise<KiroSecurityViolation[]> {
+     
     const violations: KiroSecurityViolation[] = [];
 
     // Convert to string for pattern matching
-    const steeringString = typeof steering === 'string' ? steering : JSON.stringify(steering);
+    const steeringString =
+      typeof steering === 'string' ? steering : JSON.stringify(steering);
 
     // 1. Check for injection attempts in steering content
     const injectionPatterns = [
@@ -952,11 +1025,16 @@ export class SecurityScannerService {
     return violations;
   }
 
-  async scanKiroSpecs(specs: any, componentName: string): Promise<KiroSecurityViolation[]> { // eslint-disable-line @typescript-eslint/no-explicit-any
+  async scanKiroSpecs(
+    specs: unknown,
+    componentName: string,
+  ): Promise<KiroSecurityViolation[]> {
+     
     const violations: KiroSecurityViolation[] = [];
 
     // Convert to string for pattern matching
-    const specsString = typeof specs === 'string' ? specs : JSON.stringify(specs);
+    const specsString =
+      typeof specs === 'string' ? specs : JSON.stringify(specs);
 
     // 1. Check for sensitive information in specs
     const sensitivePatterns = [
@@ -983,7 +1061,9 @@ export class SecurityScannerService {
     return violations;
   }
 
-  async generateKiroSecurityReport(scanResult: KiroSecurityScanResult): Promise<string> {
+  async generateKiroSecurityReport(
+    scanResult: KiroSecurityScanResult,
+  ): Promise<string> {
     const report = [
       '# Kiro Security Scan Report',
       '',
@@ -996,17 +1076,24 @@ export class SecurityScannerService {
     if (scanResult.summary) {
       report.push('## Summary');
       report.push('');
-      report.push(`- **Critical/High Issues**: ${scanResult.summary.highSeverity}`);
+      report.push(
+        `- **Critical/High Issues**: ${scanResult.summary.highSeverity}`,
+      );
       report.push(`- **Medium Issues**: ${scanResult.summary.mediumSeverity}`);
       report.push(`- **Low Issues**: ${scanResult.summary.lowSeverity}`);
       report.push(`- **Total Issues**: ${scanResult.summary.totalIssues}`);
       report.push('');
     }
 
-    if (scanResult.quarantinedComponents && scanResult.quarantinedComponents.length > 0) {
+    if (
+      scanResult.quarantinedComponents &&
+      scanResult.quarantinedComponents.length > 0
+    ) {
       report.push('## Quarantined Components');
       report.push('');
-      report.push('The following components have been quarantined due to security violations:');
+      report.push(
+        'The following components have been quarantined due to security violations:',
+      );
       report.push('');
       for (const component of scanResult.quarantinedComponents) {
         report.push(`- **${component}**`);
@@ -1014,9 +1101,15 @@ export class SecurityScannerService {
       report.push('');
     }
 
-    if (scanResult.securityViolations && scanResult.securityViolations.length > 0) {
-      const violationsByType = new Map<KiroComponentType, KiroSecurityViolation[]>();
-      
+    if (
+      scanResult.securityViolations &&
+      scanResult.securityViolations.length > 0
+    ) {
+      const violationsByType = new Map<
+        KiroComponentType,
+        KiroSecurityViolation[]
+      >();
+
       for (const violation of scanResult.securityViolations) {
         if (!violationsByType.has(violation.componentType)) {
           violationsByType.set(violation.componentType, []);
@@ -1028,19 +1121,32 @@ export class SecurityScannerService {
       report.push('');
 
       for (const [componentType, violations] of violationsByType) {
-        report.push(`### ${componentType.charAt(0).toUpperCase() + componentType.slice(1)} Components`);
+        report.push(
+          `### ${componentType.charAt(0).toUpperCase() + componentType.slice(1)} Components`,
+        );
         report.push('');
 
         for (const violation of violations) {
-          const severityIcon = violation.severity === 'critical' ? '🔴' : 
-                              violation.severity === 'high' ? '🟠' :
-                              violation.severity === 'medium' ? '🟡' : '🔵';
-          
-          report.push(`${severityIcon} **${violation.component}** (${violation.severity.toUpperCase()})`);
-          report.push(`  - **Type**: ${violation.violationType.replace('_', ' ')}`);
+          const severityIcon =
+            violation.severity === 'critical'
+              ? '🔴'
+              : violation.severity === 'high'
+                ? '🟠'
+                : violation.severity === 'medium'
+                  ? '🟡'
+                  : '🔵';
+
+          report.push(
+            `${severityIcon} **${violation.component}** (${violation.severity.toUpperCase()})`,
+          );
+          report.push(
+            `  - **Type**: ${violation.violationType.replace('_', ' ')}`,
+          );
           report.push(`  - **Description**: ${violation.description}`);
           report.push(`  - **Recommendation**: ${violation.recommendation}`);
-          report.push(`  - **Quarantined**: ${violation.quarantined ? 'Yes' : 'No'}`);
+          report.push(
+            `  - **Quarantined**: ${violation.quarantined ? 'Yes' : 'No'}`,
+          );
           report.push('');
         }
       }
@@ -1048,16 +1154,25 @@ export class SecurityScannerService {
 
     report.push('## Recommendations');
     report.push('');
-    report.push('1. Review and fix all critical and high severity violations before deployment');
-    report.push('2. Consider the security implications of medium severity issues');
+    report.push(
+      '1. Review and fix all critical and high severity violations before deployment',
+    );
+    report.push(
+      '2. Consider the security implications of medium severity issues',
+    );
     report.push('3. Remove or replace quarantined components');
-    report.push('4. Implement additional security measures for components with dangerous capabilities');
+    report.push(
+      '4. Implement additional security measures for components with dangerous capabilities',
+    );
     report.push('5. Regularly scan components for new security issues');
-    
+
     return report.join('\n');
   }
 
-  async quarantineComponent(componentName: string, _reason: string): Promise<{
+  async quarantineComponent(
+    componentName: string,
+    _reason: string,
+  ): Promise<{
     quarantined: boolean;
     quarantinePath?: string;
     error?: string;

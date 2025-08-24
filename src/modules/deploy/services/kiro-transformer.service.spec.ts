@@ -1,5 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { describe, it, expect, beforeEach } from 'vitest';
+
 import { TaptikContext } from '../../context/interfaces/taptik-context.interface';
 
 import { KiroTransformerService } from './kiro-transformer.service';
@@ -35,37 +37,46 @@ describe('KiroTransformerService', () => {
             profile: {
               experience_years: 5,
               primary_role: 'Full Stack Developer',
-              domain_knowledge: ['web-development', 'nodejs']
+              domain_knowledge: ['web-development', 'nodejs'],
             },
             preferences: {
               theme: 'dark',
               naming_convention: 'camelCase',
-              testing_approach: 'unit-first'
+              testing_approach: 'unit-first',
             },
             communication: {
               explanation_level: 'detailed',
-              preferred_language: 'en'
+              preferred_language: 'en',
             },
             tech_stack: {
               languages: ['TypeScript', 'JavaScript'],
-              frameworks: ['NestJS', 'React']
-            }
+              frameworks: ['NestJS', 'React'],
+            },
+          },
+          ide: {
+            'kiro-ide': {
+              settings: {
+                default_project_template: 'basic-typescript',
+                auto_save: true,
+                backup_frequency: 'hourly',
+              },
+            },
           },
           tools: {
             agents: [
               {
                 name: 'Test Agent',
                 content: 'Test agent content',
-                metadata: { category: 'testing' }
-              }
-            ]
-          }
+                metadata: { category: 'testing' },
+              },
+            ],
+          },
         },
         security: {
           hasApiKeys: false,
           filteredFields: [],
-          scanResults: { passed: true, warnings: [] }
-        }
+          scanResults: { passed: true, warnings: [] },
+        },
       };
 
       const result = service.transformPersonalContext(mockContext);
@@ -75,7 +86,10 @@ describe('KiroTransformerService', () => {
       expect(result.user.profile.email).toBe('john@example.com');
       expect(result.user.profile.experience_years).toBe(5);
       expect(result.user.preferences.theme).toBe('dark');
-      expect(result.user.tech_stack.languages).toEqual(['TypeScript', 'JavaScript']);
+      expect(result.user.tech_stack.languages).toEqual([
+        'TypeScript',
+        'JavaScript',
+      ]);
       expect(result.agents).toHaveLength(1);
       expect(result.agents![0].name).toBe('Test Agent');
     });
@@ -88,12 +102,22 @@ describe('KiroTransformerService', () => {
           sourceIde: 'claude-code',
           targetIdes: ['kiro-ide'],
         },
-        content: {},
+        content: {
+          ide: {
+            'kiro-ide': {
+              settings: {
+                default_project_template: 'minimal',
+                auto_save: false,
+                backup_frequency: 'daily',
+              },
+            },
+          },
+        },
         security: {
           hasApiKeys: false,
           filteredFields: [],
-          scanResults: { passed: true, warnings: [] }
-        }
+          scanResults: { passed: true, warnings: [] },
+        },
       };
 
       const result = service.transformPersonalContext(mockContext);
@@ -119,32 +143,41 @@ describe('KiroTransformerService', () => {
             description: 'A test project for transformation',
             info: {
               type: 'web-app',
-              team_size: 3
+              team_size: 3,
             },
             tech_stack: {
               language: 'TypeScript',
               framework: 'NestJS',
-              database: 'PostgreSQL'
+              database: 'PostgreSQL',
             },
             conventions: {
-              commit_convention: 'conventional-commits'
-            }
+              commit_convention: 'conventional-commits',
+            },
+          },
+          ide: {
+            'kiro-ide': {
+              settings: {
+                default_project_template: 'nestjs-starter',
+                auto_save: true,
+                backup_frequency: 'hourly',
+              },
+            },
           },
           tools: {
             custom_tools: [
               {
                 name: 'Test Tool',
                 command: 'npm test',
-                description: 'Run tests'
-              }
-            ]
-          }
+                description: 'Run tests',
+              },
+            ],
+          },
         },
         security: {
           hasApiKeys: false,
           filteredFields: [],
-          scanResults: { passed: true, warnings: [] }
-        }
+          scanResults: { passed: true, warnings: [] },
+        },
       };
 
       const result = service.transformProjectContext(mockContext);
@@ -154,7 +187,9 @@ describe('KiroTransformerService', () => {
       expect(result.settings.project.tech_stack.language).toBe('TypeScript');
       expect(result.steering).toHaveLength(1);
       expect(result.steering[0].name).toBe('project-overview');
-      expect(result.steering[0].content).toBe('A test project for transformation');
+      expect(result.steering[0].content).toBe(
+        'A test project for transformation',
+      );
       expect(result.hooks).toHaveLength(1);
       expect(result.hooks[0].name).toBe('Test Tool');
     });
@@ -167,8 +202,8 @@ describe('KiroTransformerService', () => {
           {
             name: 'System Prompt',
             content: 'You are a helpful assistant',
-            category: 'system'
-          }
+            category: 'system',
+          },
         ],
         templates: [
           {
@@ -176,31 +211,31 @@ describe('KiroTransformerService', () => {
             name: 'Test Template',
             template: 'Hello {{name}}',
             description: 'A greeting template',
-            variables: ['name']
-          }
+            variables: ['name'],
+          },
         ],
         examples: [
           {
             name: 'Example 1',
             prompt: 'Generate a function',
-            use_case: 'Code generation'
-          }
-        ]
+            use_case: 'Code generation',
+          },
+        ],
       };
 
       const result = service.transformPromptTemplates(mockPrompts);
 
       expect(result).toHaveLength(3);
-      
+
       // System prompt
       expect(result[0].name).toBe('System Prompt');
       expect(result[0].category).toBe('system');
-      
+
       // Template
       expect(result[1].id).toBe('template-1');
       expect(result[1].variables).toHaveLength(1);
       expect(result[1].variables[0].name).toBe('name');
-      
+
       // Example
       expect(result[2].name).toBe('Example 1');
       expect(result[2].category).toBe('example');
@@ -216,9 +251,15 @@ describe('KiroTransformerService', () => {
 
       expect(result.homeDirectory).toBe(homeDir);
       expect(result.projectDirectory).toBe(projectDir);
-      expect(result.paths.globalSettings).toBe('/home/user/.kiro/settings.json');
-      expect(result.paths.projectSettings).toBe('/home/user/project/.kiro/settings.json');
-      expect(result.paths.steeringDirectory).toBe('/home/user/project/.kiro/steering');
+      expect(result.paths.globalSettings).toBe(
+        '/home/user/.kiro/settings.json',
+      );
+      expect(result.paths.projectSettings).toBe(
+        '/home/user/project/.kiro/settings.json',
+      );
+      expect(result.paths.steeringDirectory).toBe(
+        '/home/user/project/.kiro/steering',
+      );
       expect(result.paths.agentsDirectory).toBe('/home/user/.kiro/agents');
     });
   });
@@ -231,9 +272,9 @@ describe('KiroTransformerService', () => {
           profile: { name: 'Test User' },
           preferences: {},
           communication: {},
-          tech_stack: {}
+          tech_stack: {},
         },
-        ide: {}
+        ide: {},
       };
 
       const projectSettings = {
@@ -243,11 +284,14 @@ describe('KiroTransformerService', () => {
           architecture: {},
           tech_stack: {},
           conventions: {},
-          constraints: {}
-        }
+          constraints: {},
+        },
       };
 
-      const result = service.validateTransformation(globalSettings, projectSettings);
+      const result = service.validateTransformation(
+        globalSettings,
+        projectSettings,
+      );
 
       expect(result.isValid).toBe(true);
       expect(result.errors).toHaveLength(0);
@@ -260,9 +304,9 @@ describe('KiroTransformerService', () => {
           profile: {},
           preferences: {},
           communication: {},
-          tech_stack: {}
+          tech_stack: {},
         },
-        ide: {}
+        ide: {},
       };
 
       const projectSettings = {
@@ -272,11 +316,14 @@ describe('KiroTransformerService', () => {
           architecture: {},
           tech_stack: {},
           conventions: {},
-          constraints: {}
-        }
+          constraints: {},
+        },
       };
 
-      const result = service.validateTransformation(globalSettings, projectSettings);
+      const result = service.validateTransformation(
+        globalSettings,
+        projectSettings,
+      );
 
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain('Global settings must have a version');
@@ -292,16 +339,16 @@ describe('KiroTransformerService', () => {
             id: 'test',
             name: 'Test',
             template: 'Hello {{name}}, welcome to {{platform}}!',
-            description: 'Test template'
-          }
-        ]
+            description: 'Test template',
+          },
+        ],
       };
 
       const result = service.transformPromptTemplates(mockPrompts);
 
       expect(result[0].variables).toHaveLength(2);
-      expect(result[0].variables.map(v => v.name)).toContain('name');
-      expect(result[0].variables.map(v => v.name)).toContain('platform');
+      expect(result[0].variables.map((v) => v.name)).toContain('name');
+      expect(result[0].variables.map((v) => v.name)).toContain('platform');
     });
 
     it('should handle templates without variables', () => {
@@ -311,9 +358,9 @@ describe('KiroTransformerService', () => {
             id: 'test',
             name: 'Test',
             template: 'Hello world!',
-            description: 'Static template'
-          }
-        ]
+            description: 'Static template',
+          },
+        ],
       };
 
       const result = service.transformPromptTemplates(mockPrompts);

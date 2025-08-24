@@ -1,5 +1,12 @@
-import { ConflictStrategy, SupportedPlatform } from './deploy-options.interface';
-import { DeploymentResult, DeploymentError, DeploymentWarning } from './deployment-result.interface';
+import {
+  ConflictStrategy,
+  SupportedPlatform,
+} from './deploy-options.interface';
+import {
+  DeploymentResult,
+  DeploymentError,
+  DeploymentWarning,
+} from './deployment-result.interface';
 
 /**
  * Kiro-specific deployment options
@@ -12,8 +19,12 @@ export interface KiroDeploymentOptions {
   components?: KiroComponentType[];
   skipComponents?: KiroComponentType[];
   enableLargeFileStreaming?: boolean;
-  onProgress?: (progress: { current: number; total: number; percentage: number }) => void;
-  
+  onProgress?: (progress: {
+    current: number;
+    total: number;
+    percentage: number;
+  }) => void;
+
   /** Kiro-specific options */
   globalSettings?: boolean; // Deploy to ~/.kiro/settings.json
   projectSettings?: boolean; // Deploy to .kiro/settings.json
@@ -24,18 +35,18 @@ export interface KiroDeploymentOptions {
 /**
  * Kiro component types that can be deployed
  */
-export type KiroComponentType = 
-  | 'settings' 
-  | 'steering' 
-  | 'specs' 
-  | 'hooks' 
+export type KiroComponentType =
+  | 'settings'
+  | 'steering'
+  | 'specs'
+  | 'hooks'
   | 'agents'
   | 'templates';
 
 /**
  * Kiro-specific conflict resolution strategies
  */
-export type KiroConflictStrategy = 
+export type KiroConflictStrategy =
   | ConflictStrategy
   | 'merge-intelligent' // Intelligent merging based on content type
   | 'preserve-tasks'; // Preserve task completion status

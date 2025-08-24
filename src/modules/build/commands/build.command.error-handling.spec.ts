@@ -1,4 +1,13 @@
-import { describe, it, expect, beforeEach, afterEach, vi, Mock, Mocked } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  beforeEach,
+  afterEach,
+  vi,
+  Mock,
+  Mocked,
+} from 'vitest';
 
 import { MetadataGeneratorService } from '../../context/services/metadata-generator.service';
 import { PackageService } from '../../context/services/package.service';
@@ -12,7 +21,6 @@ import { ProgressService } from '../services/progress/progress.service';
 import { TransformationService } from '../services/transformation/transformation.service';
 
 import { BuildCommand } from './build.command';
-
 
 describe('BuildCommand Error Handling', () => {
   let command: BuildCommand;
@@ -105,7 +113,9 @@ describe('BuildCommand Error Handling', () => {
         throw new Error('process.exit called');
       }),
       addWarning: vi.fn(),
-      getErrorSummary: vi.fn().mockReturnValue({ warnings: [], criticalErrors: [] }),
+      getErrorSummary: vi
+        .fn()
+        .mockReturnValue({ warnings: [], criticalErrors: [] }),
     } as any;
 
     // Create command with mocked dependencies
@@ -119,7 +129,7 @@ describe('BuildCommand Error Handling', () => {
       validationService,
       outputService,
       progressService,
-      errorHandler
+      errorHandler,
     );
 
     // Clear all mocks
@@ -174,8 +184,10 @@ describe('BuildCommand Error Handling', () => {
     it('should handle timeout errors with appropriate exit code', async () => {
       const timeoutError = new Error('Operation timed out');
       timeoutError.name = 'TimeoutError';
-      
-      (interactiveService.selectPlatform as Mock).mockRejectedValue(timeoutError);
+
+      (interactiveService.selectPlatform as Mock).mockRejectedValue(
+        timeoutError,
+      );
 
       await expect(command.run([], {})).rejects.toThrow('process.exit called');
 
@@ -183,7 +195,8 @@ describe('BuildCommand Error Handling', () => {
         type: 'system',
         message: 'Build process timed out',
         details: 'Operation timed out',
-        suggestedResolution: 'Try running the command again or check your system resources',
+        suggestedResolution:
+          'Try running the command again or check your system resources',
         exitCode: 124,
       });
     });
@@ -191,8 +204,10 @@ describe('BuildCommand Error Handling', () => {
     it('should handle permission denied errors with appropriate exit code', async () => {
       const permissionError = new Error('Permission denied');
       (permissionError as any).code = 'EACCES';
-      
-      (interactiveService.selectPlatform as Mock).mockRejectedValue(permissionError);
+
+      (interactiveService.selectPlatform as Mock).mockRejectedValue(
+        permissionError,
+      );
 
       await expect(command.run([], {})).rejects.toThrow('process.exit called');
 
@@ -200,7 +215,8 @@ describe('BuildCommand Error Handling', () => {
         type: 'file_system',
         message: 'Permission denied accessing files',
         details: 'Permission denied',
-        suggestedResolution: 'Check file permissions or run with appropriate privileges',
+        suggestedResolution:
+          'Check file permissions or run with appropriate privileges',
         exitCode: 126,
       });
     });
@@ -208,8 +224,10 @@ describe('BuildCommand Error Handling', () => {
     it('should handle file not found errors with appropriate exit code', async () => {
       const fileNotFoundError = new Error('File not found');
       (fileNotFoundError as any).code = 'ENOENT';
-      
-      (interactiveService.selectPlatform as Mock).mockRejectedValue(fileNotFoundError);
+
+      (interactiveService.selectPlatform as Mock).mockRejectedValue(
+        fileNotFoundError,
+      );
 
       await expect(command.run([], {})).rejects.toThrow('process.exit called');
 
@@ -217,15 +235,18 @@ describe('BuildCommand Error Handling', () => {
         type: 'file_system',
         message: 'Required file or directory not found',
         details: 'File not found',
-        suggestedResolution: 'Ensure all required files exist and paths are correct',
+        suggestedResolution:
+          'Ensure all required files exist and paths are correct',
         exitCode: 2,
       });
     });
 
     it('should handle generic errors with default exit code', async () => {
       const genericError = new Error('Something went wrong');
-      
-      (interactiveService.selectPlatform as Mock).mockRejectedValue(genericError);
+
+      (interactiveService.selectPlatform as Mock).mockRejectedValue(
+        genericError,
+      );
 
       await expect(command.run([], {})).rejects.toThrow('process.exit called');
 
@@ -270,7 +291,9 @@ describe('BuildCommand Error Handling', () => {
   describe('Error Handling During Category Selection', () => {
     it('should handle errors during category selection', async () => {
       (interactiveService.selectPlatform as Mock).mockResolvedValue('kiro');
-      (interactiveService.selectCategories as Mock).mockRejectedValue(new Error('Category selection failed'));
+      (interactiveService.selectCategories as Mock).mockRejectedValue(
+        new Error('Category selection failed'),
+      );
 
       await expect(command.run([], {})).rejects.toThrow('process.exit called');
 

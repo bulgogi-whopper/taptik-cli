@@ -4,7 +4,10 @@ import { TaptikContext } from '../../context/interfaces/taptik-context.interface
 import { SupabaseService } from '../../supabase/supabase.service';
 import { DEPLOYMENT_DEFAULTS } from '../constants/deployment.constants';
 
-import { LargeFileStreamerService, ProgressInfo } from './large-file-streamer.service';
+import {
+  LargeFileStreamerService,
+  ProgressInfo,
+} from './large-file-streamer.service';
 
 export interface CloudMetadataDto {
   id: string;
@@ -43,7 +46,10 @@ export class ImportService {
     return this.importConfiguration(configId);
   }
 
-  async importConfiguration(configId: string, options: ImportOptions = {}): Promise<TaptikContext> {
+  async importConfiguration(
+    configId: string,
+    options: ImportOptions = {},
+  ): Promise<TaptikContext> {
     // Check cache first
     const cached = this.getFromCache(configId);
     if (cached) {
@@ -52,10 +58,14 @@ export class ImportService {
 
     // Get metadata to check file size
     const metadata = await this.getConfigMetadata(configId);
-    const isLargeFile = metadata ? metadata.size > this.LARGE_FILE_THRESHOLD : false;
+    const isLargeFile = metadata
+      ? metadata.size > this.LARGE_FILE_THRESHOLD
+      : false;
 
     if (isLargeFile && options.enableLargeFileStreaming !== false) {
-      this.logger.debug(`Processing large configuration (${Math.round((metadata?.size || 0) / 1024 / 1024)}MB) with streaming`);
+      this.logger.debug(
+        `Processing large configuration (${Math.round((metadata?.size || 0) / 1024 / 1024)}MB) with streaming`,
+      );
       return this.importLargeConfiguration(configId, options);
     }
 
@@ -72,24 +82,35 @@ export class ImportService {
   /**
    * Import large configuration with streaming optimization
    */
-  async importLargeConfiguration(configId: string, options: ImportOptions = {}): Promise<TaptikContext> {
+  async importLargeConfiguration(
+    configId: string,
+    options: ImportOptions = {},
+  ): Promise<TaptikContext> {
     let context: TaptikContext;
 
     try {
       // Get estimated processing time
       const metadata = await this.getConfigMetadata(configId);
-      const estimatedTime = this.largeFileStreamer.getEstimatedProcessingTime(metadata?.size || 0);
-      
-      this.logger.debug(`Estimated processing time: ${Math.round(estimatedTime / 1000)}s`);
+      const estimatedTime = this.largeFileStreamer.getEstimatedProcessingTime(
+        metadata?.size || 0,
+      );
+
+      this.logger.debug(
+        `Estimated processing time: ${Math.round(estimatedTime / 1000)}s`,
+      );
 
       // Progress callback
-      const onProgress = options.onProgress || ((progress) => {
-        this.logger.debug(`Import progress: ${progress.percentage}% (${progress.current}/${progress.total})`);
-      });
+      const onProgress =
+        options.onProgress ||
+        ((progress) => {
+          this.logger.debug(
+            `Import progress: ${progress.percentage}% (${progress.current}/${progress.total})`,
+          );
+        });
 
       // Fetch raw data
       const rawData = await this.fetchFromStorage(configId);
-      
+
       // Process with streaming if data is large enough
       if (rawData.length > this.LARGE_FILE_THRESHOLD) {
         let parsedContext: TaptikContext | null = null;
@@ -109,7 +130,7 @@ export class ImportService {
             onProgress,
             enableGarbageCollection: options.enableMemoryOptimization ?? true,
             memoryThreshold: 50 * 1024 * 1024, // 50MB
-          }
+          },
         );
 
         if (!result.success) {
@@ -127,15 +148,17 @@ export class ImportService {
       }
 
       // Cache the result (be mindful of memory usage for large configs)
-      if ((metadata?.size || 0) < 50 * 1024 * 1024) { // Only cache configs smaller than 50MB
+      if ((metadata?.size || 0) < 50 * 1024 * 1024) {
+        // Only cache configs smaller than 50MB
         this.setCache(configId, context);
       }
 
       this.logger.debug(`Large configuration import completed successfully`);
       return context;
-
     } catch (error) {
-      this.logger.error(`Large configuration import failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      this.logger.error(
+        `Large configuration import failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
       throw error;
     }
   }

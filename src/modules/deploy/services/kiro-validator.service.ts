@@ -5,7 +5,7 @@ import {
   ValidationError,
   ValidationWarning,
 } from '../../context/dto/validation-result.dto';
-import { TaptikContext } from '../../context/interfaces/taptik-context.interface';
+import { TaptikContext, PersonalContext, ProjectContext } from '../../context/interfaces/taptik-context.interface';
 import {
   KiroGlobalSettings,
   KiroProjectSettings,
@@ -17,6 +17,8 @@ import {
   KiroComponentType,
   KiroValidationResult,
   KiroDeploymentOptions,
+  KiroTask,
+  KiroTemplateVariable,
 } from '../interfaces/kiro-deployment.interface';
 
 @Injectable()
@@ -25,10 +27,32 @@ export class KiroValidatorService {
   private readonly MAX_AGENTS = 50;
   private readonly MAX_TEMPLATES = 100;
   private readonly MAX_HOOKS = 20;
-  private readonly VALID_HOOK_TYPES = ['pre-commit', 'post-commit', 'file-save', 'session-start', 'custom'];
-  private readonly VALID_SPEC_TYPES = ['feature', 'bug', 'enhancement', 'refactor', 'docs'];
-  private readonly VALID_SPEC_STATUSES = ['draft', 'active', 'completed', 'archived'];
-  private readonly VALID_TASK_STATUSES = ['pending', 'in_progress', 'completed', 'blocked'];
+  private readonly VALID_HOOK_TYPES = [
+    'pre-commit',
+    'post-commit',
+    'file-save',
+    'session-start',
+    'custom',
+  ];
+  private readonly VALID_SPEC_TYPES = [
+    'feature',
+    'bug',
+    'enhancement',
+    'refactor',
+    'docs',
+  ];
+  private readonly VALID_SPEC_STATUSES = [
+    'draft',
+    'active',
+    'completed',
+    'archived',
+  ];
+  private readonly VALID_TASK_STATUSES = [
+    'pending',
+    'in_progress',
+    'completed',
+    'blocked',
+  ];
   private readonly VALID_PRIORITIES = ['low', 'medium', 'high'];
 
   async validateForKiro(
@@ -74,19 +98,25 @@ export class KiroValidatorService {
 
     // Validate each component type based on what's present
     if (context.content.personal) {
-      const personalResult = this.validatePersonalContext(context.content.personal);
+      const personalResult = this.validatePersonalContext(
+        context.content.personal,
+      );
       errors.push(...personalResult.errors);
       warnings.push(...(personalResult.warnings || []));
     }
 
     if (context.content.project) {
-      const projectResult = this.validateProjectContext(context.content.project);
+      const projectResult = this.validateProjectContext(
+        context.content.project,
+      );
       errors.push(...projectResult.errors);
       warnings.push(...(projectResult.warnings || []));
     }
 
     if (context.content.components) {
-      const componentsResult = this.validateComponents(context.content.components);
+      const componentsResult = this.validateComponents(
+        context.content.components,
+      );
       errors.push(...componentsResult.errors);
       warnings.push(...(componentsResult.warnings || []));
     }
@@ -104,7 +134,7 @@ export class KiroValidatorService {
   }
 
   async validateKiroComponent(
-    component: any, // eslint-disable-line @typescript-eslint/no-explicit-any
+    component: unknown,
     componentType: KiroComponentType,
   ): Promise<KiroValidationResult> {
     const errors: ValidationError[] = [];
@@ -113,42 +143,42 @@ export class KiroValidatorService {
 
     switch (componentType) {
       case 'settings': {
-        const settingsResult = this.validateSettings(component);
+        const settingsResult = this.validateSettings(component as KiroGlobalSettings | KiroProjectSettings);
         errors.push(...settingsResult.errors);
         warnings.push(...(settingsResult.warnings || []));
         break;
       }
 
       case 'steering': {
-        const steeringResult = this.validateSteeringDocument(component);
+        const steeringResult = this.validateSteeringDocument(component as KiroSteeringDocument);
         errors.push(...steeringResult.errors);
         warnings.push(...(steeringResult.warnings || []));
         break;
       }
 
       case 'specs': {
-        const specsResult = this.validateSpecDocument(component);
+        const specsResult = this.validateSpecDocument(component as KiroSpecDocument);
         errors.push(...specsResult.errors);
         warnings.push(...(specsResult.warnings || []));
         break;
       }
 
       case 'hooks': {
-        const hooksResult = this.validateHookConfiguration(component);
+        const hooksResult = this.validateHookConfiguration(component as KiroHookConfiguration);
         errors.push(...hooksResult.errors);
         warnings.push(...(hooksResult.warnings || []));
         break;
       }
 
       case 'agents': {
-        const agentsResult = this.validateAgentConfiguration(component);
+        const agentsResult = this.validateAgentConfiguration(component as KiroAgentConfiguration);
         errors.push(...agentsResult.errors);
         warnings.push(...(agentsResult.warnings || []));
         break;
       }
 
       case 'templates': {
-        const templatesResult = this.validateTemplateConfiguration(component);
+        const templatesResult = this.validateTemplateConfiguration(component as KiroTemplateConfiguration);
         errors.push(...templatesResult.errors);
         warnings.push(...(templatesResult.warnings || []));
         break;
@@ -172,15 +202,17 @@ export class KiroValidatorService {
     };
   }
 
-  private validatePersonalContext(personal: any): ValidationResult { // eslint-disable-line @typescript-eslint/no-explicit-any
+  private validatePersonalContext(personal: PersonalContext): ValidationResult {
+     
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
     // Check for security risks in personal context
-    if (personal.secrets || personal.tokens || personal.apiKeys) {
+    if ('secrets' in personal || 'tokens' in personal || 'apiKeys' in personal) {
       errors.push({
         field: 'personal.secrets',
-        message: 'Personal context should not contain secrets, tokens, or API keys',
+        message:
+          'Personal context should not contain secrets, tokens, or API keys',
         code: 'SECURITY_VIOLATION',
         severity: 'HIGH',
       });
@@ -198,7 +230,8 @@ export class KiroValidatorService {
     return { isValid: errors.length === 0, errors, warnings };
   }
 
-  private validateProjectContext(project: any): ValidationResult { // eslint-disable-line @typescript-eslint/no-explicit-any
+  private validateProjectContext(project: ProjectContext): ValidationResult {
+     
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
@@ -223,7 +256,7 @@ export class KiroValidatorService {
     }
 
     // Check for security violations in project context
-    if (project.secrets || project.credentials || project.tokens) {
+    if ('secrets' in project || 'credentials' in project || 'tokens' in project) {
       errors.push({
         field: 'project.secrets',
         message: 'Project context should not contain secrets or credentials',
@@ -235,7 +268,8 @@ export class KiroValidatorService {
     return { isValid: errors.length === 0, errors, warnings };
   }
 
-  private validateComponents(components: any): ValidationResult { // eslint-disable-line @typescript-eslint/no-explicit-any
+  private validateComponents(components: unknown): ValidationResult {
+     
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
@@ -269,7 +303,10 @@ export class KiroValidatorService {
       }
 
       // Check content size
-      if (component.content && JSON.stringify(component.content).length > this.MAX_FILE_SIZE) {
+      if (
+        component.content &&
+        JSON.stringify(component.content).length > this.MAX_FILE_SIZE
+      ) {
         errors.push({
           field: `components[${index}].content`,
           message: `Component content exceeds maximum size of ${this.MAX_FILE_SIZE / (1024 * 1024)}MB`,
@@ -282,7 +319,9 @@ export class KiroValidatorService {
     return { isValid: errors.length === 0, errors, warnings };
   }
 
-  private validateSettings(settings: KiroGlobalSettings | KiroProjectSettings): ValidationResult {
+  private validateSettings(
+    settings: KiroGlobalSettings | KiroProjectSettings,
+  ): ValidationResult {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
@@ -304,7 +343,9 @@ export class KiroValidatorService {
     return { isValid: errors.length === 0, errors, warnings };
   }
 
-  private validateSteeringDocument(document: KiroSteeringDocument): ValidationResult {
+  private validateSteeringDocument(
+    document: KiroSteeringDocument,
+  ): ValidationResult {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
@@ -335,7 +376,10 @@ export class KiroValidatorService {
       });
     }
 
-    if (document.priority && !this.VALID_PRIORITIES.includes(document.priority)) {
+    if (
+      document.priority &&
+      !this.VALID_PRIORITIES.includes(document.priority)
+    ) {
       errors.push({
         field: 'steering.priority',
         message: `Invalid priority. Must be one of: ${this.VALID_PRIORITIES.join(', ')}`,
@@ -398,7 +442,7 @@ export class KiroValidatorService {
     // Validate tasks if present
     if (spec.tasks && Array.isArray(spec.tasks)) {
       spec.tasks.forEach((task, index) => {
-        const taskResult = this.validateTask(task, index);
+        const taskResult = this.validateTask(task as KiroTask, index);
         errors.push(...taskResult.errors);
         warnings.push(...(taskResult.warnings || []));
       });
@@ -407,7 +451,8 @@ export class KiroValidatorService {
     return { isValid: errors.length === 0, errors, warnings };
   }
 
-  private validateTask(task: any, index: number): ValidationResult { // eslint-disable-line @typescript-eslint/no-explicit-any
+  private validateTask(task: KiroTask, index: number): ValidationResult {
+     
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
@@ -458,7 +503,9 @@ export class KiroValidatorService {
     return { isValid: errors.length === 0, errors, warnings };
   }
 
-  private validateHookConfiguration(hook: KiroHookConfiguration): ValidationResult {
+  private validateHookConfiguration(
+    hook: KiroHookConfiguration,
+  ): ValidationResult {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
@@ -538,7 +585,7 @@ export class KiroValidatorService {
     ];
 
     // Check for dangerous commands
-    if (dangerousCommands.some(cmd => hook.command.includes(cmd))) {
+    if (dangerousCommands.some((cmd) => hook.command.includes(cmd))) {
       errors.push({
         field: 'hook.command',
         message: 'Hook command contains potentially dangerous operations',
@@ -548,7 +595,7 @@ export class KiroValidatorService {
     }
 
     // Check for suspicious patterns
-    if (suspiciousPatterns.some(pattern => pattern.test(hook.command))) {
+    if (suspiciousPatterns.some((pattern) => pattern.test(hook.command))) {
       warnings.push({
         field: 'hook.command',
         message: 'Hook command may contain sensitive information references',
@@ -559,11 +606,16 @@ export class KiroValidatorService {
     // Validate environment variables for security
     if (hook.env) {
       Object.entries(hook.env).forEach(([key, value]) => {
-        if (suspiciousPatterns.some(pattern => pattern.test(key) || pattern.test(value))) {
+        if (
+          suspiciousPatterns.some(
+            (pattern) => pattern.test(key) || pattern.test(value),
+          )
+        ) {
           warnings.push({
             field: `hook.env.${key}`,
             message: 'Environment variable may contain sensitive information',
-            suggestion: 'Use environment variable references instead of hardcoded values',
+            suggestion:
+              'Use environment variable references instead of hardcoded values',
           });
         }
       });
@@ -572,7 +624,9 @@ export class KiroValidatorService {
     return { isValid: errors.length === 0, errors, warnings };
   }
 
-  private validateAgentConfiguration(agent: KiroAgentConfiguration): ValidationResult {
+  private validateAgentConfiguration(
+    agent: KiroAgentConfiguration,
+  ): ValidationResult {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
@@ -652,7 +706,9 @@ export class KiroValidatorService {
     return { isValid: errors.length === 0, errors, warnings };
   }
 
-  private validateAgentSecurity(agent: KiroAgentConfiguration): ValidationResult {
+  private validateAgentSecurity(
+    agent: KiroAgentConfiguration,
+  ): ValidationResult {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
@@ -672,7 +728,7 @@ export class KiroValidatorService {
     ];
 
     // Check for malicious patterns in prompt
-    if (maliciousPatterns.some(pattern => pattern.test(agent.prompt))) {
+    if (maliciousPatterns.some((pattern) => pattern.test(agent.prompt))) {
       errors.push({
         field: 'agent.prompt',
         message: 'Agent prompt contains potentially malicious patterns',
@@ -682,7 +738,7 @@ export class KiroValidatorService {
     }
 
     // Check for suspicious patterns
-    if (suspiciousPatterns.some(pattern => pattern.test(agent.prompt))) {
+    if (suspiciousPatterns.some((pattern) => pattern.test(agent.prompt))) {
       warnings.push({
         field: 'agent.prompt',
         message: 'Agent prompt may reference sensitive information',
@@ -692,16 +748,23 @@ export class KiroValidatorService {
 
     // Validate capabilities for security risks
     if (agent.capabilities && Array.isArray(agent.capabilities)) {
-      const dangerousCapabilities = ['file_system_write', 'network_access', 'shell_execution'];
-      const foundDangerous = agent.capabilities.filter(cap => 
-        dangerousCapabilities.some(dangerous => cap.toLowerCase().includes(dangerous))
+      const dangerousCapabilities = [
+        'file_system_write',
+        'network_access',
+        'shell_execution',
+      ];
+      const foundDangerous = agent.capabilities.filter((cap) =>
+        dangerousCapabilities.some((dangerous) =>
+          cap.toLowerCase().includes(dangerous),
+        ),
       );
 
       if (foundDangerous.length > 0) {
         warnings.push({
           field: 'agent.capabilities',
           message: `Agent has potentially dangerous capabilities: ${foundDangerous.join(', ')}`,
-          suggestion: 'Ensure these capabilities are necessary and properly constrained',
+          suggestion:
+            'Ensure these capabilities are necessary and properly constrained',
         });
       }
     }
@@ -709,7 +772,9 @@ export class KiroValidatorService {
     return { isValid: errors.length === 0, errors, warnings };
   }
 
-  private validateTemplateConfiguration(template: KiroTemplateConfiguration): ValidationResult {
+  private validateTemplateConfiguration(
+    template: KiroTemplateConfiguration,
+  ): ValidationResult {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
@@ -767,7 +832,7 @@ export class KiroValidatorService {
       });
     } else {
       template.variables.forEach((variable, index) => {
-        const variableResult = this.validateTemplateVariable(variable, index);
+        const variableResult = this.validateTemplateVariable(variable as KiroTemplateVariable, index);
         errors.push(...variableResult.errors);
         warnings.push(...(variableResult.warnings || []));
       });
@@ -776,7 +841,11 @@ export class KiroValidatorService {
     return { isValid: errors.length === 0, errors, warnings };
   }
 
-  private validateTemplateVariable(variable: any, index: number): ValidationResult { // eslint-disable-line @typescript-eslint/no-explicit-any
+  private validateTemplateVariable(
+    variable: KiroTemplateVariable,
+    index: number,
+  ): ValidationResult {
+     
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
@@ -818,11 +887,15 @@ export class KiroValidatorService {
         });
       }
 
-      if ((variable.validation.min !== undefined || variable.validation.max !== undefined) && 
-          !['number', 'string', 'array'].includes(variable.type)) {
+      if (
+        (variable.validation.min !== undefined ||
+          variable.validation.max !== undefined) &&
+        !['number', 'string', 'array'].includes(variable.type)
+      ) {
         warnings.push({
           field: `template.variables[${index}].validation.min/max`,
-          message: 'Min/max validation only applies to number, string, or array variables',
+          message:
+            'Min/max validation only applies to number, string, or array variables',
           suggestion: 'Remove min/max validation for incompatible types',
         });
       }
@@ -831,7 +904,9 @@ export class KiroValidatorService {
     return { isValid: errors.length === 0, errors, warnings };
   }
 
-  private validateDeploymentOptions(options: KiroDeploymentOptions): ValidationResult {
+  private validateDeploymentOptions(
+    options: KiroDeploymentOptions,
+  ): ValidationResult {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
@@ -846,7 +921,9 @@ export class KiroValidatorService {
 
     // Validate component selection
     if (options.components && options.skipComponents) {
-      const overlap = options.components.filter(c => options.skipComponents!.includes(c));
+      const overlap = options.components.filter((c) =>
+        options.skipComponents!.includes(c),
+      );
       if (overlap.length > 0) {
         errors.push({
           field: 'options.components',
@@ -858,11 +935,16 @@ export class KiroValidatorService {
     }
 
     // Validate file size limits
-    if (options.enableLargeFileStreaming === false && options.components?.includes('agents')) {
+    if (
+      options.enableLargeFileStreaming === false &&
+      options.components?.includes('agents')
+    ) {
       warnings.push({
         field: 'options.enableLargeFileStreaming',
-        message: 'Large file streaming is disabled but agents may contain large prompts',
-        suggestion: 'Consider enabling large file streaming for agent deployment',
+        message:
+          'Large file streaming is disabled but agents may contain large prompts',
+        suggestion:
+          'Consider enabling large file streaming for agent deployment',
       });
     }
 
@@ -904,20 +986,27 @@ export class KiroValidatorService {
     }
 
     // Check for conflicting configurations
-    if (globalSettings.user?.preferences?.theme && 
-        projectSettings.project?.info?.type === 'library' &&
-        globalSettings.user.preferences.theme === 'dark') {
+    if (
+      globalSettings.user?.preferences?.theme &&
+      projectSettings.project?.info?.type === 'library' &&
+      globalSettings.user.preferences.theme === 'dark'
+    ) {
       warnings.push({
         field: 'configuration.conflict',
-        message: 'Dark theme preference may not be optimal for library development',
-        suggestion: 'Consider using light theme for better documentation visibility',
+        message:
+          'Dark theme preference may not be optimal for library development',
+        suggestion:
+          'Consider using light theme for better documentation visibility',
       });
     }
 
     return { isValid: errors.length === 0, errors, warnings };
   }
 
-  async validateFileSize(content: string, componentType: KiroComponentType): Promise<ValidationResult> {
+  async validateFileSize(
+    content: string,
+    componentType: KiroComponentType,
+  ): Promise<ValidationResult> {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
@@ -935,20 +1024,24 @@ export class KiroValidatorService {
       warnings.push({
         field: `${componentType}.content`,
         message: `Large content size (${sizeMB.toFixed(2)}MB) may impact performance`,
-        suggestion: 'Consider breaking into smaller components or enabling large file streaming',
+        suggestion:
+          'Consider breaking into smaller components or enabling large file streaming',
       });
     }
 
     return { isValid: errors.length === 0, errors, warnings };
   }
 
-  async validateLimits(components: any[]): Promise<ValidationResult> { // eslint-disable-line @typescript-eslint/no-explicit-any
+  async validateLimits(components: Array<{ type: string; [key: string]: unknown }>): Promise<ValidationResult> {
+     
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
-    const agentCount = components.filter(c => c.type === 'agent').length;
-    const templateCount = components.filter(c => c.type === 'template').length;
-    const hookCount = components.filter(c => c.type === 'hook').length;
+    const agentCount = components.filter((c) => c.type === 'agent').length;
+    const templateCount = components.filter(
+      (c) => c.type === 'template',
+    ).length;
+    const hookCount = components.filter((c) => c.type === 'hook').length;
 
     if (agentCount > this.MAX_AGENTS) {
       errors.push({

@@ -58,10 +58,12 @@ function isFileSystemError(error: unknown): error is FileSystemError {
   if (!hasErrorCode(error)) {
     return false;
   }
-  
+
   return (
     typeof error.code === 'string' &&
-    Object.values(FileSystemErrorCode).includes(error.code as FileSystemErrorCode)
+    Object.values(FileSystemErrorCode).includes(
+      error.code as FileSystemErrorCode,
+    )
   );
 }
 
@@ -78,33 +80,37 @@ export class FileSystemErrorHandler {
    * @param filePath The file/directory path involved
    * @returns Error handling result with user-friendly information
    */
-  static handleError(error: unknown, operation: string, filePath: string): FileSystemErrorResult {
+  static handleError(
+    error: unknown,
+    operation: string,
+    filePath: string,
+  ): FileSystemErrorResult {
     if (isFileSystemError(error)) {
       switch (error.code) {
         case FileSystemErrorCode.PERMISSION_DENIED:
           return this.handlePermissionDenied(operation, filePath);
-          
+
         case FileSystemErrorCode.FILE_NOT_FOUND:
         case FileSystemErrorCode.DIRECTORY_NOT_FOUND:
           return this.handleFileNotFound(operation, filePath);
-          
+
         case FileSystemErrorCode.NO_SPACE_LEFT:
           return this.handleNoSpaceLeft(operation, filePath);
-          
+
         case FileSystemErrorCode.READ_ONLY_FILE_SYSTEM:
           return this.handleReadOnlyFileSystem(operation, filePath);
-          
+
         case FileSystemErrorCode.TOO_MANY_OPEN_FILES:
           return this.handleTooManyOpenFiles(operation, filePath);
-          
+
         case FileSystemErrorCode.INVALID_PATH:
           return this.handleInvalidPath(operation, filePath);
-          
+
         default:
           return this.handleGenericError(error, operation, filePath);
       }
     }
-    
+
     // Handle generic errors without specific error codes
     return this.handleGenericError(error, operation, filePath);
   }
@@ -112,11 +118,14 @@ export class FileSystemErrorHandler {
   /**
    * Handle permission denied errors
    */
-  private static handlePermissionDenied(operation: string, filePath: string): FileSystemErrorResult {
+  private static handlePermissionDenied(
+    operation: string,
+    filePath: string,
+  ): FileSystemErrorResult {
     const userMessage = `Permission denied when ${operation}: ${filePath}`;
-    
+
     this.logger.error(userMessage);
-    
+
     return {
       shouldContinue: false,
       userMessage,
@@ -133,11 +142,14 @@ export class FileSystemErrorHandler {
   /**
    * Handle file/directory not found errors
    */
-  private static handleFileNotFound(operation: string, filePath: string): FileSystemErrorResult {
+  private static handleFileNotFound(
+    operation: string,
+    filePath: string,
+  ): FileSystemErrorResult {
     const userMessage = `File or directory not found when ${operation}: ${filePath}`;
-    
+
     this.logger.warn(userMessage);
-    
+
     return {
       shouldContinue: true, // Often non-critical, can continue with other files
       userMessage,
@@ -154,11 +166,14 @@ export class FileSystemErrorHandler {
   /**
    * Handle no space left on device errors
    */
-  private static handleNoSpaceLeft(operation: string, filePath: string): FileSystemErrorResult {
+  private static handleNoSpaceLeft(
+    operation: string,
+    filePath: string,
+  ): FileSystemErrorResult {
     const userMessage = `No space left on device when ${operation}: ${filePath}`;
-    
+
     this.logger.error(userMessage);
-    
+
     return {
       shouldContinue: false,
       userMessage,
@@ -175,11 +190,14 @@ export class FileSystemErrorHandler {
   /**
    * Handle read-only file system errors
    */
-  private static handleReadOnlyFileSystem(operation: string, filePath: string): FileSystemErrorResult {
+  private static handleReadOnlyFileSystem(
+    operation: string,
+    filePath: string,
+  ): FileSystemErrorResult {
     const userMessage = `Cannot write to read-only file system when ${operation}: ${filePath}`;
-    
+
     this.logger.error(userMessage);
-    
+
     return {
       shouldContinue: false,
       userMessage,
@@ -196,11 +214,14 @@ export class FileSystemErrorHandler {
   /**
    * Handle too many open files errors
    */
-  private static handleTooManyOpenFiles(operation: string, filePath: string): FileSystemErrorResult {
+  private static handleTooManyOpenFiles(
+    operation: string,
+    filePath: string,
+  ): FileSystemErrorResult {
     const userMessage = `Too many open files when ${operation}: ${filePath}`;
-    
+
     this.logger.error(userMessage);
-    
+
     return {
       shouldContinue: false,
       userMessage,
@@ -217,11 +238,14 @@ export class FileSystemErrorHandler {
   /**
    * Handle invalid path errors
    */
-  private static handleInvalidPath(operation: string, filePath: string): FileSystemErrorResult {
+  private static handleInvalidPath(
+    operation: string,
+    filePath: string,
+  ): FileSystemErrorResult {
     const userMessage = `Invalid path when ${operation}: ${filePath}`;
-    
+
     this.logger.error(userMessage);
-    
+
     return {
       shouldContinue: false,
       userMessage,
@@ -238,7 +262,11 @@ export class FileSystemErrorHandler {
   /**
    * Handle generic/unknown file system errors
    */
-  private static handleGenericError(error: unknown, operation: string, filePath: string): FileSystemErrorResult {
+  private static handleGenericError(
+    error: unknown,
+    operation: string,
+    filePath: string,
+  ): FileSystemErrorResult {
     // Extract error message from various error formats
     let errorMessage = 'Unknown error';
     let errorStack: string | undefined;
@@ -262,9 +290,9 @@ export class FileSystemErrorHandler {
     }
 
     const userMessage = `File system error when ${operation}: ${filePath} - ${errorMessage}`;
-    
+
     this.logger.error(userMessage, errorStack);
-    
+
     return {
       shouldContinue: false,
       userMessage,
@@ -287,7 +315,7 @@ export class FileSystemErrorHandler {
     } else {
       this.logger.warn(`Warning: ${result.userMessage}`);
     }
-    
+
     if (result.suggestions.length > 0) {
       this.logger.log('Suggested resolutions:');
       result.suggestions.forEach((suggestion, index) => {

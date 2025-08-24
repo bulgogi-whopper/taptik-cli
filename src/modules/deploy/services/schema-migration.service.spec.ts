@@ -38,14 +38,18 @@ describe('SchemaMigrationService', () => {
 
     it('should handle context without explicit version', () => {
       const contextWithoutVersion = {
-        metadata: { 
-          exportedAt: '2024-01-01T00:00:00Z', 
+        metadata: {
+          exportedAt: '2024-01-01T00:00:00Z',
           sourceIde: 'test',
           version: '',
           targetIdes: ['test'],
         },
         content: { personal: { name: 'Test' } },
-        security: { hasApiKeys: false, filteredFields: [], scanResults: { passed: true, warnings: [] } },
+        security: {
+          hasApiKeys: false,
+          filteredFields: [],
+          scanResults: { passed: true, warnings: [] },
+        },
       };
       const version = service.detectSchemaVersion(contextWithoutVersion);
       expect(version).toBe('1.0.0'); // Default to oldest version
@@ -74,13 +78,17 @@ describe('SchemaMigrationService', () => {
     it('should return false for future versions', () => {
       const result = service.isCompatible('2.0.0', '1.2.0');
       expect(result.compatible).toBe(false);
-      expect(result.warnings).toContain('Configuration version 2.0.0 is newer than supported version 1.2.0');
+      expect(result.warnings).toContain(
+        'Configuration version 2.0.0 is newer than supported version 1.2.0',
+      );
     });
 
     it('should provide warnings for minor version differences', () => {
       const result = service.isCompatible('1.1.0', '1.2.0');
       expect(result.compatible).toBe(true);
-      expect(result.warnings).toContain('Configuration version 1.1.0 may have reduced functionality with current version 1.2.0');
+      expect(result.warnings).toContain(
+        'Configuration version 1.1.0 may have reduced functionality with current version 1.2.0',
+      );
     });
 
     it('should handle invalid version strings', () => {
@@ -94,7 +102,7 @@ describe('SchemaMigrationService', () => {
     it('should migrate v1.0.0 to v1.2.0', async () => {
       const v1Context = createV1Context();
       const migrated = await service.migrateToLatest(v1Context);
-      
+
       expect(migrated.metadata.version).toBe('1.2.0');
       expect(migrated.content.tools?.mcp_servers).toBeDefined();
       expect(migrated.content.ide?.['claude-code']).toBeDefined();
@@ -103,7 +111,7 @@ describe('SchemaMigrationService', () => {
     it('should migrate v1.1.0 to v1.2.0', async () => {
       const v11Context = createV11Context();
       const migrated = await service.migrateToLatest(v11Context);
-      
+
       expect(migrated.metadata.version).toBe('1.2.0');
       expect(migrated.content.prompts?.system_prompts).toBeDefined();
       expect(migrated.security?.detectedPatterns).toBeDefined();
@@ -112,16 +120,19 @@ describe('SchemaMigrationService', () => {
     it('should handle already current version', async () => {
       const currentContext = createCurrentContext();
       const migrated = await service.migrateToLatest(currentContext);
-      
+
       expect(migrated).toEqual(currentContext);
     });
 
     it('should preserve existing data during migration', async () => {
       const v1Context = createV1Context();
-      v1Context.content.personal = { name: 'John Doe', email: 'john@example.com' };
-      
+      v1Context.content.personal = {
+        name: 'John Doe',
+        email: 'john@example.com',
+      };
+
       const migrated = await service.migrateToLatest(v1Context);
-      
+
       expect(migrated.content.personal?.name).toBe('John Doe');
       expect(migrated.content.personal?.email).toBe('john@example.com');
     });
@@ -132,8 +143,10 @@ describe('SchemaMigrationService', () => {
         content: 'invalid',
         security: undefined,
       } as any;
-      
-      await expect(service.migrateToLatest(corruptedContext)).rejects.toThrow('Migration failed:');
+
+      await expect(service.migrateToLatest(corruptedContext)).rejects.toThrow(
+        'Migration failed:',
+      );
     });
   });
 
@@ -141,9 +154,9 @@ describe('SchemaMigrationService', () => {
     it('should validate successful migration', async () => {
       const original = createV1Context();
       const migrated = await service.migrateToLatest(original);
-      
+
       const validation = await service.validateMigration(original, migrated);
-      
+
       expect(validation.passed).toBe(true);
       expect(validation.warnings).toHaveLength(0);
       expect(validation.errors).toHaveLength(0);
@@ -160,11 +173,13 @@ describe('SchemaMigrationService', () => {
           ide: original.content.ide,
         },
       };
-      
+
       const validation = await service.validateMigration(original, incomplete);
-      
+
       expect(validation.passed).toBe(false);
-      expect(validation.errors).toContain('Data loss detected: personal content missing after migration');
+      expect(validation.errors).toContain(
+        'Data loss detected: personal content missing after migration',
+      );
     });
 
     it('should detect schema format violations', async () => {
@@ -173,11 +188,13 @@ describe('SchemaMigrationService', () => {
         ...original,
         metadata: { ...original.metadata, version: 'invalid' },
       };
-      
+
       const validation = await service.validateMigration(original, invalid);
-      
+
       expect(validation.passed).toBe(false);
-      expect(validation.errors).toContain('Invalid target schema version: invalid');
+      expect(validation.errors).toContain(
+        'Invalid target schema version: invalid',
+      );
     });
   });
 
@@ -206,7 +223,7 @@ describe('SchemaMigrationService', () => {
   describe('getSchemaInfo', () => {
     it('should return schema information for version', () => {
       const info = service.getSchemaInfo('1.2.0');
-      
+
       expect(info.version).toBe('1.2.0');
       expect(info.features).toContain('Enhanced security patterns');
       expect(info.features).toContain('Advanced prompt templates');
@@ -217,7 +234,7 @@ describe('SchemaMigrationService', () => {
 
     it('should return minimal info for v1.0.0', () => {
       const info = service.getSchemaInfo('1.0.0');
-      
+
       expect(info.version).toBe('1.0.0');
       expect(info.features).toContain('Basic context structure');
       expect(info.features).toContain('Personal and project settings');
@@ -226,7 +243,7 @@ describe('SchemaMigrationService', () => {
 
     it('should handle unknown version', () => {
       const info = service.getSchemaInfo('9.9.9');
-      
+
       expect(info.version).toBe('unknown');
       expect(info.features).toHaveLength(0);
       expect(info.compatibleWith).toHaveLength(0);

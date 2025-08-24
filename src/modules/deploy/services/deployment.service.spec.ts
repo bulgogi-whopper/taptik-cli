@@ -21,6 +21,9 @@ describe('DeploymentService', () => {
   let mockErrorRecoveryService: any;
   let mockPerformanceMonitorService: any;
   let mockLargeFileStreamerService: any;
+  let mockKiroTransformerService: any;
+  let mockKiroComponentHandlerService: any;
+  let mockKiroInstallationDetectorService: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -112,6 +115,44 @@ describe('DeploymentService', () => {
       getEstimatedProcessingTime: vi.fn().mockReturnValue(1000),
     };
 
+    mockKiroTransformerService = {
+      transformConfiguration: vi.fn().mockResolvedValue({
+        success: true,
+        transformedConfig: {},
+        warnings: [],
+      }),
+      validateTransformation: vi.fn().mockResolvedValue({
+        isValid: true,
+        errors: [],
+        warnings: [],
+      }),
+    };
+
+    mockKiroComponentHandlerService = {
+      handleComponent: vi.fn().mockResolvedValue({
+        success: true,
+        handled: true,
+        warnings: [],
+      }),
+      validateComponent: vi.fn().mockResolvedValue({
+        isValid: true,
+        errors: [],
+        warnings: [],
+      }),
+    };
+
+    mockKiroInstallationDetectorService = {
+      detectKiroInstallation: vi.fn().mockResolvedValue({
+        isInstalled: false,
+        version: null,
+        installationPath: null,
+      }),
+      validateKiroCompatibility: vi.fn().mockResolvedValue({
+        isCompatible: true,
+        warnings: [],
+      }),
+    };
+
     service = new DeploymentService(
       mockBackupService,
       mockDiffService,
@@ -120,6 +161,9 @@ describe('DeploymentService', () => {
       mockErrorRecoveryService,
       mockPerformanceMonitorService,
       mockLargeFileStreamerService,
+      mockKiroTransformerService,
+      mockKiroComponentHandlerService,
+      mockKiroInstallationDetectorService,
     );
   });
 

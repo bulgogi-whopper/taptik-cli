@@ -442,18 +442,18 @@ export class OutputService {
     description: string,
   ): Promise<OutputFile> {
     const filePath = join(outputPath, filename);
-    
+
     try {
       // Validate output path exists
       await this.validateOutputPath(outputPath);
-      
+
       // Convert data to JSON with proper formatting
       const content = JSON.stringify(data, null, 2);
-      
+
       // Write file with progress indicator
       this.logger.debug(`Writing ${description} to ${filePath}...`);
       await fs.writeFile(filePath, content, 'utf8');
-      
+
       // Get file stats for size information
       const stats = await fs.stat(filePath);
       const outputFile: OutputFile = {
@@ -461,12 +461,12 @@ export class OutputService {
         category,
         size: stats.size,
       };
-      
+
       // Log success with formatted size
       this.logger.log(
         `✅ Written ${description}: ${filename} (${this.formatBytes(stats.size)})`,
       );
-      
+
       return outputFile;
     } catch (error) {
       const errorResult = FileSystemErrorHandler.handleError(
@@ -474,16 +474,16 @@ export class OutputService {
         `writing ${description}`,
         filePath,
       );
-      
+
       FileSystemErrorHandler.logErrorResult(errorResult);
-      
+
       // Enhanced error message with actionable guidance
       const enhancedMessage = this.enhanceErrorMessage(
         errorResult.userMessage,
         errorResult.suggestions,
         filePath,
       );
-      
+
       throw new Error(enhancedMessage);
     }
   }
@@ -519,8 +519,8 @@ export class OutputService {
       'Ensure the directory exists and has write permissions',
       'Check available disk space',
     ];
-    
-    return `${baseMessage}\n💡 Suggestions:\n${enhancedSuggestions.map(s => `  • ${s}`).join('\n')}`;
+
+    return `${baseMessage}\n💡 Suggestions:\n${enhancedSuggestions.map((s) => `  • ${s}`).join('\n')}`;
   }
 
   /**
@@ -558,9 +558,10 @@ export class OutputService {
       findings: sanitizationResult.findings,
       report: {
         ...sanitizationResult.report,
-        timestamp: sanitizationResult.report.timestamp instanceof Date
-          ? sanitizationResult.report.timestamp.toISOString()
-          : sanitizationResult.report.timestamp,
+        timestamp:
+          sanitizationResult.report.timestamp instanceof Date
+            ? sanitizationResult.report.timestamp.toISOString()
+            : sanitizationResult.report.timestamp,
       },
       severityBreakdown: sanitizationResult.severityBreakdown,
       recommendations: sanitizationResult.recommendations,
@@ -609,29 +610,34 @@ export class OutputService {
         { name: 'reports', description: 'Sanitization and validation reports' },
         { name: 'metadata', description: 'Cloud metadata and manifests' },
       ];
-      
+
       // Validate base output path
       await this.validateOutputPath(outputPath);
-      
+
       // Create all directories in parallel with progress logging
       this.logger.debug('Creating cloud output directory structure...');
-      
-      const createPromises = directoryConfig.map(async ({ name, description }) => {
-        const dirPath = join(outputPath, name);
-        await fs.mkdir(dirPath, { recursive: true });
-        this.logger.debug(`  📁 ${name}/ - ${description}`);
-        return { name, path: dirPath };
-      });
+
+      const createPromises = directoryConfig.map(
+        async ({ name, description }) => {
+          const dirPath = join(outputPath, name);
+          await fs.mkdir(dirPath, { recursive: true });
+          this.logger.debug(`  📁 ${name}/ - ${description}`);
+          return { name, path: dirPath };
+        },
+      );
 
       const results = await Promise.all(createPromises);
-      
+
       // Build response with directory names and full paths
-      const directories = results.map(r => r.name);
-      const paths = results.reduce((acc, { name, path }) => {
-        acc[name] = path;
-        return acc;
-      }, {} as Record<string, string>);
-      
+      const directories = results.map((r) => r.name);
+      const paths = results.reduce(
+        (acc, { name, path }) => {
+          acc[name] = path;
+          return acc;
+        },
+        {} as Record<string, string>,
+      );
+
       this.logger.log('✅ Cloud output structure created successfully');
 
       return { directories, paths };
@@ -643,13 +649,13 @@ export class OutputService {
       );
 
       FileSystemErrorHandler.logErrorResult(errorResult);
-      
+
       const enhancedMessage = this.enhanceErrorMessage(
         errorResult.userMessage,
         errorResult.suggestions,
         outputPath,
       );
-      
+
       throw new Error(enhancedMessage);
     }
   }
@@ -733,71 +739,89 @@ export class OutputService {
     this.logger.log('');
     this.logger.log('☁️  Cloud Package Information:');
     this.logger.log('─'.repeat(50));
-    
+
     // Basic Information
-    this.logger.log(`  📦 Title: ${cloudPackage.metadata.title || 'Untitled Package'}`);
-    
+    this.logger.log(
+      `  📦 Title: ${cloudPackage.metadata.title || 'Untitled Package'}`,
+    );
+
     // Tags with better formatting
     if (cloudPackage.metadata.tags && cloudPackage.metadata.tags.length > 0) {
       this.logger.log(`  🏷️  Tags: ${cloudPackage.metadata.tags.join(', ')}`);
     }
-    
+
     // Component breakdown with detailed counts
     const components = cloudPackage.metadata.componentCount;
     const componentParts: string[] = [];
-    
+
     if (components.agents > 0) {
-      componentParts.push(`${components.agents} agent${components.agents > 1 ? 's' : ''}`);
+      componentParts.push(
+        `${components.agents} agent${components.agents > 1 ? 's' : ''}`,
+      );
     }
     if (components.commands > 0) {
-      componentParts.push(`${components.commands} command${components.commands > 1 ? 's' : ''}`);
+      componentParts.push(
+        `${components.commands} command${components.commands > 1 ? 's' : ''}`,
+      );
     }
     if (components.mcpServers > 0) {
-      componentParts.push(`${components.mcpServers} MCP server${components.mcpServers > 1 ? 's' : ''}`);
+      componentParts.push(
+        `${components.mcpServers} MCP server${components.mcpServers > 1 ? 's' : ''}`,
+      );
     }
     if (components.steeringRules > 0) {
-      componentParts.push(`${components.steeringRules} steering rule${components.steeringRules > 1 ? 's' : ''}`);
+      componentParts.push(
+        `${components.steeringRules} steering rule${components.steeringRules > 1 ? 's' : ''}`,
+      );
     }
-    
+
     if (componentParts.length > 0) {
       this.logger.log(`  📊 Components: ${componentParts.join(', ')}`);
     } else {
       this.logger.log('  📊 Components: No components configured');
     }
-    
+
     // Security status with color coding (through emoji)
-    const securityStatus = cloudPackage.sanitizedConfig 
+    const securityStatus = cloudPackage.sanitizedConfig
       ? '✅ Sanitized (safe for sharing)'
       : '⚠️  Not sanitized (may contain sensitive data)';
     this.logger.log(`  🔒 Security: ${securityStatus}`);
-    
+
     // Package details
-    this.logger.log(`  💾 Package Size: ${this.formatBytes(cloudPackage.size)}`);
+    this.logger.log(
+      `  💾 Package Size: ${this.formatBytes(cloudPackage.size)}`,
+    );
     this.logger.log(`  📦 Format: ${cloudPackage.format || 'taptik-v1'}`);
     this.logger.log(`  🗜️  Compression: ${cloudPackage.compression || 'none'}`);
-    
+
     // Target compatibility
-    if (cloudPackage.metadata.targetIdes && cloudPackage.metadata.targetIdes.length > 0) {
+    if (
+      cloudPackage.metadata.targetIdes &&
+      cloudPackage.metadata.targetIdes.length > 0
+    ) {
       const targets = cloudPackage.metadata.targetIdes
-        .map(ide => ide.replace('-', ' '))
-        .map(ide => ide.charAt(0).toUpperCase() + ide.slice(1))
+        .map((ide) => ide.replace('-', ' '))
+        .map((ide) => ide.charAt(0).toUpperCase() + ide.slice(1))
         .join(', ');
       this.logger.log(`  🎯 Compatible IDEs: ${targets}`);
     }
-    
+
     // Complexity level indicator
     if (cloudPackage.metadata.complexityLevel) {
-      const complexityEmoji = {
-        minimal: '🟢',
-        basic: '🟢',
-        intermediate: '🟡',
-        advanced: '🟠',
-        expert: '🔴',
-      }[cloudPackage.metadata.complexityLevel] || '⚪';
-      
-      this.logger.log(`  📈 Complexity: ${complexityEmoji} ${cloudPackage.metadata.complexityLevel}`);
+      const complexityEmoji =
+        {
+          minimal: '🟢',
+          basic: '🟢',
+          intermediate: '🟡',
+          advanced: '🟠',
+          expert: '🔴',
+        }[cloudPackage.metadata.complexityLevel] || '⚪';
+
+      this.logger.log(
+        `  📈 Complexity: ${complexityEmoji} ${cloudPackage.metadata.complexityLevel}`,
+      );
     }
-    
+
     this.logger.log('─'.repeat(50));
   }
 

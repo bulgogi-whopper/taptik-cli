@@ -1,6 +1,5 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
-import * as path from 'node:path';
 
 import { Test, TestingModule } from '@nestjs/testing';
 
@@ -13,7 +12,7 @@ vi.mock('node:os');
 vi.mock('node:child_process', () => ({
   spawn: vi.fn(() => ({
     stdout: {
-      on: vi.fn()
+      on: vi.fn(),
     },
     on: vi.fn((event, callback) => {
       if (event === 'close') {
@@ -23,8 +22,8 @@ vi.mock('node:child_process', () => ({
         setTimeout(() => callback(new Error('Process failed')), 0);
       }
     }),
-    kill: vi.fn()
-  }))
+    kill: vi.fn(),
+  })),
 }));
 
 describe('KiroInstallationDetectorService', () => {
@@ -35,7 +34,9 @@ describe('KiroInstallationDetectorService', () => {
       providers: [KiroInstallationDetectorService],
     }).compile();
 
-    service = module.get<KiroInstallationDetectorService>(KiroInstallationDetectorService);
+    service = module.get<KiroInstallationDetectorService>(
+      KiroInstallationDetectorService,
+    );
     vi.clearAllMocks();
   });
 
@@ -97,7 +98,7 @@ describe('KiroInstallationDetectorService', () => {
             severity: 'critical',
             message: 'Kiro IDE version 0.9.0 is not officially supported',
           }),
-        ])
+        ]),
       );
       expect(result.migrationRequired).toBe(true);
     });
@@ -113,7 +114,7 @@ describe('KiroInstallationDetectorService', () => {
             severity: 'critical',
             message: 'Unable to determine Kiro IDE version',
           }),
-        ])
+        ]),
       );
     });
 
@@ -121,7 +122,9 @@ describe('KiroInstallationDetectorService', () => {
       const result = await service.checkCompatibility('1.0.0');
 
       // Version 1.0.0 should have some feature limitations
-      const featureIssues = result.issues.filter(issue => issue.type === 'feature');
+      const featureIssues = result.issues.filter(
+        (issue) => issue.type === 'feature',
+      );
       expect(featureIssues.length).toBeGreaterThan(0);
     });
 
@@ -131,7 +134,7 @@ describe('KiroInstallationDetectorService', () => {
       expect(result.recommendations).toEqual(
         expect.arrayContaining([
           expect.stringContaining('Consider upgrading to Kiro IDE v2.0.0'),
-        ])
+        ]),
       );
     });
   });
@@ -161,22 +164,29 @@ describe('KiroInstallationDetectorService', () => {
           expect.objectContaining({
             category: 'installation',
             severity: 'critical',
-            message: 'Kiro IDE is not installed or not found in expected locations',
+            message:
+              'Kiro IDE is not installed or not found in expected locations',
           }),
-        ])
+        ]),
       );
     });
 
     it('should detect configuration health issues', async () => {
       // Mock installation found but corrupted config
       vi.mocked(fs.access).mockImplementation((filePath) => {
-        if (typeof filePath === 'string' && filePath.includes('settings.json')) {
+        if (
+          typeof filePath === 'string' &&
+          filePath.includes('settings.json')
+        ) {
           return Promise.resolve();
         }
         return Promise.resolve();
       });
       vi.mocked(fs.readFile).mockImplementation((filePath) => {
-        if (typeof filePath === 'string' && filePath.includes('settings.json')) {
+        if (
+          typeof filePath === 'string' &&
+          filePath.includes('settings.json')
+        ) {
           return Promise.resolve('invalid json{');
         }
         return Promise.resolve('{"version": "2.0.0"}');
@@ -185,7 +195,9 @@ describe('KiroInstallationDetectorService', () => {
 
       const result = await service.performHealthCheck();
 
-      const configIssues = result.issues.filter(issue => issue.category === 'configuration');
+      const configIssues = result.issues.filter(
+        (issue) => issue.category === 'configuration',
+      );
       expect(configIssues.length).toBeGreaterThan(0);
     });
 
@@ -201,7 +213,9 @@ describe('KiroInstallationDetectorService', () => {
 
       const result = await service.performHealthCheck();
 
-      const permissionIssues = result.issues.filter(issue => issue.category === 'permissions');
+      const permissionIssues = result.issues.filter(
+        (issue) => issue.category === 'permissions',
+      );
       expect(permissionIssues.length).toBeGreaterThan(0);
     });
 
@@ -214,20 +228,26 @@ describe('KiroInstallationDetectorService', () => {
       expect(result.recommendations).toEqual(
         expect.arrayContaining([
           expect.stringContaining('Address critical issues'),
-        ])
+        ]),
       );
     });
 
     it('should generate auto-fixable health fixes', async () => {
       // Mock configuration issues that are auto-fixable
       vi.mocked(fs.access).mockImplementation((filePath) => {
-        if (typeof filePath === 'string' && filePath.includes('settings.json')) {
+        if (
+          typeof filePath === 'string' &&
+          filePath.includes('settings.json')
+        ) {
           return Promise.resolve();
         }
         return Promise.resolve();
       });
       vi.mocked(fs.readFile).mockImplementation((filePath) => {
-        if (typeof filePath === 'string' && filePath.includes('settings.json')) {
+        if (
+          typeof filePath === 'string' &&
+          filePath.includes('settings.json')
+        ) {
           return Promise.resolve('invalid json{');
         }
         return Promise.resolve('{"version": "2.0.0"}');
@@ -236,7 +256,7 @@ describe('KiroInstallationDetectorService', () => {
 
       const result = await service.performHealthCheck();
 
-      const autoFixableFixes = result.fixes.filter(fix => fix.automated);
+      const autoFixableFixes = result.fixes.filter((fix) => fix.automated);
       expect(autoFixableFixes.length).toBeGreaterThan(0);
     });
   });
@@ -255,7 +275,7 @@ describe('KiroInstallationDetectorService', () => {
           expect.objectContaining({
             code: 'MIGRATION_BACKUP_CREATED',
           }),
-        ])
+        ]),
       );
     });
 
@@ -269,7 +289,7 @@ describe('KiroInstallationDetectorService', () => {
             code: 'MIGRATION_NOT_SUPPORTED',
             severity: 'HIGH',
           }),
-        ])
+        ]),
       );
     });
 
@@ -291,7 +311,9 @@ describe('KiroInstallationDetectorService', () => {
       const newerResult = await service.checkCompatibility('2.0.0');
 
       // Older version should have more issues
-      expect(olderResult.issues.length).toBeGreaterThan(newerResult.issues.length);
+      expect(olderResult.issues.length).toBeGreaterThan(
+        newerResult.issues.length,
+      );
     });
   });
 
@@ -317,7 +339,7 @@ describe('KiroInstallationDetectorService', () => {
             category: 'installation',
             severity: 'critical',
           }),
-        ])
+        ]),
       );
     });
   });

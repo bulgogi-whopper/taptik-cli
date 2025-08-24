@@ -1,3 +1,4 @@
+/* eslint-disable import-x/max-dependencies */
 import { Module } from '@nestjs/common';
 
 import { SupabaseModule } from '../supabase/supabase.module';

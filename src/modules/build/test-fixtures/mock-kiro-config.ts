@@ -1,6 +1,6 @@
 /**
  * Mock Kiro configuration data for testing
- * 
+ *
  * @deprecated Use realistic-project-scenarios.ts for comprehensive testing
  * This file is kept for backward compatibility with existing tests
  */
@@ -244,7 +244,7 @@ export const mockSettingsData = {
     userPreferencesMd: mockKiroLocalSettings.userPreferences,
     projectSpecMd: mockKiroLocalSettings.projectSpec,
     steeringFiles: mockKiroLocalSettings.steeringFiles,
-    hooks: mockKiroLocalSettings.hookFiles.map(file => ({
+    hooks: mockKiroLocalSettings.hookFiles.map((file) => ({
       ...file,
       type: file.filename.split('.')[0],
     })),
@@ -304,7 +304,8 @@ export const mockExpectedOutputs = {
     source_platform: 'Kiro',
     project_info: {
       name: 'Taptik CLI',
-      description: 'Command-based CLI using nest-commander with modular service architecture',
+      description:
+        'Command-based CLI using nest-commander with modular service architecture',
       architecture: 'NestJS with TypeScript strict mode',
       key_features: [
         'Build command for converting Kiro settings',
@@ -370,7 +371,13 @@ export const mockExpectedOutputs = {
         name: 'bug-investigation',
         category: 'debugging',
         description: 'Template for investigating and resolving bugs',
-        variables: ['BUG_DESCRIPTION', 'EXPECTED_BEHAVIOR', 'ACTUAL_BEHAVIOR', 'REPRODUCTION_STEPS', 'ENVIRONMENT_INFO'],
+        variables: [
+          'BUG_DESCRIPTION',
+          'EXPECTED_BEHAVIOR',
+          'ACTUAL_BEHAVIOR',
+          'REPRODUCTION_STEPS',
+          'ENVIRONMENT_INFO',
+        ],
         template: 'Help investigate and resolve this issue:',
       },
     ],

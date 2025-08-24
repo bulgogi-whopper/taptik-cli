@@ -128,11 +128,15 @@ export class PromptService implements OnModuleDestroy {
     }
 
     if (results.skipped.length > 0) {
-      this.write(`⏭️  ${results.skipped.length} file${results.skipped.length > 1 ? 's' : ''} skipped\n`);
+      this.write(
+        `⏭️  ${results.skipped.length} file${results.skipped.length > 1 ? 's' : ''} skipped\n`,
+      );
     }
 
     if (results.failed.length > 0) {
-      this.write(`❌ ${results.failed.length} file${results.failed.length > 1 ? 's' : ''} failed\n`);
+      this.write(
+        `❌ ${results.failed.length} file${results.failed.length > 1 ? 's' : ''} failed\n`,
+      );
     }
 
     if (results.backupCreated) {
@@ -156,7 +160,9 @@ export class PromptService implements OnModuleDestroy {
       this.write(`  [${index + 1}] ${component}\n`);
     });
 
-    this.write('\nEnter selection (comma-separated numbers, "all", or "none"): ');
+    this.write(
+      '\nEnter selection (comma-separated numbers, "all", or "none"): ',
+    );
     const answer = await this.rl.question('');
 
     if (answer.toLowerCase() === 'all') {
@@ -170,10 +176,10 @@ export class PromptService implements OnModuleDestroy {
     // Parse comma-separated numbers
     const indices = answer
       .split(',')
-      .map(s => Number.parseInt(s.trim(), 10) - 1)
-      .filter(i => i >= 0 && i < available.length);
+      .map((s) => Number.parseInt(s.trim(), 10) - 1)
+      .filter((i) => i >= 0 && i < available.length);
 
-    return indices.map(i => available[i]);
+    return indices.map((i) => available[i]);
   }
 
   cleanup(): void {

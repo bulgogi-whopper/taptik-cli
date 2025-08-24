@@ -96,10 +96,10 @@ describe('DiffService', () => {
 
       expect(diff.hasChanges).toBe(true);
       // Check for additions (prompt2 in source) and deletions (prompt3 in target)
-      const hasPromptChanges = 
-        diff.additions.some(a => a.path.includes('prompts')) ||
-        diff.deletions.some(d => d.path.includes('prompts')) ||
-        diff.modifications.some(m => m.path.includes('prompts'));
+      const hasPromptChanges =
+        diff.additions.some((a) => a.path.includes('prompts')) ||
+        diff.deletions.some((d) => d.path.includes('prompts')) ||
+        diff.modifications.some((m) => m.path.includes('prompts'));
       expect(hasPromptChanges).toBe(true);
     });
   });

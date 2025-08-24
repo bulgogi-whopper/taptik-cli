@@ -22,15 +22,15 @@ The deploy module automatically scans for and blocks dangerous command patterns:
 
 #### Blocked Patterns
 
-| Category | Patterns | Risk Level |
-|----------|----------|------------|
-| System Destruction | `rm -rf /`, `format c:`, `del /f /s /q` | Critical |
-| Privilege Escalation | `sudo su`, `chmod 777`, `chown root` | High |
-| Network Access | `curl \| sh`, `wget \| bash`, `nc -e` | High |
-| Data Exfiltration | `tar \| nc`, `zip \| curl`, `base64 \| curl` | High |
-| System Modification | `mkfs`, `fdisk`, `dd if=/dev/zero` | Critical |
-| Process Manipulation | `kill -9`, `killall`, `pkill -9` | Medium |
-| Cryptomining | `xmrig`, `minergate`, `nicehash` | High |
+| Category             | Patterns                                     | Risk Level |
+| -------------------- | -------------------------------------------- | ---------- |
+| System Destruction   | `rm -rf /`, `format c:`, `del /f /s /q`      | Critical   |
+| Privilege Escalation | `sudo su`, `chmod 777`, `chown root`         | High       |
+| Network Access       | `curl \| sh`, `wget \| bash`, `nc -e`        | High       |
+| Data Exfiltration    | `tar \| nc`, `zip \| curl`, `base64 \| curl` | High       |
+| System Modification  | `mkfs`, `fdisk`, `dd if=/dev/zero`           | Critical   |
+| Process Manipulation | `kill -9`, `killall`, `pkill -9`             | Medium     |
+| Cryptomining         | `xmrig`, `minergate`, `nicehash`             | High       |
 
 #### Detection Example
 
@@ -62,12 +62,7 @@ All file paths are validated to prevent directory traversal attacks:
 
 ```typescript
 // Only these directories are allowed
-const SAFE_DIRECTORIES = [
-  '~/.claude',
-  '.claude',
-  '~/.taptik',
-  process.cwd()
-];
+const SAFE_DIRECTORIES = ['~/.claude', '.claude', '~/.taptik', process.cwd()];
 ```
 
 ### 3. Sensitive Data Protection
@@ -76,13 +71,13 @@ Automatic detection and sanitization of sensitive information:
 
 #### Protected Data Types
 
-| Type | Patterns | Action |
-|------|----------|--------|
-| API Keys | `api_key`, `apiKey`, `API_KEY` | Filtered |
-| Passwords | `password`, `passwd`, `pwd` | Filtered |
-| Tokens | `token`, `auth_token`, `access_token` | Filtered |
-| Secrets | `secret`, `private_key`, `client_secret` | Filtered |
-| Credentials | `credentials`, `auth`, `authorization` | Filtered |
+| Type        | Patterns                                 | Action   |
+| ----------- | ---------------------------------------- | -------- |
+| API Keys    | `api_key`, `apiKey`, `API_KEY`           | Filtered |
+| Passwords   | `password`, `passwd`, `pwd`              | Filtered |
+| Tokens      | `token`, `auth_token`, `access_token`    | Filtered |
+| Secrets     | `secret`, `private_key`, `client_secret` | Filtered |
+| Credentials | `credentials`, `auth`, `authorization`   | Filtered |
 
 #### Sanitization in Logs
 
@@ -135,13 +130,13 @@ Prevents concurrent deployments that could cause conflicts:
 
 ### Risk Matrix
 
-| Threat | Likelihood | Impact | Risk Level | Mitigation |
-|--------|------------|--------|------------|------------|
-| Malicious Commands | Medium | High | High | Pattern scanning |
-| Path Traversal | Low | High | Medium | Path validation |
-| Data Exposure | Medium | Medium | Medium | Data sanitization |
-| Concurrent Modification | Low | Low | Low | Lock mechanism |
-| Supply Chain | Low | High | Medium | Source validation |
+| Threat                  | Likelihood | Impact | Risk Level | Mitigation        |
+| ----------------------- | ---------- | ------ | ---------- | ----------------- |
+| Malicious Commands      | Medium     | High   | High       | Pattern scanning  |
+| Path Traversal          | Low        | High   | Medium     | Path validation   |
+| Data Exposure           | Medium     | Medium | Medium     | Data sanitization |
+| Concurrent Modification | Low        | Low    | Low        | Lock mechanism    |
+| Supply Chain            | Low        | High   | Medium     | Source validation |
 
 ## Security Best Practices
 
@@ -223,6 +218,7 @@ taptik config sources --trusted
 When sharing configurations publicly:
 
 #### DO:
+
 - Remove all sensitive data
 - Use placeholder values for secrets
 - Document required permissions
@@ -230,6 +226,7 @@ When sharing configurations publicly:
 - Validate before sharing
 
 #### DON'T:
+
 - Include API keys or tokens
 - Share production credentials
 - Include personal information
@@ -275,14 +272,14 @@ All security events are logged to:
 
 ### 2. Security Event Types
 
-| Event | Severity | Description |
-|-------|----------|-------------|
-| DEPLOYMENT_INITIATED | Info | Deployment started |
-| SECURITY_VIOLATION | Critical | Malicious pattern detected |
-| PATH_TRAVERSAL_ATTEMPT | High | Directory traversal blocked |
-| SENSITIVE_DATA_FILTERED | Medium | Sensitive data removed |
-| AUTHENTICATION_FAILED | High | Auth failure |
-| ROLLBACK_EXECUTED | Warning | Deployment rolled back |
+| Event                   | Severity | Description                 |
+| ----------------------- | -------- | --------------------------- |
+| DEPLOYMENT_INITIATED    | Info     | Deployment started          |
+| SECURITY_VIOLATION      | Critical | Malicious pattern detected  |
+| PATH_TRAVERSAL_ATTEMPT  | High     | Directory traversal blocked |
+| SENSITIVE_DATA_FILTERED | Medium   | Sensitive data removed      |
+| AUTHENTICATION_FAILED   | High     | Auth failure                |
+| ROLLBACK_EXECUTED       | Warning  | Deployment rolled back      |
 
 ### 3. Monitoring Commands
 
@@ -328,40 +325,44 @@ Signs of a security incident:
 If a security incident is detected:
 
 1. **Stop Current Operations**
+
    ```bash
    # Kill any running deployments
    taptik deploy --kill-all
-   
+
    # Release all locks
    taptik locks --release-all
    ```
 
 2. **Preserve Evidence**
+
    ```bash
    # Backup audit logs
    cp -r ~/.taptik/audit /secure/location/audit-backup
-   
+
    # Save current state
    taptik debug --snapshot --output incident-snapshot.tar.gz
    ```
 
 3. **Rollback Changes**
+
    ```bash
    # Rollback to last known good state
    taptik rollback --latest
-   
+
    # Or rollback specific deployment
    taptik rollback --deployment-id deploy-123
    ```
 
 4. **Investigate**
+
    ```bash
    # Review audit logs
    taptik audit investigate --time-range "1 hour ago"
-   
+
    # Check file integrity
    taptik verify --integrity-check
-   
+
    # Analyze deployment history
    taptik history --detailed --last 10
    ```
@@ -420,17 +421,20 @@ taptik init --clean
 ### Periodic Security Tasks
 
 #### Daily
+
 - [ ] Review audit logs
 - [ ] Check for failed deployments
 - [ ] Monitor disk usage
 
 #### Weekly
+
 - [ ] Rotate logs
 - [ ] Update security patterns
 - [ ] Review permissions
 - [ ] Clean old backups
 
 #### Monthly
+
 - [ ] Security audit
 - [ ] Update dependencies
 - [ ] Review access logs

@@ -5,7 +5,10 @@ import * as path from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
 
 // SupportedPlatform import removed as it's not used
-import { DeploymentError, DeploymentWarning } from '../interfaces/deployment-result.interface';
+import {
+  DeploymentError,
+  DeploymentWarning,
+} from '../interfaces/deployment-result.interface';
 
 export interface KiroInstallationInfo {
   isInstalled: boolean;
@@ -89,7 +92,7 @@ export class KiroInstallationDetectorService {
     try {
       // Check for Kiro installation in common locations
       const installationPath = await this.findKiroInstallation();
-      
+
       if (!installationPath) {
         this.logger.warn('Kiro IDE installation not found');
         return installationInfo;
@@ -114,21 +117,26 @@ export class KiroInstallationDetectorService {
       const compatibility = await this.checkCompatibility(version);
       installationInfo.isCompatible = compatibility.isCompatible;
       installationInfo.compatibility = {
-        version: compatibility.version.current ? this.isVersionSupported(compatibility.version.current) : false,
-        schema: !compatibility.issues.some(issue => issue.type === 'schema'),
-        features: !compatibility.issues.some(issue => issue.type === 'feature'),
+        version: compatibility.version.current
+          ? this.isVersionSupported(compatibility.version.current)
+          : false,
+        schema: !compatibility.issues.some((issue) => issue.type === 'schema'),
+        features: !compatibility.issues.some(
+          (issue) => issue.type === 'feature',
+        ),
       };
 
       this.logger.log(`Kiro IDE detected: v${version} at ${installationPath}`);
       return installationInfo;
-
     } catch (error) {
       this.logger.error('Error detecting Kiro installation:', error);
       return installationInfo;
     }
   }
 
-  async checkCompatibility(currentVersion?: string): Promise<KiroCompatibilityResult> {
+  async checkCompatibility(
+    currentVersion?: string,
+  ): Promise<KiroCompatibilityResult> {
     const result: KiroCompatibilityResult = {
       isCompatible: false,
       version: {
@@ -153,8 +161,11 @@ export class KiroInstallationDetectorService {
     }
 
     if (!this.isVersionSupported(currentVersion)) {
-      const severity = this.compareVersions(currentVersion, this.MINIMUM_VERSION) < 0 ? 'critical' : 'medium';
-      
+      const severity =
+        this.compareVersions(currentVersion, this.MINIMUM_VERSION) < 0
+          ? 'critical'
+          : 'medium';
+
       result.issues.push({
         type: 'version',
         severity,
@@ -177,15 +188,19 @@ export class KiroInstallationDetectorService {
     result.issues.push(...featureIssues);
 
     // Determine if migration is required
-    result.migrationRequired = this.compareVersions(currentVersion, this.MINIMUM_VERSION) < 0 ||
-      result.issues.some(issue => issue.type === 'schema' && issue.severity === 'high');
+    result.migrationRequired =
+      this.compareVersions(currentVersion, this.MINIMUM_VERSION) < 0 ||
+      result.issues.some(
+        (issue) => issue.type === 'schema' && issue.severity === 'high',
+      );
 
     // Generate recommendations
     result.recommendations = this.generateCompatibilityRecommendations(result);
 
     // Determine overall compatibility
-    result.isCompatible = result.issues.length === 0 || 
-      !result.issues.some(issue => issue.severity === 'critical');
+    result.isCompatible =
+      result.issues.length === 0 ||
+      !result.issues.some((issue) => issue.severity === 'critical');
 
     return result;
   }
@@ -221,18 +236,24 @@ export class KiroInstallationDetectorService {
       result.fixes = this.generateHealthFixes(result.issues);
 
       // Generate recommendations
-      result.recommendations = this.generateHealthRecommendations(result.issues);
+      result.recommendations = this.generateHealthRecommendations(
+        result.issues,
+      );
 
       // Determine overall health
-      result.healthy = result.issues.length === 0 || 
-        !result.issues.some(issue => issue.severity === 'critical' || issue.severity === 'high');
+      result.healthy =
+        result.issues.length === 0 ||
+        !result.issues.some(
+          (issue) => issue.severity === 'critical' || issue.severity === 'high',
+        );
 
-      this.logger.log(`Health check completed: ${result.healthy ? 'healthy' : 'issues found'}`);
+      this.logger.log(
+        `Health check completed: ${result.healthy ? 'healthy' : 'issues found'}`,
+      );
       return result;
-
     } catch (error) {
       this.logger.error('Health check failed:', error);
-      
+
       result.healthy = false;
       result.issues.push({
         category: 'installation',
@@ -246,13 +267,18 @@ export class KiroInstallationDetectorService {
     }
   }
 
-  async migrateConfiguration(fromVersion: string, toVersion: string): Promise<{
+  async migrateConfiguration(
+    fromVersion: string,
+    toVersion: string,
+  ): Promise<{
     success: boolean;
     errors: DeploymentError[];
     warnings: DeploymentWarning[];
     migratedFiles: string[];
   }> {
-    this.logger.log(`Migrating configuration from v${fromVersion} to v${toVersion}...`);
+    this.logger.log(
+      `Migrating configuration from v${fromVersion} to v${toVersion}...`,
+    );
 
     const result = {
       success: false,
@@ -281,7 +307,7 @@ export class KiroInstallationDetectorService {
 
       // Perform version-specific migrations
       const migrations = this.getMigrationSteps(fromVersion, toVersion);
-      
+
       for (const migration of migrations) {
         try {
           // eslint-disable-next-line no-await-in-loop
@@ -299,22 +325,25 @@ export class KiroInstallationDetectorService {
       }
 
       result.success = result.errors.length === 0;
-      
+
       if (result.success) {
-        this.logger.log(`Migration completed successfully: ${result.migratedFiles.length} files migrated`);
+        this.logger.log(
+          `Migration completed successfully: ${result.migratedFiles.length} files migrated`,
+        );
       } else {
-        this.logger.error(`Migration failed with ${result.errors.length} errors`);
+        this.logger.error(
+          `Migration failed with ${result.errors.length} errors`,
+        );
       }
 
       return result;
-
     } catch (error) {
       result.errors.push({
         message: `Migration failed: ${(error as Error).message}`,
         code: 'MIGRATION_FAILED',
         severity: 'CRITICAL',
       });
-      
+
       this.logger.error('Migration failed:', error);
       return result;
     }
@@ -348,14 +377,14 @@ export class KiroInstallationDetectorService {
     try {
       const { spawn } = await import('node:child_process');
       const childProcess = spawn('which', ['kiro'], { stdio: 'pipe' });
-      
+
       return new Promise((resolve) => {
         let output = '';
-        
+
         childProcess.stdout?.on('data', (data) => {
           output += data.toString();
         });
-        
+
         childProcess.on('close', (code) => {
           if (code === 0 && output.trim()) {
             resolve(output.trim());
@@ -363,11 +392,11 @@ export class KiroInstallationDetectorService {
             resolve(null);
           }
         });
-        
+
         childProcess.on('error', () => {
           resolve(null);
         });
-        
+
         // Timeout after 5 seconds
         setTimeout(() => {
           try {
@@ -383,7 +412,9 @@ export class KiroInstallationDetectorService {
     }
   }
 
-  private async detectKiroVersion(installationPath: string): Promise<string | undefined> {
+  private async detectKiroVersion(
+    installationPath: string,
+  ): Promise<string | undefined> {
     try {
       // Try to read version from package.json or version file
       const versionFilePaths = [
@@ -396,7 +427,7 @@ export class KiroInstallationDetectorService {
         try {
           // eslint-disable-next-line no-await-in-loop
           const content = await fs.readFile(versionPath, 'utf8');
-          
+
           if (versionPath.endsWith('.json')) {
             const json = JSON.parse(content);
             return json.version || json.app_version;
@@ -417,28 +448,27 @@ export class KiroInstallationDetectorService {
         const { spawn } = await import('node:child_process');
         const kiroExec = path.join(installationPath, 'kiro');
         const process = spawn(kiroExec, ['--version'], { stdio: 'pipe' });
-        
+
         return new Promise((resolve) => {
           let output = '';
           process.stdout?.on('data', (data) => {
             output += data.toString();
           });
-          
+
           process.on('close', () => {
             const versionMatch = output.match(/(\d+\.\d+\.\d+)/);
             resolve(versionMatch ? versionMatch[1] : undefined);
           });
-          
+
           // Timeout after 3 seconds
           setTimeout(() => {
             process.kill();
             resolve(undefined);
-          }, 3000 as unknown as NodeJS.Timeout);
+          }, 3000);
         });
       } catch {
         return undefined;
       }
-
     } catch (error) {
       this.logger.error('Error detecting Kiro version:', error);
       return undefined;
@@ -446,26 +476,30 @@ export class KiroInstallationDetectorService {
   }
 
   private isVersionSupported(version: string): boolean {
-    return this.SUPPORTED_VERSIONS.includes(version) ||
-      this.compareVersions(version, this.MINIMUM_VERSION) >= 0;
+    return (
+      this.SUPPORTED_VERSIONS.includes(version) ||
+      this.compareVersions(version, this.MINIMUM_VERSION) >= 0
+    );
   }
 
   private compareVersions(a: string, b: string): number {
     const aParts = a.split('.').map(Number);
     const bParts = b.split('.').map(Number);
-    
+
     for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
       const aPart = aParts[i] || 0;
       const bPart = bParts[i] || 0;
-      
+
       if (aPart > bPart) return 1;
       if (aPart < bPart) return -1;
     }
-    
+
     return 0;
   }
 
-  private async checkSchemaCompatibility(version: string): Promise<KiroCompatibilityIssue[]> {
+  private async checkSchemaCompatibility(
+    version: string,
+  ): Promise<KiroCompatibilityIssue[]> {
     const issues: KiroCompatibilityIssue[] = [];
 
     // Check if current schema version is compatible
@@ -473,7 +507,8 @@ export class KiroInstallationDetectorService {
       issues.push({
         type: 'schema',
         severity: 'medium',
-        message: 'Configuration schema migration may be required for newer features',
+        message:
+          'Configuration schema migration may be required for newer features',
         details: { currentVersion: version, schemaVersion: '1.x' },
         fixable: true,
       });
@@ -482,15 +517,17 @@ export class KiroInstallationDetectorService {
     return issues;
   }
 
-  private async checkFeatureCompatibility(version: string): Promise<KiroCompatibilityIssue[]> {
+  private async checkFeatureCompatibility(
+    version: string,
+  ): Promise<KiroCompatibilityIssue[]> {
     const issues: KiroCompatibilityIssue[] = [];
 
     // Check for specific feature compatibility
     const featureCompatibility = {
-      'hooks': this.compareVersions(version, '1.1.0') >= 0,
-      'agents': this.compareVersions(version, '1.2.0') >= 0,
-      'templates': this.compareVersions(version, '2.0.0') >= 0,
-      'steering': this.compareVersions(version, '1.0.0') >= 0,
+      hooks: this.compareVersions(version, '1.1.0') >= 0,
+      agents: this.compareVersions(version, '1.2.0') >= 0,
+      templates: this.compareVersions(version, '2.0.0') >= 0,
+      steering: this.compareVersions(version, '1.0.0') >= 0,
     };
 
     for (const [feature, supported] of Object.entries(featureCompatibility)) {
@@ -513,16 +550,16 @@ export class KiroInstallationDetectorService {
 
     try {
       const installationInfo = await this.detectKiroInstallation();
-      
+
       if (!installationInfo.isInstalled) {
         issues.push({
           category: 'installation',
           severity: 'critical',
-          message: 'Kiro IDE is not installed or not found in expected locations',
+          message:
+            'Kiro IDE is not installed or not found in expected locations',
           autoFixable: false,
         });
       }
-
     } catch (error) {
       issues.push({
         category: 'installation',
@@ -548,12 +585,11 @@ export class KiroInstallationDetectorService {
       try {
         // eslint-disable-next-line no-await-in-loop
         await fs.access(configPath);
-        
+
         // Try to parse configuration file
         // eslint-disable-next-line no-await-in-loop
         const content = await fs.readFile(configPath, 'utf8');
         JSON.parse(content);
-        
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
           issues.push({
@@ -603,7 +639,7 @@ export class KiroInstallationDetectorService {
     // Check Node.js version
     const nodeVersion = process.version;
     const minNodeVersion = '16.0.0';
-    
+
     if (this.compareVersions(nodeVersion.slice(1), minNodeVersion) < 0) {
       issues.push({
         category: 'dependencies',
@@ -616,19 +652,30 @@ export class KiroInstallationDetectorService {
     return issues;
   }
 
-  private generateCompatibilityRecommendations(result: KiroCompatibilityResult): string[] {
+  private generateCompatibilityRecommendations(
+    result: KiroCompatibilityResult,
+  ): string[] {
     const recommendations: string[] = [];
 
-    if (result.version.current && this.compareVersions(result.version.current, this.RECOMMENDED_VERSION) < 0) {
-      recommendations.push(`Consider upgrading to Kiro IDE v${this.RECOMMENDED_VERSION} for best compatibility`);
+    if (
+      result.version.current &&
+      this.compareVersions(result.version.current, this.RECOMMENDED_VERSION) < 0
+    ) {
+      recommendations.push(
+        `Consider upgrading to Kiro IDE v${this.RECOMMENDED_VERSION} for best compatibility`,
+      );
     }
 
     if (result.migrationRequired) {
-      recommendations.push('Configuration migration is recommended before deployment');
+      recommendations.push(
+        'Configuration migration is recommended before deployment',
+      );
     }
 
-    if (result.issues.some(issue => issue.type === 'feature')) {
-      recommendations.push('Some features may not be available in your current Kiro IDE version');
+    if (result.issues.some((issue) => issue.type === 'feature')) {
+      recommendations.push(
+        'Some features may not be available in your current Kiro IDE version',
+      );
     }
 
     return recommendations;
@@ -637,17 +684,27 @@ export class KiroInstallationDetectorService {
   private generateHealthRecommendations(issues: KiroHealthIssue[]): string[] {
     const recommendations: string[] = [];
 
-    const criticalIssues = issues.filter(issue => issue.severity === 'critical');
+    const criticalIssues = issues.filter(
+      (issue) => issue.severity === 'critical',
+    );
     if (criticalIssues.length > 0) {
-      recommendations.push('Address critical issues before attempting deployment');
+      recommendations.push(
+        'Address critical issues before attempting deployment',
+      );
     }
 
-    const permissionIssues = issues.filter(issue => issue.category === 'permissions');
+    const permissionIssues = issues.filter(
+      (issue) => issue.category === 'permissions',
+    );
     if (permissionIssues.length > 0) {
-      recommendations.push('Ensure proper file system permissions for Kiro configuration directories');
+      recommendations.push(
+        'Ensure proper file system permissions for Kiro configuration directories',
+      );
     }
 
-    const configIssues = issues.filter(issue => issue.category === 'configuration');
+    const configIssues = issues.filter(
+      (issue) => issue.category === 'configuration',
+    );
     if (configIssues.length > 0) {
       recommendations.push('Backup and repair corrupted configuration files');
     }
@@ -658,7 +715,7 @@ export class KiroInstallationDetectorService {
   private generateHealthFixes(issues: KiroHealthIssue[]): KiroHealthFix[] {
     const fixes: KiroHealthFix[] = [];
 
-    for (const issue of issues.filter(issue => issue.autoFixable)) {
+    for (const issue of issues.filter((issue) => issue.autoFixable)) {
       if (issue.category === 'configuration') {
         fixes.push({
           issue: issue.message,
@@ -672,7 +729,10 @@ export class KiroInstallationDetectorService {
     return fixes;
   }
 
-  private isMigrationSupported(fromVersion: string, toVersion: string): boolean {
+  private isMigrationSupported(
+    fromVersion: string,
+    toVersion: string,
+  ): boolean {
     // Define supported migration paths
     const supportedMigrations = [
       { from: '1.0.0', to: '1.1.0' },
@@ -680,8 +740,9 @@ export class KiroInstallationDetectorService {
       { from: '1.2.0', to: '2.0.0' },
     ];
 
-    return supportedMigrations.some(migration => 
-      migration.from === fromVersion && migration.to === toVersion
+    return supportedMigrations.some(
+      (migration) =>
+        migration.from === fromVersion && migration.to === toVersion,
     );
   }
 
@@ -691,7 +752,7 @@ export class KiroInstallationDetectorService {
     const backupPath = path.join(backupDir, `migration-backup-${timestamp}`);
 
     await fs.mkdir(backupDir, { recursive: true });
-    
+
     // Copy current configuration to backup
     const configPaths = [
       path.join(os.homedir(), '.kiro'),
@@ -712,9 +773,12 @@ export class KiroInstallationDetectorService {
     return backupPath;
   }
 
-  private getMigrationSteps(fromVersion: string, toVersion: string): Array<{
+  private getMigrationSteps(
+    fromVersion: string,
+    toVersion: string,
+  ): Array<{
     name: string;
-    execute: () => Promise<{files: string[]; warnings: DeploymentWarning[]}>;
+    execute: () => Promise<{ files: string[]; warnings: DeploymentWarning[] }>;
   }> {
     // Return migration steps based on version differences
     const steps = [];
@@ -724,7 +788,12 @@ export class KiroInstallationDetectorService {
         name: 'Add hooks support',
         execute: async () => ({
           files: ['.kiro/hooks'],
-          warnings: [{ message: 'Hooks feature enabled', code: 'MIGRATION_FEATURE_ADDED' }],
+          warnings: [
+            {
+              message: 'Hooks feature enabled',
+              code: 'MIGRATION_FEATURE_ADDED',
+            },
+          ],
         }),
       });
     }

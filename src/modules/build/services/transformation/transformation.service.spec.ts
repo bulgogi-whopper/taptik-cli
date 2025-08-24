@@ -78,9 +78,13 @@ Environment: VS Code, Docker`,
       const result = await service.transformPersonalContext(mockSettingsData);
 
       expect(result.preferences.coding_style.indentation).toBe('2 spaces');
-      expect(result.preferences.coding_style.naming_convention).toBe('camelCase');
+      expect(result.preferences.coding_style.naming_convention).toBe(
+        'camelCase',
+      );
       expect(result.preferences.coding_style.comment_style).toBe('minimal');
-      expect(result.preferences.coding_style.code_organization).toBe('feature-based');
+      expect(result.preferences.coding_style.code_organization).toBe(
+        'feature-based',
+      );
     });
 
     it('should extract work style preferences correctly', async () => {
@@ -128,7 +132,8 @@ Environment: VS Code, Docker`,
         },
       };
 
-      const result = await service.transformPersonalContext(minimalSettingsData);
+      const result =
+        await service.transformPersonalContext(minimalSettingsData);
 
       expect(result).toBeDefined();
       expect(result.preferences.preferred_languages).toContain('typescript');
@@ -142,7 +147,8 @@ Environment: VS Code, Docker`,
         ...mockSettingsData,
         localSettings: {
           ...mockSettingsData.localSettings,
-          userPreferencesMd: 'Invalid markdown content without proper structure',
+          userPreferencesMd:
+            'Invalid markdown content without proper structure',
         },
         globalSettings: {
           ...mockSettingsData.globalSettings,
@@ -150,7 +156,9 @@ Environment: VS Code, Docker`,
         },
       };
 
-      const result = await service.transformPersonalContext(malformedSettingsData);
+      const result = await service.transformPersonalContext(
+        malformedSettingsData,
+      );
 
       expect(result).toBeDefined();
       // Should still extract from global preferences that are properly formatted
@@ -191,8 +199,9 @@ Environment: VS Code, Docker`,
     it('should throw error when critical transformation fails', async () => {
       const invalidSettingsData = null as any;
 
-      await expect(service.transformPersonalContext(invalidSettingsData))
-        .rejects.toThrow('Cannot read properties of null');
+      await expect(
+        service.transformPersonalContext(invalidSettingsData),
+      ).rejects.toThrow('Cannot read properties of null');
     });
 
     it('should generate unique user IDs for different transformations', async () => {
@@ -272,10 +281,10 @@ Tools: VS Code, Docker, Git`,
             path: '.kiro/steering/coding-standards.md',
           },
           {
-            filename: 'testing-requirements.md', 
+            filename: 'testing-requirements.md',
             content: 'Minimum 80% test coverage required for all new features',
             path: '.kiro/steering/testing-requirements.md',
-          }
+          },
         ],
         hooks: [
           {
@@ -283,7 +292,7 @@ Tools: VS Code, Docker, Git`,
             content: 'Run linting and type checking before commit',
             path: '.kiro/hooks/pre-commit.kiro.hook',
             type: 'pre-commit',
-          }
+          },
         ],
       },
       globalSettings: {
@@ -302,7 +311,9 @@ Tools: VS Code, Docker, Git`,
     };
 
     it('should transform Kiro project settings to Taptik project context format', async () => {
-      const result = await service.transformProjectContext(mockProjectSettingsData);
+      const result = await service.transformProjectContext(
+        mockProjectSettingsData,
+      );
 
       expect(result).toBeDefined();
       expect(result.project_id).toBeDefined();
@@ -313,16 +324,24 @@ Tools: VS Code, Docker, Git`,
     });
 
     it('should extract project info correctly', async () => {
-      const result = await service.transformProjectContext(mockProjectSettingsData);
+      const result = await service.transformProjectContext(
+        mockProjectSettingsData,
+      );
 
       expect(result.project_info.name).toBe('taptik cli');
-      expect(result.project_info.description).toBe('ai ide settings migration tool');
+      expect(result.project_info.description).toBe(
+        'ai ide settings migration tool',
+      );
       expect(result.project_info.version).toBe('1.0.0');
-      expect(result.project_info.repository).toBe('https://github.com/user/taptik-cli');
+      expect(result.project_info.repository).toBe(
+        'https://github.com/user/taptik-cli',
+      );
     });
 
     it('should extract technical stack correctly', async () => {
-      const result = await service.transformProjectContext(mockProjectSettingsData);
+      const result = await service.transformProjectContext(
+        mockProjectSettingsData,
+      );
 
       expect(result.technical_stack.primary_language).toBe('TypeScript');
       expect(result.technical_stack.frameworks).toContain('NestJS');
@@ -334,25 +353,39 @@ Tools: VS Code, Docker, Git`,
     });
 
     it('should extract development guidelines correctly', async () => {
-      const result = await service.transformProjectContext(mockProjectSettingsData);
+      const result = await service.transformProjectContext(
+        mockProjectSettingsData,
+      );
 
-      expect(result.development_guidelines.coding_standards).toContain('Use TypeScript strict mode and follow NestJS conventions');
-      expect(result.development_guidelines.testing_requirements).toContain('Minimum 80% test coverage required for all new features');
-      expect(result.development_guidelines.review_process).toContain('Hook-based: Run linting and type checking before commit');
+      expect(result.development_guidelines.coding_standards).toContain(
+        'Use TypeScript strict mode and follow NestJS conventions',
+      );
+      expect(result.development_guidelines.testing_requirements).toContain(
+        'Minimum 80% test coverage required for all new features',
+      );
+      expect(result.development_guidelines.review_process).toContain(
+        'Hook-based: Run linting and type checking before commit',
+      );
     });
 
     it('should set correct metadata', async () => {
-      const result = await service.transformProjectContext(mockProjectSettingsData);
+      const result = await service.transformProjectContext(
+        mockProjectSettingsData,
+      );
 
       expect(result.metadata.source_platform).toBe('kiro');
-      expect(result.metadata.source_path).toBe('/Users/user/projects/taptik-cli');
+      expect(result.metadata.source_path).toBe(
+        '/Users/user/projects/taptik-cli',
+      );
       expect(result.metadata.version).toBe('1.0.0');
       expect(result.metadata.created_at).toBeDefined();
       expect(new Date(result.metadata.created_at)).toBeInstanceOf(Date);
     });
 
     it('should generate project ID with project name', async () => {
-      const result = await service.transformProjectContext(mockProjectSettingsData);
+      const result = await service.transformProjectContext(
+        mockProjectSettingsData,
+      );
 
       expect(result.project_id).toContain('taptik-cli');
       expect(result.project_id.split('-').length).toBeGreaterThanOrEqual(3); // name + uuid parts
@@ -434,7 +467,7 @@ Tools: Jest, Webpack`,
               filename: 'review.md',
               content: 'All PRs must be reviewed by at least 2 team members',
               path: '.kiro/steering/review.md',
-            }
+            },
           ],
           hooks: [
             {
@@ -442,7 +475,7 @@ Tools: Jest, Webpack`,
               content: 'Validate commit message format',
               path: '.kiro/hooks/post-commit.kiro.hook',
               type: 'post-commit',
-            }
+            },
           ],
         },
         globalSettings: {
@@ -460,9 +493,15 @@ Tools: Jest, Webpack`,
 
       const result = await service.transformProjectContext(steeringData);
 
-      expect(result.development_guidelines.documentation_standards).toContain('All public methods must have documentation comments');
-      expect(result.development_guidelines.review_process).toContain('All PRs must be reviewed by at least 2 team members');
-      expect(result.development_guidelines.review_process).toContain('Hook-based: Validate commit message format');
+      expect(result.development_guidelines.documentation_standards).toContain(
+        'All public methods must have documentation comments',
+      );
+      expect(result.development_guidelines.review_process).toContain(
+        'All PRs must be reviewed by at least 2 team members',
+      );
+      expect(result.development_guidelines.review_process).toContain(
+        'Hook-based: Validate commit message format',
+      );
     });
 
     it('should handle deployment and database extraction', async () => {
@@ -504,13 +543,18 @@ Hosting: AWS, Netlify`,
     it('should throw error when critical project transformation fails', async () => {
       const invalidProjectData = null as any;
 
-      await expect(service.transformProjectContext(invalidProjectData))
-        .rejects.toThrow('Cannot read properties of null');
+      await expect(
+        service.transformProjectContext(invalidProjectData),
+      ).rejects.toThrow('Cannot read properties of null');
     });
 
     it('should generate unique project IDs for different transformations', async () => {
-      const result1 = await service.transformProjectContext(mockProjectSettingsData);
-      const result2 = await service.transformProjectContext(mockProjectSettingsData);
+      const result1 = await service.transformProjectContext(
+        mockProjectSettingsData,
+      );
+      const result2 = await service.transformProjectContext(
+        mockProjectSettingsData,
+      );
 
       expect(result1.project_id).toBeDefined();
       expect(result2.project_id).toBeDefined();
@@ -570,12 +614,14 @@ tags: debug, help, troubleshooting`,
         globalPrompts: [
           {
             name: 'Explain Code',
-            content: 'Explain what this {{language}} code does: {code_snippet}. Focus on the main logic and any important patterns.',
+            content:
+              'Explain what this {{language}} code does: {code_snippet}. Focus on the main logic and any important patterns.',
           },
           {
             name: 'Refactor Suggestion',
-            content: 'Suggest improvements for this code: {code}. Consider performance, readability, and {criteria}.',
-          }
+            content:
+              'Suggest improvements for this code: {code}. Consider performance, readability, and {criteria}.',
+          },
         ],
       },
       collectionMetadata: {
@@ -589,7 +635,9 @@ tags: debug, help, troubleshooting`,
     };
 
     it('should transform Kiro prompt templates to Taptik format', async () => {
-      const result = await service.transformPromptTemplates(mockPromptSettingsData);
+      const result = await service.transformPromptTemplates(
+        mockPromptSettingsData,
+      );
 
       expect(result).toBeDefined();
       expect(result.templates).toBeDefined();
@@ -598,9 +646,13 @@ tags: debug, help, troubleshooting`,
     });
 
     it('should extract templates from global prompts array', async () => {
-      const result = await service.transformPromptTemplates(mockPromptSettingsData);
+      const result = await service.transformPromptTemplates(
+        mockPromptSettingsData,
+      );
 
-      const explainTemplate = result.templates.find(t => t.id === 'explain-code');
+      const explainTemplate = result.templates.find(
+        (t) => t.id === 'explain-code',
+      );
       expect(explainTemplate).toBeDefined();
       expect(explainTemplate?.name).toBe('Explain Code');
       expect(explainTemplate?.category).toBe('documentation');
@@ -609,7 +661,9 @@ tags: debug, help, troubleshooting`,
       expect(explainTemplate?.tags).toContain('explanation');
       expect(explainTemplate?.tags).toContain('documentation');
 
-      const refactorTemplate = result.templates.find(t => t.id === 'refactor-suggestion');
+      const refactorTemplate = result.templates.find(
+        (t) => t.id === 'refactor-suggestion',
+      );
       expect(refactorTemplate).toBeDefined();
       expect(refactorTemplate?.name).toBe('Refactor Suggestion');
       expect(refactorTemplate?.category).toBe('development');
@@ -618,13 +672,17 @@ tags: debug, help, troubleshooting`,
     });
 
     it('should extract templates from markdown content', async () => {
-      const result = await service.transformPromptTemplates(mockPromptSettingsData);
+      const result = await service.transformPromptTemplates(
+        mockPromptSettingsData,
+      );
 
       // Should have at least the global prompts from the array
       expect(result.templates.length).toBeGreaterThanOrEqual(2);
-      
+
       // Check that templates are properly extracted with variables
-      const templatesWithVariables = result.templates.filter(t => t.variables.length > 0);
+      const templatesWithVariables = result.templates.filter(
+        (t) => t.variables.length > 0,
+      );
       expect(templatesWithVariables.length).toBeGreaterThan(0);
     });
 
@@ -638,8 +696,9 @@ tags: debug, help, troubleshooting`,
           globalPrompts: [
             {
               name: 'Variable Test',
-              content: 'Test {{double_bracket}}, {single_bracket}, $dollar_var, and {{nested_var}} patterns',
-            }
+              content:
+                'Test {{double_bracket}}, {single_bracket}, $dollar_var, and {{nested_var}} patterns',
+            },
           ],
         },
         collectionMetadata: {
@@ -663,7 +722,9 @@ tags: debug, help, troubleshooting`,
     });
 
     it('should set correct metadata', async () => {
-      const result = await service.transformPromptTemplates(mockPromptSettingsData);
+      const result = await service.transformPromptTemplates(
+        mockPromptSettingsData,
+      );
 
       expect(result.metadata.source_platform).toBe('kiro');
       expect(result.metadata.version).toBe('1.0.0');
@@ -711,20 +772,20 @@ tags: debug, help, troubleshooting`,
           globalPrompts: [
             {
               name: 'Code Generator',
-              content: 'Generate code for {task}',  
+              content: 'Generate code for {task}',
             },
             {
               name: 'Documentation Helper',
               content: 'Write docs for {feature}',
             },
             {
-              name: 'Test Assistant', 
+              name: 'Test Assistant',
               content: 'Create tests for {component}',
             },
             {
               name: 'Review Checklist',
               content: 'Review {code} for issues',
-            }
+            },
           ],
         },
         collectionMetadata: {
@@ -739,24 +800,34 @@ tags: debug, help, troubleshooting`,
 
       const result = await service.transformPromptTemplates(categoryTestData);
 
-      const codeTemplate = result.templates.find(t => t.name === 'Code Generator');
+      const codeTemplate = result.templates.find(
+        (t) => t.name === 'Code Generator',
+      );
       expect(codeTemplate?.category).toBe('development');
 
-      const documentationTemplate = result.templates.find(t => t.name === 'Documentation Helper');
+      const documentationTemplate = result.templates.find(
+        (t) => t.name === 'Documentation Helper',
+      );
       expect(documentationTemplate?.category).toBe('documentation');
 
-      const testTemplate = result.templates.find(t => t.name === 'Test Assistant');
+      const testTemplate = result.templates.find(
+        (t) => t.name === 'Test Assistant',
+      );
       expect(testTemplate?.category).toBe('testing');
 
-      const reviewTemplate = result.templates.find(t => t.name === 'Review Checklist');
+      const reviewTemplate = result.templates.find(
+        (t) => t.name === 'Review Checklist',
+      );
       expect(reviewTemplate?.category).toBe('review');
     });
 
     it('should sort templates by name', async () => {
-      const result = await service.transformPromptTemplates(mockPromptSettingsData);
+      const result = await service.transformPromptTemplates(
+        mockPromptSettingsData,
+      );
 
       // Templates should be sorted alphabetically by name
-      const names = result.templates.map(t => t.name);
+      const names = result.templates.map((t) => t.name);
       const sortedNames = [...names].sort();
       expect(names).toEqual(sortedNames);
     });
@@ -775,7 +846,7 @@ tags: debug, help, troubleshooting`,
             {
               name: 'Valid Template',
               content: 'This is a valid template with {variable}',
-            }
+            },
           ],
         },
         collectionMetadata: {
@@ -792,7 +863,9 @@ tags: debug, help, troubleshooting`,
 
       // Should only include the valid template(s) - some invalid entries might still create templates with defaults
       expect(result.templates.length).toBeGreaterThanOrEqual(1);
-      const validTemplate = result.templates.find(t => t.name === 'Valid Template');
+      const validTemplate = result.templates.find(
+        (t) => t.name === 'Valid Template',
+      );
       expect(validTemplate).toBeDefined();
       expect(validTemplate?.variables).toContain('variable');
     });
@@ -808,7 +881,7 @@ tags: debug, help, troubleshooting`,
             {
               name: 'Simple Template',
               content: 'This is a simple template without any variables',
-            }
+            },
           ],
         },
         collectionMetadata: {
@@ -830,8 +903,9 @@ tags: debug, help, troubleshooting`,
     it('should throw error when critical prompt transformation fails', async () => {
       const invalidPromptData = null as any;
 
-      await expect(service.transformPromptTemplates(invalidPromptData))
-        .rejects.toThrow('Cannot read properties of null');
+      await expect(
+        service.transformPromptTemplates(invalidPromptData),
+      ).rejects.toThrow('Cannot read properties of null');
     });
 
     it('should handle complex variable patterns', async () => {
@@ -844,8 +918,9 @@ tags: debug, help, troubleshooting`,
           globalPrompts: [
             {
               name: 'Complex Variables',
-              content: 'Test {{user.name}}, {project_config.version}, $APP_ENV, {{nested.deep.value}} and {simple} patterns',
-            }
+              content:
+                'Test {{user.name}}, {project_config.version}, $APP_ENV, {{nested.deep.value}} and {simple} patterns',
+            },
           ],
         },
         collectionMetadata: {
@@ -858,7 +933,8 @@ tags: debug, help, troubleshooting`,
         },
       };
 
-      const result = await service.transformPromptTemplates(complexVariablesData);
+      const result =
+        await service.transformPromptTemplates(complexVariablesData);
       const template = result.templates[0];
 
       expect(template.variables).toContain('user.name');
@@ -869,15 +945,17 @@ tags: debug, help, troubleshooting`,
     });
 
     it('should generate unique template IDs for markdown templates', async () => {
-      const result = await service.transformPromptTemplates(mockPromptSettingsData);
+      const result = await service.transformPromptTemplates(
+        mockPromptSettingsData,
+      );
 
-      const templateIds = result.templates.map(t => t.id);
+      const templateIds = result.templates.map((t) => t.id);
       const uniqueIds = new Set(templateIds);
       expect(templateIds.length).toBe(uniqueIds.size);
 
       // Should have some templates from markdown that get generated IDs
-      const markdownTemplates = result.templates.filter(t => 
-        !['explain-code', 'refactor-suggestion'].includes(t.id)
+      const markdownTemplates = result.templates.filter(
+        (t) => !['explain-code', 'refactor-suggestion'].includes(t.id),
       );
       expect(markdownTemplates.length).toBeGreaterThan(0);
     });

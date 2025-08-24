@@ -1,6 +1,9 @@
-import { beforeEach, describe, expect, it, vi  } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { FileSystemErrorHandler, FileSystemErrorCode } from './file-system-error-handler';
+import {
+  FileSystemErrorHandler,
+  FileSystemErrorCode,
+} from './file-system-error-handler';
 
 describe('FileSystemErrorHandler', () => {
   const mockOperation = 'testing file operation';
@@ -11,11 +14,17 @@ describe('FileSystemErrorHandler', () => {
   });
 
   it('should handle permission denied errors', () => {
-    const error = new Error('Permission denied') as Error & { code: FileSystemErrorCode };
+    const error = new Error('Permission denied') as Error & {
+      code: FileSystemErrorCode;
+    };
     error.code = FileSystemErrorCode.PERMISSION_DENIED;
-    
-    const result = FileSystemErrorHandler.handleError(error, mockOperation, mockFilePath);
-    
+
+    const result = FileSystemErrorHandler.handleError(
+      error,
+      mockOperation,
+      mockFilePath,
+    );
+
     expect(result.shouldContinue).toBe(false);
     expect(result.isCritical).toBe(true);
     expect(result.userMessage).toContain('Permission denied');
@@ -29,11 +38,17 @@ describe('FileSystemErrorHandler', () => {
   });
 
   it('should handle file not found errors', () => {
-    const error = new Error('File not found') as Error & { code: FileSystemErrorCode };
+    const error = new Error('File not found') as Error & {
+      code: FileSystemErrorCode;
+    };
     error.code = FileSystemErrorCode.FILE_NOT_FOUND;
-    
-    const result = FileSystemErrorHandler.handleError(error, mockOperation, mockFilePath);
-    
+
+    const result = FileSystemErrorHandler.handleError(
+      error,
+      mockOperation,
+      mockFilePath,
+    );
+
     expect(result.shouldContinue).toBe(true);
     expect(result.isCritical).toBe(false);
     expect(result.userMessage).toContain('File or directory not found');
@@ -47,11 +62,17 @@ describe('FileSystemErrorHandler', () => {
   });
 
   it('should handle directory not found errors', () => {
-    const error = new Error('Directory not found') as Error & { code: FileSystemErrorCode };
+    const error = new Error('Directory not found') as Error & {
+      code: FileSystemErrorCode;
+    };
     error.code = FileSystemErrorCode.DIRECTORY_NOT_FOUND;
-    
-    const result = FileSystemErrorHandler.handleError(error, mockOperation, mockFilePath);
-    
+
+    const result = FileSystemErrorHandler.handleError(
+      error,
+      mockOperation,
+      mockFilePath,
+    );
+
     expect(result.shouldContinue).toBe(true);
     expect(result.isCritical).toBe(false);
     expect(result.userMessage).toContain('File or directory not found');
@@ -59,11 +80,17 @@ describe('FileSystemErrorHandler', () => {
   });
 
   it('should handle no space left on device errors', () => {
-    const error = new Error('No space left on device') as Error & { code: FileSystemErrorCode };
+    const error = new Error('No space left on device') as Error & {
+      code: FileSystemErrorCode;
+    };
     error.code = FileSystemErrorCode.NO_SPACE_LEFT;
-    
-    const result = FileSystemErrorHandler.handleError(error, mockOperation, mockFilePath);
-    
+
+    const result = FileSystemErrorHandler.handleError(
+      error,
+      mockOperation,
+      mockFilePath,
+    );
+
     expect(result.shouldContinue).toBe(false);
     expect(result.isCritical).toBe(true);
     expect(result.userMessage).toContain('No space left on device');
@@ -75,11 +102,17 @@ describe('FileSystemErrorHandler', () => {
   });
 
   it('should handle read-only file system errors', () => {
-    const error = new Error('Read-only file system') as Error & { code: FileSystemErrorCode };
+    const error = new Error('Read-only file system') as Error & {
+      code: FileSystemErrorCode;
+    };
     error.code = FileSystemErrorCode.READ_ONLY_FILE_SYSTEM;
-    
-    const result = FileSystemErrorHandler.handleError(error, mockOperation, mockFilePath);
-    
+
+    const result = FileSystemErrorHandler.handleError(
+      error,
+      mockOperation,
+      mockFilePath,
+    );
+
     expect(result.shouldContinue).toBe(false);
     expect(result.isCritical).toBe(true);
     expect(result.userMessage).toContain('read-only file system');
@@ -91,11 +124,17 @@ describe('FileSystemErrorHandler', () => {
   });
 
   it('should handle too many open files errors', () => {
-    const error = new Error('Too many open files') as Error & { code: FileSystemErrorCode };
+    const error = new Error('Too many open files') as Error & {
+      code: FileSystemErrorCode;
+    };
     error.code = FileSystemErrorCode.TOO_MANY_OPEN_FILES;
-    
-    const result = FileSystemErrorHandler.handleError(error, mockOperation, mockFilePath);
-    
+
+    const result = FileSystemErrorHandler.handleError(
+      error,
+      mockOperation,
+      mockFilePath,
+    );
+
     expect(result.shouldContinue).toBe(false);
     expect(result.isCritical).toBe(true);
     expect(result.userMessage).toContain('Too many open files');
@@ -107,11 +146,17 @@ describe('FileSystemErrorHandler', () => {
   });
 
   it('should handle invalid path errors', () => {
-    const error = new Error('Invalid path') as Error & { code: FileSystemErrorCode };
+    const error = new Error('Invalid path') as Error & {
+      code: FileSystemErrorCode;
+    };
     error.code = FileSystemErrorCode.INVALID_PATH;
-    
-    const result = FileSystemErrorHandler.handleError(error, mockOperation, mockFilePath);
-    
+
+    const result = FileSystemErrorHandler.handleError(
+      error,
+      mockOperation,
+      mockFilePath,
+    );
+
     expect(result.shouldContinue).toBe(false);
     expect(result.isCritical).toBe(true);
     expect(result.userMessage).toContain('Invalid path');
@@ -123,14 +168,18 @@ describe('FileSystemErrorHandler', () => {
   });
 
   it('should handle generic/unknown errors', () => {
-    const error = { 
-      code: 'UNKNOWN_ERROR', 
+    const error = {
+      code: 'UNKNOWN_ERROR',
       message: 'Something went wrong',
-      stack: 'Error stack trace'
+      stack: 'Error stack trace',
     };
-    
-    const result = FileSystemErrorHandler.handleError(error, mockOperation, mockFilePath);
-    
+
+    const result = FileSystemErrorHandler.handleError(
+      error,
+      mockOperation,
+      mockFilePath,
+    );
+
     expect(result.shouldContinue).toBe(false);
     expect(result.isCritical).toBe(true);
     expect(result.userMessage).toContain('File system error');
@@ -144,9 +193,13 @@ describe('FileSystemErrorHandler', () => {
 
   it('should handle errors without code property', () => {
     const error = { message: 'Generic error without code' };
-    
-    const result = FileSystemErrorHandler.handleError(error, mockOperation, mockFilePath);
-    
+
+    const result = FileSystemErrorHandler.handleError(
+      error,
+      mockOperation,
+      mockFilePath,
+    );
+
     expect(result.shouldContinue).toBe(false);
     expect(result.isCritical).toBe(true);
     expect(result.userMessage).toContain('File system error');
@@ -167,7 +220,9 @@ describe('FileSystemErrorHandler', () => {
         log: vi.fn(),
       };
       // Use type assertion to set private static property
-      (FileSystemErrorHandler as unknown as { logger: typeof mockLogger }).logger = mockLogger;
+      (
+        FileSystemErrorHandler as unknown as { logger: typeof mockLogger }
+      ).logger = mockLogger;
     });
 
     it('should log critical errors with suggestions', () => {
@@ -180,7 +235,9 @@ describe('FileSystemErrorHandler', () => {
 
       FileSystemErrorHandler.logErrorResult(result);
 
-      expect(mockLogger.error).toHaveBeenCalledWith('Critical error: Critical error occurred');
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Critical error: Critical error occurred',
+      );
       expect(mockLogger.log).toHaveBeenCalledWith('Suggested resolutions:');
       expect(mockLogger.log).toHaveBeenCalledWith('  1. Suggestion 1');
       expect(mockLogger.log).toHaveBeenCalledWith('  2. Suggestion 2');
@@ -211,7 +268,9 @@ describe('FileSystemErrorHandler', () => {
 
       FileSystemErrorHandler.logErrorResult(result);
 
-      expect(mockLogger.error).toHaveBeenCalledWith('Critical error: Error with no suggestions');
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Critical error: Error with no suggestions',
+      );
       expect(mockLogger.log).not.toHaveBeenCalledWith('Suggested resolutions:');
     });
   });

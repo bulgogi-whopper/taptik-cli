@@ -7,7 +7,10 @@ import { MetadataGeneratorService } from '../../context/services/metadata-genera
 import { PackageService } from '../../context/services/package.service';
 import { SanitizationService } from '../../context/services/sanitization.service';
 import { ValidationService } from '../../context/services/validation.service';
-import { BuildPlatform, BuildCategoryName } from '../interfaces/build-config.interface';
+import {
+  BuildPlatform,
+  BuildCategoryName,
+} from '../interfaces/build-config.interface';
 import { CollectionService } from '../services/collection/collection.service';
 import { ErrorHandlerService } from '../services/error-handler/error-handler.service';
 import { InteractiveService } from '../services/interactive/interactive.service';
@@ -37,10 +40,18 @@ describe('BuildCommand', () => {
     userPreferences: 'test preferences',
     projectSpec: 'test spec',
     steeringFiles: [
-      { filename: 'test.md', content: 'steering content', path: '/test/steering/test.md' }
+      {
+        filename: 'test.md',
+        content: 'steering content',
+        path: '/test/steering/test.md',
+      },
     ],
     hookFiles: [
-      { filename: 'commit.kiro.hook', content: 'hook content', path: '/test/hooks/commit.kiro.hook' }
+      {
+        filename: 'commit.kiro.hook',
+        content: 'hook content',
+        path: '/test/hooks/commit.kiro.hook',
+      },
     ],
     configFiles: [],
     sourcePath: '/test/.kiro',
@@ -51,7 +62,11 @@ describe('BuildCommand', () => {
     userConfig: 'global config',
     globalPreferences: 'global preferences',
     promptTemplates: [
-      { filename: 'template.md', content: 'template content', path: '/home/.kiro/templates/template.md' }
+      {
+        filename: 'template.md',
+        content: 'template content',
+        path: '/home/.kiro/templates/template.md',
+      },
     ],
     configFiles: [],
     sourcePath: '/home/.kiro',
@@ -140,9 +155,21 @@ describe('BuildCommand', () => {
   };
 
   const mockOutputFiles = [
-    { filename: 'personal-context.json', category: 'personal-context', size: 1024 },
-    { filename: 'project-context.json', category: 'project-context', size: 2048 },
-    { filename: 'prompt-templates.json', category: 'prompt-templates', size: 512 },
+    {
+      filename: 'personal-context.json',
+      category: 'personal-context',
+      size: 1024,
+    },
+    {
+      filename: 'project-context.json',
+      category: 'project-context',
+      size: 2048,
+    },
+    {
+      filename: 'prompt-templates.json',
+      category: 'prompt-templates',
+      size: 512,
+    },
   ];
 
   beforeEach(async () => {
@@ -206,7 +233,13 @@ describe('BuildCommand', () => {
       addCriticalError: vi.fn(),
       hasWarnings: vi.fn().mockReturnValue(false),
       hasCriticalErrors: vi.fn().mockReturnValue(false),
-      getErrorSummary: vi.fn().mockReturnValue({ warnings: [], criticalErrors: [], partialFiles: [] }),
+      getErrorSummary: vi
+        .fn()
+        .mockReturnValue({
+          warnings: [],
+          criticalErrors: [],
+          partialFiles: [],
+        }),
       displayErrorSummary: vi.fn(),
       exitWithAppropriateCode: vi.fn().mockImplementation(() => undefined),
       handleCriticalErrorAndExit: vi.fn().mockImplementation(() => undefined),
@@ -292,12 +325,22 @@ describe('BuildCommand', () => {
       { name: BuildCategoryName.PROMPT_TEMPLATES, enabled: true },
     ]);
 
-    collectionService.collectLocalSettings.mockResolvedValue(mockLocalSettingsData);
-    collectionService.collectGlobalSettings.mockResolvedValue(mockGlobalSettingsData);
+    collectionService.collectLocalSettings.mockResolvedValue(
+      mockLocalSettingsData,
+    );
+    collectionService.collectGlobalSettings.mockResolvedValue(
+      mockGlobalSettingsData,
+    );
 
-    transformationService.transformPersonalContext.mockResolvedValue(mockPersonalContext);
-    transformationService.transformProjectContext.mockResolvedValue(mockProjectContext);
-    transformationService.transformPromptTemplates.mockResolvedValue(mockPromptTemplates);
+    transformationService.transformPersonalContext.mockResolvedValue(
+      mockPersonalContext,
+    );
+    transformationService.transformProjectContext.mockResolvedValue(
+      mockProjectContext,
+    );
+    transformationService.transformPromptTemplates.mockResolvedValue(
+      mockPromptTemplates,
+    );
 
     outputService.createOutputDirectory.mockResolvedValue('/test/output');
     outputService.writeOutputFiles.mockResolvedValue(mockOutputFiles);
@@ -312,7 +355,6 @@ describe('BuildCommand', () => {
   });
 
   describe('run', () => {
-
     it('should orchestrate complete build workflow successfully', async () => {
       await command.run([], {});
 
@@ -323,7 +365,7 @@ describe('BuildCommand', () => {
         'Data collection',
         'Data transformation',
         'Output generation',
-        'Build completion'
+        'Build completion',
       ]);
 
       // Verify interactive selection
@@ -345,7 +387,7 @@ describe('BuildCommand', () => {
         '/test/output',
         mockPersonalContext,
         mockProjectContext,
-        mockPromptTemplates
+        mockPromptTemplates,
       );
       expect(outputService.generateManifest).toHaveBeenCalled();
 
@@ -375,8 +417,8 @@ describe('BuildCommand', () => {
       expect(errorHandler.addWarning).toHaveBeenCalledWith(
         expect.objectContaining({
           type: expect.any(String),
-          message: expect.stringContaining('Local settings collection failed')
-        })
+          message: expect.stringContaining('Local settings collection failed'),
+        }),
       );
 
       // Should still proceed with transformation
@@ -393,8 +435,8 @@ describe('BuildCommand', () => {
       expect(errorHandler.addWarning).toHaveBeenCalledWith(
         expect.objectContaining({
           type: expect.any(String),
-          message: expect.stringContaining('Global settings collection failed')
-        })
+          message: expect.stringContaining('Global settings collection failed'),
+        }),
       );
 
       // Should still proceed with transformation
@@ -411,12 +453,14 @@ describe('BuildCommand', () => {
       expect(errorHandler.addWarning).toHaveBeenCalledWith(
         expect.objectContaining({
           type: expect.any(String),
-          message: expect.stringContaining('Failed to transform personal-context')
-        })
+          message: expect.stringContaining(
+            'Failed to transform personal-context',
+          ),
+        }),
       );
       expect(progressService.failStep).toHaveBeenCalledWith(
         'Failed to transform personal-context',
-        error
+        error,
       );
 
       // Should still proceed with other transformations
@@ -436,15 +480,19 @@ describe('BuildCommand', () => {
 
       // Should only transform personal context
       expect(transformationService.transformPersonalContext).toHaveBeenCalled();
-      expect(transformationService.transformProjectContext).not.toHaveBeenCalled();
-      expect(transformationService.transformPromptTemplates).not.toHaveBeenCalled();
+      expect(
+        transformationService.transformProjectContext,
+      ).not.toHaveBeenCalled();
+      expect(
+        transformationService.transformPromptTemplates,
+      ).not.toHaveBeenCalled();
 
       // Should write output with only personal context
       expect(outputService.writeOutputFiles).toHaveBeenCalledWith(
         '/test/output',
         mockPersonalContext,
         undefined,
-        undefined
+        undefined,
       );
     });
 
@@ -459,7 +507,8 @@ describe('BuildCommand', () => {
         type: 'system',
         message: 'Build process timed out',
         details: timeoutError.message,
-        suggestedResolution: 'Try running the command again or check your system resources',
+        suggestedResolution:
+          'Try running the command again or check your system resources',
         exitCode: 124,
       });
     });
@@ -476,8 +525,8 @@ describe('BuildCommand', () => {
       expect(errorHandler.addWarning).toHaveBeenCalledWith(
         expect.objectContaining({
           type: expect.any(String),
-          message: expect.stringContaining('Local settings collection failed')
-        })
+          message: expect.stringContaining('Local settings collection failed'),
+        }),
       );
     });
 
@@ -492,7 +541,8 @@ describe('BuildCommand', () => {
         type: 'file_system',
         message: 'Required file or directory not found',
         details: notFoundError.message,
-        suggestedResolution: 'Ensure all required files exist and paths are correct',
+        suggestedResolution:
+          'Ensure all required files exist and paths are correct',
         exitCode: 2,
       });
     });
@@ -516,23 +566,45 @@ describe('BuildCommand', () => {
       await command.run([], {});
 
       // Verify all progress steps are called
-      expect(progressService.startStep).toHaveBeenCalledWith('Platform selection');
-      expect(progressService.completeStep).toHaveBeenCalledWith('Platform selection');
-      
-      expect(progressService.startStep).toHaveBeenCalledWith('Category selection');
-      expect(progressService.completeStep).toHaveBeenCalledWith('Category selection');
-      
+      expect(progressService.startStep).toHaveBeenCalledWith(
+        'Platform selection',
+      );
+      expect(progressService.completeStep).toHaveBeenCalledWith(
+        'Platform selection',
+      );
+
+      expect(progressService.startStep).toHaveBeenCalledWith(
+        'Category selection',
+      );
+      expect(progressService.completeStep).toHaveBeenCalledWith(
+        'Category selection',
+      );
+
       expect(progressService.startStep).toHaveBeenCalledWith('Data collection');
-      expect(progressService.completeStep).toHaveBeenCalledWith('Data collection');
-      
-      expect(progressService.startStep).toHaveBeenCalledWith('Data transformation');
-      expect(progressService.completeStep).toHaveBeenCalledWith('Data transformation');
-      
-      expect(progressService.startStep).toHaveBeenCalledWith('Output generation');
-      expect(progressService.completeStep).toHaveBeenCalledWith('Output generation');
-      
-      expect(progressService.startStep).toHaveBeenCalledWith('Build completion');
-      expect(progressService.completeStep).toHaveBeenCalledWith('Build completion');
+      expect(progressService.completeStep).toHaveBeenCalledWith(
+        'Data collection',
+      );
+
+      expect(progressService.startStep).toHaveBeenCalledWith(
+        'Data transformation',
+      );
+      expect(progressService.completeStep).toHaveBeenCalledWith(
+        'Data transformation',
+      );
+
+      expect(progressService.startStep).toHaveBeenCalledWith(
+        'Output generation',
+      );
+      expect(progressService.completeStep).toHaveBeenCalledWith(
+        'Output generation',
+      );
+
+      expect(progressService.startStep).toHaveBeenCalledWith(
+        'Build completion',
+      );
+      expect(progressService.completeStep).toHaveBeenCalledWith(
+        'Build completion',
+      );
     });
 
     it('should check for interruption between major steps', async () => {
@@ -561,7 +633,7 @@ describe('BuildCommand', () => {
         validationService,
         outputService,
         progressService,
-        errorHandler
+        errorHandler,
       );
 
       const command2 = new BuildCommand(
@@ -574,7 +646,7 @@ describe('BuildCommand', () => {
         validationService,
         outputService,
         progressService,
-        errorHandler
+        errorHandler,
       );
 
       // Mock the private method by accessing it through the prototype
@@ -588,7 +660,7 @@ describe('BuildCommand', () => {
 
   describe('private methods', () => {
     it('should extract hook type from filename correctly', () => {
-      const {extractHookType} = (command as any);
+      const { extractHookType } = command as any;
 
       expect(extractHookType('commit.kiro.hook')).toBe('commit');
       expect(extractHookType('save.kiro.hook')).toBe('save');

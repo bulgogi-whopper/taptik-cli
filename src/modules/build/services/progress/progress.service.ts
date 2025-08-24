@@ -4,7 +4,10 @@ import * as path from 'node:path';
 
 import { Injectable, Logger } from '@nestjs/common';
 
-import type { TaptikConfig, ConfigValidationResult } from '../../interfaces/config.interface';
+import type {
+  TaptikConfig,
+  ConfigValidationResult,
+} from '../../interfaces/config.interface';
 import type {
   ConfigSize,
   ProcessingTimeEstimate,
@@ -18,9 +21,8 @@ import type {
   ActionableError,
   PackageDetails,
   UploadResult,
-  ProgressUpdateCallback
+  ProgressUpdateCallback,
 } from '../../interfaces/progress.interface';
-
 
 /**
  * Service responsible for progress reporting and user feedback during build process
@@ -69,10 +71,10 @@ export class ProgressService {
       this.logger.log(`✓ ${stepMessage}`);
     }
     this.currentStep++;
-    
+
     // Trigger progress update callbacks
     const progress = this.getDetailedProgress();
-    this.progressUpdateCallbacks.forEach(callback => {
+    this.progressUpdateCallbacks.forEach((callback) => {
       callback(progress);
     });
   }
@@ -92,9 +94,10 @@ export class ProgressService {
    * @param operation Type of scan operation
    */
   startScan(operation: 'local' | 'global'): void {
-    const message = operation === 'local' 
-      ? 'Scanning local Kiro settings'
-      : 'Scanning global Kiro settings';
+    const message =
+      operation === 'local'
+        ? 'Scanning local Kiro settings'
+        : 'Scanning global Kiro settings';
     this.startStep(message);
   }
 
@@ -104,9 +107,10 @@ export class ProgressService {
    * @param fileCount Number of files found
    */
   completeScan(operation: 'local' | 'global', fileCount: number): void {
-    const message = operation === 'local'
-      ? `Scanning local Kiro settings (${fileCount} files found)`
-      : `Scanning global Kiro settings (${fileCount} files found)`;
+    const message =
+      operation === 'local'
+        ? `Scanning local Kiro settings (${fileCount} files found)`
+        : `Scanning global Kiro settings (${fileCount} files found)`;
     this.completeStep(message);
   }
 
@@ -133,7 +137,9 @@ export class ProgressService {
   }
 
   startClaudeCodeSanitization(): void {
-    this.logger.log('🔒 Sanitizing Claude Code configuration for cloud upload...');
+    this.logger.log(
+      '🔒 Sanitizing Claude Code configuration for cloud upload...',
+    );
   }
 
   getSpinnerType(): string {
@@ -141,7 +147,9 @@ export class ProgressService {
   }
 
   startClaudeCodeMetadataGeneration(): void {
-    this.logger.log('🏷️  Generating cloud metadata for Claude Code configuration...');
+    this.logger.log(
+      '🏷️  Generating cloud metadata for Claude Code configuration...',
+    );
     this.logger.log('  • Analyzing agents and commands...');
     this.logger.log('  • Extracting MCP server configurations...');
     this.logger.log('  • Computing complexity metrics...');
@@ -154,7 +162,9 @@ export class ProgressService {
   }
 
   startClaudeCodeValidation(): void {
-    this.logger.log('✅ Validating Claude Code package for cloud compatibility...');
+    this.logger.log(
+      '✅ Validating Claude Code package for cloud compatibility...',
+    );
     this.logger.log('  • Checking schema compliance...');
     this.logger.log('  • Verifying size limits...');
     this.logger.log('  • Testing feature compatibility...');
@@ -162,78 +172,86 @@ export class ProgressService {
 
   completeClaudeCodeBuild(packageInfo: PackageInfo): void {
     this.logger.log('🎉 Claude Code build completed successfully!');
-    this.logger.log(`  📊 Package size: ${(packageInfo.size / 1024).toFixed(1)} KB`);
+    this.logger.log(
+      `  📊 Package size: ${(packageInfo.size / 1024).toFixed(1)} KB`,
+    );
     this.logger.log(`  🔐 Checksum: ${packageInfo.checksum}`);
-    this.logger.log(`  ☁️  Cloud ready: ${packageInfo.cloudReady ? '✅' : '❌'}`);
-    this.logger.log(`  🛡️  Security level: ${packageInfo.securityLevel.toUpperCase()}`);
+    this.logger.log(
+      `  ☁️  Cloud ready: ${packageInfo.cloudReady ? '✅' : '❌'}`,
+    );
+    this.logger.log(
+      `  🛡️  Security level: ${packageInfo.securityLevel.toUpperCase()}`,
+    );
   }
 
   estimateProcessingTime(configSize: ConfigSize): ProcessingTimeEstimate {
     // Enhanced time estimation with complexity factors
     const baseTime = 2; // Base 2 seconds
-    
+
     // Time factors based on component complexity
     const timePerAgent = 0.5;
     const timePerCommand = 0.3;
     const timePerMcp = 0.8;
     const timePerRule = 0.2;
-    
+
     // Calculate size factor with logarithmic scaling
     const sizeInMB = (configSize.totalFileSize || 0) / (1024 * 1024);
-    const sizeFactor = sizeInMB < 1 
-      ? sizeInMB * 2 
-      : Math.log10(sizeInMB + 1) * 3;
-    
+    const sizeFactor =
+      sizeInMB < 1 ? sizeInMB * 2 : Math.log10(sizeInMB + 1) * 3;
+
     // Calculate total time with complexity weighting
-    const componentTime = 
-      ((configSize.agents || 0) * timePerAgent) +
-      ((configSize.commands || 0) * timePerCommand) +
-      ((configSize.mcpServers || 0) * timePerMcp) +
-      ((configSize.steeringRules || 0) * timePerRule);
-    
+    const componentTime =
+      (configSize.agents || 0) * timePerAgent +
+      (configSize.commands || 0) * timePerCommand +
+      (configSize.mcpServers || 0) * timePerMcp +
+      (configSize.steeringRules || 0) * timePerRule;
+
     const totalSeconds = baseTime + componentTime + sizeFactor;
-    
+
     // Distribute time across phases based on actual complexity
     const sanitizationWeight = configSize.mcpServers > 0 ? 0.35 : 0.25;
     const metadataWeight = 0.2;
     const packagingWeight = sizeInMB > 5 ? 0.35 : 0.3;
-    const validationWeight = 1 - sanitizationWeight - metadataWeight - packagingWeight;
-    
+    const validationWeight =
+      1 - sanitizationWeight - metadataWeight - packagingWeight;
+
     return {
       totalSeconds: Math.ceil(totalSeconds),
       phases: [
-        { 
-          name: 'Sanitization', 
+        {
+          name: 'Sanitization',
           estimatedSeconds: Math.ceil(totalSeconds * sanitizationWeight),
-          description: 'Removing sensitive data'
+          description: 'Removing sensitive data',
         },
-        { 
-          name: 'Metadata Generation', 
+        {
+          name: 'Metadata Generation',
           estimatedSeconds: Math.ceil(totalSeconds * metadataWeight),
-          description: 'Creating cloud metadata'
+          description: 'Creating cloud metadata',
         },
-        { 
-          name: 'Package Creation', 
+        {
+          name: 'Package Creation',
           estimatedSeconds: Math.ceil(totalSeconds * packagingWeight),
-          description: 'Building .taptik package'
+          description: 'Building .taptik package',
         },
-        { 
-          name: 'Validation', 
+        {
+          name: 'Validation',
           estimatedSeconds: Math.ceil(totalSeconds * validationWeight),
-          description: 'Verifying compatibility'
-        }
+          description: 'Verifying compatibility',
+        },
       ],
-      complexity: this.calculateComplexity(configSize)
+      complexity: this.calculateComplexity(configSize),
     };
   }
 
-  private calculateComplexity(configSize: ConfigSize): 'simple' | 'moderate' | 'complex' | 'very complex' {
-    const score = 
-      ((configSize.agents || 0) * 2) +
-      ((configSize.commands || 0) * 1.5) +
-      ((configSize.mcpServers || 0) * 3) +
-      ((configSize.steeringRules || 0) * 1);
-    
+  private calculateComplexity(
+    configSize: ConfigSize,
+  ): 'simple' | 'moderate' | 'complex' | 'very complex' {
+    const score =
+      (configSize.agents || 0) * 2 +
+      (configSize.commands || 0) * 1.5 +
+      (configSize.mcpServers || 0) * 3 +
+      (configSize.steeringRules || 0) * 1;
+
     if (score < 5) return 'simple';
     if (score < 15) return 'moderate';
     if (score < 30) return 'complex';
@@ -247,38 +265,57 @@ export class ProgressService {
   getDetailedProgress(): DetailedProgress {
     const elapsedMs = this.startTime ? Date.now() - this.startTime : 0;
     const elapsedSeconds = elapsedMs / 1000;
-    const percentage = this.totalSteps > 0 ? Math.round((this.currentStep / this.totalSteps) * 100) : 0;
-    
+    const percentage =
+      this.totalSteps > 0
+        ? Math.round((this.currentStep / this.totalSteps) * 100)
+        : 0;
+
     // Calculate adaptive time estimation
-    const avgTimePerStep = this.currentStep > 0 ? elapsedSeconds / this.currentStep : 0;
+    const avgTimePerStep =
+      this.currentStep > 0 ? elapsedSeconds / this.currentStep : 0;
     const remainingSteps = Math.max(0, this.totalSteps - this.currentStep);
-    
+
     // Apply acceleration factor for later steps (usually faster)
-    const accelerationFactor = this.currentStep > this.totalSteps / 2 ? 0.8 : 1.0;
-    const estimatedRemainingSeconds = remainingSteps * avgTimePerStep * accelerationFactor;
-    
+    const accelerationFactor =
+      this.currentStep > this.totalSteps / 2 ? 0.8 : 1.0;
+    const estimatedRemainingSeconds =
+      remainingSteps * avgTimePerStep * accelerationFactor;
+
     // Calculate velocity (steps per second)
-    const velocity = this.currentStep > 0 ? this.currentStep / elapsedSeconds : 0;
-    
+    const velocity =
+      this.currentStep > 0 ? this.currentStep / elapsedSeconds : 0;
+
     // Determine progress status
-    const status = this.getProgressStatus(percentage, elapsedSeconds, estimatedRemainingSeconds);
-    
+    const status = this.getProgressStatus(
+      percentage,
+      elapsedSeconds,
+      estimatedRemainingSeconds,
+    );
+
     return {
       percentage,
       currentStep: this.currentStep,
       totalSteps: this.totalSteps,
       elapsedSeconds: Math.round(elapsedSeconds),
       estimatedRemainingSeconds: Math.round(estimatedRemainingSeconds),
-      estimatedTotalSeconds: Math.round(elapsedSeconds + estimatedRemainingSeconds),
+      estimatedTotalSeconds: Math.round(
+        elapsedSeconds + estimatedRemainingSeconds,
+      ),
       velocity: velocity.toFixed(2),
       status,
       formattedElapsed: this.formatTimeEstimate(elapsedSeconds),
       formattedRemaining: this.formatTimeEstimate(estimatedRemainingSeconds),
-      formattedTotal: this.formatTimeEstimate(elapsedSeconds + estimatedRemainingSeconds)
+      formattedTotal: this.formatTimeEstimate(
+        elapsedSeconds + estimatedRemainingSeconds,
+      ),
     };
   }
 
-  private getProgressStatus(percentage: number, elapsed: number, remaining: number): string {
+  private getProgressStatus(
+    percentage: number,
+    elapsed: number,
+    remaining: number,
+  ): string {
     if (percentage === 100) return 'completed';
     if (percentage === 0) return 'starting';
     if (remaining < elapsed * 0.1) return 'finishing';
@@ -293,17 +330,17 @@ export class ProgressService {
     if (seconds < 1) {
       return `${Math.round(seconds * 1000)}ms`;
     }
-    
+
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = Math.floor(seconds % 60);
-    
+
     // Build time string based on magnitude
     const parts = [];
     if (hours > 0) parts.push(`${hours}h`);
     if (minutes > 0) parts.push(`${minutes}m`);
     if (secs > 0 || parts.length === 0) parts.push(`${secs}s`);
-    
+
     return parts.join(' ');
   }
 
@@ -314,11 +351,11 @@ export class ProgressService {
   prepareUploadPrompt(packageDetails: PackageDetails): UploadPrompt {
     const size = (packageDetails.size / 1024).toFixed(1);
     const tags = packageDetails.tags.join(', ');
-    
+
     return {
       message: 'Ready to upload to cloud?',
       details: `Size: ${size} KB\nTitle: ${packageDetails.title}\nVisibility: ${packageDetails.isPublic ? 'Public' : 'Private'}\nTags: ${tags}`,
-      choices: ['Upload now', 'Save locally only', 'Configure upload settings']
+      choices: ['Upload now', 'Save locally only', 'Configure upload settings'],
     };
   }
 
@@ -331,11 +368,11 @@ export class ProgressService {
   }
 
   getMissingFieldPrompts(fields: string[]): ConfigField[] {
-    return fields.map(field => ({
+    return fields.map((field) => ({
       field,
       message: `Enter a ${field}`,
       type: 'input',
-      required: field === 'title'
+      required: field === 'title',
     }));
   }
 
@@ -352,7 +389,7 @@ export class ProgressService {
   async loadAutoUploadConfig(): Promise<TaptikConfig> {
     const configPath = path.join(os.homedir(), '.taptik', 'config.yaml');
     const defaultConfig = this.generateDefaultConfig();
-    
+
     try {
       await fs.access(configPath);
       const content = await fs.readFile(configPath, 'utf-8');
@@ -368,20 +405,22 @@ export class ProgressService {
   validateAutoUploadConfig(config: TaptikConfig): ConfigValidationResult {
     const errors: string[] = [];
     const warnings: string[] = [];
-    
+
     if (config.cloud) {
       if (typeof config.cloud.enabled !== 'boolean') {
         errors.push('cloud.enabled must be a boolean');
       }
-      if (config.cloud.default_visibility && 
-          !['public', 'private', 'ask'].includes(config.cloud.default_visibility)) {
+      if (
+        config.cloud.default_visibility &&
+        !['public', 'private', 'ask'].includes(config.cloud.default_visibility)
+      ) {
         errors.push('cloud.default_visibility must be "public" or "private"');
       }
       if (config.cloud.auto_tags && !Array.isArray(config.cloud.auto_tags)) {
         errors.push('cloud.auto_tags must be an array');
       }
     }
-    
+
     return { isValid: errors.length === 0, errors, warnings };
   }
 
@@ -390,24 +429,24 @@ export class ProgressService {
     return {
       cloud: {
         ...defaults.cloud,
-        ...(config.cloud || {})
+        ...(config.cloud || {}),
       },
       upload_filters: {
         ...defaults.upload_filters,
-        ...(config.upload_filters || {})
+        ...(config.upload_filters || {}),
       },
       notifications: {
         ...defaults.notifications,
-        ...(config.notifications || {})
+        ...(config.notifications || {}),
       },
       authentication: {
         ...defaults.authentication,
-        ...(config.authentication || {})
+        ...(config.authentication || {}),
       },
       performance: {
         ...defaults.performance,
-        ...(config.performance || {})
-      }
+        ...(config.performance || {}),
+      },
     };
   }
 
@@ -417,49 +456,63 @@ export class ProgressService {
         enabled: false,
         auto_upload: false,
         default_visibility: 'private',
-        auto_tags: []
+        auto_tags: [],
       },
       upload_filters: {
         exclude_patterns: ['*.key', '*token*', '*secret*', '*password*'],
         include_patterns: [],
-        max_file_size_mb: 50
+        max_file_size_mb: 50,
       },
       notifications: {
         upload_success: true,
         upload_failed: true,
-        download_available: false
+        download_available: false,
       },
       authentication: {
         provider: null,
         remember_me: false,
-        token_cache: true
+        token_cache: true,
       },
       performance: {
         parallel_uploads: false,
         compression_level: 'balanced',
-        chunk_size_kb: 1024
-      }
+        chunk_size_kb: 1024,
+      },
     };
   }
 
   async saveAutoUploadConfig(config: TaptikConfig): Promise<void> {
     const configPath = path.join(os.homedir(), '.taptik', 'config.yaml');
     const configDir = path.dirname(configPath);
-    
+
     await fs.mkdir(configDir, { recursive: true });
     const yamlContent = this.convertToYaml(config);
     await fs.writeFile(configPath, yamlContent, 'utf-8');
-    this.logger.log('✅ Auto-upload configuration saved to ~/.taptik/config.yaml');
+    this.logger.log(
+      '✅ Auto-upload configuration saved to ~/.taptik/config.yaml',
+    );
   }
 
-  reportSanitizationProgress(progress: { current: number; total: number; item: string }): void {
-    this.logger.log(`  Scanning: ${progress.item} (${progress.current}/${progress.total})`);
+  reportSanitizationProgress(progress: {
+    current: number;
+    total: number;
+    item: string;
+  }): void {
+    this.logger.log(
+      `  Scanning: ${progress.item} (${progress.current}/${progress.total})`,
+    );
   }
 
   displayValidationResults(results: ValidationResults): void {
-    this.logger.log(`  ✅ Schema validation: ${results.schema ? 'PASSED' : 'FAILED'}`);
-    this.logger.log(`  ✅ Size validation: ${results.size ? 'PASSED' : 'FAILED'}`);
-    this.logger.log(`  ✅ Compatibility: ${results.compatibility ? 'PASSED' : 'FAILED'}`);
+    this.logger.log(
+      `  ✅ Schema validation: ${results.schema ? 'PASSED' : 'FAILED'}`,
+    );
+    this.logger.log(
+      `  ✅ Size validation: ${results.size ? 'PASSED' : 'FAILED'}`,
+    );
+    this.logger.log(
+      `  ✅ Compatibility: ${results.compatibility ? 'PASSED' : 'FAILED'}`,
+    );
     results.schemaErrors?.forEach((error: string) => {
       this.logger.error(`  ❌ Schema error: ${error}`);
     });
@@ -471,7 +524,9 @@ export class ProgressService {
   displayUploadSuccess(result: UploadResult): void {
     this.logger.log('🌥️  Successfully uploaded to cloud!');
     this.logger.log(`  🔗 Share link: ${result.url}`);
-    this.logger.log(`  👁️  Visibility: ${result.visibility === 'public' ? 'Public' : 'Private'}`);
+    this.logger.log(
+      `  👁️  Visibility: ${result.visibility === 'public' ? 'Public' : 'Private'}`,
+    );
     this.logger.log(`  📋 Config ID: ${result.configId}`);
   }
 
@@ -480,7 +535,7 @@ export class ProgressService {
       currentStep: this.currentStep,
       totalSteps: this.totalSteps,
       completedSteps: this.stepDescriptions.slice(0, this.currentStep),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
     return this.progressState;
   }
@@ -495,9 +550,11 @@ export class ProgressService {
     const stateTime = new Date(state.timestamp).getTime();
     const now = Date.now();
     const oneHour = 60 * 60 * 1000;
-    
+
     if (now - stateTime > oneHour) {
-      this.logger.warn('Progress state is stale (older than 1 hour), starting fresh');
+      this.logger.warn(
+        'Progress state is stale (older than 1 hour), starting fresh',
+      );
       return true;
     }
     return false;
@@ -506,40 +563,50 @@ export class ProgressService {
   // Enhanced status message methods for better user guidance
   displaySanitizationMessage(): void {
     this.logger.log('🔍 Scanning for sensitive data patterns...');
-    this.logger.log('  • API keys and tokens - Removing authentication credentials');
+    this.logger.log(
+      '  • API keys and tokens - Removing authentication credentials',
+    );
     this.logger.log('  • Passwords and secrets - Sanitizing sensitive values');
-    this.logger.log('  • Private credentials - Protecting personal information');
+    this.logger.log(
+      '  • Private credentials - Protecting personal information',
+    );
     this.logger.log('  • Environment variables - Masking system-specific data');
-    this.logger.verbose('💡 Tip: Review sanitization report after build to ensure data safety');
+    this.logger.verbose(
+      '💡 Tip: Review sanitization report after build to ensure data safety',
+    );
   }
 
   showValidationResults(results: ValidationResults): void {
     const allValid = results.schema && results.size && results.compatibility;
     const statusEmoji = allValid ? '✅' : '⚠️';
-    
+
     this.logger.log(`${statusEmoji} Validation Results:`);
-    
+
     // Schema validation
     const schemaStatus = results.schema ? '✅ Valid' : '❌ Invalid';
-    const schemaDetails = results.schemaErrors?.length > 0 
-      ? ` (${results.schemaErrors.length} issues)` 
-      : '';
+    const schemaDetails =
+      results.schemaErrors?.length > 0
+        ? ` (${results.schemaErrors.length} issues)`
+        : '';
     this.logger.log(`  Schema: ${schemaStatus}${schemaDetails}`);
-    
+
     // Size validation
     const sizeStatus = results.size ? '✅ Within limits' : '❌ Exceeds limits';
-    const sizeDetails = results.actualSize 
-      ? ` (${(results.actualSize / 1024).toFixed(1)} KB / ${results.maxSize / 1024} KB max)` 
+    const sizeDetails = results.actualSize
+      ? ` (${(results.actualSize / 1024).toFixed(1)} KB / ${results.maxSize / 1024} KB max)`
       : '';
     this.logger.log(`  Size: ${sizeStatus}${sizeDetails}`);
-    
+
     // Compatibility validation
-    const compatStatus = results.compatibility ? '✅ Compatible' : '⚠️ Issues found';
-    const compatDetails = results.compatibilityIssues?.length > 0
-      ? ` (${results.compatibilityIssues.length} warnings)`
-      : '';
+    const compatStatus = results.compatibility
+      ? '✅ Compatible'
+      : '⚠️ Issues found';
+    const compatDetails =
+      results.compatibilityIssues?.length > 0
+        ? ` (${results.compatibilityIssues.length} warnings)`
+        : '';
     this.logger.log(`  Compatibility: ${compatStatus}${compatDetails}`);
-    
+
     // Feature support
     if (results.features) {
       this.logger.log('  Feature Support:');
@@ -548,7 +615,7 @@ export class ProgressService {
         this.logger.log(`    ${featureStatus} ${feature}`);
       });
     }
-    
+
     // Overall recommendation
     if (!allValid) {
       this.logger.log('\n💡 Recommendations:');
@@ -556,10 +623,14 @@ export class ProgressService {
         this.logger.log('  • Fix schema validation errors before uploading');
       }
       if (!results.size) {
-        this.logger.log('  • Reduce package size or split into smaller packages');
+        this.logger.log(
+          '  • Reduce package size or split into smaller packages',
+        );
       }
       if (!results.compatibility) {
-        this.logger.log('  • Review compatibility warnings for best cloud experience');
+        this.logger.log(
+          '  • Review compatibility warnings for best cloud experience',
+        );
       }
     }
   }
@@ -567,14 +638,14 @@ export class ProgressService {
   displayActionableError(error: ActionableError): void {
     const errorType = error.type || 'general';
     const errorEmoji = this.getErrorEmoji(errorType);
-    
+
     this.logger.error(`${errorEmoji} Error: ${error.message}`);
-    
+
     // Show error context if available
     if (error.context) {
       this.logger.error(`  Context: ${error.context}`);
     }
-    
+
     // Show suggested actions
     if (error.suggestions && error.suggestions.length > 0) {
       this.logger.log('\n💡 Suggested actions:');
@@ -582,12 +653,12 @@ export class ProgressService {
         this.logger.log(`  ${index + 1}. ${suggestion}`);
       });
     }
-    
+
     // Show help resources
     if (error.helpUrl) {
       this.logger.log(`\n📚 Learn more: ${error.helpUrl}`);
     }
-    
+
     // Show recovery options
     if (error.recoverable) {
       this.logger.log('\n🔄 This error is recoverable. You can:');
@@ -599,13 +670,13 @@ export class ProgressService {
 
   private getErrorEmoji(errorType: string): string {
     const emojiMap: Record<string, string> = {
-      'file': '📁',
-      'network': '🌐',
-      'permission': '🔒',
-      'validation': '⚠️',
-      'config': '⚙️',
-      'auth': '🔑',
-      'general': '❌'
+      file: '📁',
+      network: '🌐',
+      permission: '🔒',
+      validation: '⚠️',
+      config: '⚙️',
+      auth: '🔑',
+      general: '❌',
     };
     return emojiMap[errorType] || '❌';
   }
@@ -632,20 +703,20 @@ export class ProgressService {
     const result: Record<string, unknown> = {};
     const stack: Record<string, unknown>[] = [result];
     const keyStack: string[] = [];
-    
+
     for (const line of lines) {
       const indent = line.search(/\S/);
       const trimmed = line.trim();
-      
+
       // Skip empty lines and comments
       if (!trimmed || trimmed.startsWith('#')) continue;
-      
+
       // Handle list items
       if (trimmed.startsWith('- ')) {
         const value = trimmed.substring(2);
         const current = stack[stack.length - 1];
         const lastKey = keyStack[keyStack.length - 1];
-        
+
         if (!current[lastKey]) {
           current[lastKey] = [];
         }
@@ -655,22 +726,22 @@ export class ProgressService {
         }
         continue;
       }
-      
+
       // Handle key-value pairs
       if (trimmed.includes(':')) {
         const colonIndex = trimmed.indexOf(':');
         const key = trimmed.substring(0, colonIndex).trim();
         const value = trimmed.substring(colonIndex + 1).trim();
-        
+
         // Adjust stack based on indentation
         const level = Math.floor(indent / 2);
         while (stack.length > level + 1) {
           stack.pop();
           keyStack.pop();
         }
-        
+
         const current = stack[stack.length - 1];
-        
+
         if (value) {
           // Parse and assign value
           current[key] = this.parseYamlValue(value);
@@ -682,25 +753,25 @@ export class ProgressService {
         }
       }
     }
-    
+
     return result;
   }
 
   private parseYamlValue(value: string): string | number | boolean | null {
     // Remove surrounding quotes if present
     const cleanValue = value.replace(/^["']|["']$/g, '').trim();
-    
+
     // Boolean values
     if (cleanValue === 'true') return true;
     if (cleanValue === 'false') return false;
     if (cleanValue === 'null' || cleanValue === '~') return null;
-    
+
     // Number values
     const numValue = Number(cleanValue);
     if (!isNaN(numValue) && cleanValue === numValue.toString()) {
       return numValue;
     }
-    
+
     // String value
     return cleanValue;
   }
@@ -708,17 +779,17 @@ export class ProgressService {
   private convertToYaml(obj: TaptikConfig): string {
     // Simple YAML generation for test purposes
     let yaml = '';
-    
+
     const writeObject = (o: Record<string, unknown>, indent = '') => {
       for (const [key, value] of Object.entries(o)) {
         if (value === null || value === undefined) {
           yaml += `${indent}${key}: null\n`;
         } else if (typeof value === 'object' && !Array.isArray(value)) {
           yaml += `${indent}${key}:\n`;
-          writeObject(value as Record<string, unknown>, `${indent  }  `);
+          writeObject(value as Record<string, unknown>, `${indent}  `);
         } else if (Array.isArray(value)) {
           yaml += `${indent}${key}:\n`;
-          value.forEach(item => {
+          value.forEach((item) => {
             yaml += `${indent}  - ${item}\n`;
           });
         } else {
@@ -726,7 +797,7 @@ export class ProgressService {
         }
       }
     };
-    
+
     writeObject(obj as unknown as Record<string, unknown>);
     return yaml;
   }
@@ -753,9 +824,13 @@ export class ProgressService {
    * @param outputPath Path to output directory
    * @param categories Categories that were processed
    */
-  displayBuildSummary(buildTime: number, outputPath: string, categories: string[]): void {
+  displayBuildSummary(
+    buildTime: number,
+    outputPath: string,
+    categories: string[],
+  ): void {
     const timeFormatted = this.formatDuration(buildTime);
-    
+
     this.logger.log('');
     this.logger.log('🎉 Build completed successfully!');
     this.logger.log(`📁 Output directory: ${outputPath}`);
@@ -773,13 +848,13 @@ export class ProgressService {
     if (warnings.length > 0) {
       this.logger.log('');
       this.logger.warn('⚠️  Warnings encountered:');
-      warnings.forEach(warning => this.logger.warn(`  • ${warning}`));
+      warnings.forEach((warning) => this.logger.warn(`  • ${warning}`));
     }
 
     if (errors.length > 0) {
       this.logger.log('');
       this.logger.error('❌ Errors encountered:');
-      errors.forEach(error => this.logger.error(`  • ${error}`));
+      errors.forEach((error) => this.logger.error(`  • ${error}`));
     }
   }
 
@@ -815,12 +890,12 @@ export class ProgressService {
     if (milliseconds < 1000) {
       return `${milliseconds}ms`;
     }
-    
+
     const seconds = Math.floor(milliseconds / 1000);
     if (seconds < 60) {
       return `${seconds}s`;
     }
-    
+
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes}m ${remainingSeconds}s`;

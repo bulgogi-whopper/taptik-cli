@@ -2,8 +2,7 @@ import * as fs from 'node:fs/promises';
 
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { vi } from 'vitest';
-
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import {
   KiroGlobalSettings,
@@ -14,7 +13,7 @@ import {
   KiroAgentConfiguration,
   KiroTemplateConfiguration,
   KiroDeploymentContext,
-  KiroDeploymentOptions
+  KiroDeploymentOptions,
 } from '../interfaces/kiro-deployment.interface';
 
 import { KiroComponentHandlerService } from './kiro-component-handler.service';
@@ -43,21 +42,26 @@ describe('KiroComponentHandlerService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         KiroComponentHandlerService,
-        { provide: KiroConflictResolverService, useValue: mockConflictResolver },
+        {
+          provide: KiroConflictResolverService,
+          useValue: mockConflictResolver,
+        },
       ],
     }).compile();
 
-    service = module.get<KiroComponentHandlerService>(KiroComponentHandlerService);
+    service = module.get<KiroComponentHandlerService>(
+      KiroComponentHandlerService,
+    );
 
     // Reset mocks
     vi.clearAllMocks();
-    
+
     // Setup default mock responses
     mockFs.mkdir.mockResolvedValue(undefined);
     mockFs.access.mockResolvedValue(undefined);
     mockFs.readFile.mockResolvedValue('{}');
     mockFs.writeFile.mockResolvedValue(undefined);
-    
+
     // Setup conflict resolver mock
     mockConflictResolver.resolveConflict.mockResolvedValue({
       resolved: true,
@@ -74,9 +78,9 @@ describe('KiroComponentHandlerService', () => {
         profile: { name: 'Test User' },
         preferences: {},
         communication: {},
-        tech_stack: {}
+        tech_stack: {},
       },
-      ide: {}
+      ide: {},
     };
 
     const mockProjectSettings: KiroProjectSettings = {
@@ -86,8 +90,8 @@ describe('KiroComponentHandlerService', () => {
         architecture: {},
         tech_stack: {},
         conventions: {},
-        constraints: {}
-      }
+        constraints: {},
+      },
     };
 
     const mockContext: KiroDeploymentContext = {
@@ -100,8 +104,8 @@ describe('KiroComponentHandlerService', () => {
         specsDirectory: '/home/user/project/.kiro/specs',
         hooksDirectory: '/home/user/project/.kiro/hooks',
         agentsDirectory: '/home/user/.kiro/agents',
-        templatesDirectory: '/home/user/.kiro/templates'
-      }
+        templatesDirectory: '/home/user/.kiro/templates',
+      },
     };
 
     const mockOptions: KiroDeploymentOptions = {
@@ -110,7 +114,7 @@ describe('KiroComponentHandlerService', () => {
       dryRun: false,
       validateOnly: false,
       globalSettings: true,
-      projectSettings: true
+      projectSettings: true,
     };
 
     it('should deploy both global and project settings successfully', async () => {
@@ -123,7 +127,7 @@ describe('KiroComponentHandlerService', () => {
         mockGlobalSettings,
         mockProjectSettings,
         mockContext,
-        mockOptions
+        mockOptions,
       );
 
       expect(result.globalDeployed).toBe(true);
@@ -135,7 +139,7 @@ describe('KiroComponentHandlerService', () => {
 
     it('should skip global settings when disabled', async () => {
       const optionsWithoutGlobal = { ...mockOptions, globalSettings: false };
-      
+
       mockFs.access.mockRejectedValue(new Error('Directory not found'));
       mockFs.mkdir.mockResolvedValue(undefined);
       mockFs.readFile.mockRejectedValue(new Error('File not found'));
@@ -145,7 +149,7 @@ describe('KiroComponentHandlerService', () => {
         mockGlobalSettings,
         mockProjectSettings,
         mockContext,
-        optionsWithoutGlobal
+        optionsWithoutGlobal,
       );
 
       expect(result.globalDeployed).toBe(false);
@@ -156,7 +160,7 @@ describe('KiroComponentHandlerService', () => {
     it('should handle merge with existing settings', async () => {
       const existingSettings = {
         version: '0.9.0',
-        user: { profile: { email: 'existing@example.com' } }
+        user: { profile: { email: 'existing@example.com' } },
       };
 
       mockFs.access.mockRejectedValue(new Error('Directory not found'));
@@ -168,18 +172,18 @@ describe('KiroComponentHandlerService', () => {
         mockGlobalSettings,
         mockProjectSettings,
         mockContext,
-        { ...mockOptions, mergeStrategy: 'deep-merge' }
+        { ...mockOptions, mergeStrategy: 'deep-merge' },
       );
 
       expect(result.globalDeployed).toBe(true);
       expect(result.errors).toHaveLength(0);
-      
+
       // Check that writeFile was called with merged data
-      const writeCall = mockFs.writeFile.mock.calls.find(call => 
-        call[0] === mockContext.paths.globalSettings
+      const writeCall = mockFs.writeFile.mock.calls.find(
+        (call) => call[0] === mockContext.paths.globalSettings,
       );
       expect(writeCall).toBeDefined();
-      
+
       const writtenData = JSON.parse(writeCall![1] as string);
       expect(writtenData.version).toBe('1.0.0'); // Should be overwritten
       expect(writtenData.user.profile.name).toBe('Test User'); // Should be merged
@@ -193,7 +197,7 @@ describe('KiroComponentHandlerService', () => {
         mockGlobalSettings,
         mockProjectSettings,
         mockContext,
-        mockOptions
+        mockOptions,
       );
 
       expect(result.globalDeployed).toBe(false);
@@ -211,15 +215,15 @@ describe('KiroComponentHandlerService', () => {
         content: 'This is a project overview document.',
         tags: ['project', 'overview'],
         priority: 'high',
-        created_at: '2024-01-01T00:00:00Z'
+        created_at: '2024-01-01T00:00:00Z',
       },
       {
         name: 'coding-standards',
         category: 'standards',
         content: 'Follow these coding standards.',
         priority: 'medium',
-        created_at: '2024-01-01T00:00:00Z'
-      }
+        created_at: '2024-01-01T00:00:00Z',
+      },
     ];
 
     const mockContext: KiroDeploymentContext = {
@@ -232,15 +236,15 @@ describe('KiroComponentHandlerService', () => {
         specsDirectory: '/home/user/project/.kiro/specs',
         hooksDirectory: '/home/user/project/.kiro/hooks',
         agentsDirectory: '/home/user/.kiro/agents',
-        templatesDirectory: '/home/user/.kiro/templates'
-      }
+        templatesDirectory: '/home/user/.kiro/templates',
+      },
     };
 
     const mockOptions: KiroDeploymentOptions = {
       platform: 'kiro-ide',
       conflictStrategy: 'overwrite',
       dryRun: false,
-      validateOnly: false
+      validateOnly: false,
     };
 
     it('should deploy steering documents successfully', async () => {
@@ -249,7 +253,11 @@ describe('KiroComponentHandlerService', () => {
       mockFs.readFile.mockRejectedValue(new Error('File not found'));
       mockFs.writeFile.mockResolvedValue();
 
-      const result = await service.deploySteering(mockDocuments, mockContext, mockOptions);
+      const result = await service.deploySteering(
+        mockDocuments,
+        mockContext,
+        mockOptions,
+      );
 
       expect(result.deployedFiles).toHaveLength(2);
       expect(result.deployedFiles).toContain('project-overview.md');
@@ -263,11 +271,10 @@ describe('KiroComponentHandlerService', () => {
       mockFs.readFile.mockResolvedValue('Existing content');
       mockFs.writeFile.mockResolvedValue();
 
-      const result = await service.deploySteering(
-        mockDocuments,
-        mockContext,
-        { ...mockOptions, conflictStrategy: 'skip' }
-      );
+      const result = await service.deploySteering(mockDocuments, mockContext, {
+        ...mockOptions,
+        conflictStrategy: 'skip',
+      });
 
       expect(result.deployedFiles).toHaveLength(0);
       expect(result.warnings.length).toBeGreaterThan(0);
@@ -279,11 +286,10 @@ describe('KiroComponentHandlerService', () => {
       mockFs.readFile.mockResolvedValue('Existing content');
       mockFs.writeFile.mockResolvedValue();
 
-      const result = await service.deploySteering(
-        mockDocuments,
-        mockContext,
-        { ...mockOptions, conflictStrategy: 'merge-intelligent' }
-      );
+      const result = await service.deploySteering(mockDocuments, mockContext, {
+        ...mockOptions,
+        conflictStrategy: 'merge-intelligent',
+      });
 
       expect(result.deployedFiles).toHaveLength(2);
       expect(result.warnings.length).toBeGreaterThan(0);
@@ -297,9 +303,10 @@ describe('KiroComponentHandlerService', () => {
         name: 'user-authentication',
         type: 'feature',
         status: 'active',
-        content: '# User Authentication\n\n- [ ] Implement login\n- [x] Implement logout',
-        created_at: '2024-01-01T00:00:00Z'
-      }
+        content:
+          '# User Authentication\n\n- [ ] Implement login\n- [x] Implement logout',
+        created_at: '2024-01-01T00:00:00Z',
+      },
     ];
 
     const mockContext: KiroDeploymentContext = {
@@ -312,8 +319,8 @@ describe('KiroComponentHandlerService', () => {
         specsDirectory: '/home/user/project/.kiro/specs',
         hooksDirectory: '/home/user/project/.kiro/hooks',
         agentsDirectory: '/home/user/.kiro/agents',
-        templatesDirectory: '/home/user/.kiro/templates'
-      }
+        templatesDirectory: '/home/user/.kiro/templates',
+      },
     };
 
     const mockOptions: KiroDeploymentOptions = {
@@ -321,7 +328,7 @@ describe('KiroComponentHandlerService', () => {
       conflictStrategy: 'overwrite',
       dryRun: false,
       validateOnly: false,
-      preserveTaskStatus: true
+      preserveTaskStatus: true,
     };
 
     it('should deploy spec documents successfully', async () => {
@@ -330,7 +337,11 @@ describe('KiroComponentHandlerService', () => {
       mockFs.readFile.mockRejectedValue(new Error('File not found'));
       mockFs.writeFile.mockResolvedValue();
 
-      const result = await service.deploySpecs(mockSpecs, mockContext, mockOptions);
+      const result = await service.deploySpecs(
+        mockSpecs,
+        mockContext,
+        mockOptions,
+      );
 
       expect(result.deployedFiles).toHaveLength(1);
       expect(result.deployedFiles).toContain('user-authentication.md');
@@ -338,13 +349,18 @@ describe('KiroComponentHandlerService', () => {
     });
 
     it('should preserve task status from existing files', async () => {
-      const existingContent = '# User Authentication\n\n- [x] Implement login\n- [x] Implement logout';
-      
+      const existingContent =
+        '# User Authentication\n\n- [x] Implement login\n- [x] Implement logout';
+
       mockFs.access.mockResolvedValue(undefined);
       mockFs.readFile.mockResolvedValue(existingContent);
       mockFs.writeFile.mockResolvedValue();
 
-      const result = await service.deploySpecs(mockSpecs, mockContext, mockOptions);
+      const result = await service.deploySpecs(
+        mockSpecs,
+        mockContext,
+        mockOptions,
+      );
 
       expect(result.deployedFiles).toHaveLength(1);
       expect(result.warnings.length).toBeGreaterThan(0);
@@ -360,8 +376,8 @@ describe('KiroComponentHandlerService', () => {
         trigger: 'git-commit',
         command: 'npm run lint',
         enabled: true,
-        description: 'Run linter before commit'
-      }
+        description: 'Run linter before commit',
+      },
     ];
 
     const mockContext: KiroDeploymentContext = {
@@ -374,15 +390,15 @@ describe('KiroComponentHandlerService', () => {
         specsDirectory: '/home/user/project/.kiro/specs',
         hooksDirectory: '/home/user/project/.kiro/hooks',
         agentsDirectory: '/home/user/.kiro/agents',
-        templatesDirectory: '/home/user/.kiro/templates'
-      }
+        templatesDirectory: '/home/user/.kiro/templates',
+      },
     };
 
     const mockOptions: KiroDeploymentOptions = {
       platform: 'kiro-ide',
       conflictStrategy: 'overwrite',
       dryRun: false,
-      validateOnly: false
+      validateOnly: false,
     };
 
     it('should deploy hooks successfully', async () => {
@@ -391,7 +407,11 @@ describe('KiroComponentHandlerService', () => {
       mockFs.readFile.mockRejectedValue(new Error('File not found'));
       mockFs.writeFile.mockResolvedValue();
 
-      const result = await service.deployHooks(mockHooks, mockContext, mockOptions);
+      const result = await service.deployHooks(
+        mockHooks,
+        mockContext,
+        mockOptions,
+      );
 
       expect(result.deployedFiles).toHaveLength(1);
       expect(result.deployedFiles).toContain('pre-commit-linter.json');
@@ -409,9 +429,9 @@ describe('KiroComponentHandlerService', () => {
         capabilities: ['code-review', 'best-practices'],
         metadata: {
           version: '1.0.0',
-          created_at: '2024-01-01T00:00:00Z'
-        }
-      }
+          created_at: '2024-01-01T00:00:00Z',
+        },
+      },
     ];
 
     const mockContext: KiroDeploymentContext = {
@@ -424,15 +444,15 @@ describe('KiroComponentHandlerService', () => {
         specsDirectory: '/home/user/project/.kiro/specs',
         hooksDirectory: '/home/user/project/.kiro/hooks',
         agentsDirectory: '/home/user/.kiro/agents',
-        templatesDirectory: '/home/user/.kiro/templates'
-      }
+        templatesDirectory: '/home/user/.kiro/templates',
+      },
     };
 
     const mockOptions: KiroDeploymentOptions = {
       platform: 'kiro-ide',
       conflictStrategy: 'overwrite',
       dryRun: false,
-      validateOnly: false
+      validateOnly: false,
     };
 
     it('should deploy agents successfully', async () => {
@@ -441,7 +461,11 @@ describe('KiroComponentHandlerService', () => {
       mockFs.readFile.mockRejectedValue(new Error('File not found'));
       mockFs.writeFile.mockResolvedValue();
 
-      const result = await service.deployAgents(mockAgents, mockContext, mockOptions);
+      const result = await service.deployAgents(
+        mockAgents,
+        mockContext,
+        mockOptions,
+      );
 
       expect(result.deployedFiles).toHaveLength(1);
       expect(result.deployedFiles).toContain('code-reviewer.json');
@@ -462,15 +486,15 @@ describe('KiroComponentHandlerService', () => {
             name: 'resource',
             type: 'string',
             description: 'The resource name',
-            required: true
-          }
+            required: true,
+          },
         ],
         tags: ['api', 'template'],
         metadata: {
           version: '1.0.0',
-          created_at: '2024-01-01T00:00:00Z'
-        }
-      }
+          created_at: '2024-01-01T00:00:00Z',
+        },
+      },
     ];
 
     const mockContext: KiroDeploymentContext = {
@@ -483,15 +507,15 @@ describe('KiroComponentHandlerService', () => {
         specsDirectory: '/home/user/project/.kiro/specs',
         hooksDirectory: '/home/user/project/.kiro/hooks',
         agentsDirectory: '/home/user/.kiro/agents',
-        templatesDirectory: '/home/user/.kiro/templates'
-      }
+        templatesDirectory: '/home/user/.kiro/templates',
+      },
     };
 
     const mockOptions: KiroDeploymentOptions = {
       platform: 'kiro-ide',
       conflictStrategy: 'overwrite',
       dryRun: false,
-      validateOnly: false
+      validateOnly: false,
     };
 
     it('should deploy templates successfully', async () => {
@@ -500,7 +524,11 @@ describe('KiroComponentHandlerService', () => {
       mockFs.readFile.mockRejectedValue(new Error('File not found'));
       mockFs.writeFile.mockResolvedValue();
 
-      const result = await service.deployTemplates(mockTemplates, mockContext, mockOptions);
+      const result = await service.deployTemplates(
+        mockTemplates,
+        mockContext,
+        mockOptions,
+      );
 
       expect(result.deployedFiles).toHaveLength(1);
       expect(result.deployedFiles).toContain('api-endpoint-template.json');
@@ -510,10 +538,16 @@ describe('KiroComponentHandlerService', () => {
 
   describe('helper methods', () => {
     it('should sanitize file names correctly', async () => {
-      const testCases = [
+      const _testCases = [
         { input: 'My File Name', expected: 'my-file-name' },
-        { input: 'file:with/special\\chars', expected: 'file-with-special-chars' },
-        { input: 'File<With>|Invalid?*Chars', expected: 'file-with--invalid--chars' }
+        {
+          input: 'file:with/special\\chars',
+          expected: 'file-with-special-chars',
+        },
+        {
+          input: 'File<With>|Invalid?*Chars',
+          expected: 'file-with--invalid--chars',
+        },
       ];
 
       // We can't test private methods directly, but we can test through public methods
@@ -521,7 +555,7 @@ describe('KiroComponentHandlerService', () => {
         name: 'My File Name',
         category: 'test',
         content: 'test content',
-        created_at: '2024-01-01T00:00:00Z'
+        created_at: '2024-01-01T00:00:00Z',
       };
 
       mockFs.access.mockRejectedValue(new Error('Directory not found'));
@@ -539,18 +573,22 @@ describe('KiroComponentHandlerService', () => {
           specsDirectory: '/home/user/project/.kiro/specs',
           hooksDirectory: '/home/user/project/.kiro/hooks',
           agentsDirectory: '/home/user/.kiro/agents',
-          templatesDirectory: '/home/user/.kiro/templates'
-        }
+          templatesDirectory: '/home/user/.kiro/templates',
+        },
       };
 
       const mockOptions: KiroDeploymentOptions = {
         platform: 'kiro-ide',
         conflictStrategy: 'overwrite',
         dryRun: false,
-        validateOnly: false
+        validateOnly: false,
       };
 
-      const result = await service.deploySteering([mockDoc], mockContext, mockOptions);
+      const result = await service.deploySteering(
+        [mockDoc],
+        mockContext,
+        mockOptions,
+      );
 
       expect(result.deployedFiles).toContain('my-file-name.md');
     });

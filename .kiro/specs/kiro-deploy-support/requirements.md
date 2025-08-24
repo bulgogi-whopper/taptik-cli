@@ -11,10 +11,12 @@ The feature builds upon the existing deploy architecture and adds Kiro-specific 
 ## Architecture Context
 
 ### Data Flow
+
 1. `build` command: Local IDE settings → Taptik common format → Supabase
 2. `deploy` command: Supabase → Taptik common format → Target IDE settings
 
 ### Taptik Common Format Structure
+
 - **TaptikPersonalContext**: User preferences, global settings
 - **TaptikProjectContext**: Project-specific settings, steering documents, specs
 - **TaptikPromptTemplates**: AI prompts and templates
@@ -22,6 +24,7 @@ The feature builds upon the existing deploy architecture and adds Kiro-specific 
 ## Kiro IDE Specific Architecture
 
 ### Kiro IDE Directory Structure
+
 ```
 ~/.kiro/                          # Global Kiro configuration
 ├── settings.json                 # Global IDE settings
@@ -62,6 +65,7 @@ The feature builds upon the existing deploy architecture and adds Kiro-specific 
 ```
 
 ### Kiro IDE Configuration Schema
+
 ```typescript
 // ~/.kiro/settings.json (Global Settings)
 interface KiroGlobalSettings {
@@ -78,26 +82,26 @@ interface KiroGlobalSettings {
     };
   };
   security: {
-    permissions: string[];           // File system and network permissions
-    trustedDomains: string[];        // Allowed external domains
-    sandboxMode: boolean;            // Enable/disable sandbox
+    permissions: string[]; // File system and network permissions
+    trustedDomains: string[]; // Allowed external domains
+    sandboxMode: boolean; // Enable/disable sandbox
   };
   ai: {
-    defaultModel: string;            // Default AI model
-    maxTokens: number;               // Token limit per request
-    temperature: number;             // AI creativity level
+    defaultModel: string; // Default AI model
+    maxTokens: number; // Token limit per request
+    temperature: number; // AI creativity level
     customPrompts: Record<string, string>; // Named custom prompts
   };
   plugins: {
-    enabled: string[];               // Active plugin IDs
-    registry: string;                // Plugin registry URL
-    autoUpdate: boolean;             // Auto-update plugins
+    enabled: string[]; // Active plugin IDs
+    registry: string; // Plugin registry URL
+    autoUpdate: boolean; // Auto-update plugins
   };
   ui: {
     statusBar: {
       enabled: boolean;
       position: 'top' | 'bottom';
-      components: string[];          // Enabled status bar components
+      components: string[]; // Enabled status bar components
     };
     sidebar: {
       width: number;
@@ -111,7 +115,7 @@ interface KiroGlobalSettings {
       folding: boolean;
     };
   };
-  env: Record<string, string>;       // Environment variables
+  env: Record<string, string>; // Environment variables
 }
 
 // .kiro/settings.json (Project Settings)
@@ -120,39 +124,39 @@ interface KiroProjectSettings {
   project: {
     name: string;
     type: 'web' | 'mobile' | 'desktop' | 'library' | 'other';
-    language: string[];              // Primary programming languages
-    framework: string[];             // Used frameworks
-    buildSystem: string;             // Build system (npm, gradle, etc.)
+    language: string[]; // Primary programming languages
+    framework: string[]; // Used frameworks
+    buildSystem: string; // Build system (npm, gradle, etc.)
   };
   ai: {
     context: {
-      includeFiles: string[];        // Files to include in AI context
-      excludeFiles: string[];        // Files to exclude from AI context
-      maxFileSize: number;           // Max file size for context
+      includeFiles: string[]; // Files to include in AI context
+      excludeFiles: string[]; // Files to exclude from AI context
+      maxFileSize: number; // Max file size for context
     };
     steering: {
       enabled: boolean;
-      documents: string[];           // Active steering document paths
+      documents: string[]; // Active steering document paths
     };
     agents: {
-      enabled: string[];             // Enabled agent names
-      disabled: string[];            // Disabled agent names
+      enabled: string[]; // Enabled agent names
+      disabled: string[]; // Disabled agent names
     };
   };
   hooks: {
     enabled: boolean;
-    preCommit: string[];             // Pre-commit hook scripts
-    postSave: string[];              // Post-save hook scripts
-    projectOpen: string[];           // Project open hook scripts
-    build: string[];                 // Build hook scripts
-    deploy: string[];                // Deploy hook scripts
-    test: string[];                  // Test hook scripts
+    preCommit: string[]; // Pre-commit hook scripts
+    postSave: string[]; // Post-save hook scripts
+    projectOpen: string[]; // Project open hook scripts
+    build: string[]; // Build hook scripts
+    deploy: string[]; // Deploy hook scripts
+    test: string[]; // Test hook scripts
   };
   specs: {
     enabled: boolean;
-    defaultTemplate: string;         // Default spec template
-    autoGenerate: boolean;           // Auto-generate specs from code
-    trackTasks: boolean;             // Track task completion
+    defaultTemplate: string; // Default spec template
+    autoGenerate: boolean; // Auto-generate specs from code
+    trackTasks: boolean; // Track task completion
   };
   integrations: {
     git: {
@@ -161,11 +165,11 @@ interface KiroProjectSettings {
       branchNaming: string;
     };
     ci: {
-      provider: string;              // CI/CD provider
-      configFile: string;            // CI config file path
+      provider: string; // CI/CD provider
+      configFile: string; // CI config file path
     };
   };
-  env: Record<string, string>;       // Project-specific environment variables
+  env: Record<string, string>; // Project-specific environment variables
 }
 
 // Agent Definition Schema
@@ -175,19 +179,19 @@ interface KiroAgentDefinition {
   description: string;
   author: string;
   tags: string[];
-  capabilities: string[];            // What the agent can do
+  capabilities: string[]; // What the agent can do
   triggers: {
-    filePatterns: string[];          // File patterns that activate agent
-    keywords: string[];              // Keywords that trigger agent
-    contexts: string[];              // Contexts where agent is active
+    filePatterns: string[]; // File patterns that activate agent
+    keywords: string[]; // Keywords that trigger agent
+    contexts: string[]; // Contexts where agent is active
   };
   configuration: {
-    model: string;                   // AI model to use
-    temperature: number;             // Creativity level
-    maxTokens: number;               // Token limit
-    systemPrompt: string;            // System prompt for the agent
+    model: string; // AI model to use
+    temperature: number; // Creativity level
+    maxTokens: number; // Token limit
+    systemPrompt: string; // System prompt for the agent
   };
-  content: string;                   // Agent implementation (markdown)
+  content: string; // Agent implementation (markdown)
 }
 
 // Hook Configuration Schema
@@ -197,21 +201,22 @@ interface KiroHookConfiguration {
   enabled: boolean;
   trigger: 'pre-commit' | 'post-save' | 'project-open' | 'build' | 'deploy' | 'test';
   conditions: {
-    filePatterns: string[];          // Files that trigger this hook
-    branches: string[];              // Git branches where hook applies
-    environments: string[];          // Environments where hook runs
+    filePatterns: string[]; // Files that trigger this hook
+    branches: string[]; // Git branches where hook applies
+    environments: string[]; // Environments where hook runs
   };
   actions: Array<{
     type: 'command' | 'script' | 'notification' | 'ai-prompt';
-    config: Record<string, any>;     // Action-specific configuration
-    timeout: number;                 // Timeout in seconds
-    retries: number;                 // Number of retries on failure
+    config: Record<string, any>; // Action-specific configuration
+    timeout: number; // Timeout in seconds
+    retries: number; // Number of retries on failure
   }>;
-  dependencies: string[];            // Required tools/dependencies
+  dependencies: string[]; // Required tools/dependencies
 }
 ```
 
 ### Kiro IDE Unique Features and Constraints
+
 - **Spec-Driven Development**: Built-in support for requirement/design/task specifications
 - **AI-First Architecture**: Deep AI integration with steering documents
 - **Hook System**: Comprehensive lifecycle hooks for automation
@@ -221,6 +226,7 @@ interface KiroHookConfiguration {
 - **Context-Aware AI**: AI agents understand project context and history
 
 ### Platform-Specific Constraints
+
 - **File Size Limits**: Individual files limited to 50MB, total project context limited to 500MB
 - **Security Model**: Strict permission system for file access and network operations
 - **Agent Limits**: Maximum 20 custom agents per project, 50 globally

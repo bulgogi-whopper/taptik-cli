@@ -6,7 +6,10 @@ import { ComponentType } from '../interfaces/component-types.interface';
 import { DeploymentResult } from '../interfaces/deployment-result.interface';
 
 import { BackupService } from './backup.service';
-import { ErrorRecoveryService, RecoveryOptions } from './error-recovery.service';
+import {
+  ErrorRecoveryService,
+  RecoveryOptions,
+} from './error-recovery.service';
 import { LockingService } from './locking.service';
 
 describe('Comprehensive Rollback Integration Tests', () => {
@@ -50,7 +53,8 @@ describe('Comprehensive Rollback Integration Tests', () => {
     }).compile();
 
     backupService = module.get<BackupService>(BackupService);
-    errorRecoveryService = module.get<ErrorRecoveryService>(ErrorRecoveryService);
+    errorRecoveryService =
+      module.get<ErrorRecoveryService>(ErrorRecoveryService);
     lockingService = module.get<LockingService>(LockingService);
   });
 
@@ -62,65 +66,116 @@ describe('Comprehensive Rollback Integration Tests', () => {
   describe('Complete Rollback Scenarios with Dependency Validation', () => {
     it('should perform complete rollback of all components with correct dependency order', async () => {
       // Mock successful rollback
-      (backupService.rollbackWithDependencies as any).mockResolvedValue(undefined);
+      (backupService.rollbackWithDependencies as any).mockResolvedValue(
+        undefined,
+      );
 
-      await backupService.rollbackWithDependencies('/mock/manifest.json', 'commands');
+      await backupService.rollbackWithDependencies(
+        '/mock/manifest.json',
+        'commands',
+      );
 
-      expect(backupService.rollbackWithDependencies).toHaveBeenCalledWith('/mock/manifest.json', 'commands');
+      expect(backupService.rollbackWithDependencies).toHaveBeenCalledWith(
+        '/mock/manifest.json',
+        'commands',
+      );
     });
 
     it('should handle circular dependencies gracefully during rollback', async () => {
       // Mock successful rollback that handles circular dependencies
-      (backupService.rollbackWithDependencies as any).mockResolvedValue(undefined);
+      (backupService.rollbackWithDependencies as any).mockResolvedValue(
+        undefined,
+      );
 
-      await expect(backupService.rollbackWithDependencies('/mock/circular-manifest.json', 'componentA'))
-        .resolves.not.toThrow();
+      await expect(
+        backupService.rollbackWithDependencies(
+          '/mock/circular-manifest.json',
+          'componentA',
+        ),
+      ).resolves.not.toThrow();
 
-      expect(backupService.rollbackWithDependencies).toHaveBeenCalledWith('/mock/circular-manifest.json', 'componentA');
+      expect(backupService.rollbackWithDependencies).toHaveBeenCalledWith(
+        '/mock/circular-manifest.json',
+        'componentA',
+      );
     });
 
     it('should validate component integrity during complete rollback', async () => {
       // Mock successful rollback first, then failing rollback with corruption
       (backupService.rollbackComponent as any)
         .mockResolvedValueOnce(undefined)
-        .mockRejectedValueOnce(new Error('Failed to rollback component: Backup file corrupted'));
+        .mockRejectedValueOnce(
+          new Error('Failed to rollback component: Backup file corrupted'),
+        );
 
       // Test: Normal rollback should work
-      await backupService.rollbackComponent('/mock/manifest.json', 'test_component');
-      expect(backupService.rollbackComponent).toHaveBeenCalledWith('/mock/manifest.json', 'test_component');
+      await backupService.rollbackComponent(
+        '/mock/manifest.json',
+        'test_component',
+      );
+      expect(backupService.rollbackComponent).toHaveBeenCalledWith(
+        '/mock/manifest.json',
+        'test_component',
+      );
 
       // Test: Corrupted backup should fail gracefully
-      await expect(backupService.rollbackComponent('/mock/manifest.json', 'test_component'))
-        .rejects.toThrow(/Failed to rollback component/);
+      await expect(
+        backupService.rollbackComponent(
+          '/mock/manifest.json',
+          'test_component',
+        ),
+      ).rejects.toThrow(/Failed to rollback component/);
     });
   });
 
   describe('Partial Rollback with Component Dependencies and Conflict Resolution', () => {
     it('should perform partial rollback while maintaining component dependencies', async () => {
       // Mock successful partial rollback with dependencies
-      (backupService.rollbackWithDependencies as any).mockResolvedValue(undefined);
+      (backupService.rollbackWithDependencies as any).mockResolvedValue(
+        undefined,
+      );
 
-      await backupService.rollbackWithDependencies('/mock/partial-manifest.json', 'plugin');
+      await backupService.rollbackWithDependencies(
+        '/mock/partial-manifest.json',
+        'plugin',
+      );
 
-      expect(backupService.rollbackWithDependencies).toHaveBeenCalledWith('/mock/partial-manifest.json', 'plugin');
+      expect(backupService.rollbackWithDependencies).toHaveBeenCalledWith(
+        '/mock/partial-manifest.json',
+        'plugin',
+      );
     });
 
     it('should resolve conflicts during partial rollback with user preferences', async () => {
       // Mock conflict resolution by overwriting with backup content
       (backupService.rollbackComponent as any).mockResolvedValue(undefined);
 
-      await backupService.rollbackComponent('/mock/conflict-manifest.json', 'conflict_component');
+      await backupService.rollbackComponent(
+        '/mock/conflict-manifest.json',
+        'conflict_component',
+      );
 
-      expect(backupService.rollbackComponent).toHaveBeenCalledWith('/mock/conflict-manifest.json', 'conflict_component');
+      expect(backupService.rollbackComponent).toHaveBeenCalledWith(
+        '/mock/conflict-manifest.json',
+        'conflict_component',
+      );
     });
 
     it('should track partial rollback progress and allow resumption', async () => {
       // Mock rollback with progress tracking
-      (backupService.rollbackWithDependencies as any).mockResolvedValue(undefined);
+      (backupService.rollbackWithDependencies as any).mockResolvedValue(
+        undefined,
+      );
 
-      await backupService.rollbackWithDependencies('/mock/resume-manifest.json', 'comp5');
+      await backupService.rollbackWithDependencies(
+        '/mock/resume-manifest.json',
+        'comp5',
+      );
 
-      expect(backupService.rollbackWithDependencies).toHaveBeenCalledWith('/mock/resume-manifest.json', 'comp5');
+      expect(backupService.rollbackWithDependencies).toHaveBeenCalledWith(
+        '/mock/resume-manifest.json',
+        'comp5',
+      );
     });
   });
 
@@ -132,7 +187,9 @@ describe('Comprehensive Rollback Integration Tests', () => {
         .mockResolvedValueOnce('/mock/backup/path');
 
       // Test: First attempt should fail
-      await expect(backupService.createBackup('/test/file.json')).rejects.toThrow('Network timeout');
+      await expect(
+        backupService.createBackup('/test/file.json'),
+      ).rejects.toThrow('Network timeout');
 
       // Test: Second attempt should succeed
       const backupPath = await backupService.createBackup('/test/file.json');
@@ -158,7 +215,7 @@ describe('Comprehensive Rollback Integration Tests', () => {
           attempts++;
           if (attempts >= maxRetries) throw error;
           // Wait before retry (simplified for test)
-          await new Promise(resolve => setTimeout(resolve, 10)); // eslint-disable-line no-await-in-loop
+          await new Promise((resolve) => setTimeout(resolve, 10)); // eslint-disable-line no-await-in-loop
         }
       }
 
@@ -193,15 +250,19 @@ describe('Comprehensive Rollback Integration Tests', () => {
   describe('Rollback with Corrupted Backup Files and Alternative Recovery', () => {
     it('should detect corrupted backup files and attempt alternative recovery', async () => {
       // Mock corrupted backup detection
-      (backupService.rollback as any).mockRejectedValueOnce(new Error('Backup file corrupted'));
+      (backupService.rollback as any).mockRejectedValueOnce(
+        new Error('Backup file corrupted'),
+      );
 
-      await expect(backupService.rollback('/mock/corrupted/backup')).rejects.toThrow('Backup file corrupted');
+      await expect(
+        backupService.rollback('/mock/corrupted/backup'),
+      ).rejects.toThrow('Backup file corrupted');
 
       // Mock alternative recovery success
       const alternativeBackups = [
         '/mock/backup_v1.json',
-        '/mock/backup_v2.json', 
-        '/mock/backup_v3.json'
+        '/mock/backup_v2.json',
+        '/mock/backup_v3.json',
       ];
 
       // Simulate finding valid alternative backup
@@ -215,13 +276,15 @@ describe('Comprehensive Rollback Integration Tests', () => {
         integrity: {
           checksum: 'abc123',
           size: 100,
-          algorithm: 'base64-slice'
-        }
+          algorithm: 'base64-slice',
+        },
       };
 
       (backupService.getBackupManifest as any).mockResolvedValue(mockManifest);
 
-      const manifest = await backupService.getBackupManifest('/mock/manifest.json');
+      const manifest = await backupService.getBackupManifest(
+        '/mock/manifest.json',
+      );
       expect((manifest as any).integrity?.checksum).toBe('abc123');
 
       // Mock validation success then failure
@@ -233,28 +296,33 @@ describe('Comprehensive Rollback Integration Tests', () => {
       await backupService.rollback('/mock/valid/backup');
 
       // Test: Corrupted backup should fail
-      await expect(backupService.rollback('/mock/corrupted/backup'))
-        .rejects.toThrow('checksum mismatch');
+      await expect(
+        backupService.rollback('/mock/corrupted/backup'),
+      ).rejects.toThrow('checksum mismatch');
     });
 
     it('should implement emergency recovery from system snapshots', async () => {
       // Mock corrupted taptik backups
-      (backupService.rollback as any).mockRejectedValueOnce(new Error('All backups corrupted'));
+      (backupService.rollback as any).mockRejectedValueOnce(
+        new Error('All backups corrupted'),
+      );
 
-      await expect(backupService.rollback('/mock/backup')).rejects.toThrow('All backups corrupted');
+      await expect(backupService.rollback('/mock/backup')).rejects.toThrow(
+        'All backups corrupted',
+      );
 
       // Mock system snapshot recovery
       const systemSnapshots = ['system_snapshot_20231201.json'];
       const recoveredFrom = `/mock/snapshots/${systemSnapshots[0]}`;
-      
+
       expect(recoveredFrom).toContain('system_snapshot_20231201.json');
     });
 
     it('should handle concurrent rollback conflicts with proper locking', async () => {
       // Mock lock acquisition results
       (lockingService.acquireLock as any)
-        .mockResolvedValueOnce(true)   // First attempt succeeds
-        .mockResolvedValueOnce(false)  // Second attempt fails
+        .mockResolvedValueOnce(true) // First attempt succeeds
+        .mockResolvedValueOnce(false) // Second attempt fails
         .mockResolvedValueOnce(false); // Third attempt fails
 
       (lockingService.releaseLock as any).mockResolvedValue(true);
@@ -265,20 +333,22 @@ describe('Comprehensive Rollback Integration Tests', () => {
       // Simulate concurrent rollback attempts
       const performRollback = async (rollbackId: number) => {
         try {
-          const lockHandle = await lockingService.acquireLock(`rollback_test_${rollbackId}`);
-          
+          const lockHandle = await lockingService.acquireLock(
+            `rollback_test_${rollbackId}`,
+          );
+
           if (!lockHandle) {
             throw new Error('Could not acquire lock for rollback');
           }
 
           await backupService.rollback('/mock/backup');
           await lockingService.releaseLock(lockHandle);
-          
+
           rollbackResults.push({ success: true });
         } catch (error) {
-          rollbackResults.push({ 
-            success: false, 
-            error: (error as Error).message 
+          rollbackResults.push({
+            success: false,
+            error: (error as Error).message,
           });
         }
       };
@@ -286,11 +356,11 @@ describe('Comprehensive Rollback Integration Tests', () => {
       await Promise.allSettled([
         performRollback(1),
         performRollback(2),
-        performRollback(3)
+        performRollback(3),
       ]);
 
-      const successCount = rollbackResults.filter(r => r.success).length;
-      const failureCount = rollbackResults.filter(r => !r.success).length;
+      const successCount = rollbackResults.filter((r) => r.success).length;
+      const failureCount = rollbackResults.filter((r) => !r.success).length;
 
       expect(successCount).toBe(1); // Only one should succeed due to locking
       expect(failureCount).toBe(2); // Others should fail
@@ -312,25 +382,25 @@ describe('Comprehensive Rollback Integration Tests', () => {
           filesDeployed: 0,
           filesSkipped: 0,
           conflictsResolved: 0,
-          backupCreated: true
+          backupCreated: true,
         },
         errors: [
           {
             message: 'Deployment failed due to network error',
             code: 'NETWORK_ERROR',
-            severity: 'HIGH'
-          }
+            severity: 'HIGH',
+          },
         ],
         metadata: {
           deploymentId: 'test-deployment-123',
-          backupCreated: backupId
-        }
+          backupCreated: backupId,
+        },
       };
 
       const recoveryOptions: RecoveryOptions = {
-        platform: 'claudeCode',
+        platform: 'claude-code',
         backupId,
-        forceRecovery: true
+        forceRecovery: true,
       };
 
       // Mock successful recovery
@@ -339,34 +409,49 @@ describe('Comprehensive Rollback Integration Tests', () => {
         recoveredComponents: ['settings', 'agents'],
         errors: [],
         cleanedUp: true,
-        backupRestored: backupId
+        backupRestored: backupId,
       });
 
-      const recoveryResult = await errorRecoveryService.recoverFromFailure(failedDeployment, recoveryOptions);
+      const recoveryResult = await errorRecoveryService.recoverFromFailure(
+        failedDeployment,
+        recoveryOptions,
+      );
 
       expect(recoveryResult.success).toBe(true);
       expect(recoveryResult.cleanedUp).toBe(true);
       expect(recoveryResult.backupRestored).toBe(backupId);
-      expect(errorRecoveryService.recoverFromFailure).toHaveBeenCalledWith(failedDeployment, recoveryOptions);
+      expect(errorRecoveryService.recoverFromFailure).toHaveBeenCalledWith(
+        failedDeployment,
+        recoveryOptions,
+      );
     });
 
     it('should validate recovery was successful', async () => {
       const mockRecoveryResult = {
         success: true,
-        recoveredComponents: ['settings' as ComponentType, 'agents' as ComponentType],
+        recoveredComponents: [
+          'settings' as ComponentType,
+          'agents' as ComponentType,
+        ],
         errors: [],
         cleanedUp: true,
-        backupRestored: 'test-backup-id'
+        backupRestored: 'test-backup-id',
       };
 
       const expectedComponents: ComponentType[] = ['settings', 'agents'];
 
       (errorRecoveryService.validateRecovery as any).mockResolvedValue(true);
 
-      const isValid = await errorRecoveryService.validateRecovery(mockRecoveryResult, expectedComponents);
+      const isValid = await errorRecoveryService.validateRecovery(
+        mockRecoveryResult,
+        expectedComponents,
+      );
 
       expect(isValid).toBe(true);
-      expect(errorRecoveryService.validateRecovery).toHaveBeenCalledWith(mockRecoveryResult, expectedComponents);
+      expect(errorRecoveryService.validateRecovery).toHaveBeenCalledWith(
+        mockRecoveryResult,
+        expectedComponents,
+      );
     });
   });
 });

@@ -2,10 +2,7 @@
 
 ## Overview
 
-The `taptik build` command is designed as a NestJS-based CLI command that provides an interactive
-interface for collecting and packaging AI IDE settings from Kiro into a standardized format. The
-design follows a modular architecture with clear separation of concerns between user interaction,
-data collection, transformation, and output generation.
+The `taptik build` command is designed as a NestJS-based CLI command that provides an interactive interface for collecting and packaging AI IDE settings from Kiro into a standardized format. The design follows a modular architecture with clear separation of concerns between user interaction, data collection, transformation, and output generation.
 
 The command operates in four main phases:
 
@@ -382,5 +379,4 @@ src/modules/build/
         └── build-workflow.integration.spec.ts
 ```
 
-This design provides a robust, maintainable, and testable implementation that addresses all
-requirements while following established architectural patterns and best practices.
+This design provides a robust, maintainable, and testable implementation that addresses all requirements while following established architectural patterns and best practices.

@@ -149,39 +149,48 @@ describe('ImportService', () => {
       const mockConfigId = 'test-config-123';
       const mockContext = createMockTaptikContext();
       const mockData = Buffer.from(JSON.stringify(mockContext));
-      const mockMetadata = { 
-        id: mockConfigId, 
-        name: 'Test Config', 
+      const mockMetadata = {
+        id: mockConfigId,
+        name: 'Test Config',
         version: '1.0.0',
         createdAt: '2023-01-01',
         platform: 'claude-code',
-        size: 1024 // Small file, no streaming
+        size: 1024, // Small file, no streaming
       };
       const mockMetadataData = Buffer.from(JSON.stringify(mockMetadata));
 
-      const downloadMock = vi.fn()
-        .mockImplementationOnce(() => Promise.resolve({
-          data: {
-            arrayBuffer: vi.fn().mockResolvedValue(
-              mockMetadataData.buffer.slice(
-                mockMetadataData.byteOffset,
-                mockMetadataData.byteOffset + mockMetadataData.byteLength,
-              ),
-            ),
-          },
-          error: null,
-        }))
-        .mockImplementationOnce(() => Promise.resolve({
-          data: {
-            arrayBuffer: vi.fn().mockResolvedValue(
-              mockData.buffer.slice(
-                mockData.byteOffset,
-                mockData.byteOffset + mockData.byteLength,
-              ),
-            ),
-          },
-          error: null,
-        }));
+      const downloadMock = vi
+        .fn()
+        .mockImplementationOnce(() =>
+          Promise.resolve({
+            data: {
+              arrayBuffer: vi
+                .fn()
+                .mockResolvedValue(
+                  mockMetadataData.buffer.slice(
+                    mockMetadataData.byteOffset,
+                    mockMetadataData.byteOffset + mockMetadataData.byteLength,
+                  ),
+                ),
+            },
+            error: null,
+          }),
+        )
+        .mockImplementationOnce(() =>
+          Promise.resolve({
+            data: {
+              arrayBuffer: vi
+                .fn()
+                .mockResolvedValue(
+                  mockData.buffer.slice(
+                    mockData.byteOffset,
+                    mockData.byteOffset + mockData.byteLength,
+                  ),
+                ),
+            },
+            error: null,
+          }),
+        );
 
       mockSupabaseClient.storage!.from = vi.fn().mockReturnValue({
         download: downloadMock,

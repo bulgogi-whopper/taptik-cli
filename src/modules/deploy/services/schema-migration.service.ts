@@ -1,7 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import { TaptikContext } from '../../context/interfaces/taptik-context.interface';
-import { MigrationValidationResult, CompatibilityResult, SchemaInfo } from '../interfaces/migration-result.interface';
+import {
+  MigrationValidationResult,
+  CompatibilityResult,
+  SchemaInfo,
+} from '../interfaces/migration-result.interface';
 
 @Injectable()
 export class SchemaMigrationService {
@@ -31,7 +35,9 @@ export class SchemaMigrationService {
       // Default to oldest version
       return '1.0.0';
     } catch (error) {
-      this.logger.warn(`Failed to detect schema version: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      this.logger.warn(
+        `Failed to detect schema version: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
       return '1.0.0';
     }
   }
@@ -39,7 +45,10 @@ export class SchemaMigrationService {
   /**
    * Checks if configuration is compatible with current version
    */
-  isCompatible(configVersion: string, targetVersion: string = this.currentVersion): CompatibilityResult {
+  isCompatible(
+    configVersion: string,
+    targetVersion: string = this.currentVersion,
+  ): CompatibilityResult {
     try {
       const configSemver = this.parseSemver(configVersion);
       const targetSemver = this.parseSemver(targetVersion);
@@ -48,7 +57,9 @@ export class SchemaMigrationService {
         return {
           compatible: false,
           migrationRequired: false,
-          warnings: [`Invalid version format: ${!configSemver ? configVersion : targetVersion}`],
+          warnings: [
+            `Invalid version format: ${!configSemver ? configVersion : targetVersion}`,
+          ],
         };
       }
 
@@ -66,30 +77,44 @@ export class SchemaMigrationService {
         return {
           compatible: false,
           migrationRequired: false,
-          warnings: [`Configuration version ${configVersion} is newer than supported version ${targetVersion}`],
-          suggestedActions: ['Update taptik-cli to latest version', 'Use a newer IDE version'],
+          warnings: [
+            `Configuration version ${configVersion} is newer than supported version ${targetVersion}`,
+          ],
+          suggestedActions: [
+            'Update taptik-cli to latest version',
+            'Use a newer IDE version',
+          ],
         };
       }
 
       // Older version - compatible with migration
       const warnings: string[] = [];
       if (configSemver.major < targetSemver.major) {
-        warnings.push(`Major version difference: ${configVersion} → ${targetVersion} may require significant migration`);
+        warnings.push(
+          `Major version difference: ${configVersion} → ${targetVersion} may require significant migration`,
+        );
       } else if (configSemver.minor < targetSemver.minor) {
-        warnings.push(`Configuration version ${configVersion} may have reduced functionality with current version ${targetVersion}`);
+        warnings.push(
+          `Configuration version ${configVersion} may have reduced functionality with current version ${targetVersion}`,
+        );
       }
 
       return {
         compatible: true,
         migrationRequired: true,
         warnings,
-        suggestedActions: warnings.length > 0 ? ['Review migration changes before deployment'] : [],
+        suggestedActions:
+          warnings.length > 0
+            ? ['Review migration changes before deployment']
+            : [],
       };
     } catch (error) {
       return {
         compatible: false,
         migrationRequired: false,
-        warnings: [`Version compatibility check failed: ${error instanceof Error ? error.message : 'Unknown error'}`],
+        warnings: [
+          `Version compatibility check failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        ],
       };
     }
   }
@@ -100,12 +125,14 @@ export class SchemaMigrationService {
   async migrateToLatest(context: TaptikContext): Promise<TaptikContext> {
     try {
       const currentVersion = this.detectSchemaVersion(context);
-      
+
       if (currentVersion === this.currentVersion) {
         return context;
       }
 
-      this.logger.log(`Migrating configuration from ${currentVersion} to ${this.currentVersion}`);
+      this.logger.log(
+        `Migrating configuration from ${currentVersion} to ${this.currentVersion}`,
+      );
 
       let migrated = { ...context };
 
@@ -124,7 +151,9 @@ export class SchemaMigrationService {
         exportedAt: new Date().toISOString(),
       };
 
-      this.logger.log(`Successfully migrated configuration to ${this.currentVersion}`);
+      this.logger.log(
+        `Successfully migrated configuration to ${this.currentVersion}`,
+      );
       return migrated;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -136,18 +165,25 @@ export class SchemaMigrationService {
   /**
    * Validates that migration preserved important data
    */
-  async validateMigration(original: TaptikContext, migrated: TaptikContext): Promise<MigrationValidationResult> {
+  async validateMigration(
+    original: TaptikContext,
+    migrated: TaptikContext,
+  ): Promise<MigrationValidationResult> {
     const errors: string[] = [];
     const warnings: string[] = [];
 
     try {
       // Check that essential data is preserved
       if (original.content?.personal && !migrated.content?.personal) {
-        errors.push('Data loss detected: personal content missing after migration');
+        errors.push(
+          'Data loss detected: personal content missing after migration',
+        );
       }
 
       if (original.content?.project && !migrated.content?.project) {
-        errors.push('Data loss detected: project content missing after migration');
+        errors.push(
+          'Data loss detected: project content missing after migration',
+        );
       }
 
       // Validate schema version
@@ -174,7 +210,9 @@ export class SchemaMigrationService {
     } catch (error) {
       return {
         passed: false,
-        errors: [`Migration validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`],
+        errors: [
+          `Migration validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        ],
         warnings,
       };
     }
@@ -251,12 +289,14 @@ export class SchemaMigrationService {
       },
     };
 
-    return info[version] || {
-      version: 'unknown',
-      features: [],
-      deprecatedFeatures: [],
-      compatibleWith: [],
-    };
+    return (
+      info[version] || {
+        version: 'unknown',
+        features: [],
+        deprecatedFeatures: [],
+        compatibleWith: [],
+      }
+    );
   }
 
   private hasV12Features(context: TaptikContext): boolean {
@@ -330,7 +370,9 @@ export class SchemaMigrationService {
     return migrated;
   }
 
-  private async migrateV11ToV12(context: TaptikContext): Promise<TaptikContext> {
+  private async migrateV11ToV12(
+    context: TaptikContext,
+  ): Promise<TaptikContext> {
     const migrated = { ...context };
 
     // Add prompts section
@@ -356,7 +398,7 @@ export class SchemaMigrationService {
     if (migrated.content.ide?.claudeCode) {
       const claudeCodeConfig = migrated.content.ide.claudeCode;
       delete migrated.content.ide.claudeCode;
-      
+
       migrated.content.ide['claude-code'] = {
         ...claudeCodeConfig,
         claude_md: claudeCodeConfig.claude_md || '',
@@ -374,7 +416,9 @@ export class SchemaMigrationService {
     return migrated;
   }
 
-  private parseSemver(version: string): { major: number; minor: number; patch: number } | null {
+  private parseSemver(
+    version: string,
+  ): { major: number; minor: number; patch: number } | null {
     const match = version.match(/^(\d+)\.(\d+)\.(\d+)$/);
     if (!match) return null;
 

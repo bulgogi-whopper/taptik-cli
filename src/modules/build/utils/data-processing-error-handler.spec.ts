@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { 
-  DataProcessingErrorHandler, 
+import {
+  DataProcessingErrorHandler,
   DataProcessingErrorType,
-  ErrorContext 
+  ErrorContext,
 } from './data-processing-error-handler';
 
 describe('DataProcessingErrorHandler', () => {
@@ -20,14 +20,16 @@ describe('DataProcessingErrorHandler', () => {
 
   describe('JSON parsing errors', () => {
     it('should handle JSON parsing error with line and column info', () => {
-      const error = new Error('Unexpected token } in JSON at position 15 line 3 column 5');
-      
+      const error = new Error(
+        'Unexpected token } in JSON at position 15 line 3 column 5',
+      );
+
       const result = DataProcessingErrorHandler.handleError(
         error,
         DataProcessingErrorType.JSON_PARSING,
-        mockContext
+        mockContext,
       );
-      
+
       expect(result.shouldContinue).toBe(true);
       expect(result.isCritical).toBe(false);
       expect(result.userMessage).toContain('JSON parsing failed');
@@ -41,15 +43,17 @@ describe('DataProcessingErrorHandler', () => {
 
     it('should handle JSON parsing error without line info', () => {
       const error = new Error('Invalid JSON structure');
-      
+
       const result = DataProcessingErrorHandler.handleError(
         error,
         DataProcessingErrorType.JSON_PARSING,
-        { ...mockContext, filePath: undefined }
+        { ...mockContext, filePath: undefined },
       );
-      
+
       expect(result.userMessage).toContain('unknown file');
-      expect(result.suggestions[4]).toContain('Check the entire file structure');
+      expect(result.suggestions[4]).toContain(
+        'Check the entire file structure',
+      );
     });
   });
 
@@ -60,13 +64,13 @@ describe('DataProcessingErrorHandler', () => {
         ...mockContext,
         rawData: '# Title\n\nSome content here\n\n## Section\n\nMore content',
       };
-      
+
       const result = DataProcessingErrorHandler.handleError(
         error,
         DataProcessingErrorType.MARKDOWN_PARSING,
-        contextWithMarkdown
+        contextWithMarkdown,
       );
-      
+
       expect(result.shouldContinue).toBe(true);
       expect(result.isCritical).toBe(false);
       expect(result.userMessage).toContain('Markdown parsing failed');
@@ -79,13 +83,13 @@ describe('DataProcessingErrorHandler', () => {
 
     it('should handle markdown parsing error without raw data', () => {
       const error = new Error('Invalid markdown structure');
-      
+
       const result = DataProcessingErrorHandler.handleError(
         error,
         DataProcessingErrorType.MARKDOWN_PARSING,
-        { ...mockContext, rawData: undefined }
+        { ...mockContext, rawData: undefined },
       );
-      
+
       expect(result.partialData).toBeUndefined();
     });
   });
@@ -93,13 +97,13 @@ describe('DataProcessingErrorHandler', () => {
   describe('Data validation errors', () => {
     it('should handle data validation error', () => {
       const error = new Error('Required field "name" is missing');
-      
+
       const result = DataProcessingErrorHandler.handleError(
         error,
         DataProcessingErrorType.DATA_VALIDATION,
-        mockContext
+        mockContext,
       );
-      
+
       expect(result.shouldContinue).toBe(true);
       expect(result.isCritical).toBe(false);
       expect(result.userMessage).toContain('Data validation failed');
@@ -112,13 +116,13 @@ describe('DataProcessingErrorHandler', () => {
   describe('Transformation errors', () => {
     it('should handle transformation error', () => {
       const error = new Error('Cannot transform invalid data structure');
-      
+
       const result = DataProcessingErrorHandler.handleError(
         error,
         DataProcessingErrorType.TRANSFORMATION,
-        mockContext
+        mockContext,
       );
-      
+
       expect(result.shouldContinue).toBe(true);
       expect(result.isCritical).toBe(false);
       expect(result.userMessage).toContain('Transformation failed');
@@ -131,13 +135,13 @@ describe('DataProcessingErrorHandler', () => {
   describe('Missing required field errors', () => {
     it('should handle missing required field error', () => {
       const error = new Error('Field "email" is required but not found');
-      
+
       const result = DataProcessingErrorHandler.handleError(
         error,
         DataProcessingErrorType.MISSING_REQUIRED_FIELD,
-        mockContext
+        mockContext,
       );
-      
+
       expect(result.shouldContinue).toBe(true);
       expect(result.isCritical).toBe(false);
       expect(result.userMessage).toContain('Required field missing');
@@ -149,37 +153,41 @@ describe('DataProcessingErrorHandler', () => {
   describe('Invalid data format errors', () => {
     it('should handle invalid data format error', () => {
       const error = new Error('Invalid date format');
-      
+
       const result = DataProcessingErrorHandler.handleError(
         error,
         DataProcessingErrorType.INVALID_DATA_FORMAT,
-        mockContext
+        mockContext,
       );
-      
+
       expect(result.shouldContinue).toBe(true);
       expect(result.isCritical).toBe(false);
       expect(result.userMessage).toContain('Invalid data format');
       expect(result.userMessage).toContain(mockContext.filePath);
       expect(result.suggestions).toHaveLength(5);
-      expect(result.suggestions[0]).toContain('data format against expected specification');
+      expect(result.suggestions[0]).toContain(
+        'data format against expected specification',
+      );
     });
   });
 
   describe('Generic errors', () => {
     it('should handle unknown error types', () => {
       const error = new Error('Unknown processing error');
-      
+
       const result = DataProcessingErrorHandler.handleError(
         error,
         'unknown_error' as DataProcessingErrorType,
-        mockContext
+        mockContext,
       );
-      
+
       expect(result.shouldContinue).toBe(true);
       expect(result.isCritical).toBe(false);
       expect(result.userMessage).toContain('Data processing error');
       expect(result.suggestions).toHaveLength(5);
-      expect(result.suggestions[0]).toContain('error message for specific details');
+      expect(result.suggestions[0]).toContain(
+        'error message for specific details',
+      );
     });
   });
 
@@ -203,19 +211,23 @@ describe('DataProcessingErrorHandler', () => {
           isCritical: false,
         },
       ];
-      
+
       const summary = DataProcessingErrorHandler.createPartialSuccessSummary(
         10, // total
-        8,  // successful
-        failedResults
+        8, // successful
+        failedResults,
       );
-      
+
       expect(summary.successRate).toBe(80);
       expect(summary.summary).toContain('8/10 items successfully');
       expect(summary.summary).toContain('80% success rate');
       expect(summary.summary).toContain('2 items failed');
       expect(summary.failedFiles).toEqual(['/file1.json', '/file2.json']);
-      expect(summary.suggestions).toEqual(['Fix file 1', 'Check syntax', 'Fix file 2']);
+      expect(summary.suggestions).toEqual([
+        'Fix file 1',
+        'Check syntax',
+        'Fix file 2',
+      ]);
     });
 
     it('should handle results with no file paths', () => {
@@ -228,13 +240,13 @@ describe('DataProcessingErrorHandler', () => {
           isCritical: false,
         },
       ];
-      
+
       const summary = DataProcessingErrorHandler.createPartialSuccessSummary(
         5, // total
         4, // successful
-        failedResults
+        failedResults,
       );
-      
+
       expect(summary.successRate).toBe(80);
       expect(summary.failedFiles).toEqual([]);
       expect(summary.suggestions).toEqual(['Generic fix']);
@@ -244,9 +256,9 @@ describe('DataProcessingErrorHandler', () => {
       const summary = DataProcessingErrorHandler.createPartialSuccessSummary(
         5, // total
         5, // successful
-        []  // no failures
+        [], // no failures
       );
-      
+
       expect(summary.successRate).toBe(100);
       expect(summary.summary).toContain('5/5 items successfully');
       expect(summary.summary).toContain('0 items failed');
@@ -271,7 +283,9 @@ describe('DataProcessingErrorHandler', () => {
         debug: vi.fn(),
       };
       // Use type assertion to set private static property
-      (DataProcessingErrorHandler as unknown as { logger: typeof mockLogger }).logger = mockLogger;
+      (
+        DataProcessingErrorHandler as unknown as { logger: typeof mockLogger }
+      ).logger = mockLogger;
     });
 
     it('should log critical errors with full details', () => {
@@ -287,13 +301,19 @@ describe('DataProcessingErrorHandler', () => {
 
       DataProcessingErrorHandler.logErrorResult(result);
 
-      expect(mockLogger.error).toHaveBeenCalledWith('Critical data error: Critical processing error');
-      expect(mockLogger.error).toHaveBeenCalledWith('Details: Detailed error information');
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Critical data error: Critical processing error',
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Details: Detailed error information',
+      );
       expect(mockLogger.debug).toHaveBeenCalledWith('File: /test/file.json');
       expect(mockLogger.log).toHaveBeenCalledWith('Suggested solutions:');
       expect(mockLogger.log).toHaveBeenCalledWith('  1. Fix this');
       expect(mockLogger.log).toHaveBeenCalledWith('  2. Try that');
-      expect(mockLogger.debug).toHaveBeenCalledWith('Partial data available:', { some: 'data' });
+      expect(mockLogger.debug).toHaveBeenCalledWith('Partial data available:', {
+        some: 'data',
+      });
     });
 
     it('should log non-critical errors as warnings', () => {
@@ -307,7 +327,9 @@ describe('DataProcessingErrorHandler', () => {
 
       DataProcessingErrorHandler.logErrorResult(result);
 
-      expect(mockLogger.warn).toHaveBeenCalledWith('Data processing warning: Minor processing warning');
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Data processing warning: Minor processing warning',
+      );
       expect(mockLogger.debug).toHaveBeenCalledWith('Details: Warning details');
       expect(mockLogger.log).not.toHaveBeenCalledWith('Suggested solutions:');
     });
@@ -315,7 +337,7 @@ describe('DataProcessingErrorHandler', () => {
 
   describe('Partial markdown data extraction', () => {
     it('should extract partial content from markdown', () => {
-      const {extractPartialMarkdownData} = (DataProcessingErrorHandler as any);
+      const { extractPartialMarkdownData } = DataProcessingErrorHandler as any;
       const markdownContent = `# Main Title
       
 Some introduction text here.
@@ -329,7 +351,7 @@ Content for section 1 with more details.
 More content here.`;
 
       const result = extractPartialMarkdownData(markdownContent);
-      
+
       expect(result).toBeDefined();
       expect(result.partialContent).toContain('Some introduction text');
       expect(result.partialContent).toContain('Content for section 1');
@@ -337,8 +359,8 @@ More content here.`;
     });
 
     it('should handle empty or invalid markdown content', () => {
-      const {extractPartialMarkdownData} = (DataProcessingErrorHandler as any);
-      
+      const { extractPartialMarkdownData } = DataProcessingErrorHandler as any;
+
       expect(extractPartialMarkdownData(undefined)).toBeUndefined();
       expect(extractPartialMarkdownData('')).toBeUndefined();
       expect(extractPartialMarkdownData('###')).toBeDefined();

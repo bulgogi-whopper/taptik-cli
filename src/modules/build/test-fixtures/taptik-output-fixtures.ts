@@ -3,11 +3,11 @@
  * These fixtures provide expected output data that fully complies with the taptik specification
  */
 
-import { 
-  TaptikPersonalContext, 
-  TaptikProjectContext, 
+import {
+  TaptikPersonalContext,
+  TaptikProjectContext,
   TaptikPromptTemplates,
-  TaptikManifest 
+  TaptikManifest,
 } from '../interfaces/taptik-format.interface';
 
 // Web Application Personal Context Output
@@ -21,7 +21,12 @@ export const webAppPersonalContextOutput: TaptikPersonalContext = {
       comment_style: 'JSDoc',
       code_organization: 'feature-based',
     },
-    tools_and_frameworks: ['React', 'Next.js', 'TypeScript', 'Performance Optimization'],
+    tools_and_frameworks: [
+      'React',
+      'Next.js',
+      'TypeScript',
+      'Performance Optimization',
+    ],
     development_environment: ['macOS', 'VS Code', 'Warp', 'zsh', 'pnpm', 'git'],
   },
   work_style: {
@@ -42,7 +47,7 @@ export const webAppPersonalContextOutput: TaptikPersonalContext = {
   },
 };
 
-// API Service Personal Context Output  
+// API Service Personal Context Output
 export const apiServicePersonalContextOutput: TaptikPersonalContext = {
   user_id: '1234567890',
   preferences: {
@@ -53,7 +58,12 @@ export const apiServicePersonalContextOutput: TaptikPersonalContext = {
       comment_style: 'JSDoc',
       code_organization: 'feature-based',
     },
-    tools_and_frameworks: ['Node.js', 'PostgreSQL', 'Microservices', 'Payment Processing'],
+    tools_and_frameworks: [
+      'Node.js',
+      'PostgreSQL',
+      'Microservices',
+      'Payment Processing',
+    ],
     development_environment: ['macOS', 'VS Code', 'Warp', 'zsh', 'pnpm', 'git'],
   },
   work_style: {
@@ -79,22 +89,63 @@ export const webAppProjectContextOutput: TaptikProjectContext = {
   project_id: '1234567890',
   project_info: {
     name: 'E-Commerce Platform Frontend',
-    description: 'Modern React-based e-commerce platform with TypeScript and Next.js',
-    version: '2.1.0', 
+    description:
+      'Modern React-based e-commerce platform with TypeScript and Next.js',
+    version: '2.1.0',
     repository: 'https://github.com/company/ecommerce-frontend',
   },
   technical_stack: {
     primary_language: 'TypeScript',
-    frameworks: ['Next.js 14', 'React 18', 'TailwindCSS', 'Zustand', 'React Query', 'Prisma'],
+    frameworks: [
+      'Next.js 14',
+      'React 18',
+      'TailwindCSS',
+      'Zustand',
+      'React Query',
+      'Prisma',
+    ],
     databases: ['PostgreSQL 15'],
-    tools: ['Webpack', 'ESBuild', 'Prettier', 'ESLint', 'Jest', 'Playwright', 'Chromatic'],
+    tools: [
+      'Webpack',
+      'ESBuild',
+      'Prettier',
+      'ESLint',
+      'Jest',
+      'Playwright',
+      'Chromatic',
+    ],
     deployment: ['Vercel', 'GitHub Actions', 'Sentry', 'PostHog'],
   },
   development_guidelines: {
-    coding_standards: ['TypeScript strict mode enabled', 'ESLint with custom rules for React/Next.js', 'Prettier for consistent formatting', 'Husky for git hooks', 'Conventional commits for changelog generation'],
-    testing_requirements: ['Unit tests with Jest and React Testing Library', 'Integration tests for user workflows', 'E2E tests with Playwright for critical paths', 'Visual regression tests with Chromatic', 'Accessibility testing with axe-core'],
-    documentation_standards: ['TSDoc for public APIs', 'Storybook for component documentation', 'README files for setup instructions', 'ADRs for architectural decisions', 'API documentation with OpenAPI'], 
-    review_process: ['Code reviews with detailed feedback', 'Pair programming sessions', 'Code reviews with detailed feedback', 'Pair programming sessions', 'Code reviews with detailed feedback', 'Pair programming sessions'],
+    coding_standards: [
+      'TypeScript strict mode enabled',
+      'ESLint with custom rules for React/Next.js',
+      'Prettier for consistent formatting',
+      'Husky for git hooks',
+      'Conventional commits for changelog generation',
+    ],
+    testing_requirements: [
+      'Unit tests with Jest and React Testing Library',
+      'Integration tests for user workflows',
+      'E2E tests with Playwright for critical paths',
+      'Visual regression tests with Chromatic',
+      'Accessibility testing with axe-core',
+    ],
+    documentation_standards: [
+      'TSDoc for public APIs',
+      'Storybook for component documentation',
+      'README files for setup instructions',
+      'ADRs for architectural decisions',
+      'API documentation with OpenAPI',
+    ],
+    review_process: [
+      'Code reviews with detailed feedback',
+      'Pair programming sessions',
+      'Code reviews with detailed feedback',
+      'Pair programming sessions',
+      'Code reviews with detailed feedback',
+      'Pair programming sessions',
+    ],
   },
   metadata: {
     source_platform: 'Kiro',
@@ -115,7 +166,8 @@ export const apiServiceProjectContextOutput: TaptikProjectContext = {
   },
   project_info: {
     name: 'Payment Processing API',
-    description: 'Mission-critical payment processing API built with Node.js, Express, and TypeScript',
+    description:
+      'Mission-critical payment processing API built with Node.js, Express, and TypeScript',
     version: '3.2.1',
     repository: 'https://github.com/company/payment-api',
   },
@@ -127,12 +179,9 @@ export const apiServiceProjectContextOutput: TaptikProjectContext = {
       'Bull Queue 4.x',
       'Winston 3.x',
       'Helmet.js',
-      'express-rate-limit'
+      'express-rate-limit',
     ],
-    databases: [
-      'PostgreSQL 15',
-      'Redis 7'
-    ],
+    databases: ['PostgreSQL 15', 'Redis 7'],
     tools: [
       'Jest',
       'Supertest',
@@ -140,7 +189,7 @@ export const apiServiceProjectContextOutput: TaptikProjectContext = {
       'Prettier',
       'Husky',
       'Docker',
-      'Kubernetes'
+      'Kubernetes',
     ],
     deployment: [
       'AWS EKS',
@@ -148,7 +197,7 @@ export const apiServiceProjectContextOutput: TaptikProjectContext = {
       'Terraform',
       'Prometheus',
       'Grafana',
-      'Sentry'
+      'Sentry',
     ],
   },
   development_guidelines: {
@@ -157,23 +206,30 @@ export const apiServiceProjectContextOutput: TaptikProjectContext = {
       'ESLint with security-focused rules',
       'Prettier with 120 character line limit',
       'SOLID principles enforcement',
-      'Comprehensive error handling'
+      'Comprehensive error handling',
     ],
     testing_requirements: [
       'Unit tests with >90% coverage',
       'Integration tests for API endpoints',
       'Contract tests for external services',
       'Load tests for performance validation',
-      'Security tests for vulnerability assessment'
+      'Security tests for vulnerability assessment',
     ],
     documentation_standards: [
       'OpenAPI 3.0 specification',
       'TSDoc for all public APIs',
       'Architecture decision records (ADRs)',
       'Runbook documentation',
-      'API integration guides'
+      'API integration guides',
     ],
-    review_process: ['Code reviews with detailed feedback', 'Pair programming sessions', 'Code reviews with detailed feedback', 'Pair programming sessions', 'Code reviews with detailed feedback', 'Pair programming sessions'],
+    review_process: [
+      'Code reviews with detailed feedback',
+      'Pair programming sessions',
+      'Code reviews with detailed feedback',
+      'Pair programming sessions',
+      'Code reviews with detailed feedback',
+      'Pair programming sessions',
+    ],
   },
 };
 
@@ -189,7 +245,8 @@ export const comprehensivePromptTemplatesOutput: TaptikPromptTemplates = {
     {
       id: 'code-review-comprehensive',
       name: 'Comprehensive Code Review',
-      description: 'Detailed code review template covering quality, security, performance, and maintainability',
+      description:
+        'Detailed code review template covering quality, security, performance, and maintainability',
       category: 'development',
       content: `# Comprehensive Code Review
 
@@ -235,17 +292,13 @@ Please review the following code changes with focus on:
 {SPECIFIC_CONCERNS}
 
 Please provide specific, actionable feedback with examples where possible.`,
-      variables: [
-        'CHANGE_SUMMARY',
-        'FILES_CHANGED', 
-        'SPECIFIC_CONCERNS'
-      ],
+      variables: ['CHANGE_SUMMARY', 'FILES_CHANGED', 'SPECIFIC_CONCERNS'],
       tags: [
         'code-review',
         'quality-assurance',
         'security',
         'performance',
-        'comprehensive'
+        'comprehensive',
       ],
     },
     {
@@ -321,26 +374,27 @@ Please provide a systematic analysis and actionable recommendations.`,
       variables: [
         'BUG_DESCRIPTION',
         'EXPECTED_BEHAVIOR',
-        'ACTUAL_BEHAVIOR', 
+        'ACTUAL_BEHAVIOR',
         'IMPACT_LEVEL',
         'REPRODUCTION_STEPS',
         'ENVIRONMENT',
         'PLATFORM',
         'VERSION',
         'USER_TYPE',
-        'ADDITIONAL_CONTEXT'
+        'ADDITIONAL_CONTEXT',
       ],
       tags: [
         'debugging',
         'systematic-approach',
         'root-cause-analysis',
-        'problem-solving'
+        'problem-solving',
       ],
     },
     {
       id: 'architecture-design-review',
       name: 'Architecture Design Review',
-      description: 'Template for reviewing architectural decisions and system design',
+      description:
+        'Template for reviewing architectural decisions and system design',
       category: 'architecture',
       content: `# Architecture Design Review
 
@@ -412,25 +466,26 @@ Please suggest alternative architectural approaches and compare:
 Please provide detailed feedback with specific recommendations and rationale.`,
       variables: [
         'SYSTEM_NAME',
-        'SYSTEM_PURPOSE', 
+        'SYSTEM_PURPOSE',
         'SCALE_REQUIREMENTS',
         'PERFORMANCE_GOALS',
         'CURRENT_ARCHITECTURE',
         'PROPOSED_CHANGES',
-        'ADDITIONAL_REQUIREMENTS'
+        'ADDITIONAL_REQUIREMENTS',
       ],
       tags: [
         'architecture',
         'design-review',
         'scalability',
         'system-design',
-        'best-practices'
+        'best-practices',
       ],
     },
     {
       id: 'performance-optimization',
       name: 'Performance Optimization Analysis',
-      description: 'Comprehensive performance analysis and optimization recommendations',
+      description:
+        'Comprehensive performance analysis and optimization recommendations',
       category: 'performance',
       content: `# Performance Optimization Analysis
 
@@ -516,23 +571,24 @@ Please provide specific, actionable optimization recommendations with expected p
         'USER_IMPACT',
         'RESPONSE_TIMES',
         'THROUGHPUT',
-        'RESOURCE_UTILIZATION', 
+        'RESOURCE_UTILIZATION',
         'ERROR_RATES',
         'CODE_DETAILS',
-        'PROFILING_DATA'
+        'PROFILING_DATA',
       ],
       tags: [
         'performance',
         'optimization',
         'analysis',
         'metrics',
-        'scalability'
+        'scalability',
       ],
     },
     {
       id: 'security-assessment',
       name: 'Security Assessment & Hardening',
-      description: 'Comprehensive security analysis and hardening recommendations',
+      description:
+        'Comprehensive security analysis and hardening recommendations',
       category: 'security',
       content: `# Security Assessment & Hardening
 
@@ -649,14 +705,14 @@ Please provide specific, prioritized security recommendations with clear impleme
         'USER_BASE',
         'CURRENT_SECURITY_MEASURES',
         'ADDITIONAL_CONTEXT',
-        'SECURITY_TOOLS'
+        'SECURITY_TOOLS',
       ],
       tags: [
         'security',
         'vulnerability-assessment',
         'compliance',
         'hardening',
-        'risk-management'
+        'risk-management',
       ],
     },
   ],
@@ -715,7 +771,7 @@ export const sampleManifestOutput: TaptikManifest = {
     },
     {
       filename: 'project-context.json',
-      category: 'project-context', 
+      category: 'project-context',
       size: 12_288,
     },
     {
@@ -736,25 +792,29 @@ export const taptikSchemaValidators = {
   /**
    * Validate that a personal context object matches expected structure
    */
-  validatePersonalContext: (object: unknown): object is TaptikPersonalContext => {
+  validatePersonalContext: (
+    object: unknown,
+  ): object is TaptikPersonalContext => {
     if (!object || typeof object !== 'object') return false;
     const obj = object as Record<string, unknown>;
-    
+
     // Check metadata structure
     const metadata = obj.metadata as Record<string, unknown> | undefined;
-    const hasValidMetadata = metadata && 
+    const hasValidMetadata =
+      metadata &&
       typeof metadata.source_platform === 'string' &&
       typeof metadata.created_at === 'string' &&
       typeof metadata.version === 'string';
-    
+
     // Check preferences structure
     const preferences = obj.preferences as Record<string, unknown> | undefined;
-    const hasValidPreferences = preferences &&
+    const hasValidPreferences =
+      preferences &&
       Array.isArray(preferences.preferred_languages) &&
       preferences.coding_style &&
       Array.isArray(preferences.tools_and_frameworks) &&
       Array.isArray(preferences.development_environment);
-      
+
     return !!(
       typeof obj.user_id === 'string' &&
       hasValidPreferences &&
@@ -770,32 +830,37 @@ export const taptikSchemaValidators = {
   validateProjectContext: (object: unknown): object is TaptikProjectContext => {
     if (!object || typeof object !== 'object') return false;
     const obj = object as Record<string, unknown>;
-    
+
     // Check metadata structure
     const metadata = obj.metadata as Record<string, unknown> | undefined;
-    const hasValidMetadata = metadata &&
+    const hasValidMetadata =
+      metadata &&
       typeof metadata.source_platform === 'string' &&
       typeof metadata.created_at === 'string' &&
       typeof metadata.version === 'string' &&
       typeof metadata.source_path === 'string';
-    
+
     // Check project_info structure
     const projectInfo = obj.project_info as Record<string, unknown> | undefined;
-    const hasValidProjectInfo = projectInfo &&
+    const hasValidProjectInfo =
+      projectInfo &&
       typeof projectInfo.name === 'string' &&
       typeof projectInfo.description === 'string' &&
       typeof projectInfo.version === 'string' &&
       typeof projectInfo.repository === 'string';
-    
+
     // Check technical_stack structure
-    const technicalStack = obj.technical_stack as Record<string, unknown> | undefined;
-    const hasValidTechnicalStack = technicalStack &&
+    const technicalStack = obj.technical_stack as
+      | Record<string, unknown>
+      | undefined;
+    const hasValidTechnicalStack =
+      technicalStack &&
       typeof technicalStack.primary_language === 'string' &&
       Array.isArray(technicalStack.frameworks) &&
       Array.isArray(technicalStack.databases) &&
       Array.isArray(technicalStack.tools) &&
       Array.isArray(technicalStack.deployment);
-      
+
     return !!(
       typeof obj.project_id === 'string' &&
       hasValidProjectInfo &&
@@ -808,21 +873,25 @@ export const taptikSchemaValidators = {
   /**
    * Validate that a prompt templates object matches expected structure
    */
-  validatePromptTemplates: (object: unknown): object is TaptikPromptTemplates => {
+  validatePromptTemplates: (
+    object: unknown,
+  ): object is TaptikPromptTemplates => {
     if (!object || typeof object !== 'object') return false;
     const obj = object as Record<string, unknown>;
-    
+
     // Check metadata structure
     const metadata = obj.metadata as Record<string, unknown> | undefined;
-    const hasValidMetadata = metadata &&
+    const hasValidMetadata =
+      metadata &&
       typeof metadata.source_platform === 'string' &&
       typeof metadata.created_at === 'string' &&
       typeof metadata.version === 'string' &&
       typeof metadata.total_templates === 'number';
-    
+
     // Validate templates array
     const { templates } = obj;
-    const hasValidTemplates = Array.isArray(templates) &&
+    const hasValidTemplates =
+      Array.isArray(templates) &&
       templates.every((template: unknown) => {
         if (!template || typeof template !== 'object') return false;
         const tmpl = template as Record<string, unknown>;
@@ -836,11 +905,8 @@ export const taptikSchemaValidators = {
           Array.isArray(tmpl.tags)
         );
       });
-      
-    return !!(
-      hasValidTemplates &&
-      hasValidMetadata
-    );
+
+    return !!(hasValidTemplates && hasValidMetadata);
   },
 
   /**

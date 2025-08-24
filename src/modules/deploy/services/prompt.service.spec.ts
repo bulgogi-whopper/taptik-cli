@@ -23,11 +23,11 @@ describe('PromptService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // Mock stdout.write
     vi.spyOn(process.stdout, 'write').mockImplementation(mockStdoutWrite);
     mockStdoutWrite.mockReturnValue(true);
-    
+
     service = new PromptService();
   });
 
@@ -54,10 +54,10 @@ describe('PromptService', () => {
 
       expect(result).toBe(true);
       expect(mockQuestion).toHaveBeenCalledWith(
-        'Proceed with deployment? (y/n): '
+        'Proceed with deployment? (y/n): ',
       );
       expect(mockStdoutWrite).toHaveBeenCalledWith(
-        expect.stringContaining('Deployment Summary')
+        expect.stringContaining('Deployment Summary'),
       );
     });
 
@@ -103,7 +103,7 @@ describe('PromptService', () => {
       await service.confirmDeployment(summary);
 
       expect(mockStdoutWrite).toHaveBeenCalledWith(
-        expect.stringContaining('DRY RUN MODE')
+        expect.stringContaining('DRY RUN MODE'),
       );
     });
   });
@@ -121,7 +121,7 @@ describe('PromptService', () => {
 
       expect(result).toBe('overwrite');
       expect(mockStdoutWrite).toHaveBeenCalledWith(
-        expect.stringContaining('Conflict detected')
+        expect.stringContaining('Conflict detected'),
       );
     });
 
@@ -170,10 +170,10 @@ describe('PromptService', () => {
       service.showProgress('Deploying files', 3, 10);
 
       expect(mockStdoutWrite).toHaveBeenCalledWith(
-        expect.stringContaining('30%')
+        expect.stringContaining('30%'),
       );
       expect(mockStdoutWrite).toHaveBeenCalledWith(
-        expect.stringContaining('Deploying files')
+        expect.stringContaining('Deploying files'),
       );
     });
 
@@ -181,7 +181,7 @@ describe('PromptService', () => {
       service.showProgress('Complete', 10, 10);
 
       expect(mockStdoutWrite).toHaveBeenCalledWith(
-        expect.stringContaining('100%')
+        expect.stringContaining('100%'),
       );
     });
   });
@@ -199,16 +199,16 @@ describe('PromptService', () => {
       service.showDeploymentSummary(results);
 
       expect(mockStdoutWrite).toHaveBeenCalledWith(
-        expect.stringContaining('2 files deployed')
+        expect.stringContaining('2 files deployed'),
       );
       expect(mockStdoutWrite).toHaveBeenCalledWith(
-        expect.stringContaining('1 file skipped')
+        expect.stringContaining('1 file skipped'),
       );
       expect(mockStdoutWrite).toHaveBeenCalledWith(
-        expect.stringContaining('Backup created')
+        expect.stringContaining('Backup created'),
       );
       expect(mockStdoutWrite).toHaveBeenCalledWith(
-        expect.stringContaining('2.50s')
+        expect.stringContaining('2.50s'),
       );
     });
   });
@@ -221,7 +221,7 @@ describe('PromptService', () => {
 
       expect(result).toBe(true);
       expect(mockStdoutWrite).toHaveBeenCalledWith(
-        expect.stringContaining('Operation failed')
+        expect.stringContaining('Operation failed'),
       );
     });
 

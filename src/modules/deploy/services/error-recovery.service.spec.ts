@@ -39,7 +39,7 @@ describe('ErrorRecoveryService', () => {
     it('should successfully recover from a failed deployment', async () => {
       const deploymentResult: DeploymentResult = {
         success: false,
-        platform: 'claudeCode',
+        platform: 'claude-code',
         deployedComponents: ['settings', 'agents'] as ComponentType[],
         conflicts: [],
         errors: [],
@@ -58,7 +58,7 @@ describe('ErrorRecoveryService', () => {
       };
 
       const options: RecoveryOptions = {
-        platform: 'claudeCode',
+        platform: 'claude-code',
         forceRecovery: true,
       };
 
@@ -70,17 +70,17 @@ describe('ErrorRecoveryService', () => {
       expect(result.success).toBe(true);
       expect(result.cleanedUp).toBe(true);
       expect(result.backupRestored).toBe('backup-123');
-      expect(mockLockingService.releaseAll).toHaveBeenCalledWith('claudeCode');
+      expect(mockLockingService.releaseAll).toHaveBeenCalledWith('claude-code');
       expect(mockBackupService.restore).toHaveBeenCalledWith(
         'backup-123',
-        'claudeCode',
+        'claude-code',
       );
     });
 
     it('should handle cleanup-only recovery', async () => {
       const deploymentResult: DeploymentResult = {
         success: false,
-        platform: 'claudeCode',
+        platform: 'claude-code',
         deployedComponents: [],
         conflicts: [],
         errors: [],
@@ -95,7 +95,7 @@ describe('ErrorRecoveryService', () => {
       };
 
       const options: RecoveryOptions = {
-        platform: 'claudeCode',
+        platform: 'claude-code',
         cleanupOnly: true,
       };
 
@@ -117,7 +117,7 @@ describe('ErrorRecoveryService', () => {
 
       const deploymentResult: DeploymentResult = {
         success: false,
-        platform: 'claudeCode',
+        platform: 'claude-code',
         deployedComponents: ['settings'] as ComponentType[],
         conflicts: [],
         errors: [],
@@ -136,7 +136,7 @@ describe('ErrorRecoveryService', () => {
       };
 
       const options: RecoveryOptions = {
-        platform: 'claudeCode',
+        platform: 'claude-code',
       };
 
       const result = await service.recoverFromFailure(
@@ -154,7 +154,7 @@ describe('ErrorRecoveryService', () => {
     it('should recover individual components', async () => {
       const deploymentResult: DeploymentResult = {
         success: false,
-        platform: 'claudeCode',
+        platform: 'claude-code',
         deployedComponents: [
           'settings',
           'agents',
@@ -174,7 +174,7 @@ describe('ErrorRecoveryService', () => {
       };
 
       const options: RecoveryOptions = {
-        platform: 'claudeCode',
+        platform: 'claude-code',
       };
 
       const result = await service.recoverFromFailure(
@@ -196,7 +196,7 @@ describe('ErrorRecoveryService', () => {
 
       const deploymentResult: DeploymentResult = {
         success: false,
-        platform: 'claudeCode',
+        platform: 'claude-code',
         deployedComponents: ['settings'] as ComponentType[],
         conflicts: [],
         errors: [],
@@ -211,7 +211,7 @@ describe('ErrorRecoveryService', () => {
       };
 
       const options: RecoveryOptions = {
-        platform: 'claudeCode',
+        platform: 'claude-code',
       };
 
       const result = await service.recoverFromFailure(
@@ -229,7 +229,7 @@ describe('ErrorRecoveryService', () => {
     it('should clean up partial deployments', async () => {
       const deploymentResult: DeploymentResult = {
         success: false,
-        platform: 'claudeCode',
+        platform: 'claude-code',
         deployedComponents: [],
         conflicts: [],
         errors: [],
@@ -244,7 +244,7 @@ describe('ErrorRecoveryService', () => {
       };
 
       const options: RecoveryOptions = {
-        platform: 'claudeCode',
+        platform: 'claude-code',
       };
 
       await service.recoverFromFailure(deploymentResult, options);

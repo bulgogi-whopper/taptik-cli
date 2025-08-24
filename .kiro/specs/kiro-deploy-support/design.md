@@ -17,31 +17,31 @@ graph TB
     C --> D{Platform Type}
     D -->|claude| E[Claude Deployment Service]
     D -->|kiro| F[Kiro Deployment Service]
-    
+
     F --> G[Kiro Validator Service]
     F --> H[Kiro Transformer Service]
     F --> I[Kiro File Writer Service]
-    
+
     G --> J[Schema Validation]
     G --> K[Component Validation]
-    
+
     H --> L[Personal Context Transform]
     H --> M[Project Context Transform]
     H --> N[Prompt Template Transform]
-    
+
     I --> O[Settings Writer]
     I --> P[Steering Writer]
     I --> Q[Specs Writer]
     I --> R[Hooks Writer]
     I --> S[Agents Writer]
-    
+
     subgraph "Shared Services"
         T[Import Service]
         U[Backup Service]
         V[Error Handler Service]
         W[Performance Monitor]
     end
-    
+
     F --> T
     F --> U
     F --> V
@@ -126,7 +126,7 @@ enum KiroComponentType {
   STEERING = 'steering',
   HOOKS = 'hooks',
   SPECS = 'specs',
-  AGENTS = 'agents'
+  AGENTS = 'agents',
 }
 
 enum KiroConflictStrategy {
@@ -134,19 +134,19 @@ enum KiroConflictStrategy {
   MERGE = 'merge',
   BACKUP = 'backup',
   SKIP = 'skip',
-  OVERWRITE = 'overwrite'
+  OVERWRITE = 'overwrite',
 }
 
 enum SecurityLevel {
   STRICT = 'strict',
   STANDARD = 'standard',
-  PERMISSIVE = 'permissive'
+  PERMISSIVE = 'permissive',
 }
 
 enum MigrationMode {
   FULL = 'full',
   INCREMENTAL = 'incremental',
-  SELECTIVE = 'selective'
+  SELECTIVE = 'selective',
 }
 
 interface KiroDeploymentResult extends DeploymentResult {
@@ -221,7 +221,7 @@ interface IKiroFileWriterService {
 // Extended platform detection
 enum PlatformType {
   CLAUDE = 'claude',
-  KIRO = 'kiro'
+  KIRO = 'kiro',
 }
 
 interface PlatformDetector {
@@ -285,24 +285,24 @@ interface KiroProjectSettings {
 
 // Kiro Steering Documents Model (Requirement 10)
 interface KiroSteeringDocuments {
-  persona?: string;      // .kiro/steering/persona.md
-  principle?: string;    // .kiro/steering/principle.md
+  persona?: string; // .kiro/steering/persona.md
+  principle?: string; // .kiro/steering/principle.md
   architecture?: string; // .kiro/steering/architecture.md
-  tdd?: string;         // .kiro/steering/TDD.md
-  test?: string;        // .kiro/steering/TEST.md
-  git?: string;         // .kiro/steering/git.md
-  prd?: string;         // .kiro/steering/PRD.md
+  tdd?: string; // .kiro/steering/TDD.md
+  test?: string; // .kiro/steering/TEST.md
+  git?: string; // .kiro/steering/git.md
+  prd?: string; // .kiro/steering/PRD.md
   projectContext?: string; // .kiro/steering/project-context.md
-  flags?: string;       // .kiro/steering/flags.md
-  mcp?: string;         // .kiro/steering/mcp.md
+  flags?: string; // .kiro/steering/flags.md
+  mcp?: string; // .kiro/steering/mcp.md
 }
 
 // Kiro Specs Model (Requirement 10)
 interface KiroSpecsConfig {
   [specName: string]: {
     requirements?: string; // .kiro/specs/{spec-name}/requirements.md
-    design?: string;       // .kiro/specs/{spec-name}/design.md
-    tasks?: string;        // .kiro/specs/{spec-name}/tasks.md
+    design?: string; // .kiro/specs/{spec-name}/design.md
+    tasks?: string; // .kiro/specs/{spec-name}/tasks.md
   };
 }
 
@@ -425,7 +425,7 @@ enum KiroDeploymentErrorType {
   PERMISSION_ERROR = 'PERMISSION_ERROR',
   CONFLICT_ERROR = 'CONFLICT_ERROR',
   ROLLBACK_ERROR = 'ROLLBACK_ERROR',
-  NETWORK_ERROR = 'NETWORK_ERROR'
+  NETWORK_ERROR = 'NETWORK_ERROR',
 }
 
 interface KiroDeploymentError extends Error {
@@ -453,7 +453,7 @@ enum RecoveryActions {
   USE_DEFAULT = 'use_default',
   PROMPT_USER = 'prompt_user',
   ROLLBACK = 'rollback',
-  ABORT = 'abort'
+  ABORT = 'abort',
 }
 
 // Kiro-specific recovery scenarios (Requirements 6, 13)
@@ -544,7 +544,7 @@ describe('KiroDeploymentService', () => {
     it('should handle deployment conflicts');
     it('should rollback on failure');
   });
-  
+
   describe('validateDeployment', () => {
     it('should validate complete configuration');
     it('should detect missing required components');
@@ -645,7 +645,7 @@ interface ConfigConflict {
 enum ConflictType {
   VALUE_MISMATCH = 'VALUE_MISMATCH',
   TYPE_MISMATCH = 'TYPE_MISMATCH',
-  STRUCTURE_MISMATCH = 'STRUCTURE_MISMATCH'
+  STRUCTURE_MISMATCH = 'STRUCTURE_MISMATCH',
 }
 ```
 
@@ -707,11 +707,7 @@ interface KiroSecurityEnforcer {
     };
   };
 
-  enforceSecurityPolicies(
-    content: any,
-    component: KiroComponentType,
-    securityLevel: SecurityLevel
-  ): Promise<SecurityEnforcementResult>;
+  enforceSecurityPolicies(content: any, component: KiroComponentType, securityLevel: SecurityLevel): Promise<SecurityEnforcementResult>;
 
   generateSecurityReport(violations: SecurityViolation[]): SecurityReport;
 }
@@ -721,7 +717,7 @@ interface KiroHealthChecker {
   checkKiroVersion(): Promise<VersionCompatibility>;
   validateKiroPermissions(): Promise<PermissionStatus>;
   testKiroIntegration(): Promise<IntegrationTestResult>;
-  
+
   performanceHealthCheck(): Promise<PerformanceHealthResult>;
   securityHealthCheck(): Promise<SecurityHealthResult>;
   dependencyHealthCheck(): Promise<DependencyHealthResult>;
@@ -750,7 +746,7 @@ interface SecurityManager {
   scanContent(content: string, rules: SecurityRule[]): Promise<SecurityScanResult>;
   auditOperation(operation: AuditableOperation): Promise<void>;
   encryptSensitiveData(data: any): Promise<EncryptedData>;
-  
+
   // Enhanced security features
   classifyData(data: any): Promise<DataClassification>;
   applyRetentionPolicy(auditLog: AuditLog): Promise<RetentionResult>;
@@ -772,7 +768,7 @@ enum SecurityAction {
   SANITIZE = 'sanitize',
   LOG = 'log',
   QUARANTINE = 'quarantine',
-  NOTIFY_ADMIN = 'notify_admin'
+  NOTIFY_ADMIN = 'notify_admin',
 }
 
 interface ComplianceRequirement {
@@ -860,23 +856,13 @@ interface IncrementalStrategy {
 
 ```typescript
 interface SynchronizationConflictResolver {
-  detectBidirectionalConflicts(
-    taptikChanges: TaptikChange[],
-    kiroChanges: KiroChange[]
-  ): Promise<BidirectionalConflict[]>;
-  
+  detectBidirectionalConflicts(taptikChanges: TaptikChange[], kiroChanges: KiroChange[]): Promise<BidirectionalConflict[]>;
+
   provideMergeAssistance(conflicts: BidirectionalConflict[]): Promise<MergeAssistanceResult>;
-  
-  generateDiffViews(
-    original: Configuration,
-    taptikVersion: Configuration,
-    kiroVersion: Configuration
-  ): Promise<ThreeWayDiffView>;
-  
-  applyUserResolutions(
-    conflicts: BidirectionalConflict[],
-    resolutions: UserResolution[]
-  ): Promise<ResolvedConfiguration>;
+
+  generateDiffViews(original: Configuration, taptikVersion: Configuration, kiroVersion: Configuration): Promise<ThreeWayDiffView>;
+
+  applyUserResolutions(conflicts: BidirectionalConflict[], resolutions: UserResolution[]): Promise<ResolvedConfiguration>;
 }
 
 interface BidirectionalConflict {

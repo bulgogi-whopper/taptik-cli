@@ -70,7 +70,7 @@ export class PerformanceMonitorService {
    */
   startDeploymentTiming(deploymentId: string): void {
     const startTime = new Date();
-    
+
     this.deploymentMetrics.set(deploymentId, {
       deploymentId,
       startTime,
@@ -198,20 +198,26 @@ export class PerformanceMonitorService {
     const memorySnapshots = metrics.memorySnapshots.length;
 
     // Calculate memory statistics
-    const memoryUsages = metrics.memorySnapshots.map(s => s.heapUsed);
-    const averageMemoryUsage = memoryUsages.length > 0 
-      ? memoryUsages.reduce((sum, usage) => sum + usage, 0) / memoryUsages.length
-      : 0;
-    const peakMemoryUsage = memoryUsages.length > 0 
-      ? Math.max(...memoryUsages)
-      : 0;
+    const memoryUsages = metrics.memorySnapshots.map((s) => s.heapUsed);
+    const averageMemoryUsage =
+      memoryUsages.length > 0
+        ? memoryUsages.reduce((sum, usage) => sum + usage, 0) /
+          memoryUsages.length
+        : 0;
+    const peakMemoryUsage =
+      memoryUsages.length > 0 ? Math.max(...memoryUsages) : 0;
 
     // Find slowest component
     let slowestComponent: PerformanceSummary['slowestComponent'];
     let maxDuration = 0;
 
-    for (const [name, componentMetrics] of Object.entries(metrics.componentMetrics)) {
-      if (componentMetrics.duration && componentMetrics.duration > maxDuration) {
+    for (const [name, componentMetrics] of Object.entries(
+      metrics.componentMetrics,
+    )) {
+      if (
+        componentMetrics.duration &&
+        componentMetrics.duration > maxDuration
+      ) {
         maxDuration = componentMetrics.duration;
         slowestComponent = {
           name: name as ComponentType,
@@ -243,7 +249,10 @@ export class PerformanceMonitorService {
     const violations: PerformanceViolation[] = [];
 
     // Check total deployment duration
-    if (metrics.duration && metrics.duration > this.baselines.maxDeploymentDuration) {
+    if (
+      metrics.duration &&
+      metrics.duration > this.baselines.maxDeploymentDuration
+    ) {
       violations.push({
         type: 'slow_deployment',
         severity: 'warning',
@@ -254,8 +263,13 @@ export class PerformanceMonitorService {
     }
 
     // Check component durations
-    for (const [component, componentMetrics] of Object.entries(metrics.componentMetrics)) {
-      if (componentMetrics.duration && componentMetrics.duration > this.baselines.maxComponentDuration) {
+    for (const [component, componentMetrics] of Object.entries(
+      metrics.componentMetrics,
+    )) {
+      if (
+        componentMetrics.duration &&
+        componentMetrics.duration > this.baselines.maxComponentDuration
+      ) {
         violations.push({
           type: 'slow_component',
           severity: 'warning',
@@ -267,9 +281,9 @@ export class PerformanceMonitorService {
     }
 
     // Check peak memory usage
-    const memoryUsages = metrics.memorySnapshots.map(s => s.heapUsed);
+    const memoryUsages = metrics.memorySnapshots.map((s) => s.heapUsed);
     const peakMemory = memoryUsages.length > 0 ? Math.max(...memoryUsages) : 0;
-    
+
     if (peakMemory > this.baselines.maxMemoryUsage) {
       violations.push({
         type: 'high_memory_usage',
@@ -312,8 +326,10 @@ export class PerformanceMonitorService {
 
     // Component breakdown
     report += `\nComponent Breakdown:\n`;
-    for (const [component, componentMetrics] of Object.entries(metrics.componentMetrics)) {
-      const duration = componentMetrics.duration 
+    for (const [component, componentMetrics] of Object.entries(
+      metrics.componentMetrics,
+    )) {
+      const duration = componentMetrics.duration
         ? `${Math.round(componentMetrics.duration / 1000)}s`
         : 'incomplete';
       report += `  - ${component}: ${duration}\n`;

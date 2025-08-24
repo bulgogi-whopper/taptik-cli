@@ -3,13 +3,13 @@ import { Injectable } from '@nestjs/common';
 import { TaptikContext } from '../../context/interfaces/taptik-context.interface';
 import { ConflictStrategy } from '../interfaces/deploy-options.interface';
 
-type JsonValue = 
-  | string 
-  | number 
-  | boolean 
-  | null 
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
   | undefined
-  | JsonObject 
+  | JsonObject
   | JsonArray;
 
 interface JsonObject {
@@ -50,7 +50,6 @@ export class DiffService {
     source: TaptikContext | Record<string, unknown>,
     target: TaptikContext | Record<string, unknown>,
   ): DiffResult {
-     
     const additions: DiffEntry[] = [];
     const modifications: DiffEntry[] = [];
     const deletions: DiffEntry[] = [];
@@ -136,14 +135,19 @@ export class DiffService {
 
       case 'merge':
         // Deep merge source into target
-        return this.deepMerge(target, source) as TaptikContext | Record<string, unknown>;
+        return this.deepMerge(target, source) as
+          | TaptikContext
+          | Record<string, unknown>;
 
       case 'backup':
         // Use source but mark that backup was created
         return {
           ...source,
           metadata: {
-            ...(source as Record<string, unknown>).metadata as Record<string, unknown>,
+            ...((source as Record<string, unknown>).metadata as Record<
+              string,
+              unknown
+            >),
             backupCreated: true,
           },
         };
@@ -309,24 +313,33 @@ export class DiffService {
   }
 
   private mergeArrays(target: JsonArray, source: JsonArray): JsonArray {
-     
     if (target.length === 0) return source;
     if (source.length === 0) return target;
 
     // Check if arrays contain objects with id field
     const firstSource = source[0] as JsonObject;
     const firstTarget = target[0] as JsonObject;
-    const hasIds = (firstSource && typeof firstSource === 'object' && 'id' in firstSource) || 
-                   (firstTarget && typeof firstTarget === 'object' && 'id' in firstTarget);
+    const hasIds =
+      (firstSource && typeof firstSource === 'object' && 'id' in firstSource) ||
+      (firstTarget && typeof firstTarget === 'object' && 'id' in firstTarget);
 
     if (hasIds) {
       // Merge by id
       const result = [...target];
-      
+
       for (const sourceItem of source) {
-        if (sourceItem && typeof sourceItem === 'object' && 'id' in sourceItem && sourceItem.id) {
+        if (
+          sourceItem &&
+          typeof sourceItem === 'object' &&
+          'id' in sourceItem &&
+          sourceItem.id
+        ) {
           const targetIndex = result.findIndex(
-            (item) => item && typeof item === 'object' && 'id' in item && item.id === sourceItem.id,
+            (item) =>
+              item &&
+              typeof item === 'object' &&
+              'id' in item &&
+              item.id === sourceItem.id,
           );
           if (targetIndex >= 0) {
             // Replace existing item
@@ -391,7 +404,11 @@ export class DiffService {
     }
   }
 
-  private setNestedValue(object: JsonObject, pathParts: string[], value: JsonValue): void {
+  private setNestedValue(
+    object: JsonObject,
+    pathParts: string[],
+    value: JsonValue,
+  ): void {
     let current: JsonObject = object;
 
     for (let i = 0; i < pathParts.length - 1; i++) {

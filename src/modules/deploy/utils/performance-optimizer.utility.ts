@@ -82,7 +82,8 @@ export class PerformanceOptimizer {
     const chunks = this.chunkArray(components, this.MAX_CONCURRENCY);
 
     for (const chunk of chunks) {
-      const chunkResults = await Promise.all( // eslint-disable-line no-await-in-loop 
+      const chunkResults = await Promise.all( // eslint-disable-line no-await-in-loop
+         
         chunk.map(async (component) => {
           try {
             return await component.deploy();

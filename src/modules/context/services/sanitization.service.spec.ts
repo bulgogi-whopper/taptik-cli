@@ -121,7 +121,11 @@ describe('SanitizationService', () => {
       expect(sanitized.certificate).toBe('[BLOCKED]');
       expect(sanitized.aws_secret_access_key).toBe('[BLOCKED]');
       expect(result.securityLevel).toBe('blocked');
-      expect(result.findings.some(f => f.includes('Private key') || f.includes('Certificate'))).toBe(true);
+      expect(
+        result.findings.some(
+          (f) => f.includes('Private key') || f.includes('Certificate'),
+        ),
+      ).toBe(true);
     });
 
     it('should return safe status for clean configuration', () => {
@@ -188,7 +192,9 @@ describe('SanitizationService', () => {
       expect(sanitized.apiKey).toBe('[ENV_VAR]');
       expect(sanitized.token).toBe('[ENV_VAR]');
       expect(sanitized.dbUrl).toBe('[ENV_VAR_URL]');
-      expect(result.findings.some(f => f.includes('Environment variable'))).toBe(true);
+      expect(
+        result.findings.some((f) => f.includes('Environment variable')),
+      ).toBe(true);
     });
 
     it('should detect base64 encoded secrets', () => {
@@ -253,7 +259,8 @@ describe('SanitizationService', () => {
 
     it('should detect SSH keys and certificates', () => {
       const config = {
-        sshPrivateKey: '-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjE...',
+        sshPrivateKey:
+          '-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjE...',
         sshPublicKey: 'ssh-rsa AAAAB3NzaC1yc2EAAA...',
         certificate: '-----BEGIN CERTIFICATE-----\nMIIDXTCCAkWgAwIBAgIJ...',
       };
@@ -277,22 +284,34 @@ describe('SanitizationService', () => {
       const sanitized = result.sanitizedData as typeof config;
 
       expect(sanitized.dbUrl).toBe('postgres://[REDACTED]@localhost:5432/mydb');
-      expect(sanitized.mongoUri).toBe('mongodb://[REDACTED]@cluster.mongodb.net/db');
+      expect(sanitized.mongoUri).toBe(
+        'mongodb://[REDACTED]@cluster.mongodb.net/db',
+      );
       expect(sanitized.redisUrl).toBe('redis://[REDACTED]@redis-server:6379');
-      expect(result.findings.some(f => f.includes('Database') || f.includes('connection'))).toBe(true);
+      expect(
+        result.findings.some(
+          (f) => f.includes('Database') || f.includes('connection'),
+        ),
+      ).toBe(true);
     });
 
     it('should detect webhook URLs with embedded tokens', () => {
       const config = {
-        slackWebhook: 'https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXX',
-        discordWebhook: 'https://discord.com/api/webhooks/123456789/abcdefghijklmnop',
+        slackWebhook:
+          'https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXX',
+        discordWebhook:
+          'https://discord.com/api/webhooks/123456789/abcdefghijklmnop',
       };
 
       const result = service.sanitizeForCloudUpload(config);
       const sanitized = result.sanitizedData as typeof config;
 
-      expect(sanitized.slackWebhook).toBe('https://hooks.slack.com/services/[REDACTED]');
-      expect(sanitized.discordWebhook).toBe('https://discord.com/api/webhooks/[REDACTED]');
+      expect(sanitized.slackWebhook).toBe(
+        'https://hooks.slack.com/services/[REDACTED]',
+      );
+      expect(sanitized.discordWebhook).toBe(
+        'https://discord.com/api/webhooks/[REDACTED]',
+      );
       expect(result.findings).toContain('Webhook URLs sanitized');
     });
 

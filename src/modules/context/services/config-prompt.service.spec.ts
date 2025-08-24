@@ -45,7 +45,7 @@ describe('ConfigPromptService', () => {
     // Create service directly with the mock
     service = new ConfigPromptService(configLoaderService as any);
     ({ logger } = service as any);
-    
+
     vi.spyOn(logger, 'log').mockImplementation(() => {});
     vi.spyOn(logger, 'warn').mockImplementation(() => {});
     vi.spyOn(logger, 'error').mockImplementation(() => {});
@@ -66,11 +66,13 @@ describe('ConfigPromptService', () => {
       });
 
       expect(result).toBe(true);
-      expect(prompts).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'confirm',
-        name: 'confirm',
-        message: expect.stringContaining('config.json'),
-      }));
+      expect(prompts).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'confirm',
+          name: 'confirm',
+          message: expect.stringContaining('config.json'),
+        }),
+      );
     });
 
     it('should skip prompt if auto-upload is enabled', async () => {
@@ -78,7 +80,9 @@ describe('ConfigPromptService', () => {
         ...mockConfig,
         autoUpload: { ...mockConfig.autoUpload, enabled: true },
       });
-      vi.mocked(configLoaderService.isAutoUploadConfigured).mockReturnValue(true);
+      vi.mocked(configLoaderService.isAutoUploadConfigured).mockReturnValue(
+        true,
+      );
 
       const result = await service.promptUploadConfirmation({
         fileName: 'config.json',
@@ -100,15 +104,18 @@ describe('ConfigPromptService', () => {
         visibility: 'public',
       });
 
-      expect(prompts).toHaveBeenCalledWith(expect.objectContaining({
-        message: expect.stringContaining('2.50 MB'),
-      }));
+      expect(prompts).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('2.50 MB'),
+        }),
+      );
     });
   });
 
   describe('Configuration Setup', () => {
     it('should prompt for initial configuration setup', async () => {
-      (prompts as unknown as Mock).mockResolvedValueOnce({ setupNow: true })
+      (prompts as unknown as Mock)
+        .mockResolvedValueOnce({ setupNow: true })
         .mockResolvedValueOnce({
           enabled: true,
           visibility: 'public',
@@ -133,7 +140,8 @@ describe('ConfigPromptService', () => {
     });
 
     it('should validate Supabase token during setup', async () => {
-      (prompts as unknown as Mock).mockResolvedValueOnce({ setupNow: true })
+      (prompts as unknown as Mock)
+        .mockResolvedValueOnce({ setupNow: true })
         .mockResolvedValueOnce({
           enabled: true,
           visibility: 'private',
@@ -144,11 +152,14 @@ describe('ConfigPromptService', () => {
       const result = await service.promptConfigurationSetup();
 
       expect(result.autoUpload.enabled).toBe(false); // Disabled due to missing token
-      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('token required'));
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('token required'),
+      );
     });
 
     it('should parse tags correctly', async () => {
-      (prompts as unknown as Mock).mockResolvedValueOnce({ setupNow: true })
+      (prompts as unknown as Mock)
+        .mockResolvedValueOnce({ setupNow: true })
         .mockResolvedValueOnce({
           enabled: true,
           visibility: 'private',
@@ -158,7 +169,11 @@ describe('ConfigPromptService', () => {
 
       const result = await service.promptConfigurationSetup();
 
-      expect(result.autoUpload.tags).toEqual(['react', 'typescript', 'frontend']);
+      expect(result.autoUpload.tags).toEqual([
+        'react',
+        'typescript',
+        'frontend',
+      ]);
     });
   });
 
@@ -180,23 +195,27 @@ describe('ConfigPromptService', () => {
     });
 
     it('should suggest common exclusion patterns', async () => {
-      (prompts as unknown as Mock).mockImplementation(async (questions: any) => {
-        // Check that hint includes common patterns in one of the questions
-        const excludeQuestion = Array.isArray(questions) 
-          ? questions.find((q: any) => q.name === 'excludePatterns')
-          : questions.name === 'excludePatterns' ? questions : null;
-        
-        if (excludeQuestion && excludeQuestion.hint) {
-          expect(excludeQuestion.hint).toContain('.env');
-          expect(excludeQuestion.hint).toContain('*.secret');
-        }
-        
-        return {
-          visibility: 'private',
-          excludePatterns: '',
-          shareAnonymously: false,
-        };
-      });
+      (prompts as unknown as Mock).mockImplementation(
+        async (questions: any) => {
+          // Check that hint includes common patterns in one of the questions
+          const excludeQuestion = Array.isArray(questions)
+            ? questions.find((q: any) => q.name === 'excludePatterns')
+            : questions.name === 'excludePatterns'
+              ? questions
+              : null;
+
+          if (excludeQuestion && excludeQuestion.hint) {
+            expect(excludeQuestion.hint).toContain('.env');
+            expect(excludeQuestion.hint).toContain('*.secret');
+          }
+
+          return {
+            visibility: 'private',
+            excludePatterns: '',
+            shareAnonymously: false,
+          };
+        },
+      );
 
       await service.promptPrivacySettings();
     });
@@ -231,7 +250,9 @@ describe('ConfigPromptService', () => {
           supabaseToken: 'new-secret-token',
         },
       });
-      expect(logger.log).toHaveBeenCalledWith('Authentication token updated successfully');
+      expect(logger.log).toHaveBeenCalledWith(
+        'Authentication token updated successfully',
+      );
     });
 
     it('should allow enabling/disabling auto-upload', async () => {
@@ -269,12 +290,16 @@ describe('ConfigPromptService', () => {
 
       await service.promptUploadWithSummary(metadata);
 
-      expect(prompts).toHaveBeenCalledWith(expect.objectContaining({
-        message: expect.stringContaining('2 agents'),
-      }));
-      expect(prompts).toHaveBeenCalledWith(expect.objectContaining({
-        message: expect.stringContaining('5 commands'),
-      }));
+      expect(prompts).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('2 agents'),
+        }),
+      );
+      expect(prompts).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('5 commands'),
+        }),
+      );
     });
 
     it('should warn about public uploads', async () => {
@@ -286,9 +311,11 @@ describe('ConfigPromptService', () => {
         visibility: 'public',
       });
 
-      expect(prompts).toHaveBeenCalledWith(expect.objectContaining({
-        message: expect.stringContaining('publicly visible'),
-      }));
+      expect(prompts).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('publicly visible'),
+        }),
+      );
     });
   });
 });

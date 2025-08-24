@@ -2,7 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import { TaptikPackage, ValidationResult, CloudMetadata } from '../interfaces/cloud.interface';
+import {
+  TaptikPackage,
+  ValidationResult,
+  CloudMetadata,
+} from '../interfaces/cloud.interface';
 
 import { ValidationService } from './validation.service';
 
@@ -268,7 +272,9 @@ describe('ValidationService', () => {
           await service.validateForCloudUpload(invalidFormatPackage);
 
         expect(result.isValid).toBe(false);
-        expect(result.errors.some(e => e.includes('Unsupported package format'))).toBe(true);
+        expect(
+          result.errors.some((e) => e.includes('Unsupported package format')),
+        ).toBe(true);
       });
 
       it('should fail validation for checksum mismatch', async () => {

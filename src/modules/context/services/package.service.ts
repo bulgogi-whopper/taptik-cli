@@ -64,14 +64,17 @@ export class PackageService {
   async createTaptikPackage(
     metadata: CloudMetadata,
     context: TaptikContext,
-    options: PackageOptions = {}
+    options: PackageOptions = {},
   ): Promise<TaptikPackage> {
     const startTime = Date.now();
     this.logger.log('Creating Taptik package with enhanced validation');
 
     try {
       // Comprehensive input validation
-      const validationResult = await this.validatePackageInputs(metadata, context);
+      const validationResult = await this.validatePackageInputs(
+        metadata,
+        context,
+      );
       if (!validationResult.isValid) {
         const errorMsg = `Package validation failed: ${validationResult.errors.join(', ')}`;
         this.logger.error(errorMsg);
@@ -80,8 +83,8 @@ export class PackageService {
 
       // Log warnings if any
       if (validationResult.warnings.length > 0) {
-        validationResult.warnings.forEach(warning => 
-          this.logger.warn(`Package warning: ${warning}`)
+        validationResult.warnings.forEach((warning) =>
+          this.logger.warn(`Package warning: ${warning}`),
         );
       }
 
@@ -89,27 +92,34 @@ export class PackageService {
       const maxSize = options.maxSize || this.MAX_PACKAGE_SIZE;
 
       // Optimize package with advanced techniques
-      const sanitizedConfig = options.optimizeSize !== false
-        ? await this.optimizePackageSize(context)
-        : context;
+      const sanitizedConfig =
+        options.optimizeSize !== false
+          ? await this.optimizePackageSize(context)
+          : context;
 
       // Generate checksums with multiple algorithms for better integrity
       const checksum = await this.generateChecksum(sanitizedConfig);
-      const checksumSha512 = await this.generateChecksum(sanitizedConfig, 'sha512');
+      const checksumSha512 = await this.generateChecksum(
+        sanitizedConfig,
+        'sha512',
+      );
 
       // Update metadata with the actual checksum
       metadata.checksum = checksum;
 
       // Create enhanced manifest with detailed metadata
-      const manifest = await this.createEnhancedManifest(sanitizedConfig, metadata);
+      const manifest = await this.createEnhancedManifest(
+        sanitizedConfig,
+        metadata,
+      );
 
       // Calculate sizes before and after compression
       const originalSize = Buffer.from(JSON.stringify(sanitizedConfig)).length;
-      
+
       // Check size limits
       if (originalSize > maxSize) {
         throw new Error(
-          `Package size (${originalSize} bytes) exceeds maximum allowed size (${maxSize} bytes)`
+          `Package size (${originalSize} bytes) exceeds maximum allowed size (${maxSize} bytes)`,
         );
       }
 
@@ -145,47 +155,55 @@ export class PackageService {
 
       this.logger.log(
         `Package created successfully: ${size} bytes (${compression}), ` +
-        `processing time: ${Date.now() - startTime}ms`
+          `processing time: ${Date.now() - startTime}ms`,
       );
-      
+
       return taptikPackage;
     } catch (error) {
       // Error recovery with partial package creation
       this.logger.error('Error creating package, attempting recovery', error);
-      
+
       // For critical validation errors, throw instead of creating partial package
       if ((error as Error).message.includes('required')) {
         throw error;
       }
-      
+
       return this.createPartialPackage(metadata, context, error as Error);
     }
   }
 
   async generateChecksum(
     data: unknown,
-    algorithm: 'sha256' | 'sha512' = 'sha256'
+    algorithm: 'sha256' | 'sha512' = 'sha256',
   ): Promise<string> {
     try {
       // Handle circular references and normalize data
       const normalizedData = this.normalizeDataForChecksum(data);
-      const jsonString = JSON.stringify(normalizedData, this.getCircularReplacer());
-      
+      const jsonString = JSON.stringify(
+        normalizedData,
+        this.getCircularReplacer(),
+      );
+
       // Generate checksum with specified algorithm
       const hash = crypto.createHash(algorithm);
       hash.update(jsonString, 'utf8');
-      
+
       // Add version salt for better integrity
       hash.update(this.PACKAGE_VERSION);
-      
+
       return hash.digest('hex');
     } catch (error) {
       this.logger.error(`Error generating ${algorithm} checksum`, error);
-      throw new Error(`Checksum generation failed: ${(error as Error).message}`);
+      throw new Error(
+        `Checksum generation failed: ${(error as Error).message}`,
+      );
     }
   }
 
-  private normalizeDataForChecksum(data: unknown, seen = new WeakSet()): unknown {
+  private normalizeDataForChecksum(
+    data: unknown,
+    seen = new WeakSet(),
+  ): unknown {
     if (typeof data !== 'object' || data === null) {
       return data;
     }
@@ -198,34 +216,37 @@ export class PackageService {
 
     // Sort object keys for consistent checksum
     if (Array.isArray(data)) {
-      return data.map(item => this.normalizeDataForChecksum(item, seen));
+      return data.map((item) => this.normalizeDataForChecksum(item, seen));
     }
 
     const sorted: Record<string, unknown> = {};
     Object.keys(data as Record<string, unknown>)
       .sort()
-      .forEach(key => {
+      .forEach((key) => {
         sorted[key] = this.normalizeDataForChecksum(
           (data as Record<string, unknown>)[key],
-          seen
+          seen,
         );
       });
-    
+
     return sorted;
   }
 
   async createEnhancedManifest(
     context: TaptikContext,
-    _metadata: CloudMetadata
+    _metadata: CloudMetadata,
   ): Promise<{
     files: string[];
     directories: string[];
     totalSize: number;
-    components: Record<string, {
-      count: number;
-      size: number;
-      paths: string[];
-    }>;
+    components: Record<
+      string,
+      {
+        count: number;
+        size: number;
+        paths: string[];
+      }
+    >;
     statistics: {
       avgFileSize: number;
       largestComponent: string;
@@ -235,7 +256,10 @@ export class PackageService {
     const files: string[] = [];
     const directories: string[] = [];
     let totalSize = 0;
-    const components: Record<string, { count: number; size: number; paths: string[] }> = {};
+    const components: Record<
+      string,
+      { count: number; size: number; paths: string[] }
+    > = {};
 
     // Initialize component tracking
     const initComponent = (name: string) => {
@@ -250,20 +274,25 @@ export class PackageService {
 
       if (context.data.claudeCode.local?.settings) {
         const settingsPath = '.claude/settings.json';
-        const size = JSON.stringify(context.data.claudeCode.local.settings).length;
+        const size = JSON.stringify(
+          context.data.claudeCode.local.settings,
+        ).length;
         files.push(settingsPath);
         totalSize += size;
-        
+
         initComponent('settings');
         components.settings.count = 1;
         components.settings.size = size;
         components.settings.paths.push(settingsPath);
       }
 
-      if (context.data.claudeCode.local?.agents && context.data.claudeCode.local.agents.length > 0) {
+      if (
+        context.data.claudeCode.local?.agents &&
+        context.data.claudeCode.local.agents.length > 0
+      ) {
         const agentPaths: string[] = [];
         directories.push('.claude/agents');
-        
+
         initComponent('agents');
         context.data.claudeCode.local.agents.forEach((agent, idx) => {
           const agentPath = `.claude/agents/agent_${idx}.json`;
@@ -273,15 +302,18 @@ export class PackageService {
           totalSize += size;
           components.agents.size += size;
         });
-        
+
         components.agents.count = context.data.claudeCode.local.agents.length;
         components.agents.paths = agentPaths;
       }
 
-      if (context.data.claudeCode.local?.commands && context.data.claudeCode.local.commands.length > 0) {
+      if (
+        context.data.claudeCode.local?.commands &&
+        context.data.claudeCode.local.commands.length > 0
+      ) {
         const commandPaths: string[] = [];
         directories.push('.claude/commands');
-        
+
         initComponent('commands');
         context.data.claudeCode.local.commands.forEach((cmd, idx) => {
           const cmdPath = `.claude/commands/command_${idx}.json`;
@@ -291,19 +323,24 @@ export class PackageService {
           totalSize += size;
           components.commands.size += size;
         });
-        
-        components.commands.count = context.data.claudeCode.local.commands.length;
+
+        components.commands.count =
+          context.data.claudeCode.local.commands.length;
         components.commands.paths = commandPaths;
       }
 
       if (context.data.claudeCode.local?.mcpServers) {
         const mcpPath = '.mcp.json';
-        const size = JSON.stringify(context.data.claudeCode.local.mcpServers).length;
+        const size = JSON.stringify(
+          context.data.claudeCode.local.mcpServers,
+        ).length;
         files.push(mcpPath);
         totalSize += size;
-        
+
         initComponent('mcpServers');
-        components.mcpServers.count = Object.keys(context.data.claudeCode.local.mcpServers).length;
+        components.mcpServers.count = Object.keys(
+          context.data.claudeCode.local.mcpServers,
+        ).length;
         components.mcpServers.size = size;
         components.mcpServers.paths.push(mcpPath);
       }
@@ -311,19 +348,22 @@ export class PackageService {
       if (context.data.claudeCode.local?.steeringRules) {
         directories.push('.claude/steering');
         const steeringPath = '.claude/steering/rules.json';
-        const size = JSON.stringify(context.data.claudeCode.local.steeringRules).length;
+        const size = JSON.stringify(
+          context.data.claudeCode.local.steeringRules,
+        ).length;
         files.push(steeringPath);
         totalSize += size;
-        
+
         initComponent('steeringRules');
-        components.steeringRules.count = context.data.claudeCode.local.steeringRules.length;
+        components.steeringRules.count =
+          context.data.claudeCode.local.steeringRules.length;
         components.steeringRules.size = size;
         components.steeringRules.paths.push(steeringPath);
       }
 
       if (context.data.claudeCode.local?.instructions) {
         initComponent('instructions');
-        
+
         if (context.data.claudeCode.local.instructions.global) {
           const globalPath = 'CLAUDE.md';
           files.push(globalPath);
@@ -333,7 +373,7 @@ export class PackageService {
           components.instructions.paths.push(globalPath);
           components.instructions.count++;
         }
-        
+
         if (context.data.claudeCode.local.instructions.local) {
           const localPath = 'CLAUDE.local.md';
           files.push(localPath);
@@ -347,16 +387,20 @@ export class PackageService {
     }
 
     // Calculate statistics
-    const avgFileSize = files.length > 0 ? Math.round(totalSize / files.length) : 0;
-    const largestComponent = Object.entries(components)
-      .sort((a, b) => b[1].size - a[1].size)[0]?.[0] || 'none';
-    
+    const avgFileSize =
+      files.length > 0 ? Math.round(totalSize / files.length) : 0;
+    const largestComponent =
+      Object.entries(components).sort(
+        (a, b) => b[1].size - a[1].size,
+      )[0]?.[0] || 'none';
+
     // Estimate compression potential based on content type
     const textSize = totalSize;
     const estimatedCompressedSize = Math.round(textSize * 0.3); // Text typically compresses to 30%
-    const compressionPotential = totalSize > 0 
-      ? Math.round((1 - estimatedCompressedSize / totalSize) * 100)
-      : 0;
+    const compressionPotential =
+      totalSize > 0
+        ? Math.round((1 - estimatedCompressedSize / totalSize) * 100)
+        : 0;
 
     return {
       files,
@@ -377,7 +421,10 @@ export class PackageService {
     totalSize: number;
   }> {
     // Simplified version for backward compatibility
-    const enhanced = await this.createEnhancedManifest(context, {} as CloudMetadata);
+    const enhanced = await this.createEnhancedManifest(
+      context,
+      {} as CloudMetadata,
+    );
     return {
       files: enhanced.files,
       directories: enhanced.directories,
@@ -387,7 +434,7 @@ export class PackageService {
 
   async writePackageToFile(
     taptikPackage: TaptikPackage,
-    outputPath: string
+    outputPath: string,
   ): Promise<void> {
     if (!outputPath) {
       throw new Error('Invalid file path');
@@ -413,17 +460,22 @@ export class PackageService {
       let compressionRatio = 1;
 
       // Apply compression based on type with performance optimization
-      const shouldStream = originalSize > (this.STREAMING_THRESHOLD || 10 * 1024 * 1024);
-      
+      const shouldStream =
+        originalSize > (this.STREAMING_THRESHOLD || 10 * 1024 * 1024);
+
       if (shouldStream) {
         this.logger.debug('Using streaming compression for large package');
-        outputData = await this.compressWithStreaming(jsonData, taptikPackage.compression as 'gzip' | 'brotli' | 'none');
+        outputData = await this.compressWithStreaming(
+          jsonData,
+          taptikPackage.compression as 'gzip' | 'brotli' | 'none',
+        );
       } else {
         switch (taptikPackage.compression) {
           case 'brotli':
             outputData = await brotliCompress(jsonData, {
               params: {
-                [zlib.constants.BROTLI_PARAM_QUALITY]: zlib.constants.BROTLI_MAX_QUALITY,
+                [zlib.constants.BROTLI_PARAM_QUALITY]:
+                  zlib.constants.BROTLI_MAX_QUALITY,
               },
             });
             break;
@@ -434,14 +486,14 @@ export class PackageService {
             outputData = Buffer.from(jsonData);
         }
       }
-      
+
       compressionRatio = outputData.length / originalSize;
 
       // Validate compression effectiveness
       if (compressionRatio > 0.9 && taptikPackage.compression !== 'none') {
         this.logger.warn(
           `Compression ratio is poor (${(compressionRatio * 100).toFixed(1)}%), ` +
-          `consider using 'none' compression for this package`
+            `consider using 'none' compression for this package`,
         );
       }
 
@@ -453,8 +505,8 @@ export class PackageService {
       const processingTime = Date.now() - startTime;
       this.logger.log(
         `Package written successfully: ${outputPath} ` +
-        `(${outputData.length} bytes, ${(compressionRatio * 100).toFixed(1)}% of original, ` +
-        `${processingTime}ms)`
+          `(${outputData.length} bytes, ${(compressionRatio * 100).toFixed(1)}% of original, ` +
+          `${processingTime}ms)`,
       );
     } catch (error) {
       this.logger.error(`Failed to write package to ${outputPath}`, error);
@@ -464,24 +516,25 @@ export class PackageService {
 
   async compressPackage(
     data: unknown,
-    compression: 'gzip' | 'brotli' | 'none' = 'brotli'
+    compression: 'gzip' | 'brotli' | 'none' = 'brotli',
   ): Promise<Buffer> {
     const jsonString = JSON.stringify(data, null, 2);
     const cacheKey = `${compression}-${crypto.createHash('md5').update(jsonString).digest('hex')}`;
-    
+
     // Check cache first
     if (this.compressionCache.has(cacheKey)) {
       const cached = this.compressionCache.get(cacheKey)!;
       this.logger.debug('Using cached compression result');
       return cached;
     }
-    
+
     let result: Buffer;
     switch (compression) {
       case 'brotli':
         result = await brotliCompress(jsonString, {
           params: {
-            [zlib.constants.BROTLI_PARAM_QUALITY]: zlib.constants.BROTLI_MAX_QUALITY,
+            [zlib.constants.BROTLI_PARAM_QUALITY]:
+              zlib.constants.BROTLI_MAX_QUALITY,
             [zlib.constants.BROTLI_PARAM_SIZE_HINT]: jsonString.length,
           },
         });
@@ -492,15 +545,17 @@ export class PackageService {
       default:
         result = Buffer.from(jsonString);
     }
-    
+
     // Cache result with TTL
     this.compressionCache.set(cacheKey, result);
     setTimeout(() => this.compressionCache.delete(cacheKey), this.CACHE_TTL);
-    
+
     return result;
   }
 
-  async validatePackageIntegrity(taptikPackage: TaptikPackage): Promise<boolean> {
+  async validatePackageIntegrity(
+    taptikPackage: TaptikPackage,
+  ): Promise<boolean> {
     try {
       const errors: string[] = [];
 
@@ -510,24 +565,36 @@ export class PackageService {
       }
 
       // Validate checksum
-      const currentChecksum = await this.generateChecksum(taptikPackage.sanitizedConfig);
+      const currentChecksum = await this.generateChecksum(
+        taptikPackage.sanitizedConfig,
+      );
       if (currentChecksum !== taptikPackage.checksum) {
         errors.push('Primary checksum (SHA256) mismatch');
       }
 
       // Validate SHA512 checksum if present
       if ('checksumSha512' in taptikPackage) {
-        const currentSha512 = await this.generateChecksum(taptikPackage.sanitizedConfig, 'sha512');
-        if (currentSha512 !== (taptikPackage as Record<string, unknown>).checksumSha512) {
+        const currentSha512 = await this.generateChecksum(
+          taptikPackage.sanitizedConfig,
+          'sha512',
+        );
+        if (
+          currentSha512 !==
+          (taptikPackage as Record<string, unknown>).checksumSha512
+        ) {
           errors.push('Secondary checksum (SHA512) mismatch');
         }
       }
 
       // Validate manifest
-      const currentManifest = await this.createPackageManifest(taptikPackage.sanitizedConfig);
-      const manifestMatch = 
-        JSON.stringify(currentManifest.files.sort()) === JSON.stringify(taptikPackage.manifest.files.sort()) &&
-        JSON.stringify(currentManifest.directories.sort()) === JSON.stringify(taptikPackage.manifest.directories.sort());
+      const currentManifest = await this.createPackageManifest(
+        taptikPackage.sanitizedConfig,
+      );
+      const manifestMatch =
+        JSON.stringify(currentManifest.files.sort()) ===
+          JSON.stringify(taptikPackage.manifest.files.sort()) &&
+        JSON.stringify(currentManifest.directories.sort()) ===
+          JSON.stringify(taptikPackage.manifest.directories.sort());
 
       if (!manifestMatch) {
         errors.push('Package manifest mismatch');
@@ -535,7 +602,9 @@ export class PackageService {
 
       // Validate size constraints
       if (taptikPackage.size > this.MAX_PACKAGE_SIZE) {
-        errors.push(`Package size exceeds maximum allowed (${this.MAX_PACKAGE_SIZE} bytes)`);
+        errors.push(
+          `Package size exceeds maximum allowed (${this.MAX_PACKAGE_SIZE} bytes)`,
+        );
       }
 
       // Validate required fields
@@ -547,7 +616,9 @@ export class PackageService {
       }
 
       if (errors.length > 0) {
-        this.logger.warn(`Package integrity validation failed: ${errors.join(', ')}`);
+        this.logger.warn(
+          `Package integrity validation failed: ${errors.join(', ')}`,
+        );
         return false;
       }
 
@@ -567,11 +638,11 @@ export class PackageService {
       // Validate file exists and is readable
       await fs.access(filePath, fs.constants.R_OK);
       const stats = await fs.stat(filePath);
-      
+
       if (stats.size > this.MAX_PACKAGE_SIZE) {
         throw new Error(
           `Package file too large (${stats.size} bytes), ` +
-          `maximum allowed is ${this.MAX_PACKAGE_SIZE} bytes`
+            `maximum allowed is ${this.MAX_PACKAGE_SIZE} bytes`,
         );
       }
 
@@ -600,10 +671,13 @@ export class PackageService {
       const taptikPackage = JSON.parse(jsonString) as TaptikPackage;
 
       // Validate format
-      if (!taptikPackage.format || !this.SUPPORTED_FORMATS.includes(taptikPackage.format)) {
+      if (
+        !taptikPackage.format ||
+        !this.SUPPORTED_FORMATS.includes(taptikPackage.format)
+      ) {
         throw new Error(
           `Invalid or unsupported package format: ${taptikPackage.format}. ` +
-          `Supported formats: ${this.SUPPORTED_FORMATS.join(', ')}`
+            `Supported formats: ${this.SUPPORTED_FORMATS.join(', ')}`,
         );
       }
 
@@ -616,7 +690,7 @@ export class PackageService {
       const processingTime = Date.now() - startTime;
       this.logger.log(
         `Package read successfully: ${filePath} ` +
-        `(${stats.size} bytes, ${detectedCompression} compression, ${processingTime}ms)`
+          `(${stats.size} bytes, ${detectedCompression} compression, ${processingTime}ms)`,
       );
 
       return taptikPackage;
@@ -640,14 +714,21 @@ export class PackageService {
     const optimized = JSON.parse(JSON.stringify(context));
 
     // Advanced optimization techniques
-    const removeEmpty = (obj: Record<string, unknown>): Record<string, unknown> => {
-      Object.keys(obj).forEach(key => {
+    const removeEmpty = (
+      obj: Record<string, unknown>,
+    ): Record<string, unknown> => {
+      Object.keys(obj).forEach((key) => {
         const value = obj[key];
-        
+
         // Remove null, undefined, and empty values
-        if (value === null || value === undefined || value === '' || 
-            (Array.isArray(value) && value.length === 0) ||
-            (typeof value === 'object' && Object.keys(value as object).length === 0)) {
+        if (
+          value === null ||
+          value === undefined ||
+          value === '' ||
+          (Array.isArray(value) && value.length === 0) ||
+          (typeof value === 'object' &&
+            Object.keys(value as object).length === 0)
+        ) {
           delete obj[key];
         } else if (typeof value === 'object' && !Array.isArray(value)) {
           removeEmpty(value as Record<string, unknown>);
@@ -661,7 +742,7 @@ export class PackageService {
             .replace(/\s+/g, ' ')
             .replace(/\n\s*\n/g, '\n')
             .trim();
-          
+
           if (trimmed) {
             obj[key] = trimmed;
           } else {
@@ -669,8 +750,8 @@ export class PackageService {
           }
         } else if (Array.isArray(value)) {
           // Remove empty items from arrays
-          obj[key] = value.filter(item => 
-            item !== null && item !== undefined && item !== ''
+          obj[key] = value.filter(
+            (item) => item !== null && item !== undefined && item !== '',
           );
           if ((obj[key] as unknown[]).length === 0) {
             delete obj[key];
@@ -684,7 +765,7 @@ export class PackageService {
     const deduplicateStrings = (obj: Record<string, unknown>): void => {
       const stringMap = new Map<string, number>();
       const MIN_STRING_LENGTH = 50; // Only dedupe strings longer than this
-      
+
       const countStrings = (o: unknown): void => {
         if (typeof o === 'string' && o.length > MIN_STRING_LENGTH) {
           stringMap.set(o, (stringMap.get(o) || 0) + 1);
@@ -696,14 +777,14 @@ export class PackageService {
           }
         }
       };
-      
+
       countStrings(obj);
-      
+
       // Create string references for frequently repeated strings
       const frequentStrings = Array.from(stringMap.entries())
         .filter(([_, count]) => count > 2)
         .map(([str]) => str);
-      
+
       if (frequentStrings.length > 0) {
         (obj as Record<string, unknown>)._stringRefs = frequentStrings;
         // Note: In a real implementation, we'd replace strings with references
@@ -719,11 +800,11 @@ export class PackageService {
 
     const optimizedSize = Buffer.from(JSON.stringify(optimized)).length;
     const reduction = originalSize - optimizedSize;
-    const reductionPercent = (reduction / originalSize * 100).toFixed(1);
-    
+    const reductionPercent = ((reduction / originalSize) * 100).toFixed(1);
+
     this.logger.debug(
       `Package optimization completed in ${Date.now() - startTime}ms: ` +
-      `${originalSize} → ${optimizedSize} bytes (${reductionPercent}% reduction)`
+        `${originalSize} → ${optimizedSize} bytes (${reductionPercent}% reduction)`,
     );
 
     return optimized;
@@ -744,7 +825,7 @@ export class PackageService {
 
   private async validatePackageInputs(
     metadata: CloudMetadata,
-    context: TaptikContext
+    context: TaptikContext,
   ): Promise<ValidationResult> {
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -787,7 +868,7 @@ export class PackageService {
       if (!claude.local && !claude.global) {
         warnings.push('No Claude Code configuration data found');
       }
-      
+
       // Check for potentially sensitive data
       const hasSensitiveData = this.checkForSensitiveData(context);
       if (hasSensitiveData) {
@@ -813,7 +894,8 @@ export class PackageService {
       /private[_-]?key/i,
     ];
 
-    const checkString = (str: string): boolean => sensitivePatterns.some(pattern => pattern.test(str));
+    const checkString = (str: string): boolean =>
+      sensitivePatterns.some((pattern) => pattern.test(str));
 
     const checkObject = (obj: unknown): boolean => {
       if (typeof obj === 'string') {
@@ -824,7 +906,7 @@ export class PackageService {
           return obj.some(checkObject);
         }
         return Object.entries(obj).some(
-          ([key, value]) => checkString(key) || checkObject(value)
+          ([key, value]) => checkString(key) || checkObject(value),
         );
       }
       return false;
@@ -836,7 +918,7 @@ export class PackageService {
   private async createPartialPackage(
     metadata: CloudMetadata,
     context: TaptikContext,
-    error: Error
+    error: Error,
   ): Promise<TaptikPackage> {
     this.logger.warn('Creating partial package due to error', error.message);
 
@@ -847,7 +929,9 @@ export class PackageService {
       targetIdes: context.targetIdes || [],
       data: {
         // Include whatever data we can salvage
-        ...(context.data.claudeCode ? { claudeCode: context.data.claudeCode } : {}),
+        ...(context.data.claudeCode
+          ? { claudeCode: context.data.claudeCode }
+          : {}),
       },
       metadata: {
         timestamp: context.metadata?.timestamp || new Date().toISOString(),
@@ -873,22 +957,49 @@ export class PackageService {
     } as TaptikPackage;
   }
 
-  async getPackageMetrics(taptikPackage: TaptikPackage): Promise<PackageMetrics> {
-    const originalSize = Buffer.from(JSON.stringify(taptikPackage.sanitizedConfig)).length;
-    const compressedData = await this.compressPackage(
-      taptikPackage.sanitizedConfig,
-      taptikPackage.compression as 'gzip' | 'brotli' | 'none'
-    );
-    const compressedSize = compressedData.length;
+  async getPackageMetrics(
+    taptikPackage: TaptikPackage,
+  ): Promise<PackageMetrics> {
+    // Use cached size from package or manifest to avoid expensive serialization
+    let originalSize: number;
+    let compressedSize: number;
+    
+    // Check if we have metrics with originalSize from package creation
+    const packageWithMetrics = taptikPackage as TaptikPackage & {
+      metrics?: { originalSize: number };
+    };
+    const { metrics } = packageWithMetrics;
+    if (metrics?.originalSize) {
+      ({ originalSize } = metrics);
+    } else {
+      // For accurate compression ratio calculation, we need the actual JSON serialized size
+      // Manifest totalSize is for component sizes, not the full package serialization size
+      const { sanitizedConfig: fallbackConfig } = taptikPackage;
+      originalSize = Buffer.from(
+        JSON.stringify(fallbackConfig),
+      ).length;
+    }
 
+    // Calculate compressed size - we always need to compress to get accurate metrics
+    const { compression, sanitizedConfig, manifest } = taptikPackage;
+    if (compression === 'none') {
+      compressedSize = originalSize;
+    } else {
+      // We need to compress the sanitizedConfig to get accurate compression metrics
+      const compressedData = await this.compressPackage(
+        sanitizedConfig,
+        compression as 'gzip' | 'brotli' | 'none',
+      );
+      compressedSize = compressedData.length;
+    }
     return {
       originalSize,
       compressedSize,
       compressionRatio: originalSize > 0 ? compressedSize / originalSize : 1,
-      fileCount: taptikPackage.manifest.files.length,
-      directoryCount: taptikPackage.manifest.directories.length,
+      fileCount: manifest.files.length,
+      directoryCount: manifest.directories.length,
       processingTime: 0, // Processing time not available in legacy packages
-      compressionAlgorithm: taptikPackage.compression,
+      compressionAlgorithm: compression,
       streamingUsed: originalSize > this.STREAMING_THRESHOLD,
     };
   }
@@ -898,17 +1009,18 @@ export class PackageService {
    */
   private async compressWithStreaming(
     data: string,
-    compression: 'gzip' | 'brotli' | 'none'
+    compression: 'gzip' | 'brotli' | 'none',
   ): Promise<Buffer> {
     const chunks: Buffer[] = [];
     const input = Readable.from([data]);
-    
+
     let compressor: Transform;
     switch (compression) {
       case 'brotli':
         compressor = zlib.createBrotliCompress({
           params: {
-            [zlib.constants.BROTLI_PARAM_QUALITY]: zlib.constants.BROTLI_MAX_QUALITY,
+            [zlib.constants.BROTLI_PARAM_QUALITY]:
+              zlib.constants.BROTLI_MAX_QUALITY,
           },
         });
         break;
@@ -936,7 +1048,7 @@ export class PackageService {
    */
   async createChunkedPackage(
     taptikPackage: TaptikPackage,
-    chunkSize: number = this.DEFAULT_CHUNK_SIZE
+    chunkSize: number = this.DEFAULT_CHUNK_SIZE,
   ): Promise<{
     chunks: Buffer[];
     metadata: {
@@ -948,29 +1060,29 @@ export class PackageService {
   }> {
     const packageData = await this.compressPackage(
       taptikPackage,
-      taptikPackage.compression as 'gzip' | 'brotli' | 'none'
+      taptikPackage.compression as 'gzip' | 'brotli' | 'none',
     );
-    
+
     const chunks: Buffer[] = [];
     const totalSize = packageData.length;
     let offset = 0;
-    
+
     while (offset < totalSize) {
       const end = Math.min(offset + chunkSize, totalSize);
       chunks.push(packageData.subarray(offset, end));
       offset = end;
     }
-    
+
     const checksum = crypto
       .createHash('sha256')
       .update(packageData)
       .digest('hex');
-    
+
     this.logger.debug(
       `Created ${chunks.length} chunks of ${chunkSize} bytes each ` +
-      `for package of ${totalSize} bytes`
+        `for package of ${totalSize} bytes`,
     );
-    
+
     return {
       chunks,
       metadata: {
@@ -987,30 +1099,28 @@ export class PackageService {
    */
   async reassembleChunks(
     chunks: Buffer[],
-    expectedChecksum: string
+    expectedChecksum: string,
   ): Promise<Buffer> {
     const reassembled = Buffer.concat(chunks);
     const actualChecksum = crypto
       .createHash('sha256')
       .update(reassembled)
       .digest('hex');
-    
+
     if (actualChecksum !== expectedChecksum) {
       throw new Error(
         `Chunk reassembly failed: checksum mismatch ` +
-        `(expected: ${expectedChecksum}, actual: ${actualChecksum})`
+          `(expected: ${expectedChecksum}, actual: ${actualChecksum})`,
       );
     }
-    
+
     return reassembled;
   }
 
   /**
    * Optimize package for Supabase Edge Functions
    */
-  async prepareForEdgeFunctions(
-    taptikPackage: TaptikPackage
-  ): Promise<{
+  async prepareForEdgeFunctions(taptikPackage: TaptikPackage): Promise<{
     package: TaptikPackage;
     edgeMetadata: {
       processable: boolean;
@@ -1019,16 +1129,17 @@ export class PackageService {
       memoryRequirement: number;
     };
   }> {
-    const {size} = taptikPackage;
-    
+    const { size } = taptikPackage;
+
     // Estimate processing requirements
     const estimatedProcessingTime = Math.ceil(size / 1024 / 100); // ~100KB/sec processing
     const recommendedTimeout = Math.max(estimatedProcessingTime * 2, 10); // Min 10 seconds
-    const memoryRequirement = Math.ceil(size / 1024 / 1024 * 2); // 2x package size in MB
-    
-    const processable = size < 10 * 1024 * 1024 && // Less than 10MB
-                       recommendedTimeout < 60; // Less than 1 minute
-    
+    const memoryRequirement = Math.ceil((size / 1024 / 1024) * 2); // 2x package size in MB
+
+    const processable =
+      size < 10 * 1024 * 1024 && // Less than 10MB
+      recommendedTimeout < 60; // Less than 1 minute
+
     return {
       package: taptikPackage,
       edgeMetadata: {
@@ -1039,5 +1150,4 @@ export class PackageService {
       },
     };
   }
-
 }

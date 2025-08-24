@@ -17,7 +17,14 @@ export interface CriticalError {
 }
 
 export interface Warning {
-  type: 'missing_file' | 'permission_denied' | 'partial_conversion' | 'validation_warning' | 'package' | 'security' | 'validation';
+  type:
+    | 'missing_file'
+    | 'permission_denied'
+    | 'partial_conversion'
+    | 'validation_warning'
+    | 'package'
+    | 'security'
+    | 'validation';
   message: string;
   details?: string;
 }
@@ -45,7 +52,9 @@ export class ErrorHandlerService {
     process.on('SIGINT', async () => {
       if (this.isInterrupted) {
         // Force exit if already interrupted once
-        this.logger.warn('\n⚠️  Force exit requested. Terminating immediately...');
+        this.logger.warn(
+          '\n⚠️  Force exit requested. Terminating immediately...',
+        );
         process.exit(130); // Standard exit code for SIGINT
       }
 
@@ -89,7 +98,7 @@ export class ErrorHandlerService {
 
       this.logger.error('\n💥 Critical system error occurred:');
       this.logger.error(error.message);
-      
+
       await this.performCleanup();
       this.displayErrorSummary();
       process.exit(1);
@@ -107,7 +116,7 @@ export class ErrorHandlerService {
 
       this.logger.error('\n💥 Unhandled promise rejection:');
       this.logger.error(reason);
-      
+
       await this.performCleanup();
       this.displayErrorSummary();
       process.exit(1);
@@ -197,9 +206,11 @@ export class ErrorHandlerService {
 
     // Run custom cleanup handlers
     for (const handler of this.cleanupHandlers) {
-      cleanupPromises.push(handler().catch((error) => {
-        this.logger.error('Error in cleanup handler:', error.message);
-      }));
+      cleanupPromises.push(
+        handler().catch((error) => {
+          this.logger.error('Error in cleanup handler:', error.message);
+        }),
+      );
     }
 
     await Promise.allSettled(cleanupPromises);
@@ -215,7 +226,9 @@ export class ErrorHandlerService {
       this.logger.debug(`Cleaned up partial file: ${filePath}`);
     } catch (error) {
       // File might not exist or already be cleaned up
-      this.logger.debug(`Could not clean up file ${filePath}: ${error.message}`);
+      this.logger.debug(
+        `Could not clean up file ${filePath}: ${error.message}`,
+      );
     }
   }
 
@@ -264,7 +277,7 @@ export class ErrorHandlerService {
   handleCriticalErrorAndExit(error: CriticalError): never {
     this.addCriticalError(error);
     this.displayErrorSummary();
-     
+
     process.exit(error.exitCode);
   }
 
@@ -274,21 +287,21 @@ export class ErrorHandlerService {
   exitWithAppropriateCode(): never {
     if (this.hasCriticalErrors()) {
       const highestExitCode = Math.max(
-        ...this.errorSummary.criticalErrors.map(error => error.exitCode),
-        1
+        ...this.errorSummary.criticalErrors.map((error) => error.exitCode),
+        1,
       );
-       
+
       process.exit(highestExitCode);
     }
 
     if (this.hasWarnings()) {
       this.logger.log('\n✅ Build completed with warnings');
-      console.log('\n✅ Build completed with warnings');
+      this.logger.log('\n✅ Build completed with warnings');
       process.exit(0);
     }
 
     this.logger.log('\n✅ Build completed successfully');
-    console.log('\n✅ Build completed successfully');
+    this.logger.log('\n✅ Build completed successfully');
     process.exit(0);
   }
 

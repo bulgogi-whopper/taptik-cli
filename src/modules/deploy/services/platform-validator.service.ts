@@ -20,7 +20,7 @@ export class PlatformValidatorService {
   constructor(private readonly kiroValidator: KiroValidatorService) {}
   private readonly SUPPORTED_PLATFORMS = {
     'claude-code': true,
-    'kiro-ide': true,
+    'kiro-ide': false, // Phase 2
     'cursor-ide': false, // Phase 2
   };
 
@@ -95,7 +95,10 @@ export class PlatformValidatorService {
     } else if (platform === 'kiro-ide') {
       const kiroOptions = options as KiroDeploymentOptions;
       if (kiroOptions) {
-        const kiroResult = await this.kiroValidator.validateForKiro(context, kiroOptions);
+        const kiroResult = await this.kiroValidator.validateForKiro(
+          context,
+          kiroOptions,
+        );
         errors.push(...kiroResult.errors);
         warnings.push(...(kiroResult.warnings || []));
       }

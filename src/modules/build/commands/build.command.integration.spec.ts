@@ -15,7 +15,11 @@ import {
   BuildPlatform,
   BuildCategoryName,
 } from '../interfaces/build-config.interface';
-import { TaptikPersonalContext, TaptikPromptTemplates, TaptikProjectContext } from '../interfaces/taptik-format.interface';
+import {
+  TaptikPersonalContext,
+  TaptikPromptTemplates,
+  TaptikProjectContext,
+} from '../interfaces/taptik-format.interface';
 import { CollectionService } from '../services/collection/collection.service';
 import { ErrorHandlerService } from '../services/error-handler/error-handler.service';
 import { InteractiveService } from '../services/interactive/interactive.service';
@@ -75,21 +79,23 @@ describe('BuildCommand Integration Tests', () => {
 
     const mockErrorHandler = {
       isProcessInterrupted: vi.fn().mockReturnValue(false),
-      handleCriticalErrorAndExit: vi.fn().mockImplementation(() => 
-        // Mock implementation that doesn't actually exit the process
-         undefined
+      handleCriticalErrorAndExit: vi.fn().mockImplementation(
+        () =>
+          // Mock implementation that doesn't actually exit the process
+          undefined,
       ),
       addWarning: vi.fn(),
       hasWarnings: vi.fn().mockReturnValue(false),
       getErrorSummary: vi.fn().mockReturnValue({
         criticalErrors: [],
         warnings: [],
-        partialFiles: []
+        partialFiles: [],
       }),
       displayErrorSummary: vi.fn(),
-      exitWithAppropriateCode: vi.fn().mockImplementation(() => 
-        // Mock implementation that doesn't actually exit the process
-         undefined
+      exitWithAppropriateCode: vi.fn().mockImplementation(
+        () =>
+          // Mock implementation that doesn't actually exit the process
+          undefined,
       ),
     };
 

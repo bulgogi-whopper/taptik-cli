@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 
-import { 
-  CloudMetadata, 
+import {
+  CloudMetadata,
   TaptikContext,
   ClaudeCodeLocalSettings,
   ClaudeCodeGlobalSettings,
-  ClaudeCommand
+  ClaudeCommand,
 } from '../interfaces/cloud.interface';
 
 interface ComponentAnalysis {
@@ -28,7 +28,7 @@ interface _TagGenerationContext {
 export class MetadataGeneratorService {
   private readonly MAX_KEYWORDS = 50;
   private readonly MAX_DESCRIPTION_LENGTH = 200;
-  
+
   // Technology mapping for better keyword extraction
   private readonly TECHNOLOGY_PATTERNS = new Map<string, string>([
     // Build tools
@@ -38,7 +38,7 @@ export class MetadataGeneratorService {
     ['rollup', 'rollup'],
     ['parcel', 'parcel'],
     ['esbuild', 'esbuild'],
-    
+
     // Testing frameworks
     ['jest', 'jest'],
     ['vitest', 'vitest'],
@@ -46,13 +46,13 @@ export class MetadataGeneratorService {
     ['cypress', 'cypress'],
     ['playwright', 'playwright'],
     ['selenium', 'selenium'],
-    
+
     // Linting and formatting
     ['eslint', 'eslint'],
     ['prettier', 'prettier'],
     ['biome', 'biome'],
     ['stylelint', 'stylelint'],
-    
+
     // Container and orchestration
     ['docker', 'docker'],
     ['kubernetes', 'kubernetes'],
@@ -60,7 +60,7 @@ export class MetadataGeneratorService {
     ['kubectl', 'kubernetes'],
     ['helm', 'helm'],
     ['compose', 'docker-compose'],
-    
+
     // Frontend frameworks
     ['react', 'react'],
     ['redux', 'redux'],
@@ -70,7 +70,7 @@ export class MetadataGeneratorService {
     ['svelte', 'svelte'],
     ['solid', 'solidjs'],
     ['qwik', 'qwik'],
-    
+
     // Backend frameworks
     ['express', 'express'],
     ['fastify', 'fastify'],
@@ -83,7 +83,7 @@ export class MetadataGeneratorService {
     ['rails', 'rails'],
     ['laravel', 'laravel'],
     ['spring', 'spring'],
-    
+
     // Languages
     ['typescript', 'typescript'],
     ['javascript', 'javascript'],
@@ -95,7 +95,7 @@ export class MetadataGeneratorService {
     ['java', 'java'],
     ['kotlin', 'kotlin'],
     ['swift', 'swift'],
-    
+
     // Package managers
     ['npm', 'nodejs'],
     ['pnpm', 'nodejs'],
@@ -110,12 +110,55 @@ export class MetadataGeneratorService {
 
   // Common words to exclude from keywords
   private readonly COMMON_WORDS = new Set<string>([
-    'the', 'and', 'for', 'with', 'use', 'all', 'new', 'can', 'has',
-    'this', 'that', 'from', 'will', 'are', 'was', 'been', 'have',
-    'had', 'were', 'said', 'each', 'which', 'she', 'their', 'what',
-    'not', 'but', 'out', 'them', 'than', 'then', 'its', 'also',
-    'echo', 'run', 'npm', 'yarn', 'pnpm', 'node', 'help', 'about',
-    'more', 'less', 'very', 'much', 'many', 'some', 'any', 'only'
+    'the',
+    'and',
+    'for',
+    'with',
+    'use',
+    'all',
+    'new',
+    'can',
+    'has',
+    'this',
+    'that',
+    'from',
+    'will',
+    'are',
+    'was',
+    'been',
+    'have',
+    'had',
+    'were',
+    'said',
+    'each',
+    'which',
+    'she',
+    'their',
+    'what',
+    'not',
+    'but',
+    'out',
+    'them',
+    'than',
+    'then',
+    'its',
+    'also',
+    'echo',
+    'run',
+    'npm',
+    'yarn',
+    'pnpm',
+    'node',
+    'help',
+    'about',
+    'more',
+    'less',
+    'very',
+    'much',
+    'many',
+    'some',
+    'any',
+    'only',
   ]);
 
   // Language to category mapping for better tagging
@@ -145,7 +188,8 @@ export class MetadataGeneratorService {
       title: this.generateTitle(context),
       description: this.generateDescription(context, componentCount, features),
       sourceIde: context.sourceIde || 'claude-code',
-      targetIdes: context.targetIdes?.length > 0 ? context.targetIdes : ['claude-code'],
+      targetIdes:
+        context.targetIdes?.length > 0 ? context.targetIdes : ['claude-code'],
       tags: this.deduplicateAndSort(tags),
       searchKeywords: this.optimizeKeywords(searchKeywords),
       componentCount,
@@ -156,7 +200,7 @@ export class MetadataGeneratorService {
       author: context.metadata?.exportedBy || 'unknown',
       createdAt: context.metadata?.timestamp || new Date().toISOString(),
       fileSize: 0,
-      checksum: 'pending',  // Will be set by package service
+      checksum: 'pending', // Will be set by package service
     };
   }
 
@@ -172,27 +216,37 @@ export class MetadataGeneratorService {
   }
 
   private generateDescription(
-    context: TaptikContext, 
+    context: TaptikContext,
     componentCount: ComponentAnalysis,
-    features: string[]
+    features: string[],
   ): string {
     const components: string[] = [];
-    
+
     // Add component counts
     if (componentCount.agents > 0) {
-      components.push(`${componentCount.agents} agent${componentCount.agents > 1 ? 's' : ''}`);
+      components.push(
+        `${componentCount.agents} agent${componentCount.agents > 1 ? 's' : ''}`,
+      );
     }
     if (componentCount.commands > 0) {
-      components.push(`${componentCount.commands} command${componentCount.commands > 1 ? 's' : ''}`);
+      components.push(
+        `${componentCount.commands} command${componentCount.commands > 1 ? 's' : ''}`,
+      );
     }
     if (componentCount.mcpServers > 0) {
-      components.push(`${componentCount.mcpServers} MCP server${componentCount.mcpServers > 1 ? 's' : ''}`);
+      components.push(
+        `${componentCount.mcpServers} MCP server${componentCount.mcpServers > 1 ? 's' : ''}`,
+      );
     }
     if (componentCount.steeringRules > 0) {
-      components.push(`${componentCount.steeringRules} steering rule${componentCount.steeringRules > 1 ? 's' : ''}`);
+      components.push(
+        `${componentCount.steeringRules} steering rule${componentCount.steeringRules > 1 ? 's' : ''}`,
+      );
     }
     if (componentCount.instructions > 0) {
-      components.push(`${componentCount.instructions} instruction${componentCount.instructions > 1 ? 's' : ''}`);
+      components.push(
+        `${componentCount.instructions} instruction${componentCount.instructions > 1 ? 's' : ''}`,
+      );
     }
 
     // Generate description based on content
@@ -201,19 +255,19 @@ export class MetadataGeneratorService {
     }
 
     let description = `Configuration with ${components.join(', ')}`;
-    
+
     // Add feature highlights if present
-    const highlightFeatures = features.filter(f => 
-      ['git-integration', 'docker', 'kubernetes', 'mcp-servers'].includes(f)
+    const highlightFeatures = features.filter((f) =>
+      ['git-integration', 'docker', 'kubernetes', 'mcp-servers'].includes(f),
     );
-    
+
     if (highlightFeatures.length > 0) {
       description += `. Features: ${highlightFeatures.join(', ')}`;
     }
 
     // Truncate if too long
     if (description.length > this.MAX_DESCRIPTION_LENGTH) {
-      description = `${description.substring(0, this.MAX_DESCRIPTION_LENGTH - 3)  }...`;
+      description = `${description.substring(0, this.MAX_DESCRIPTION_LENGTH - 3)}...`;
     }
 
     return description;
@@ -246,12 +300,15 @@ export class MetadataGeneratorService {
     return analysis;
   }
 
-  private countComponents(data: ClaudeCodeLocalSettings | ClaudeCodeGlobalSettings, analysis: ComponentAnalysis): void {
+  private countComponents(
+    data: ClaudeCodeLocalSettings | ClaudeCodeGlobalSettings,
+    analysis: ComponentAnalysis,
+  ): void {
     analysis.agents += data.agents?.length || 0;
     analysis.commands += data.commands?.length || 0;
     analysis.mcpServers += data.mcpServers?.servers?.length || 0;
     analysis.steeringRules += data.steeringRules?.length || 0;
-    
+
     if (data.instructions) {
       if (data.instructions.global) analysis.instructions++;
       if (data.instructions.local) analysis.instructions++;
@@ -259,32 +316,32 @@ export class MetadataGeneratorService {
   }
 
   private generateTags(
-    context: TaptikContext, 
+    context: TaptikContext,
     componentCount: ComponentAnalysis,
-    features: string[]
+    features: string[],
   ): string[] {
     const tags = new Set<string>();
 
     // Add IDE tags
     this.addIdeTags(context, tags);
-    
+
     // Add component-based tags
     this.addComponentTags(componentCount, tags);
-    
+
     // Add feature tags
-    features.forEach(feature => tags.add(feature));
-    
+    features.forEach((feature) => tags.add(feature));
+
     // Add language and framework tags
     this.addLanguageTags(context, tags);
-    
+
     // Add workflow tags
     this.addWorkflowTags(context, tags);
-    
+
     // Add scope tags
     if (context.data?.claudeCode?.global) {
       tags.add('global-settings');
     }
-    
+
     return Array.from(tags);
   }
 
@@ -292,16 +349,19 @@ export class MetadataGeneratorService {
     if (context.sourceIde) {
       tags.add(context.sourceIde);
     }
-    
+
     if (context.targetIdes) {
-      context.targetIdes.forEach(ide => tags.add(ide));
+      context.targetIdes.forEach((ide) => tags.add(ide));
       if (context.targetIdes.length > 1) {
         tags.add('multi-ide');
       }
     }
   }
 
-  private addComponentTags(componentCount: ComponentAnalysis, tags: Set<string>): void {
+  private addComponentTags(
+    componentCount: ComponentAnalysis,
+    tags: Set<string>,
+  ): void {
     if (componentCount.agents > 0) tags.add('custom-agents');
     if (componentCount.mcpServers > 0) tags.add('mcp-enabled');
     if (componentCount.steeringRules > 0) tags.add('custom-rules');
@@ -312,22 +372,22 @@ export class MetadataGeneratorService {
     // Analyze steering rules
     const steeringRules = [
       ...(context.data?.claudeCode?.local?.steeringRules || []),
-      ...(context.data?.claudeCode?.global?.steeringRules || [])
+      ...(context.data?.claudeCode?.global?.steeringRules || []),
     ];
 
     const languageMap: Record<string, string[]> = {
-      'typescript': ['typescript', 'frontend'],
-      'react': ['react', 'frontend'],
-      'python': ['python', 'backend'],
-      'rust': ['rust', 'backend'],
-      'golang': ['golang', 'backend'],
-      'javascript': ['javascript', 'frontend']
+      typescript: ['typescript', 'frontend'],
+      react: ['react', 'frontend'],
+      python: ['python', 'backend'],
+      rust: ['rust', 'backend'],
+      golang: ['golang', 'backend'],
+      javascript: ['javascript', 'frontend'],
     };
 
     for (const rule of steeringRules) {
       const ruleLower = rule.rule?.toLowerCase();
       if (ruleLower && languageMap[ruleLower]) {
-        languageMap[ruleLower].forEach(tag => tags.add(tag));
+        languageMap[ruleLower].forEach((tag) => tags.add(tag));
       } else if (ruleLower) {
         tags.add(ruleLower);
       }
@@ -336,7 +396,7 @@ export class MetadataGeneratorService {
     // Analyze commands for technology detection
     const commands = [
       ...(context.data?.claudeCode?.local?.commands || []),
-      ...(context.data?.claudeCode?.global?.commands || [])
+      ...(context.data?.claudeCode?.global?.commands || []),
     ];
 
     for (const cmd of commands) {
@@ -361,7 +421,7 @@ export class MetadataGeneratorService {
   private addWorkflowTags(context: TaptikContext, tags: Set<string>): void {
     const commands = [
       ...(context.data?.claudeCode?.local?.commands || []),
-      ...(context.data?.claudeCode?.global?.commands || [])
+      ...(context.data?.claudeCode?.global?.commands || []),
     ];
 
     const instructions = this.getAllInstructions(context).toLowerCase();
@@ -413,25 +473,29 @@ export class MetadataGeneratorService {
     }
 
     // Detect component-based features
-    if (context.data?.claudeCode?.local?.mcpServers?.servers?.length > 0 ||
-        context.data?.claudeCode?.global?.mcpServers?.servers?.length > 0) {
+    if (
+      context.data?.claudeCode?.local?.mcpServers?.servers?.length > 0 ||
+      context.data?.claudeCode?.global?.mcpServers?.servers?.length > 0
+    ) {
       features.add('mcp-servers');
     }
 
-    if (context.data?.claudeCode?.local?.agents?.length > 0 ||
-        context.data?.claudeCode?.global?.agents?.length > 0) {
+    if (
+      context.data?.claudeCode?.local?.agents?.length > 0 ||
+      context.data?.claudeCode?.global?.agents?.length > 0
+    ) {
       features.add('custom-agents');
     }
 
     // Detect workflow features
     const commands = [
       ...(context.data?.claudeCode?.local?.commands || []),
-      ...(context.data?.claudeCode?.global?.commands || [])
+      ...(context.data?.claudeCode?.global?.commands || []),
     ];
 
     for (const cmd of commands) {
       const cmdFeatures = this.extractFeaturesFromCommand(cmd.command);
-      cmdFeatures.forEach(f => features.add(f));
+      cmdFeatures.forEach((f) => features.add(f));
     }
 
     return Array.from(features);
@@ -439,47 +503,52 @@ export class MetadataGeneratorService {
 
   private normalizeFeatureName(key: string): string | null {
     const featureMap: Record<string, string> = {
-      'gitIntegration': 'git-integration',
-      'dockerSupport': 'docker',
-      'kubernetesIntegration': 'kubernetes',
-      'autocomplete': 'autocomplete',
-      'linting': 'linting',
-      'formatting': 'formatting',
-      'debugging': 'debugging',
+      gitIntegration: 'git-integration',
+      dockerSupport: 'docker',
+      kubernetesIntegration: 'kubernetes',
+      autocomplete: 'autocomplete',
+      linting: 'linting',
+      formatting: 'formatting',
+      debugging: 'debugging',
     };
-    
+
     return featureMap[key] || null;
   }
 
   private extractFeaturesFromCommand(command: string | undefined): string[] {
     if (!command) return [];
-    
+
     const features = new Set<string>();
     const cmdLower = command.toLowerCase();
-    
+
     if (cmdLower.includes('docker')) features.add('docker');
-    if (cmdLower.includes('kubectl') || cmdLower.includes('k8s')) features.add('kubernetes');
+    if (cmdLower.includes('kubectl') || cmdLower.includes('k8s'))
+      features.add('kubernetes');
     if (cmdLower.includes('git')) features.add('git-integration');
     if (cmdLower.includes('test')) features.add('testing');
     if (cmdLower.includes('lint')) features.add('linting');
     if (cmdLower.includes('format')) features.add('formatting');
-    
+
     return Array.from(features);
   }
 
-  private extractTechnologiesFromCommand(command: string | undefined): string[] {
+  private extractTechnologiesFromCommand(
+    command: string | undefined,
+  ): string[] {
     if (!command) return [];
-    
+
     const technologies = new Set<string>();
     const cmdLower = command.toLowerCase();
-    
+
     // Check for known technology patterns
-    for (const [pattern, tech] of Array.from(this.TECHNOLOGY_PATTERNS.entries())) {
+    for (const [pattern, tech] of Array.from(
+      this.TECHNOLOGY_PATTERNS.entries(),
+    )) {
       if (cmdLower.includes(pattern)) {
         technologies.add(tech);
       }
     }
-    
+
     // Special case detections
     if (cmdLower.includes('.ts') || cmdLower.includes('.tsx')) {
       technologies.add('typescript');
@@ -493,19 +562,22 @@ export class MetadataGeneratorService {
     if (cmdLower.includes('.go')) {
       technologies.add('golang');
     }
-    
+
     return Array.from(technologies);
   }
 
-  private generateSearchKeywords(context: TaptikContext, tags: string[]): string[] {
+  private generateSearchKeywords(
+    context: TaptikContext,
+    tags: string[],
+  ): string[] {
     const keywords = new Set<string>();
 
     // Add base keywords
     keywords.add(context.sourceIde || 'claude-code');
     keywords.add('configuration');
-    
+
     // Add all tags as keywords
-    tags.forEach(tag => keywords.add(tag));
+    tags.forEach((tag) => keywords.add(tag));
 
     // Extract keywords from content
     this.extractKeywordsFromAgents(context, keywords);
@@ -516,10 +588,13 @@ export class MetadataGeneratorService {
     return Array.from(keywords);
   }
 
-  private extractKeywordsFromAgents(context: TaptikContext, keywords: Set<string>): void {
+  private extractKeywordsFromAgents(
+    context: TaptikContext,
+    keywords: Set<string>,
+  ): void {
     const agents = [
       ...(context.data?.claudeCode?.local?.agents || []),
-      ...(context.data?.claudeCode?.global?.agents || [])
+      ...(context.data?.claudeCode?.global?.agents || []),
     ];
 
     for (const agent of agents) {
@@ -528,24 +603,30 @@ export class MetadataGeneratorService {
     }
   }
 
-  private extractKeywordsFromCommands(context: TaptikContext, keywords: Set<string>): void {
+  private extractKeywordsFromCommands(
+    context: TaptikContext,
+    keywords: Set<string>,
+  ): void {
     const commands = [
       ...(context.data?.claudeCode?.local?.commands || []),
-      ...(context.data?.claudeCode?.global?.commands || [])
+      ...(context.data?.claudeCode?.global?.commands || []),
     ];
 
     for (const cmd of commands) {
       this.extractKeywordsFromText(cmd.name, keywords);
       const technologies = this.extractTechnologiesFromCommand(cmd.command);
-      technologies.forEach(tech => keywords.add(tech));
+      technologies.forEach((tech) => keywords.add(tech));
     }
   }
 
-  private extractKeywordsFromInstructions(context: TaptikContext, keywords: Set<string>): void {
+  private extractKeywordsFromInstructions(
+    context: TaptikContext,
+    keywords: Set<string>,
+  ): void {
     const instructions = [
       context.data?.claudeCode?.local?.instructions?.global,
       context.data?.claudeCode?.local?.instructions?.local,
-      context.data?.claudeCode?.global?.instructions?.global
+      context.data?.claudeCode?.global?.instructions?.global,
     ].filter(Boolean);
 
     for (const instruction of instructions) {
@@ -553,10 +634,13 @@ export class MetadataGeneratorService {
     }
   }
 
-  private extractKeywordsFromSteeringRules(context: TaptikContext, keywords: Set<string>): void {
+  private extractKeywordsFromSteeringRules(
+    context: TaptikContext,
+    keywords: Set<string>,
+  ): void {
     const steeringRules = [
       ...(context.data?.claudeCode?.local?.steeringRules || []),
-      ...(context.data?.claudeCode?.global?.steeringRules || [])
+      ...(context.data?.claudeCode?.global?.steeringRules || []),
     ];
 
     for (const rule of steeringRules) {
@@ -566,11 +650,14 @@ export class MetadataGeneratorService {
     }
   }
 
-  private extractKeywordsFromText(text: string | undefined, keywords: Set<string>): void {
+  private extractKeywordsFromText(
+    text: string | undefined,
+    keywords: Set<string>,
+  ): void {
     if (!text) return;
 
     const textLower = text.toLowerCase();
-    
+
     // Handle special cases
     if (textLower.includes('node.js') || textLower.includes('nodejs')) {
       keywords.add('nodejs');
@@ -581,7 +668,7 @@ export class MetadataGeneratorService {
 
     const words = textLower
       .split(/[\s!"'(),.:;?[\]_{|}-]/g)
-      .filter(word => word.length > 2);
+      .filter((word) => word.length > 2);
 
     for (const word of words) {
       // Check technology mapping
@@ -607,12 +694,12 @@ export class MetadataGeneratorService {
     if (word === 'solid' && context.toLowerCase().includes('principles')) {
       return true; // Will be added as 'solid-principles'
     }
-    
+
     // Filter out too generic or too specific words
     if (word.length < 4 || word.length > 20) {
       return false;
     }
-    
+
     // Check if it's not a common word
     return !this.COMMON_WORDS.has(word);
   }
@@ -620,7 +707,7 @@ export class MetadataGeneratorService {
   private optimizeKeywords(keywords: string[]): string[] {
     // Remove duplicates, normalize, and limit
     const uniqueKeywords = new Set<string>();
-    
+
     for (const keyword of keywords) {
       const normalized = keyword.toLowerCase().trim();
       if (normalized && normalized.length > 2) {
@@ -632,16 +719,19 @@ export class MetadataGeneratorService {
         }
       }
     }
-    
+
     // Convert to array and limit
-    return Array.from(uniqueKeywords)
-      .sort()
-      .slice(0, this.MAX_KEYWORDS);
+    return Array.from(uniqueKeywords).sort().slice(0, this.MAX_KEYWORDS);
   }
 
-  private assessComplexity(componentCount: ComponentAnalysis): CloudMetadata['complexityLevel'] {
-    const total = Object.values(componentCount).reduce((sum, count) => sum + count, 0);
-    
+  private assessComplexity(
+    componentCount: ComponentAnalysis,
+  ): CloudMetadata['complexityLevel'] {
+    const total = Object.values(componentCount).reduce(
+      (sum, count) => sum + count,
+      0,
+    );
+
     // Keep original simple logic for consistency with tests
     if (total === 0) {
       return 'minimal';
@@ -656,7 +746,10 @@ export class MetadataGeneratorService {
     }
   }
 
-  private detectCompatibility(context: TaptikContext, features: string[]): string[] {
+  private detectCompatibility(
+    context: TaptikContext,
+    features: string[],
+  ): string[] {
     const compatibility = new Set<string>();
 
     // IDE compatibility
@@ -664,14 +757,14 @@ export class MetadataGeneratorService {
       compatibility.add(context.sourceIde);
     }
     if (context.targetIdes) {
-      context.targetIdes.forEach(ide => compatibility.add(ide));
+      context.targetIdes.forEach((ide) => compatibility.add(ide));
     }
 
     // Feature-based compatibility
     if (features.includes('mcp-servers')) {
       compatibility.add('mcp-compatible');
     }
-    
+
     if (features.includes('docker') || features.includes('kubernetes')) {
       compatibility.add('container-ready');
     }
@@ -687,45 +780,56 @@ export class MetadataGeneratorService {
   }
 
   // Helper methods for workflow detection
-  private hasTestingWorkflow(commands: ClaudeCommand[], instructions: string): boolean {
-    return commands.some(cmd => 
-      cmd.name?.toLowerCase().includes('test') || 
-      cmd.command?.toLowerCase().includes('test')
-    ) || instructions.includes('test');
+  private hasTestingWorkflow(
+    commands: ClaudeCommand[],
+    instructions: string,
+  ): boolean {
+    return (
+      commands.some(
+        (cmd) =>
+          cmd.name?.toLowerCase().includes('test') ||
+          cmd.command?.toLowerCase().includes('test'),
+      ) || instructions.includes('test')
+    );
   }
 
   private hasCoverageWorkflow(commands: ClaudeCommand[]): boolean {
-    return commands.some(cmd => 
-      cmd.command?.toLowerCase().includes('coverage')
+    return commands.some((cmd) =>
+      cmd.command?.toLowerCase().includes('coverage'),
     );
   }
 
   private hasTddWorkflow(instructions: string): boolean {
-    return instructions.includes('tdd') || 
-           (instructions.includes('test') && instructions.includes('first'));
+    return (
+      instructions.includes('tdd') ||
+      (instructions.includes('test') && instructions.includes('first'))
+    );
   }
 
   private hasCiCdWorkflow(commands: ClaudeCommand[]): boolean {
-    return commands.some(cmd => 
-      cmd.name?.toLowerCase().includes('ci') || 
-      cmd.name?.toLowerCase().includes('deploy') ||
-      cmd.command?.toLowerCase().includes('ci')
+    return commands.some(
+      (cmd) =>
+        cmd.name?.toLowerCase().includes('ci') ||
+        cmd.name?.toLowerCase().includes('deploy') ||
+        cmd.command?.toLowerCase().includes('ci'),
     );
   }
 
   private hasDeploymentWorkflow(commands: ClaudeCommand[]): boolean {
-    return commands.some(cmd => 
-      cmd.name?.toLowerCase().includes('deploy') ||
-      cmd.command?.toLowerCase().includes('deploy')
+    return commands.some(
+      (cmd) =>
+        cmd.name?.toLowerCase().includes('deploy') ||
+        cmd.command?.toLowerCase().includes('deploy'),
     );
   }
 
   private hasCodeQualityWorkflow(commands: ClaudeCommand[]): boolean {
-    return commands.some(cmd => 
-      cmd.command?.toLowerCase().includes('lint') || 
-      cmd.command?.toLowerCase().includes('eslint') ||
-      cmd.command?.toLowerCase().includes('prettier') ||
-      cmd.command?.toLowerCase().includes('format')
+    return commands.some(
+      (cmd) =>
+        cmd.command?.toLowerCase().includes('lint') ||
+        cmd.command?.toLowerCase().includes('eslint') ||
+        cmd.command?.toLowerCase().includes('prettier') ||
+        cmd.command?.toLowerCase().includes('format'),
     );
   }
 
@@ -733,8 +837,11 @@ export class MetadataGeneratorService {
     return [
       context.data?.claudeCode?.local?.instructions?.global,
       context.data?.claudeCode?.local?.instructions?.local,
-      context.data?.claudeCode?.global?.instructions?.global
-    ].filter(Boolean).join(' ').toLowerCase();
+      context.data?.claudeCode?.global?.instructions?.global,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
   }
 
   private deduplicateAndSort(items: string[]): string[] {

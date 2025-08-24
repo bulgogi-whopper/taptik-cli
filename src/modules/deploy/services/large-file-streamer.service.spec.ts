@@ -49,7 +49,9 @@ describe('LargeFileStreamerService', () => {
     it('should return false for non-existent files', async () => {
       vi.mocked(fs.stat).mockRejectedValue(new Error('File not found'));
 
-      const result = await service.isLargeFile('/path/to/nonexistent/file.json');
+      const result = await service.isLargeFile(
+        '/path/to/nonexistent/file.json',
+      );
 
       expect(result).toBe(false);
     });
@@ -75,10 +77,10 @@ describe('LargeFileStreamerService', () => {
       const result = await service.streamProcessConfiguration(
         largeConfig,
         chunkProcessor,
-        { 
+        {
           chunkSize: 2 * 1024 * 1024, // 2MB chunks
-          onProgress: progressCallback 
-        }
+          onProgress: progressCallback,
+        },
       );
 
       expect(result.success).toBe(true);
@@ -89,12 +91,14 @@ describe('LargeFileStreamerService', () => {
 
     it('should handle processing errors gracefully', async () => {
       const config = { content: { data: 'test' } };
-      const failingProcessor = vi.fn().mockRejectedValue(new Error('Processing failed'));
+      const failingProcessor = vi
+        .fn()
+        .mockRejectedValue(new Error('Processing failed'));
 
       const result = await service.streamProcessConfiguration(
         config,
         failingProcessor,
-        { chunkSize: 1024 }
+        { chunkSize: 1024 },
       );
 
       expect(result.success).toBe(false);
@@ -108,11 +112,11 @@ describe('LargeFileStreamerService', () => {
       const result = await service.streamProcessConfiguration(
         config,
         processor,
-        { 
+        {
           chunkSize: 1024,
           enableGarbageCollection: true,
-          memoryThreshold: 50 * 1024 * 1024
-        }
+          memoryThreshold: 50 * 1024 * 1024,
+        },
       );
 
       // Should succeed and process configuration
@@ -147,7 +151,10 @@ describe('LargeFileStreamerService', () => {
 
         readableStream.on('end', () => {
           expect(chunks.length).toBeGreaterThan(1);
-          const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+          const totalLength = chunks.reduce(
+            (sum, chunk) => sum + chunk.length,
+            0,
+          );
           expect(totalLength).toBe(data.length);
           resolve();
         });
@@ -193,7 +200,7 @@ describe('LargeFileStreamerService', () => {
         arrayBuffers: 0,
         rss: 100 * 1024 * 1024,
       });
-      
+
       // Mock gc only if it doesn't exist
       const originalGc = global.gc;
       if (!global.gc) {
@@ -253,7 +260,7 @@ describe('LargeFileStreamerService', () => {
     it('should track progress accurately', () => {
       const total = 1000;
       const onProgress = vi.fn();
-      
+
       const tracker = service.createProgressTracker(total, onProgress);
 
       tracker.update(250);
@@ -267,10 +274,12 @@ describe('LargeFileStreamerService', () => {
       });
 
       tracker.update(500);
-      expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({
-        current: 500,
-        percentage: 50,
-      }));
+      expect(onProgress).toHaveBeenCalledWith(
+        expect.objectContaining({
+          current: 500,
+          percentage: 50,
+        }),
+      );
     });
 
     it('should calculate estimated time remaining', () => {
@@ -284,9 +293,11 @@ describe('LargeFileStreamerService', () => {
 
       tracker.update(250); // 25% complete in 1 second
 
-      expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({
-        estimatedTimeRemaining: expect.any(Number),
-      }));
+      expect(onProgress).toHaveBeenCalledWith(
+        expect.objectContaining({
+          estimatedTimeRemaining: expect.any(Number),
+        }),
+      );
 
       const call = onProgress.mock.calls[0][0];
       expect(call.estimatedTimeRemaining).toBeGreaterThan(0);
@@ -317,7 +328,10 @@ describe('LargeFileStreamerService', () => {
         serialized.slice(chunkSize),
       ];
 
-      const isValid = service.validateChunkIntegrity(corruptedChunks, originalData);
+      const isValid = service.validateChunkIntegrity(
+        corruptedChunks,
+        originalData,
+      );
       expect(isValid).toBe(false);
     });
   });
@@ -328,7 +342,7 @@ describe('LargeFileStreamerService', () => {
       await service.streamProcessConfiguration(
         { test: 'data' },
         vi.fn().mockResolvedValue({}),
-        { chunkSize: 1024 }
+        { chunkSize: 1024 },
       );
 
       await service.cleanup();

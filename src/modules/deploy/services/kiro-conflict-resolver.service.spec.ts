@@ -1,5 +1,4 @@
 import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
 
 import { Test, TestingModule } from '@nestjs/testing';
 
@@ -8,7 +7,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { KiroComponentType } from '../interfaces/kiro-deployment.interface';
 
 import { BackupService } from './backup.service';
-import { KiroConflictResolverService, ConflictResolutionResult } from './kiro-conflict-resolver.service';
+import { KiroConflictResolverService } from './kiro-conflict-resolver.service';
 
 vi.mock('node:fs/promises');
 vi.mock('./backup.service');
@@ -30,8 +29,10 @@ describe('KiroConflictResolverService', () => {
       ],
     }).compile();
 
-    service = module.get<KiroConflictResolverService>(KiroConflictResolverService);
-    
+    service = module.get<KiroConflictResolverService>(
+      KiroConflictResolverService,
+    );
+
     // Mock filesystem functions
     vi.mocked(fs.access).mockImplementation(() => Promise.resolve());
     vi.mocked(fs.readFile).mockImplementation(() => Promise.resolve(''));
@@ -62,7 +63,9 @@ describe('KiroConflictResolverService', () => {
       );
 
       expect(conflicts.length).toBeGreaterThan(0);
-      expect(conflicts.some(c => c.conflictType === 'content_differs')).toBe(true);
+      expect(conflicts.some((c) => c.conflictType === 'content_differs')).toBe(
+        true,
+      );
     });
 
     it('should detect no conflicts for identical content', async () => {
@@ -80,7 +83,7 @@ describe('KiroConflictResolverService', () => {
 
     it('should detect JSON structure conflicts', async () => {
       vi.mocked(fs.readFile).mockResolvedValue(
-        '{"version": "1.0.0", "oldKey": "value"}'
+        '{"version": "1.0.0", "oldKey": "value"}',
       );
 
       const conflicts = await service.detectConflicts(
@@ -90,8 +93,12 @@ describe('KiroConflictResolverService', () => {
       );
 
       expect(conflicts.length).toBeGreaterThan(0);
-      expect(conflicts.some(c => c.conflictType === 'version_conflict')).toBe(true);
-      expect(conflicts.some(c => c.conflictType === 'structure_mismatch')).toBe(true);
+      expect(conflicts.some((c) => c.conflictType === 'version_conflict')).toBe(
+        true,
+      );
+      expect(
+        conflicts.some((c) => c.conflictType === 'structure_mismatch'),
+      ).toBe(true);
     });
   });
 
@@ -125,7 +132,11 @@ describe('KiroConflictResolverService', () => {
 
       expect(result.resolved).toBe(true);
       expect(result.strategy).toBe('overwrite');
-      expect(fs.writeFile).toHaveBeenCalledWith('/test/path/file.json', 'new content', 'utf-8');
+      expect(fs.writeFile).toHaveBeenCalledWith(
+        '/test/path/file.json',
+        'new content',
+        'utf-8',
+      );
     });
 
     it('should resolve conflicts with backup strategy', async () => {
@@ -141,7 +152,11 @@ describe('KiroConflictResolverService', () => {
       expect(result.resolved).toBe(true);
       expect(result.strategy).toBe('backup');
       expect(result.backupPath).toBeDefined();
-      expect(fs.writeFile).toHaveBeenCalledWith('/test/path/file.json', 'new content', 'utf-8');
+      expect(fs.writeFile).toHaveBeenCalledWith(
+        '/test/path/file.json',
+        'new content',
+        'utf-8',
+      );
     });
 
     it('should merge JSON files with deep-merge strategy', async () => {
@@ -156,7 +171,9 @@ describe('KiroConflictResolverService', () => {
         settings: { language: 'en' },
       };
 
-      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(existingJson, null, 2));
+      vi.mocked(fs.readFile).mockResolvedValue(
+        JSON.stringify(existingJson, null, 2),
+      );
 
       const result = await service.resolveConflict(
         '/test/path/settings.json',
@@ -168,7 +185,7 @@ describe('KiroConflictResolverService', () => {
 
       expect(result.resolved).toBe(true);
       expect(result.mergedContent).toBeDefined();
-      
+
       const merged = JSON.parse(result.mergedContent!);
       expect(merged.user.name).toBe('John');
       expect(merged.user.age).toBe(30);
@@ -234,7 +251,9 @@ describe('KiroConflictResolverService', () => {
         frameworks: ['vue', 'react'],
       };
 
-      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(existingJson, null, 2));
+      vi.mocked(fs.readFile).mockResolvedValue(
+        JSON.stringify(existingJson, null, 2),
+      );
 
       const result = await service.resolveConflict(
         '/test/path/config.json',
@@ -245,7 +264,7 @@ describe('KiroConflictResolverService', () => {
       );
 
       expect(result.resolved).toBe(true);
-      
+
       const merged = JSON.parse(result.mergedContent!);
       expect(merged.languages).toContain('javascript');
       expect(merged.languages).toContain('typescript');
@@ -333,7 +352,10 @@ New section 3 content
         },
       ];
 
-      const suggestion = await service.suggestOptimalStrategy(conflicts, 'settings');
+      const suggestion = await service.suggestOptimalStrategy(
+        conflicts,
+        'settings',
+      );
 
       expect(suggestion.strategy).toBe('merge-intelligent');
       expect(suggestion.mergeStrategy).toBe('deep-merge');
@@ -350,7 +372,10 @@ New section 3 content
         },
       ];
 
-      const suggestion = await service.suggestOptimalStrategy(conflicts, 'specs');
+      const suggestion = await service.suggestOptimalStrategy(
+        conflicts,
+        'specs',
+      );
 
       expect(suggestion.strategy).toBe('preserve-tasks');
       expect(suggestion.mergeStrategy).toBe('task-status-preserve');
@@ -367,7 +392,10 @@ New section 3 content
         },
       ];
 
-      const suggestion = await service.suggestOptimalStrategy(conflicts, 'hooks');
+      const suggestion = await service.suggestOptimalStrategy(
+        conflicts,
+        'hooks',
+      );
 
       expect(suggestion.strategy).toBe('prompt');
       expect(suggestion.reasoning).toContain('security implications');
@@ -471,7 +499,10 @@ New section 3 content
         },
       ];
 
-      const results = await service.resolveMultipleConflicts(conflicts, 'overwrite');
+      const results = await service.resolveMultipleConflicts(
+        conflicts,
+        'overwrite',
+      );
 
       expect(results).toHaveLength(2);
       expect(results[0].resolved).toBe(true);
@@ -516,7 +547,9 @@ Some other content
       expect(result.resolved).toBe(true);
       expect(result.mergedContent).toContain('- [x] 1.1 First completed task');
       expect(result.mergedContent).toContain('- [ ] 1.2 Updated pending task');
-      expect(result.mergedContent).toContain('- [x] 1.3 Another completed task');
+      expect(result.mergedContent).toContain(
+        '- [x] 1.3 Another completed task',
+      );
       expect(result.mergedContent).toContain('- [ ] 1.4 New task');
     });
 
@@ -544,7 +577,9 @@ Some other content
       );
 
       expect(result.resolved).toBe(true);
-      expect(result.mergedContent).toContain('- [x] 2.1.1 Nested completed task');
+      expect(result.mergedContent).toContain(
+        '- [x] 2.1.1 Nested completed task',
+      );
       expect(result.mergedContent).toContain('- [x] 2.2 Simple completed task');
       expect(result.mergedContent).toContain('- [ ] 2.3 New task');
     });
@@ -585,8 +620,9 @@ Some other content
   describe('merge information tracking', () => {
     it('should track merge information correctly', async () => {
       const existingContent = '{"small": "content"}';
-      const newContent = '{"larger": "content", "with": "more", "properties": true}';
-      
+      const newContent =
+        '{"larger": "content", "with": "more", "properties": true}';
+
       vi.mocked(fs.readFile).mockResolvedValue(existingContent);
 
       const result = await service.resolveConflict(
@@ -602,7 +638,9 @@ Some other content
       expect(result.mergeInfo!.filePath).toBe('/test/settings.json');
       expect(result.mergeInfo!.componentType).toBe('settings');
       expect(result.mergeInfo!.mergeStrategy).toBe('deep-merge');
-      expect(result.mergeInfo!.originalSize).toBeLessThan(result.mergeInfo!.finalSize);
+      expect(result.mergeInfo!.originalSize).toBeLessThan(
+        result.mergeInfo!.finalSize,
+      );
     });
   });
 });

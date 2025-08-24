@@ -45,7 +45,10 @@ export class AdvancedMockFileSystem extends MockFileSystem {
   private corruptedFiles: Set<string> = new Set();
   private tempFiles: Set<string> = new Set();
 
-  constructor(config: MockFileSystemConfig, performanceConfig: PerformanceConfig = {}) {
+  constructor(
+    config: MockFileSystemConfig,
+    performanceConfig: PerformanceConfig = {},
+  ) {
     super(config);
     this.performanceConfig = {
       readDelay: 10,
@@ -89,7 +92,9 @@ export class AdvancedMockFileSystem extends MockFileSystem {
   /**
    * Simulate delay based on operation type
    */
-  private async simulateDelay(operation: 'read' | 'write' | 'network' | 'disk'): Promise<void> {
+  private async simulateDelay(
+    operation: 'read' | 'write' | 'network' | 'disk',
+  ): Promise<void> {
     const delays = {
       read: this.performanceConfig.readDelay,
       write: this.performanceConfig.writeDelay,
@@ -99,7 +104,7 @@ export class AdvancedMockFileSystem extends MockFileSystem {
 
     const delay = delays[operation] || 0;
     if (delay > 0) {
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 
@@ -108,7 +113,10 @@ export class AdvancedMockFileSystem extends MockFileSystem {
    */
   private checkConcurrencyLimit(): void {
     this.operationCount++;
-    if (this.operationCount > (this.performanceConfig.concurrentOperationLimit || 10)) {
+    if (
+      this.operationCount >
+      (this.performanceConfig.concurrentOperationLimit || 10)
+    ) {
       const error: AdvancedError = new Error('EMFILE: too many open files');
       error.code = 'EMFILE';
       error.errno = -24;
@@ -132,7 +140,9 @@ export class AdvancedMockFileSystem extends MockFileSystem {
     if (filePath.startsWith('//') || filePath.startsWith('\\\\')) {
       await this.simulateDelay('network');
       if (this.networkFailureSimulation) {
-        const error: AdvancedError = new Error('ENETUNREACH: network is unreachable');
+        const error: AdvancedError = new Error(
+          'ENETUNREACH: network is unreachable',
+        );
         error.code = 'ENETUNREACH';
         error.errno = -51;
         error.syscall = 'connect';
@@ -191,7 +201,8 @@ export class AdvancedMockFileSystem extends MockFileSystem {
     }
 
     // Disk full simulation for large files
-    if (contentSize > 1024 * 1024) { // 1MB
+    if (contentSize > 1024 * 1024) {
+      // 1MB
       const error: AdvancedError = new Error('EFBIG: file too big');
       error.code = 'EFBIG';
       error.errno = -27;
@@ -211,7 +222,8 @@ export class AdvancedMockFileSystem extends MockFileSystem {
     }
 
     // Simulate partial write failure
-    if (Math.random() < 0.005) { // 0.5% chance
+    if (Math.random() < 0.005) {
+      // 0.5% chance
       const error: AdvancedError = new Error('ENOSPC: no space left on device');
       error.code = 'ENOSPC';
       error.errno = -28;
@@ -232,12 +244,16 @@ export class AdvancedMockFileSystem extends MockFileSystem {
   /**
    * Enhanced mkdir with advanced error scenarios
    */
-  async mkdir(directoryPath: string, options?: { recursive?: boolean }): Promise<void> {
+  async mkdir(
+    directoryPath: string,
+    options?: { recursive?: boolean },
+  ): Promise<void> {
     await this.simulateDelay('disk');
     this.checkConcurrencyLimit();
 
     // Path too long simulation
-    if (directoryPath.length > 260) { // Windows MAX_PATH limit
+    if (directoryPath.length > 260) {
+      // Windows MAX_PATH limit
       const error: AdvancedError = new Error('ENAMETOOLONG: name too long');
       error.code = 'ENAMETOOLONG';
       error.errno = -36;
@@ -247,7 +263,11 @@ export class AdvancedMockFileSystem extends MockFileSystem {
     }
 
     // Invalid characters simulation
-    if (directoryPath.includes('<') || directoryPath.includes('>') || directoryPath.includes('|')) {
+    if (
+      directoryPath.includes('<') ||
+      directoryPath.includes('>') ||
+      directoryPath.includes('|')
+    ) {
       const error: AdvancedError = new Error('EINVAL: invalid argument');
       error.code = 'EINVAL';
       error.errno = -22;
@@ -257,11 +277,13 @@ export class AdvancedMockFileSystem extends MockFileSystem {
     }
 
     // Directory already exists with different case (Windows simulation)
-    const existingDirectories = [...this.directories || new Set()];
-    const conflictingDirectory = existingDirectories.find(directory => 
-      directory.toLowerCase() === directoryPath.toLowerCase() && directory !== directoryPath
+    const existingDirectories = [...(this.directories || new Set())];
+    const conflictingDirectory = existingDirectories.find(
+      (directory) =>
+        directory.toLowerCase() === directoryPath.toLowerCase() &&
+        directory !== directoryPath,
     );
-    
+
     if (conflictingDirectory) {
       const error: AdvancedError = new Error('EEXIST: file already exists');
       error.code = 'EEXIST';
@@ -304,13 +326,23 @@ export class AdvancedMockFileSystem extends MockFileSystem {
   /**
    * Enhanced stat with various file system edge cases
    */
-  async stat(filePath: string): Promise<{ isDirectory(): boolean; isFile(): boolean; size: number; mtime: Date; mode: number }> {
+  async stat(
+    filePath: string,
+  ): Promise<{
+    isDirectory(): boolean;
+    isFile(): boolean;
+    size: number;
+    mtime: Date;
+    mode: number;
+  }> {
     await this.simulateDelay('disk');
     this.checkConcurrencyLimit();
 
     // Broken symlink simulation
     if (filePath.includes('.broken-link')) {
-      const error: AdvancedError = new Error('ENOENT: no such file or directory');
+      const error: AdvancedError = new Error(
+        'ENOENT: no such file or directory',
+      );
       error.code = 'ENOENT';
       error.errno = -2;
       error.syscall = 'stat';
@@ -390,7 +422,7 @@ export class ErrorScenarioFactory {
   static createDiskFullScenario(): AdvancedMockFileSystem {
     const fs = new AdvancedMockFileSystem(
       { files: {}, directories: [] },
-      { writeDelay: 100 }
+      { writeDelay: 100 },
     );
     fs.setDiskSpaceLimit(1024); // Very small disk
     return fs;
@@ -407,7 +439,7 @@ export class ErrorScenarioFactory {
         },
         directories: ['//network-drive'],
       },
-      { networkLatency: 5000 }
+      { networkLatency: 5000 },
     );
     fs.enableNetworkFailures();
     return fs;
@@ -419,7 +451,7 @@ export class ErrorScenarioFactory {
   static createMemoryPressureScenario(): AdvancedMockFileSystem {
     return new AdvancedMockFileSystem(
       { files: {}, directories: [] },
-      { memoryPressure: true, readDelay: 1000 }
+      { memoryPressure: true, readDelay: 1000 },
     );
   }
 
@@ -444,11 +476,15 @@ export class ErrorScenarioFactory {
   static createHighConcurrencyScenario(): AdvancedMockFileSystem {
     return new AdvancedMockFileSystem(
       {
-        files: Object.fromEntries(Array.from({ length: 100 }, (_, i) => [`/file${i}.txt`, `content ${i}`])
-          .map(([path, content]) => [path, content])),
+        files: Object.fromEntries(
+          Array.from({ length: 100 }, (_, i) => [
+            `/file${i}.txt`,
+            `content ${i}`,
+          ]).map(([path, content]) => [path, content]),
+        ),
         directories: ['/'],
       },
-      { concurrentOperationLimit: 3 }
+      { concurrentOperationLimit: 3 },
     );
   }
 
@@ -461,20 +497,22 @@ export class ErrorScenarioFactory {
 
     // Generate 1000 files
     for (let i = 0; i < 1000; i++) {
-      files[`/large-project/file-${i}.ts`] = `// File ${i}\nexport const value${i} = ${i};`;
+      files[`/large-project/file-${i}.ts`] =
+        `// File ${i}\nexport const value${i} = ${i};`;
     }
 
     // Generate 50 directories
     for (let i = 0; i < 50; i++) {
       directories.push(`/large-project/dir-${i}`);
       for (let j = 0; j < 20; j++) {
-        files[`/large-project/dir-${i}/file-${j}.ts`] = `// Dir ${i} File ${j}\nexport const value = ${i * 20 + j};`;
+        files[`/large-project/dir-${i}/file-${j}.ts`] =
+          `// Dir ${i} File ${j}\nexport const value = ${i * 20 + j};`;
       }
     }
 
     return new AdvancedMockFileSystem(
       { files, directories },
-      { readDelay: 5, writeDelay: 10, diskIoDelay: 100 }
+      { readDelay: 5, writeDelay: 10, diskIoDelay: 100 },
     );
   }
 
@@ -491,10 +529,12 @@ export class ErrorScenarioFactory {
 
     // Override readFile to simulate intermittent failures
     const originalReadFile = fs.readFile.bind(fs);
-    fs.readFile = async function(filePath: string): Promise<string> {
+    fs.readFile = async function (filePath: string): Promise<string> {
       // 20% chance of failure
       if (Math.random() < 0.2) {
-        const error: AdvancedError = new Error('EAGAIN: resource temporarily unavailable');
+        const error: AdvancedError = new Error(
+          'EAGAIN: resource temporarily unavailable',
+        );
         error.code = 'EAGAIN';
         error.errno = -11;
         error.retry = true;
@@ -537,10 +577,15 @@ export class ErrorScenarioFactory {
     // Simulate race conditions in concurrent writes
     let writeInProgress = false;
     const originalWriteFile = fs.writeFile.bind(fs);
-    
-    fs.writeFile = async function(filePath: string, content: string): Promise<void> {
+
+    fs.writeFile = async function (
+      filePath: string,
+      content: string,
+    ): Promise<void> {
       if (writeInProgress && filePath === '/shared/counter.txt') {
-        const error: AdvancedError = new Error('EBUSY: resource busy or locked');
+        const error: AdvancedError = new Error(
+          'EBUSY: resource busy or locked',
+        );
         error.code = 'EBUSY';
         error.errno = -16;
         error.syscall = 'open';
@@ -550,7 +595,7 @@ export class ErrorScenarioFactory {
 
       writeInProgress = true;
       try {
-        await new Promise(resolve => setTimeout(resolve, 50)); // Simulate write delay
+        await new Promise((resolve) => setTimeout(resolve, 50)); // Simulate write delay
         await originalWriteFile(filePath, content);
       } finally {
         writeInProgress = false;
@@ -570,10 +615,10 @@ export class ErrorScenarioTestUtilities {
    */
   static async testRetryOnEAGAIN(
     operation: () => Promise<unknown>,
-    maxRetries = 3
+    maxRetries = 3,
   ): Promise<{ success: boolean; attempts: number; error?: Error }> {
     let attempts = 0;
-    
+
     for (let i = 0; i <= maxRetries; i++) {
       attempts++;
       try {
@@ -585,13 +630,15 @@ export class ErrorScenarioTestUtilities {
         if (err.code === 'EAGAIN' && i < maxRetries) {
           // Wait before retry
           // eslint-disable-next-line no-await-in-loop
-          await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 100));
+          await new Promise((resolve) =>
+            setTimeout(resolve, Math.pow(2, i) * 100),
+          );
           continue;
         }
         return { success: false, attempts, error: error as Error };
       }
     }
-    
+
     return { success: false, attempts };
   }
 
@@ -599,7 +646,7 @@ export class ErrorScenarioTestUtilities {
    * Test that a function properly handles disk space errors
    */
   static async testDiskSpaceHandling(
-    writeOperation: () => Promise<unknown>
+    writeOperation: () => Promise<unknown>,
   ): Promise<{ handledCorrectly: boolean; errorType?: string }> {
     try {
       await writeOperation();
@@ -607,9 +654,9 @@ export class ErrorScenarioTestUtilities {
     } catch (error: unknown) {
       const err = error as { code?: string };
       const isDiskSpaceError = err.code === 'ENOSPC' || err.code === 'EFBIG';
-      return { 
-        handledCorrectly: isDiskSpaceError, 
-        errorType: err.code 
+      return {
+        handledCorrectly: isDiskSpaceError,
+        errorType: err.code,
       };
     }
   }
@@ -619,17 +666,15 @@ export class ErrorScenarioTestUtilities {
    */
   static async testConcurrencyLimits(
     operations: (() => Promise<unknown>)[],
-    _expectedFailures = 0  
+    _expectedFailures = 0,
   ): Promise<{ successes: number; failures: number; errors: Error[] }> {
-    const results = await Promise.allSettled(
-      operations.map(op => op())
-    );
+    const results = await Promise.allSettled(operations.map((op) => op()));
 
-    const successes = results.filter(r => r.status === 'fulfilled').length;
-    const failures = results.filter(r => r.status === 'rejected').length;
+    const successes = results.filter((r) => r.status === 'fulfilled').length;
+    const failures = results.filter((r) => r.status === 'rejected').length;
     const errors = results
       .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
-      .map(r => r.reason as Error);
+      .map((r) => r.reason as Error);
 
     return { successes, failures, errors };
   }
@@ -639,12 +684,12 @@ export class ErrorScenarioTestUtilities {
    */
   static async benchmarkOperation(
     operation: () => Promise<unknown>,
-    iterations = 10
-  ): Promise<{ 
-    averageTime: number; 
-    minTime: number; 
-    maxTime: number; 
-    successRate: number 
+    iterations = 10,
+  ): Promise<{
+    averageTime: number;
+    minTime: number;
+    maxTime: number;
+    successRate: number;
   }> {
     const times: number[] = [];
     let successes = 0;

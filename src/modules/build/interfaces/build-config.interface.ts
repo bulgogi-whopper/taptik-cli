@@ -4,7 +4,7 @@
 export enum BuildPlatform {
   KIRO = 'kiro',
   CURSOR = 'cursor',
-  CLAUDE_CODE = 'claude-code'
+  CLAUDE_CODE = 'claude-code',
 }
 
 /**
@@ -13,7 +13,7 @@ export enum BuildPlatform {
 export enum BuildCategoryName {
   PERSONAL_CONTEXT = 'personal-context',
   PROJECT_CONTEXT = 'project-context',
-  PROMPT_TEMPLATES = 'prompt-templates'
+  PROMPT_TEMPLATES = 'prompt-templates',
 }
 
 /**

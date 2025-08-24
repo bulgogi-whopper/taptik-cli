@@ -36,7 +36,11 @@ export interface DeployOptions {
   components?: ComponentType[];
   skipComponents?: ComponentType[];
   enableLargeFileStreaming?: boolean; // Default: true
-  onProgress?: (progress: { current: number; total: number; percentage: number }) => void;
+  onProgress?: (progress: {
+    current: number;
+    total: number;
+    percentage: number;
+  }) => void;
 }
 
 export interface ImportOptions {

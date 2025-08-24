@@ -39,7 +39,9 @@ export class ConfigPromptService {
   /**
    * Prompt user for upload confirmation
    */
-  async promptUploadConfirmation(options: UploadConfirmationOptions): Promise<boolean> {
+  async promptUploadConfirmation(
+    options: UploadConfirmationOptions,
+  ): Promise<boolean> {
     // Check if auto-upload is enabled and should skip
     if (options.skipIfAutoEnabled) {
       const config = await this.configLoader.loadConfiguration();
@@ -50,9 +52,10 @@ export class ConfigPromptService {
     }
 
     const formattedSize = this.formatFileSize(options.fileSize);
-    const visibilityWarning = options.visibility === 'public' 
-      ? '\n⚠️  This will be publicly visible to all users' 
-      : '';
+    const visibilityWarning =
+      options.visibility === 'public'
+        ? '\n⚠️  This will be publicly visible to all users'
+        : '';
 
     const response = await prompts({
       type: 'confirm',
@@ -112,9 +115,10 @@ export class ConfigPromptService {
     ]);
 
     const config = await this.configLoader.generateDefaultConfiguration();
-    
+
     // Update with user responses
-    config.autoUpload.enabled = configResponses.enabled && !!configResponses.supabaseToken;
+    config.autoUpload.enabled =
+      configResponses.enabled && !!configResponses.supabaseToken;
     config.autoUpload.visibility = configResponses.visibility;
     config.autoUpload.tags = this.parseTags(configResponses.tags);
     config.auth.supabaseToken = configResponses.supabaseToken;
@@ -200,7 +204,7 @@ export class ConfigPromptService {
         updates = { autoUpload: { enabled } } as Partial<TaptikConfig>;
         break;
       }
-      
+
       case 'visibility': {
         const { newValue } = await prompts({
           type: 'select',
@@ -211,20 +215,24 @@ export class ConfigPromptService {
             { title: 'Public', value: 'public' },
           ],
         });
-        updates = { autoUpload: { visibility: newValue } } as Partial<TaptikConfig>;
+        updates = {
+          autoUpload: { visibility: newValue },
+        } as Partial<TaptikConfig>;
         break;
       }
-      
+
       case 'tags': {
         const { newValue } = await prompts({
           type: 'text',
           name: 'newValue',
           message: 'New tags (comma-separated):',
         });
-        updates = { autoUpload: { tags: this.parseTags(newValue) } } as Partial<TaptikConfig>;
+        updates = {
+          autoUpload: { tags: this.parseTags(newValue) },
+        } as Partial<TaptikConfig>;
         break;
       }
-      
+
       case 'token': {
         const { newValue } = await prompts({
           type: 'password',
@@ -235,7 +243,7 @@ export class ConfigPromptService {
         this.logger.log('Authentication token updated successfully');
         break;
       }
-      
+
       case 'exclusions': {
         const { newValue } = await prompts({
           type: 'text',
@@ -243,7 +251,9 @@ export class ConfigPromptService {
           message: 'Exclusion patterns (comma-separated):',
           initial: '.env*, *.secret',
         });
-        updates = { autoUpload: { exclude: this.parseExcludePatterns(newValue) } } as Partial<TaptikConfig>;
+        updates = {
+          autoUpload: { exclude: this.parseExcludePatterns(newValue) },
+        } as Partial<TaptikConfig>;
         break;
       }
     }
@@ -256,8 +266,10 @@ export class ConfigPromptService {
    * Show upload summary and confirm
    */
   async promptUploadWithSummary(metadata: UploadMetadata): Promise<boolean> {
-    const componentSummary = this.formatComponentSummary(metadata.componentCount);
-    
+    const componentSummary = this.formatComponentSummary(
+      metadata.componentCount,
+    );
+
     const response = await prompts({
       type: 'confirm',
       name: 'confirm',
@@ -292,7 +304,10 @@ Proceed with upload?`,
    */
   private parseTags(input: string): string[] {
     if (!input) return [];
-    return input.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+    return input
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0);
   }
 
   /**
@@ -300,15 +315,20 @@ Proceed with upload?`,
    */
   private parseExcludePatterns(input: string): string[] {
     if (!input) return [];
-    return input.split(',').map(pattern => pattern.trim()).filter(pattern => pattern.length > 0);
+    return input
+      .split(',')
+      .map((pattern) => pattern.trim())
+      .filter((pattern) => pattern.length > 0);
   }
 
   /**
    * Format component summary for display
    */
-  private formatComponentSummary(componentCount: UploadMetadata['componentCount']): string {
+  private formatComponentSummary(
+    componentCount: UploadMetadata['componentCount'],
+  ): string {
     const components: string[] = [];
-    
+
     if (componentCount.agents > 0) {
       components.push(`    • ${componentCount.agents} agents`);
     }
@@ -324,7 +344,7 @@ Proceed with upload?`,
     if (componentCount.instructions > 0) {
       components.push(`    • ${componentCount.instructions} instructions`);
     }
-    
+
     return components.join('\n');
   }
 }

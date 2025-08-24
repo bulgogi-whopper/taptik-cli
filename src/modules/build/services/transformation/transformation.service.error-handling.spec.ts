@@ -3,9 +3,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SettingsData } from '../../interfaces/settings-data.interface';
-import { 
-  DataProcessingErrorHandler, 
-  DataProcessingErrorType 
+import {
+  DataProcessingErrorHandler,
+  DataProcessingErrorType,
 } from '../../utils/data-processing-error-handler';
 
 import { TransformationService } from './transformation.service';
@@ -15,7 +15,12 @@ vi.mock('../../utils/data-processing-error-handler');
 
 describe('TransformationService - Error Handling', () => {
   let service: TransformationService;
-  let mockLogger: { error: ReturnType<typeof vi.fn>; warn: ReturnType<typeof vi.fn>; log: ReturnType<typeof vi.fn>; debug?: ReturnType<typeof vi.fn> };
+  let mockLogger: {
+    error: ReturnType<typeof vi.fn>;
+    warn: ReturnType<typeof vi.fn>;
+    log: ReturnType<typeof vi.fn>;
+    debug?: ReturnType<typeof vi.fn>;
+  };
 
   const mockSettingsData: SettingsData = {
     localSettings: {
@@ -46,7 +51,7 @@ describe('TransformationService - Error Handling', () => {
     }).compile();
 
     service = module.get<TransformationService>(TransformationService);
-    
+
     // Mock the logger
     mockLogger = {
       log: vi.fn(),
@@ -72,12 +77,16 @@ describe('TransformationService - Error Handling', () => {
         partialData: { languages: ['javascript'] },
       };
 
-      vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(mockErrorResult);
-      vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(() => {});
+      vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(
+        mockErrorResult,
+      );
+      vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(
+        () => {},
+      );
 
       // Mock the extractUserPreferences method to throw an error
       vi.spyOn(service as any, 'extractUserPreferences').mockRejectedValue(
-        new Error('Failed to extract user preferences')
+        new Error('Failed to extract user preferences'),
       );
 
       const result = await service.transformPersonalContext(mockSettingsData);
@@ -89,10 +98,12 @@ describe('TransformationService - Error Handling', () => {
           category: 'personal-context',
           operation: 'transforming personal context',
           filePath: mockSettingsData.collectionMetadata.projectPath,
-        }
+        },
       );
 
-      expect(DataProcessingErrorHandler.logErrorResult).toHaveBeenCalledWith(mockErrorResult);
+      expect(DataProcessingErrorHandler.logErrorResult).toHaveBeenCalledWith(
+        mockErrorResult,
+      );
 
       // Should return fallback context
       expect(result).toBeDefined();
@@ -110,16 +121,20 @@ describe('TransformationService - Error Handling', () => {
         isCritical: true,
       };
 
-      vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(mockErrorResult);
-      vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(() => {});
+      vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(
+        mockErrorResult,
+      );
+      vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(
+        () => {},
+      );
 
       vi.spyOn(service as any, 'extractUserPreferences').mockRejectedValue(
-        new Error('Critical failure')
+        new Error('Critical failure'),
       );
 
-      await expect(service.transformPersonalContext(mockSettingsData)).rejects.toThrow(
-        'Critical transformation error'
-      );
+      await expect(
+        service.transformPersonalContext(mockSettingsData),
+      ).rejects.toThrow('Critical transformation error');
     });
   });
 
@@ -134,11 +149,15 @@ describe('TransformationService - Error Handling', () => {
         partialData: { name: 'Test Project' },
       };
 
-      vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(mockErrorResult);
-      vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(() => {});
+      vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(
+        mockErrorResult,
+      );
+      vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(
+        () => {},
+      );
 
       vi.spyOn(service as any, 'extractProjectInfo').mockRejectedValue(
-        new Error('Failed to extract project info')
+        new Error('Failed to extract project info'),
       );
 
       const result = await service.transformProjectContext(mockSettingsData);
@@ -150,7 +169,7 @@ describe('TransformationService - Error Handling', () => {
           category: 'project-context',
           operation: 'transforming project context',
           filePath: mockSettingsData.collectionMetadata.projectPath,
-        }
+        },
       );
 
       expect(result).toBeDefined();
@@ -168,16 +187,20 @@ describe('TransformationService - Error Handling', () => {
         isCritical: true,
       };
 
-      vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(mockErrorResult);
-      vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(() => {});
+      vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(
+        mockErrorResult,
+      );
+      vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(
+        () => {},
+      );
 
       vi.spyOn(service as any, 'extractProjectInfo').mockRejectedValue(
-        new Error('Critical project failure')
+        new Error('Critical project failure'),
       );
 
-      await expect(service.transformProjectContext(mockSettingsData)).rejects.toThrow(
-        'Critical project transformation error'
-      );
+      await expect(
+        service.transformProjectContext(mockSettingsData),
+      ).rejects.toThrow('Critical project transformation error');
     });
   });
 
@@ -189,7 +212,7 @@ describe('TransformationService - Error Handling', () => {
         errorDetails: 'Mock error details',
         suggestions: ['Fix the templates'],
         isCritical: false,
-        partialData: { 
+        partialData: {
           templates: [
             {
               id: 'partial-template',
@@ -198,16 +221,20 @@ describe('TransformationService - Error Handling', () => {
               category: 'general',
               variables: [],
               tags: [],
-            }
-          ]
+            },
+          ],
         },
       };
 
-      vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(mockErrorResult);
-      vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(() => {});
+      vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(
+        mockErrorResult,
+      );
+      vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(
+        () => {},
+      );
 
       vi.spyOn(service as any, 'extractPromptTemplates').mockRejectedValue(
-        new Error('Failed to extract prompt templates')
+        new Error('Failed to extract prompt templates'),
       );
 
       const result = await service.transformPromptTemplates(mockSettingsData);
@@ -219,7 +246,7 @@ describe('TransformationService - Error Handling', () => {
           category: 'prompt-templates',
           operation: 'transforming prompt templates',
           filePath: mockSettingsData.collectionMetadata.globalPath,
-        }
+        },
       );
 
       expect(result).toBeDefined();
@@ -237,11 +264,15 @@ describe('TransformationService - Error Handling', () => {
         isCritical: false,
       };
 
-      vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(mockErrorResult);
-      vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(() => {});
+      vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(
+        mockErrorResult,
+      );
+      vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(
+        () => {},
+      );
 
       vi.spyOn(service as any, 'extractPromptTemplates').mockRejectedValue(
-        new Error('Failed to extract prompt templates')
+        new Error('Failed to extract prompt templates'),
       );
 
       const result = await service.transformPromptTemplates(mockSettingsData);
@@ -265,10 +296,17 @@ describe('TransformationService - Error Handling', () => {
         isCritical: false,
       };
 
-      vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(mockErrorResult);
-      vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(() => {});
+      vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(
+        mockErrorResult,
+      );
+      vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(
+        () => {},
+      );
 
-      const result = (service as any).parseJsonWithErrorHandling(invalidJson, '/test/file.json');
+      const result = (service as any).parseJsonWithErrorHandling(
+        invalidJson,
+        '/test/file.json',
+      );
 
       expect(DataProcessingErrorHandler.handleError).toHaveBeenCalledWith(
         expect.any(Error),
@@ -277,7 +315,7 @@ describe('TransformationService - Error Handling', () => {
           operation: 'parsing JSON content',
           filePath: '/test/file.json',
           rawData: invalidJson,
-        }
+        },
       );
 
       expect(result).toEqual({});
@@ -294,8 +332,12 @@ describe('TransformationService - Error Handling', () => {
         partialData: { valid: 'data' },
       };
 
-      vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(mockErrorResult);
-      vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(() => {});
+      vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(
+        mockErrorResult,
+      );
+      vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(
+        () => {},
+      );
 
       const result = (service as any).parseJsonWithErrorHandling(invalidJson);
 
@@ -319,10 +361,17 @@ describe('TransformationService - Error Handling', () => {
         isCritical: false,
       };
 
-      vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(mockErrorResult);
-      vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(() => {});
+      vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(
+        mockErrorResult,
+      );
+      vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(
+        () => {},
+      );
 
-      const processor = (item: { valid?: boolean; value?: string; name?: string }, _index: number) => {
+      const processor = (
+        item: { valid?: boolean; value?: string; name?: string },
+        _index: number,
+      ) => {
         if (!item.valid) {
           throw new Error('Invalid item');
         }
@@ -332,7 +381,7 @@ describe('TransformationService - Error Handling', () => {
       const result = (service as any).processArrayWithErrorHandling(
         items,
         processor,
-        { operation: 'processing test items', category: 'test' }
+        { operation: 'processing test items', category: 'test' },
       );
 
       expect(result.results).toHaveLength(2);
@@ -346,15 +395,12 @@ describe('TransformationService - Error Handling', () => {
         {
           operation: 'processing test items (item 2)',
           category: 'test',
-        }
+        },
       );
     });
 
     it('should handle all items failing gracefully', () => {
-      const items = [
-        { invalid: 'data1' },
-        { invalid: 'data2' },
-      ];
+      const items = [{ invalid: 'data1' }, { invalid: 'data2' }];
 
       const mockErrorResult = {
         shouldContinue: true,
@@ -364,8 +410,12 @@ describe('TransformationService - Error Handling', () => {
         isCritical: false,
       };
 
-      vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(mockErrorResult);
-      vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(() => {});
+      vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(
+        mockErrorResult,
+      );
+      vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(
+        () => {},
+      );
 
       const processor = () => {
         throw new Error('All items fail');
@@ -374,7 +424,7 @@ describe('TransformationService - Error Handling', () => {
       const result = (service as any).processArrayWithErrorHandling(
         items,
         processor,
-        { operation: 'processing failing items' }
+        { operation: 'processing failing items' },
       );
 
       expect(result.results).toHaveLength(0);
@@ -395,8 +445,12 @@ describe('TransformationService - Error Handling', () => {
         partialData: { partialContent: 'Some content' },
       };
 
-      vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(mockErrorResult);
-      vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(() => {});
+      vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(
+        mockErrorResult,
+      );
+      vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(
+        () => {},
+      );
 
       // Mock the parsing to throw an error
       const originalSplit = String.prototype.split;
@@ -412,7 +466,7 @@ describe('TransformationService - Error Handling', () => {
         {
           operation: 'parsing Kiro preferences markdown',
           rawData: invalidMarkdown,
-        }
+        },
       );
 
       expect(result).toEqual({ partialContent: 'Some content' });
@@ -432,8 +486,12 @@ describe('TransformationService - Error Handling', () => {
         isCritical: false,
       };
 
-      vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(mockErrorResult);
-      vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(() => {});
+      vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(
+        mockErrorResult,
+      );
+      vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(
+        () => {},
+      );
 
       const result = (service as any).convertKiroPromptToTaptik(null, 0);
 
@@ -443,7 +501,7 @@ describe('TransformationService - Error Handling', () => {
         {
           operation: 'converting prompt 1',
           category: 'prompt-templates',
-        }
+        },
       );
 
       expect(result).toBeNull();
@@ -464,10 +522,17 @@ describe('TransformationService - Error Handling', () => {
         isCritical: false,
       };
 
-      vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(mockErrorResult);
-      vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(() => {});
+      vi.mocked(DataProcessingErrorHandler.handleError).mockReturnValue(
+        mockErrorResult,
+      );
+      vi.mocked(DataProcessingErrorHandler.logErrorResult).mockImplementation(
+        () => {},
+      );
 
-      const result = (service as any).convertKiroPromptToTaptik(promptWithoutContent, 0);
+      const result = (service as any).convertKiroPromptToTaptik(
+        promptWithoutContent,
+        0,
+      );
 
       expect(DataProcessingErrorHandler.handleError).toHaveBeenCalledWith(
         expect.any(Error),
@@ -475,7 +540,7 @@ describe('TransformationService - Error Handling', () => {
         {
           operation: 'processing template "Test Prompt"',
           category: 'prompt-templates',
-        }
+        },
       );
 
       expect(result).toBeNull();
@@ -515,27 +580,36 @@ describe('TransformationService - Error Handling', () => {
         ],
       };
 
-      vi.spyOn(service as any, 'processArrayWithErrorHandling').mockReturnValue(mockProcessingResult);
+      vi.spyOn(service as any, 'processArrayWithErrorHandling').mockReturnValue(
+        mockProcessingResult,
+      );
 
       const mockSummary = {
         successRate: 67,
-        summary: 'Processed 2/3 items successfully (67% success rate). 1 items failed.',
+        summary:
+          'Processed 2/3 items successfully (67% success rate). 1 items failed.',
         failedFiles: [],
         suggestions: ['Add content field'],
       };
 
-      vi.mocked(DataProcessingErrorHandler.createPartialSuccessSummary).mockReturnValue(mockSummary);
+      vi.mocked(
+        DataProcessingErrorHandler.createPartialSuccessSummary,
+      ).mockReturnValue(mockSummary);
 
-      const result = await (service as any).extractPromptTemplates(settingsWithPrompts);
+      const result = await (service as any).extractPromptTemplates(
+        settingsWithPrompts,
+      );
 
-      expect(DataProcessingErrorHandler.createPartialSuccessSummary).toHaveBeenCalledWith(
+      expect(
+        DataProcessingErrorHandler.createPartialSuccessSummary,
+      ).toHaveBeenCalledWith(
         3, // total items
         2, // successful items
-        mockProcessingResult.errors
+        mockProcessingResult.errors,
       );
 
       expect(mockLogger.warn).toHaveBeenCalledWith(
-        'Prompt conversion summary: Processed 2/3 items successfully (67% success rate). 1 items failed.'
+        'Prompt conversion summary: Processed 2/3 items successfully (67% success rate). 1 items failed.',
       );
 
       expect(result).toHaveLength(2);

@@ -1,6 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { TaptikContext, ProjectContext, PromptsContext, ToolsContext } from '../../context/interfaces/taptik-context.interface';
+import {
+  TaptikContext,
+  ProjectContext,
+  PromptsContext,
+  ToolsContext,
+} from '../../context/interfaces/taptik-context.interface';
 import {
   KiroGlobalSettings,
   KiroProjectSettings,
@@ -10,7 +15,7 @@ import {
   KiroTemplateConfiguration,
   KiroHookConfiguration,
   KiroDeploymentContext,
-  KiroConfigurationPaths
+  KiroConfigurationPaths,
 } from '../interfaces/kiro-deployment.interface';
 
 @Injectable()
@@ -36,7 +41,7 @@ export class KiroTransformerService {
           experience_years: personal.profile?.experience_years,
           primary_role: personal.profile?.primary_role,
           secondary_roles: personal.profile?.secondary_roles,
-          domain_knowledge: personal.profile?.domain_knowledge
+          domain_knowledge: personal.profile?.domain_knowledge,
         },
         preferences: {
           theme: personal.preferences?.theme,
@@ -45,36 +50,42 @@ export class KiroTransformerService {
           naming_convention: personal.preferences?.naming_convention,
           comment_style: personal.preferences?.comment_style,
           error_handling: personal.preferences?.error_handling,
-          testing_approach: personal.preferences?.testing_approach
+          testing_approach: personal.preferences?.testing_approach,
         },
         communication: {
           explanation_level: personal.communication?.explanation_level,
           code_review_tone: personal.communication?.code_review_tone,
-          preferred_language: personal.communication?.preferred_language
+          preferred_language: personal.communication?.preferred_language,
         },
         tech_stack: {
           languages: personal.tech_stack?.languages,
           frameworks: personal.tech_stack?.frameworks,
           databases: personal.tech_stack?.databases,
-          cloud: personal.tech_stack?.cloud
-        }
+          cloud: personal.tech_stack?.cloud,
+        },
       },
       ide: {
-        default_project_template: ide.settings['default_project_template'] as string,
+        default_project_template: ide.settings[
+          'default_project_template'
+        ] as string,
         auto_save: ide.settings['auto_save'] as boolean,
         backup_frequency: ide.settings['backup_frequency'] as string,
-      }
+      },
     };
 
     // Transform agents if available
     if (tools.agents && Array.isArray(tools.agents)) {
-      globalSettings.agents = tools.agents.map(agent => this.transformAgent(agent));
+      globalSettings.agents = tools.agents.map((agent) =>
+        this.transformAgent(agent),
+      );
     }
 
     // Transform templates from prompts context
     const prompts = context.content.prompts || {};
     if (prompts.templates && Array.isArray(prompts.templates)) {
-      globalSettings.templates = prompts.templates.map(template => this.transformTemplate(template));
+      globalSettings.templates = prompts.templates.map((template) =>
+        this.transformTemplate(template),
+      );
     }
 
     this.logger.debug('Personal context transformation completed');
@@ -103,13 +114,13 @@ export class KiroTransformerService {
           name: project.info?.name || project.name,
           type: project.info?.type,
           domain: project.info?.domain,
-          team_size: project.info?.team_size
+          team_size: project.info?.team_size,
         },
         architecture: {
           pattern: project.architecture?.pattern,
           database_pattern: project.architecture?.database_pattern,
           api_style: project.architecture?.api_style,
-          auth_method: project.architecture?.auth_method
+          auth_method: project.architecture?.auth_method,
         },
         tech_stack: {
           runtime: project.tech_stack?.runtime,
@@ -118,24 +129,28 @@ export class KiroTransformerService {
           database: project.tech_stack?.database,
           orm: project.tech_stack?.orm,
           testing: project.tech_stack?.testing,
-          deployment: project.tech_stack?.deployment
+          deployment: project.tech_stack?.deployment,
         },
         conventions: {
           file_naming: project.conventions?.file_naming,
           folder_structure: project.conventions?.folder_structure,
           commit_convention: project.conventions?.commit_convention,
-          branch_strategy: project.conventions?.branch_strategy
+          branch_strategy: project.conventions?.branch_strategy,
         },
         constraints: {
-          performance_requirements: project.constraints?.performance_requirements,
+          performance_requirements:
+            project.constraints?.performance_requirements,
           security_level: project.constraints?.security_level,
-          compliance: project.constraints?.compliance
-        }
-      }
+          compliance: project.constraints?.compliance,
+        },
+      },
     };
 
     // Transform steering documents from project context
-    const steeringDocuments = this.transformSteeringDocuments(project, context.metadata.exportedAt);
+    const steeringDocuments = this.transformSteeringDocuments(
+      project,
+      context.metadata.exportedAt,
+    );
 
     // Transform specs from IDE-specific context
     const specs = this.transformSpecs(ide, context.metadata.exportedAt);
@@ -145,10 +160,12 @@ export class KiroTransformerService {
 
     // Set references in project settings
     if (steeringDocuments.length > 0) {
-      projectSettings.steering_documents = steeringDocuments.map(doc => doc.name);
+      projectSettings.steering_documents = steeringDocuments.map(
+        (doc) => doc.name,
+      );
     }
     if (specs.length > 0) {
-      projectSettings.specs = specs.map(spec => spec.name);
+      projectSettings.specs = specs.map((spec) => spec.name);
     }
     if (hooks.length > 0) {
       projectSettings.hooks = hooks;
@@ -159,14 +176,16 @@ export class KiroTransformerService {
       settings: projectSettings,
       steering: steeringDocuments,
       specs,
-      hooks
+      hooks,
     };
   }
 
   /**
    * Transform TaptikContext prompts to Kiro templates
    */
-  transformPromptTemplates(prompts: PromptsContext): KiroTemplateConfiguration[] {
+  transformPromptTemplates(
+    prompts: PromptsContext,
+  ): KiroTemplateConfiguration[] {
     this.logger.debug('Transforming prompt templates to Kiro templates');
 
     const templates: KiroTemplateConfiguration[] = [];
@@ -184,15 +203,15 @@ export class KiroTransformerService {
           tags: prompt.tags || [],
           metadata: {
             version: '1.0.0',
-            created_at: new Date().toISOString()
-          }
+            created_at: new Date().toISOString(),
+          },
         });
       });
     }
 
     // Transform prompt templates
     if (prompts.templates && Array.isArray(prompts.templates)) {
-      prompts.templates.forEach(template => {
+      prompts.templates.forEach((template) => {
         templates.push(this.transformTemplate(template));
       });
     }
@@ -210,8 +229,8 @@ export class KiroTransformerService {
           tags: ['example'],
           metadata: {
             version: '1.0.0',
-            created_at: new Date().toISOString()
-          }
+            created_at: new Date().toISOString(),
+          },
         });
       });
     }
@@ -223,7 +242,10 @@ export class KiroTransformerService {
   /**
    * Create Kiro deployment context with configuration paths
    */
-  createDeploymentContext(homeDirectory: string, projectDirectory: string): KiroDeploymentContext {
+  createDeploymentContext(
+    homeDirectory: string,
+    projectDirectory: string,
+  ): KiroDeploymentContext {
     const paths: KiroConfigurationPaths = {
       globalSettings: `${homeDirectory}/.kiro/settings.json`,
       projectSettings: `${projectDirectory}/.kiro/settings.json`,
@@ -231,20 +253,23 @@ export class KiroTransformerService {
       specsDirectory: `${projectDirectory}/.kiro/specs`,
       hooksDirectory: `${projectDirectory}/.kiro/hooks`,
       agentsDirectory: `${homeDirectory}/.kiro/agents`,
-      templatesDirectory: `${homeDirectory}/.kiro/templates`
+      templatesDirectory: `${homeDirectory}/.kiro/templates`,
     };
 
     return {
       homeDirectory,
       projectDirectory,
-      paths
+      paths,
     };
   }
 
   /**
    * Validate transformation results
    */
-  validateTransformation(globalSettings: KiroGlobalSettings, projectSettings: KiroProjectSettings): {
+  validateTransformation(
+    globalSettings: KiroGlobalSettings,
+    projectSettings: KiroProjectSettings,
+  ): {
     isValid: boolean;
     errors: string[];
     warnings: string[];
@@ -271,49 +296,74 @@ export class KiroTransformerService {
     return {
       isValid: errors.length === 0,
       errors,
-      warnings
+      warnings,
     };
   }
 
-  private transformAgent(agent: any): KiroAgentConfiguration { // eslint-disable-line @typescript-eslint/no-explicit-any
+  private transformAgent(agent: Record<string, unknown>): KiroAgentConfiguration {
+     
+    const agentName = typeof agent.name === 'string' ? agent.name : 'Unnamed Agent';
+    const agentDescription = typeof agent.description === 'string' ? agent.description : 
+      (typeof agent.content === 'string' ? agent.content.substring(0, 100) : 'No description');
+    const agentMetadata = agent.metadata && typeof agent.metadata === 'object' && agent.metadata !== null ? agent.metadata as Record<string, unknown> : {};
+    const agentContent = typeof agent.content === 'string' ? agent.content : '';
+    const agentCapabilities = Array.isArray(agent.capabilities) ? agent.capabilities as string[] : [];
+    const agentConstraints = Array.isArray(agent.constraints) ? agent.constraints as string[] : [];
+    const agentExamples = Array.isArray(agent.examples) ? agent.examples : [];
+    
     return {
-      name: agent.name || 'Unnamed Agent',
-      description: agent.description || agent.content?.substring(0, 100) || 'No description',
-      category: agent.metadata?.category || 'general',
-      prompt: agent.content || '',
-      capabilities: agent.capabilities || [],
-      constraints: agent.constraints || [],
-      examples: agent.examples || [],
+      name: agentName,
+      description: agentDescription,
+      category: typeof agentMetadata.category === 'string' ? agentMetadata.category : 'general',
+      prompt: agentContent,
+      capabilities: agentCapabilities,
+      constraints: agentConstraints,
+      examples: agentExamples,
       metadata: {
-        author: agent.metadata?.author,
-        version: agent.metadata?.version || '1.0.0',
-        created_at: agent.metadata?.created_at || new Date().toISOString(),
-        updated_at: agent.metadata?.updated_at
-      }
+        author: typeof agentMetadata.author === 'string' ? agentMetadata.author : undefined,
+        version: typeof agentMetadata.version === 'string' ? agentMetadata.version : '1.0.0',
+        created_at: typeof agentMetadata.created_at === 'string' ? agentMetadata.created_at : new Date().toISOString(),
+        updated_at: typeof agentMetadata.updated_at === 'string' ? agentMetadata.updated_at : undefined,
+      },
     };
   }
 
-  private transformTemplate(template: any): KiroTemplateConfiguration { // eslint-disable-line @typescript-eslint/no-explicit-any
+  private transformTemplate(template: Record<string, unknown>): KiroTemplateConfiguration {
+     
+    const templateContent = typeof template.template === 'string' ? template.template : 
+      (typeof template.content === 'string' ? template.content : '');
+    const templateName = typeof template.name === 'string' ? template.name : 'Unnamed Template';
+    const templateId = typeof template.id === 'string' ? template.id : `template-${Date.now()}`;
+    const templateDescription = typeof template.description === 'string' ? template.description : `Template: ${templateName}`;
+    const templateCategory = typeof template.category === 'string' ? template.category : 'general';
+    const templateTags = Array.isArray(template.tags) ? template.tags as string[] : [];
+    const templateVersion = typeof template.version === 'string' ? template.version : '1.0.0';
+    const templateCreatedAt = typeof template.created_at === 'string' ? template.created_at : new Date().toISOString();
+    const templateUpdatedAt = typeof template.updated_at === 'string' ? template.updated_at : undefined;
+    
     // Extract variables from template content
-    const variables = this.extractVariables(template.template || template.content || '');
+    const variables = this.extractVariables(templateContent);
 
     return {
-      id: template.id || `template-${Date.now()}`,
-      name: template.name,
-      description: template.description || `Template: ${template.name}`,
-      category: template.category || 'general',
-      content: template.template || template.content || '',
+      id: templateId,
+      name: templateName,
+      description: templateDescription,
+      category: templateCategory,
+      content: templateContent,
       variables,
-      tags: template.tags || [],
+      tags: templateTags,
       metadata: {
-        version: template.version || '1.0.0',
-        created_at: template.created_at || new Date().toISOString(),
-        updated_at: template.updated_at
-      }
+        version: templateVersion,
+        created_at: templateCreatedAt,
+        updated_at: templateUpdatedAt,
+      },
     };
   }
 
-  private transformSteeringDocuments(project: ProjectContext, createdAt: string): KiroSteeringDocument[] {
+  private transformSteeringDocuments(
+    project: ProjectContext,
+    createdAt: string,
+  ): KiroSteeringDocument[] {
     const documents: KiroSteeringDocument[] = [];
 
     // Create steering document from project description
@@ -324,7 +374,7 @@ export class KiroTransformerService {
         content: project.description,
         tags: ['project', 'overview'],
         priority: 'high',
-        created_at: createdAt
+        created_at: createdAt,
       });
     }
 
@@ -336,7 +386,7 @@ export class KiroTransformerService {
         content: project.claudeMd,
         tags: ['claude', 'instructions'],
         priority: 'high',
-        created_at: createdAt
+        created_at: createdAt,
       });
     }
 
@@ -350,7 +400,7 @@ export class KiroTransformerService {
             content: value,
             tags: ['custom', key],
             priority: 'medium',
-            created_at: createdAt
+            created_at: createdAt,
           });
         }
       });
@@ -359,7 +409,11 @@ export class KiroTransformerService {
     return documents;
   }
 
-  private transformSpecs(ideContext: any, createdAt: string): KiroSpecDocument[] { // eslint-disable-line @typescript-eslint/no-explicit-any
+  private transformSpecs(
+    ideContext: Record<string, unknown>,
+    createdAt: string,
+  ): KiroSpecDocument[] {
+     
     const specs: KiroSpecDocument[] = [];
 
     // Transform specs from IDE context if available
@@ -371,7 +425,7 @@ export class KiroTransformerService {
             type: 'feature',
             status: 'active',
             content: value,
-            created_at: createdAt
+            created_at: createdAt,
           });
         }
       });
@@ -385,14 +439,14 @@ export class KiroTransformerService {
 
     // Transform custom tools as hooks
     if (tools.custom_tools && Array.isArray(tools.custom_tools)) {
-      tools.custom_tools.forEach(tool => {
+      tools.custom_tools.forEach((tool) => {
         hooks.push({
           name: tool.name,
           type: 'custom',
           trigger: 'manual',
           command: tool.command,
           enabled: true,
-          description: tool.description
+          description: tool.description,
         });
       });
     }
@@ -400,19 +454,20 @@ export class KiroTransformerService {
     return hooks;
   }
 
-  private extractVariables(content: string): any[] { // eslint-disable-line @typescript-eslint/no-explicit-any
+  private extractVariables(content: string): Array<{ name: string; type: 'string' | 'number' | 'boolean' | 'array' | 'object'; description: string; required: boolean }> {
+     
     const variableRegex = /{{(\w+)}}/g;
-    const variables: any[] = []; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const variables: Array<{ name: string; type: 'string' | 'number' | 'boolean' | 'array' | 'object'; description: string; required: boolean }> = [];
     let match;
 
     while ((match = variableRegex.exec(content)) !== null) {
       const variableName = match[1];
-      if (!variables.some(v => v.name === variableName)) {
+      if (!variables.some((v) => v.name === variableName)) {
         variables.push({
           name: variableName,
           type: 'string',
           description: `Variable: ${variableName}`,
-          required: true
+          required: true,
         });
       }
     }

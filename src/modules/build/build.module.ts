@@ -12,7 +12,23 @@ import { TransformationService } from './services/transformation/transformation.
 
 @Module({
   imports: [ContextModule],
-  providers: [BuildCommand, InteractiveService, CollectionService, TransformationService, OutputService, ProgressService, ErrorHandlerService],
-  exports: [BuildCommand, InteractiveService, CollectionService, TransformationService, OutputService, ProgressService, ErrorHandlerService],
+  providers: [
+    BuildCommand,
+    InteractiveService,
+    CollectionService,
+    TransformationService,
+    OutputService,
+    ProgressService,
+    ErrorHandlerService,
+  ],
+  exports: [
+    BuildCommand,
+    InteractiveService,
+    CollectionService,
+    TransformationService,
+    OutputService,
+    ProgressService,
+    ErrorHandlerService,
+  ],
 })
 export class BuildModule {}

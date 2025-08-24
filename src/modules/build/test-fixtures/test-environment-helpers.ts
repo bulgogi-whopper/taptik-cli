@@ -9,10 +9,10 @@ import { join, resolve } from 'node:path';
 
 import { AdvancedMockFileSystem } from './advanced-error-scenarios';
 import { MockFileSystem } from './mock-file-system';
-import { 
-  webAppProjectScenario, 
-  apiServiceProjectScenario, 
-  cliToolProjectScenario
+import {
+  webAppProjectScenario,
+  apiServiceProjectScenario,
+  cliToolProjectScenario,
 } from './realistic-project-scenarios';
 import {
   webAppPersonalContextOutput,
@@ -20,7 +20,7 @@ import {
   webAppProjectContextOutput,
   apiServiceProjectContextOutput,
   comprehensivePromptTemplatesOutput,
-  sampleManifestOutput
+  sampleManifestOutput,
 } from './taptik-output-fixtures';
 
 /**
@@ -183,21 +183,28 @@ export class TestDataGenerator {
   /**
    * Generate mock Kiro project structure
    */
-  static generateKiroProjectStructure(scenario: 'web-app' | 'api' | 'cli' | 'minimal'): {
+  static generateKiroProjectStructure(
+    scenario: 'web-app' | 'api' | 'cli' | 'minimal',
+  ): {
     files: Record<string, string>;
     directories: string[];
   } {
     const scenarios = {
       'web-app': webAppProjectScenario,
-      'api': apiServiceProjectScenario,
-      'cli': cliToolProjectScenario,
+      api: apiServiceProjectScenario,
+      cli: cliToolProjectScenario,
     } as const;
 
     type ScenarioKey = keyof typeof scenarios;
     if (scenario === 'minimal') {
       // Return minimal structure for minimal scenario
       const files: Record<string, string> = {};
-      const directories: string[] = ['.kiro', '.kiro/settings', '.kiro/steering', '.kiro/hooks'];
+      const directories: string[] = [
+        '.kiro',
+        '.kiro/settings',
+        '.kiro/steering',
+        '.kiro/hooks',
+      ];
       files['.kiro/settings/context.md'] = '';
       files['.kiro/settings/user-preferences.md'] = '';
       files['.kiro/settings/project-spec.md'] = '';
@@ -206,22 +213,34 @@ export class TestDataGenerator {
 
     const selectedScenario = scenarios[scenario as ScenarioKey];
     const files: Record<string, string> = {};
-    const directories: string[] = ['.kiro', '.kiro/settings', '.kiro/steering', '.kiro/hooks'];
+    const directories: string[] = [
+      '.kiro',
+      '.kiro/settings',
+      '.kiro/steering',
+      '.kiro/hooks',
+    ];
 
     // Add settings files
-    files['.kiro/settings/context.md'] = selectedScenario.localSettings.context || '';
-    files['.kiro/settings/user-preferences.md'] = selectedScenario.localSettings.userPreferences || '';
-    files['.kiro/settings/project-spec.md'] = selectedScenario.localSettings.projectSpec || '';
+    files['.kiro/settings/context.md'] =
+      selectedScenario.localSettings.context || '';
+    files['.kiro/settings/user-preferences.md'] =
+      selectedScenario.localSettings.userPreferences || '';
+    files['.kiro/settings/project-spec.md'] =
+      selectedScenario.localSettings.projectSpec || '';
 
     // Add steering files
-    selectedScenario.steeringFiles?.forEach((file: { path: string; content: string }) => {
-      files[file.path] = file.content;
-    });
+    selectedScenario.steeringFiles?.forEach(
+      (file: { path: string; content: string }) => {
+        files[file.path] = file.content;
+      },
+    );
 
     // Add hook files
-    selectedScenario.hookFiles?.forEach((file: { path: string; content: string }) => {
-      files[file.path] = file.content;
-    });
+    selectedScenario.hookFiles?.forEach(
+      (file: { path: string; content: string }) => {
+        files[file.path] = file.content;
+      },
+    );
 
     return { files, directories };
   }
@@ -229,7 +248,9 @@ export class TestDataGenerator {
   /**
    * Generate expected taptik outputs for validation
    */
-  static generateExpectedTaptikOutputs(scenario: 'web-app' | 'api' | 'comprehensive') {
+  static generateExpectedTaptikOutputs(
+    scenario: 'web-app' | 'api' | 'comprehensive',
+  ) {
     const outputs = {
       'web-app': {
         personalContext: webAppPersonalContextOutput,
@@ -237,13 +258,13 @@ export class TestDataGenerator {
         promptTemplates: comprehensivePromptTemplatesOutput,
         manifest: sampleManifestOutput,
       },
-      'api': {
+      api: {
         personalContext: apiServicePersonalContextOutput,
         projectContext: apiServiceProjectContextOutput,
         promptTemplates: comprehensivePromptTemplatesOutput,
         manifest: sampleManifestOutput,
       },
-      'comprehensive': {
+      comprehensive: {
         personalContext: webAppPersonalContextOutput,
         projectContext: webAppProjectContextOutput,
         promptTemplates: comprehensivePromptTemplatesOutput,
@@ -269,7 +290,7 @@ export class TestDataGenerator {
     // Generate directory structure
     const generateDirectories = (prefix: string, depth: number) => {
       if (depth === 0) return;
-      
+
       const dirCount = Math.floor(fileCount / Math.pow(10, depth));
       for (let i = 0; i < dirCount; i++) {
         const dirPath = `${prefix}/dir-${depth}-${i}`;
@@ -286,9 +307,9 @@ export class TestDataGenerator {
       const directory = directories[dirIndex] || '/large-dataset';
       const fileName = `file-${i}.txt`;
       const filePath = `${directory}/${fileName}`;
-      
+
       // Generate content of approximately avgFileSize
-      const content = `${'x'.repeat(avgFileSize - 50)  }\n// File ${i}\n// Generated content`;
+      const content = `${'x'.repeat(avgFileSize - 50)}\n// File ${i}\n// Generated content`;
       files[filePath] = content;
     }
 
@@ -305,7 +326,9 @@ export class TestEnvironmentManager {
   private tempDirectories: string[] = [];
   private cleanupHandlers: (() => Promise<void>)[] = [];
 
-  constructor(environment: keyof typeof TEST_ENVIRONMENTS | TestEnvironmentConfig) {
+  constructor(
+    environment: keyof typeof TEST_ENVIRONMENTS | TestEnvironmentConfig,
+  ) {
     if (typeof environment === 'string') {
       this.config = TEST_ENVIRONMENTS[environment];
       if (!this.config) {
@@ -324,7 +347,10 @@ export class TestEnvironmentManager {
       this.startMetrics();
     }
 
-    if (this.config.filesystem.useRealFS && this.config.filesystem.tempDirectory) {
+    if (
+      this.config.filesystem.useRealFS &&
+      this.config.filesystem.tempDirectory
+    ) {
       await this.setupTempDirectory();
     }
 
@@ -369,7 +395,9 @@ export class TestEnvironmentManager {
   /**
    * Create isolated test filesystem
    */
-  async createTestFileSystem(scenario: string): Promise<MockFileSystem | AdvancedMockFileSystem> {
+  async createTestFileSystem(
+    scenario: string,
+  ): Promise<MockFileSystem | AdvancedMockFileSystem> {
     if (scenario === 'advanced-errors') {
       return new AdvancedMockFileSystem({
         files: {},
@@ -378,7 +406,7 @@ export class TestEnvironmentManager {
     }
 
     const projectData = TestDataGenerator.generateKiroProjectStructure(
-      scenario as 'web-app' | 'api' | 'cli' | 'minimal'
+      scenario as 'web-app' | 'api' | 'cli' | 'minimal',
     );
 
     if (scenario.includes('error') || scenario.includes('performance')) {
@@ -398,10 +426,10 @@ export class TestEnvironmentManager {
 
     const baseDir = this.config.filesystem.tempDirectory || tmpdir();
     const testDir = join(baseDir, TestDataGenerator.generateTestId());
-    
+
     await fs.mkdir(testDir, { recursive: true });
     this.tempDirectories.push(testDir);
-    
+
     return testDir;
   }
 
@@ -424,7 +452,8 @@ export class TestEnvironmentManager {
    */
   recordOperation(operation: string): void {
     if (this.metrics) {
-      this.metrics.operationCounts[operation] = (this.metrics.operationCounts[operation] || 0) + 1;
+      this.metrics.operationCounts[operation] =
+        (this.metrics.operationCounts[operation] || 0) + 1;
     }
   }
 
@@ -475,7 +504,7 @@ export class TestAssertions {
    */
   static async assertPerformance<T>(
     operation: () => Promise<T>,
-    maxTimeMs: number
+    maxTimeMs: number,
   ): Promise<{ success: boolean; actualTime: number; result?: T }> {
     const start = Date.now();
     try {
@@ -498,35 +527,61 @@ export class TestAssertions {
   static assertErrorStructure(
     error: unknown,
     expectedCode?: string,
-    expectedMessage?: string
+    expectedMessage?: string,
   ): boolean {
     if (!(error instanceof Error)) return false;
-    if (expectedCode && 'code' in error && (error as { code: string }).code !== expectedCode) return false;
-    if (expectedMessage && !error.message.includes(expectedMessage)) return false;
+    if (
+      expectedCode &&
+      'code' in error &&
+      (error as { code: string }).code !== expectedCode
+    )
+      return false;
+    if (expectedMessage && !error.message.includes(expectedMessage))
+      return false;
     return true;
   }
 
   /**
    * Assert that taptik output matches schema
    */
-  static assertTaptikOutput(output: unknown, type: 'personal' | 'project' | 'prompts' | 'manifest'): boolean {
+  static assertTaptikOutput(
+    output: unknown,
+    type: 'personal' | 'project' | 'prompts' | 'manifest',
+  ): boolean {
     if (!output || typeof output !== 'object') return false;
     const obj = output as Record<string, unknown>;
 
-    const commonFields = ['taptik_version', 'context_type', 'created_at', 'source_platform'];
+    const commonFields = [
+      'taptik_version',
+      'context_type',
+      'created_at',
+      'source_platform',
+    ];
     for (const field of commonFields) {
       if (type !== 'manifest' && !obj[field]) return false;
     }
 
     switch (type) {
       case 'personal':
-        return !!(obj.user_info && obj.development_environment && obj.workflow_preferences);
+        return !!(
+          obj.user_info &&
+          obj.development_environment &&
+          obj.workflow_preferences
+        );
       case 'project':
-        return !!(obj.project_info && obj.technical_stack && obj.development_guidelines);
+        return !!(
+          obj.project_info &&
+          obj.technical_stack &&
+          obj.development_guidelines
+        );
       case 'prompts':
         return !!(Array.isArray(obj.templates) && obj.metadata);
       case 'manifest':
-        return !!(obj.build_id && Array.isArray(obj.categories) && Array.isArray(obj.source_files));
+        return !!(
+          obj.build_id &&
+          Array.isArray(obj.categories) &&
+          Array.isArray(obj.source_files)
+        );
       default:
         return false;
     }
@@ -552,10 +607,10 @@ export class TestSuiteUtils {
   static async runWithTimeout<T>(
     operation: () => Promise<T>,
     timeoutMs: number,
-    cleanup?: () => Promise<void>
+    cleanup?: () => Promise<void>,
   ): Promise<T> {
     let timeoutHandle: NodeJS.Timeout | undefined;
-    
+
     const timeoutPromise = new Promise<never>((_, reject) => {
       timeoutHandle = setTimeout(() => {
         reject(new Error(`Operation timed out after ${timeoutMs}ms`));
@@ -590,10 +645,10 @@ export class TestSuiteUtils {
   static async retry<T>(
     operation: () => Promise<T>,
     maxAttempts = 3,
-    baseDelayMs = 100
+    baseDelayMs = 100,
   ): Promise<{ result: T; attempts: number }> {
     let lastError: Error;
-    
+
     // Sequential retry is intentional for exponential backoff strategy
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -602,15 +657,15 @@ export class TestSuiteUtils {
         return { result, attempts: attempt };
       } catch (error) {
         lastError = error as Error;
-        
+
         if (attempt < maxAttempts) {
           const delay = baseDelayMs * Math.pow(2, attempt - 1);
           // eslint-disable-next-line no-await-in-loop
-          await new Promise(resolve => setTimeout(resolve, delay));
+          await new Promise((resolve) => setTimeout(resolve, delay));
         }
       }
     }
-    
+
     throw lastError!;
   }
 
@@ -619,33 +674,33 @@ export class TestSuiteUtils {
    */
   static async runParallel<T>(
     operations: (() => Promise<T>)[],
-    concurrency = 5
+    concurrency = 5,
   ): Promise<{ successes: T[]; failures: Error[]; totalTime: number }> {
     const startTime = Date.now();
     const successes: T[] = [];
     const failures: Error[] = [];
-    
+
     const semaphore = new Array(concurrency).fill(null);
     const pending = [...operations];
-    
+
     const runNext = async (): Promise<void> => {
       const operation = pending.shift();
       if (!operation) return;
-      
+
       try {
         const result = await operation();
         successes.push(result);
       } catch (error) {
         failures.push(error as Error);
       }
-      
+
       if (pending.length > 0) {
         await runNext();
       }
     };
-    
+
     await Promise.all(semaphore.map(() => runNext()));
-    
+
     return {
       successes,
       failures,
@@ -656,7 +711,10 @@ export class TestSuiteUtils {
   /**
    * Generate test report
    */
-  static generateTestReport(metrics: PerformanceMetrics, assertions: Record<string, boolean>): {
+  static generateTestReport(
+    metrics: PerformanceMetrics,
+    assertions: Record<string, boolean>,
+  ): {
     summary: string;
     performance: string;
     assertions: string;
@@ -664,33 +722,43 @@ export class TestSuiteUtils {
   } {
     const totalAssertions = Object.keys(assertions).length;
     const passedAssertions = Object.values(assertions).filter(Boolean).length;
-    const assertionRate = totalAssertions > 0 ? (passedAssertions / totalAssertions) * 100 : 0;
-    
+    const assertionRate =
+      totalAssertions > 0 ? (passedAssertions / totalAssertions) * 100 : 0;
+
     const summary = `Test completed in ${metrics.duration}ms with ${passedAssertions}/${totalAssertions} assertions passed (${assertionRate.toFixed(1)}%)`;
-    
+
     const performance = `Memory: ${(metrics.memoryUsage.heapUsed / 1024 / 1024).toFixed(2)}MB, Operations: ${Object.values(metrics.operationCounts).reduce((a, b) => a + b, 0)}, Errors: ${metrics.errors.length}`;
-    
+
     const failedAssertions = Object.entries(assertions)
       .filter(([, passed]) => !passed)
       .map(([name]) => name);
-    const assertionDetails = failedAssertions.length > 0 
-      ? `Failed: ${failedAssertions.join(', ')}`
-      : 'All assertions passed';
-    
+    const assertionDetails =
+      failedAssertions.length > 0
+        ? `Failed: ${failedAssertions.join(', ')}`
+        : 'All assertions passed';
+
     const recommendations: string[] = [];
     if (metrics.duration && metrics.duration > 5000) {
-      recommendations.push('Consider optimizing performance - test took longer than 5 seconds');
+      recommendations.push(
+        'Consider optimizing performance - test took longer than 5 seconds',
+      );
     }
     if (metrics.memoryUsage.heapUsed > 100 * 1024 * 1024) {
-      recommendations.push('High memory usage detected - check for memory leaks');
+      recommendations.push(
+        'High memory usage detected - check for memory leaks',
+      );
     }
     if (metrics.errors.length > 0) {
-      recommendations.push(`${metrics.errors.length} errors occurred - review error handling`);
+      recommendations.push(
+        `${metrics.errors.length} errors occurred - review error handling`,
+      );
     }
     if (assertionRate < 90) {
-      recommendations.push('Low assertion pass rate - review test expectations');
+      recommendations.push(
+        'Low assertion pass rate - review test expectations',
+      );
     }
-    
+
     return {
       summary,
       performance,

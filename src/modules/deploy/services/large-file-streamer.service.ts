@@ -50,12 +50,15 @@ export interface ProgressTracker {
   reset(): void;
 }
 
-type ChunkProcessor<T = unknown> = (chunk: unknown, chunkIndex: number) => Promise<T>;
+type ChunkProcessor<T = unknown> = (
+  chunk: unknown,
+  chunkIndex: number,
+) => Promise<T>;
 
 @Injectable()
 export class LargeFileStreamerService implements OnModuleDestroy {
   private readonly logger = new Logger(LargeFileStreamerService.name);
-  
+
   // Configuration constants
   private readonly DEFAULT_CHUNK_SIZE = 2 * 1024 * 1024; // 2MB
   private readonly LARGE_FILE_THRESHOLD = 10 * 1024 * 1024; // 10MB
@@ -74,7 +77,9 @@ export class LargeFileStreamerService implements OnModuleDestroy {
       const stats = await fs.stat(filePath);
       return stats.isFile() && stats.size > this.LARGE_FILE_THRESHOLD;
     } catch (error) {
-      this.logger.warn(`Could not check file size for ${filePath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      this.logger.warn(
+        `Could not check file size for ${filePath}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
       return false;
     }
   }
@@ -89,7 +94,8 @@ export class LargeFileStreamerService implements OnModuleDestroy {
   ): Promise<StreamProcessingResult> {
     const startTime = Date.now();
     const chunkSize = options.chunkSize || this.DEFAULT_CHUNK_SIZE;
-    const memoryThreshold = options.memoryThreshold || this.DEFAULT_MEMORY_THRESHOLD;
+    const memoryThreshold =
+      options.memoryThreshold || this.DEFAULT_MEMORY_THRESHOLD;
 
     let chunksProcessed = 0;
     let totalSize = 0;
@@ -100,24 +106,27 @@ export class LargeFileStreamerService implements OnModuleDestroy {
       const serialized = JSON.stringify(configuration);
       totalSize = Buffer.byteLength(serialized, 'utf8');
 
-      this.logger.debug(`Processing configuration of size: ${Math.round(totalSize / 1024 / 1024)}MB`);
+      this.logger.debug(
+        `Processing configuration of size: ${Math.round(totalSize / 1024 / 1024)}MB`,
+      );
 
       // Create chunks
       const chunks = this.createChunks(serialized, chunkSize);
       const totalChunks = chunks.length;
 
       // Setup progress tracking
-      const progressTracker = options.onProgress ? 
-        this.createProgressTracker(totalChunks, options.onProgress) : null;
+      const progressTracker = options.onProgress
+        ? this.createProgressTracker(totalChunks, options.onProgress)
+        : null;
 
       // Process chunks
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
-        
+
         try {
           // Parse chunk back to object
           const chunkData = JSON.parse(chunk);
-          
+
           // Process chunk
           await chunkProcessor(chunkData, i); // eslint-disable-line no-await-in-loop
           chunksProcessed++;
@@ -132,8 +141,12 @@ export class LargeFileStreamerService implements OnModuleDestroy {
           memoryUsagePeak = Math.max(memoryUsagePeak, currentMemory);
 
           // Optimize memory if threshold exceeded
-          if (options.enableGarbageCollection && currentMemory > memoryThreshold) {
+          if (
+            options.enableGarbageCollection &&
+            currentMemory > memoryThreshold
+          ) {
             await this.optimizeMemoryUsage({ // eslint-disable-line no-await-in-loop
+               
               memoryThreshold,
               enableGarbageCollection: true,
               clearCaches: true,
@@ -141,9 +154,10 @@ export class LargeFileStreamerService implements OnModuleDestroy {
           }
 
           this.logger.debug(`Processed chunk ${i + 1}/${totalChunks}`);
-
         } catch (chunkError) {
-          this.logger.error(`Failed to process chunk ${i}: ${chunkError instanceof Error ? chunkError.message : 'Unknown error'}`);
+          this.logger.error(
+            `Failed to process chunk ${i}: ${chunkError instanceof Error ? chunkError.message : 'Unknown error'}`,
+          );
           throw chunkError;
         }
       }
@@ -155,7 +169,9 @@ export class LargeFileStreamerService implements OnModuleDestroy {
       const processingTime = Date.now() - startTime;
       const averageChunkTime = processingTime / chunksProcessed;
 
-      this.logger.debug(`Streaming processing completed: ${chunksProcessed} chunks in ${processingTime}ms`);
+      this.logger.debug(
+        `Streaming processing completed: ${chunksProcessed} chunks in ${processingTime}ms`,
+      );
 
       return {
         success: true,
@@ -165,11 +181,11 @@ export class LargeFileStreamerService implements OnModuleDestroy {
         averageChunkTime,
         memoryUsagePeak,
       };
-
     } catch (error) {
       const processingTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+
       this.logger.error(`Streaming processing failed: ${errorMessage}`);
 
       return {
@@ -177,7 +193,8 @@ export class LargeFileStreamerService implements OnModuleDestroy {
         chunksProcessed,
         totalSize,
         processingTime,
-        averageChunkTime: chunksProcessed > 0 ? (Date.now() - startTime) / chunksProcessed : 0,
+        averageChunkTime:
+          chunksProcessed > 0 ? (Date.now() - startTime) / chunksProcessed : 0,
         memoryUsagePeak,
         error: errorMessage,
       };
@@ -187,7 +204,10 @@ export class LargeFileStreamerService implements OnModuleDestroy {
   /**
    * Create a readable stream for large data
    */
-  createChunkedStream(data: string, chunkSize: number = this.DEFAULT_CHUNK_SIZE): Readable {
+  createChunkedStream(
+    data: string,
+    chunkSize: number = this.DEFAULT_CHUNK_SIZE,
+  ): Readable {
     let currentIndex = 0;
 
     const readable = new Readable({
@@ -199,7 +219,7 @@ export class LargeFileStreamerService implements OnModuleDestroy {
 
         const chunk = data.slice(currentIndex, currentIndex + chunkSize);
         currentIndex += chunkSize;
-        
+
         this.push(Buffer.from(chunk, 'utf8'));
       },
     });
@@ -219,17 +239,19 @@ export class LargeFileStreamerService implements OnModuleDestroy {
   getEstimatedProcessingTime(sizeInBytes: number): number {
     // Base estimate: 5MB/second processing speed
     const baseTimeMs = (sizeInBytes / this.PROCESSING_SPEED_ESTIMATE) * 1000;
-    
+
     // Add overhead for large files (chunking, memory management)
     const overheadMultiplier = sizeInBytes > 50 * 1024 * 1024 ? 1.5 : 1.2;
-    
+
     return Math.round(baseTimeMs * overheadMultiplier);
   }
 
   /**
    * Optimize memory usage during processing
    */
-  async optimizeMemoryUsage(options: MemoryOptimizationOptions): Promise<MemoryOptimizationResult> {
+  async optimizeMemoryUsage(
+    options: MemoryOptimizationOptions,
+  ): Promise<MemoryOptimizationResult> {
     const memoryBefore = process.memoryUsage().heapUsed;
     let gcTriggered = false;
 
@@ -247,13 +269,15 @@ export class LargeFileStreamerService implements OnModuleDestroy {
       }
 
       // Add a small delay to allow GC to complete
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       const memoryAfter = process.memoryUsage().heapUsed;
       const memoryFreed = memoryBefore - memoryAfter;
 
       if (memoryFreed > 0) {
-        this.logger.debug(`Memory optimized: freed ${Math.round(memoryFreed / 1024 / 1024)}MB`);
+        this.logger.debug(
+          `Memory optimized: freed ${Math.round(memoryFreed / 1024 / 1024)}MB`,
+        );
       }
 
       return {
@@ -262,10 +286,11 @@ export class LargeFileStreamerService implements OnModuleDestroy {
         memoryBefore,
         memoryAfter,
       };
-
     } catch (error) {
-      this.logger.warn(`Memory optimization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      
+      this.logger.warn(
+        `Memory optimization failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+
       return {
         memoryOptimized: false,
         gcTriggered,
@@ -278,7 +303,10 @@ export class LargeFileStreamerService implements OnModuleDestroy {
   /**
    * Create a progress tracker with time estimation
    */
-  createProgressTracker(total: number, onProgress: (progress: ProgressInfo) => void): ProgressTracker {
+  createProgressTracker(
+    total: number,
+    onProgress: (progress: ProgressInfo) => void,
+  ): ProgressTracker {
     const startTime = Date.now();
     const _lastUpdateTime = startTime;
 
@@ -287,13 +315,15 @@ export class LargeFileStreamerService implements OnModuleDestroy {
         const now = Date.now();
         const elapsed = now - startTime;
         const percentage = Math.round((current / total) * 100);
-        
+
         // Estimate time remaining based on current progress
         let estimatedTimeRemaining = 0;
         if (current > 0) {
           const averageTimePerItem = elapsed / current;
           const remainingItems = total - current;
-          estimatedTimeRemaining = Math.round(remainingItems * averageTimePerItem);
+          estimatedTimeRemaining = Math.round(
+            remainingItems * averageTimePerItem,
+          );
         }
 
         onProgress({
@@ -331,14 +361,16 @@ export class LargeFileStreamerService implements OnModuleDestroy {
       // Reconstruct data from chunks
       const reconstructed = chunks.join('');
       const reconstructedData = JSON.parse(reconstructed);
-      
+
       // Deep comparison (simple JSON string comparison)
       const originalSerialized = JSON.stringify(originalData);
       const reconstructedSerialized = JSON.stringify(reconstructedData);
-      
+
       return originalSerialized === reconstructedSerialized;
     } catch (error) {
-      this.logger.warn(`Chunk integrity validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      this.logger.warn(
+        `Chunk integrity validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
       return false;
     }
   }
@@ -378,11 +410,11 @@ export class LargeFileStreamerService implements OnModuleDestroy {
    */
   private createChunks(data: string, chunkSize: number): string[] {
     const chunks: string[] = [];
-    
+
     for (let i = 0; i < data.length; i += chunkSize) {
       chunks.push(data.slice(i, i + chunkSize));
     }
-    
+
     return chunks;
   }
 }

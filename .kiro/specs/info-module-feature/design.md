@@ -38,21 +38,23 @@ The InfoModule integrates with existing application modules:
 **Purpose**: CLI interface layer that handles user interaction and output formatting
 
 **Key Responsibilities**:
+
 - Parse command-line arguments and options
 - Coordinate information retrieval through InfoService
 - Format and display information with appropriate styling
 - Handle command-level errors and provide user feedback
 
 **Interface**:
+
 ```typescript
 @Command({
   name: 'info',
-  description: 'Display current authentication status and configuration information'
+  description: 'Display current authentication status and configuration information',
 })
 export class InfoCommand extends CommandRunner {
   constructor(private readonly infoService: InfoService) {}
-  
-  async run(passedParams: string[], options?: InfoCommandOptions): Promise<void>
+
+  async run(passedParams: string[], options?: InfoCommandOptions): Promise<void>;
 }
 
 interface InfoCommandOptions {
@@ -67,6 +69,7 @@ interface InfoCommandOptions {
 **Purpose**: Business logic layer that aggregates information from various sources
 
 **Key Responsibilities**:
+
 - Retrieve authentication status from Supabase Auth
 - Detect current development tools and environments
 - Gather synchronization history and status
@@ -74,26 +77,28 @@ interface InfoCommandOptions {
 - Handle caching and offline scenarios
 
 **Interface**:
+
 ```typescript
 @Injectable()
 export class InfoService {
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
-    private readonly supabaseClient: SupabaseClient
+    private readonly supabaseClient: SupabaseClient,
   ) {}
 
-  async getAuthenticationInfo(): Promise<AuthInfo>
-  async getToolInfo(): Promise<ToolInfo>
-  async getSyncInfo(): Promise<SyncInfo>
-  async getSystemInfo(): Promise<SystemInfo>
-  async getComprehensiveInfo(): Promise<ComprehensiveInfo>
+  async getAuthenticationInfo(): Promise<AuthInfo>;
+  async getToolInfo(): Promise<ToolInfo>;
+  async getSyncInfo(): Promise<SyncInfo>;
+  async getSystemInfo(): Promise<SystemInfo>;
+  async getComprehensiveInfo(): Promise<ComprehensiveInfo>;
 }
 ```
 
 ### Data Transfer Objects
 
 **AuthInfo**:
+
 ```typescript
 interface AuthInfo {
   isAuthenticated: boolean;
@@ -111,6 +116,7 @@ interface AuthInfo {
 ```
 
 **ToolInfo**:
+
 ```typescript
 interface ToolInfo {
   currentTool?: {
@@ -132,6 +138,7 @@ interface DetectedTool {
 ```
 
 **SyncInfo**:
+
 ```typescript
 interface SyncInfo {
   lastSync?: {
@@ -155,6 +162,7 @@ interface SyncOperation {
 ```
 
 **SystemInfo**:
+
 ```typescript
 interface SystemInfo {
   cli: {
@@ -194,19 +202,14 @@ class InfoAggregator {
   private readonly CACHE_TTL = 30000; // 30 seconds
 
   async aggregate(): Promise<ComprehensiveInfo> {
-    const [authInfo, toolInfo, syncInfo, systemInfo] = await Promise.allSettled([
-      this.getAuthInfo(),
-      this.getToolInfo(),
-      this.getSyncInfo(),
-      this.getSystemInfo()
-    ]);
+    const [authInfo, toolInfo, syncInfo, systemInfo] = await Promise.allSettled([this.getAuthInfo(), this.getToolInfo(), this.getSyncInfo(), this.getSystemInfo()]);
 
     return {
       auth: this.handleResult(authInfo),
       tool: this.handleResult(toolInfo),
       sync: this.handleResult(syncInfo),
       system: this.handleResult(systemInfo),
-      timestamp: new Date()
+      timestamp: new Date(),
     };
   }
 
@@ -216,7 +219,7 @@ class InfoAggregator {
     }
     return {
       error: result.reason.message,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
   }
 }
@@ -240,7 +243,7 @@ class InfoCache {
     this.cache.set(key, {
       data,
       timestamp: new Date(),
-      ttl
+      ttl,
     });
   }
 
@@ -264,16 +267,19 @@ class InfoCache {
 ### Error Classification
 
 **Network Errors**:
+
 - Supabase connection failures
 - API timeout errors
 - DNS resolution issues
 
 **Authentication Errors**:
+
 - Expired sessions
 - Invalid tokens
 - Permission denied
 
 **System Errors**:
+
 - File system access issues
 - Missing dependencies
 - Configuration corruption
@@ -286,17 +292,17 @@ class InfoErrorHandler {
     if (error instanceof SupabaseError) {
       return this.handleSupabaseError(error, context);
     }
-    
+
     if (error instanceof FileSystemError) {
       return this.handleFileSystemError(error, context);
     }
-    
+
     return {
       type: 'unknown',
       message: error.message,
       context,
       timestamp: new Date(),
-      suggestions: ['Check logs for more details', 'Try running the command again']
+      suggestions: ['Check logs for more details', 'Try running the command again'],
     };
   }
 
@@ -306,11 +312,7 @@ class InfoErrorHandler {
       message: 'Unable to connect to Supabase',
       context,
       timestamp: new Date(),
-      suggestions: [
-        'Check your internet connection',
-        'Verify Supabase configuration',
-        'Try again in a few moments'
-      ]
+      suggestions: ['Check your internet connection', 'Verify Supabase configuration', 'Try again in a few moments'],
     };
   }
 }
@@ -330,12 +332,14 @@ When external services are unavailable, the system should:
 ### Unit Testing Approach
 
 **InfoService Testing**:
+
 - Mock all external dependencies (AuthService, ConfigService, SupabaseClient)
 - Test each information retrieval method independently
 - Verify error handling for various failure scenarios
 - Test caching behavior and TTL expiration
 
 **InfoCommand Testing**:
+
 - Mock InfoService to control data flow
 - Test output formatting for different information states
 - Verify command option parsing and validation
@@ -352,12 +356,7 @@ describe('InfoService', () => {
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
-      providers: [
-        InfoService,
-        { provide: AuthService, useValue: mockAuthService },
-        { provide: ConfigService, useValue: mockConfigService },
-        { provide: SupabaseClient, useValue: mockSupabaseClient }
-      ]
+      providers: [InfoService, { provide: AuthService, useValue: mockAuthService }, { provide: ConfigService, useValue: mockConfigService }, { provide: SupabaseClient, useValue: mockSupabaseClient }],
     }).compile();
 
     service = module.get<InfoService>(InfoService);
@@ -382,6 +381,7 @@ describe('InfoService', () => {
 ### Integration Testing
 
 **End-to-End Command Testing**:
+
 - Test complete command execution flow
 - Verify output formatting and colors
 - Test with various system states (online/offline, authenticated/unauthenticated)
@@ -398,28 +398,28 @@ export const mockAuthInfo = {
     user: {
       email: 'test@example.com',
       provider: 'google' as const,
-      lastLogin: new Date('2025-08-11T10:00:00Z')
+      lastLogin: new Date('2025-08-11T10:00:00Z'),
     },
     session: {
       expiresAt: new Date('2025-08-12T10:00:00Z'),
-      isExpired: false
-    }
+      isExpired: false,
+    },
   },
   unauthenticated: {
-    isAuthenticated: false
+    isAuthenticated: false,
   },
   expired: {
     isAuthenticated: true,
     user: {
       email: 'test@example.com',
       provider: 'google' as const,
-      lastLogin: new Date('2025-08-10T10:00:00Z')
+      lastLogin: new Date('2025-08-10T10:00:00Z'),
     },
     session: {
       expiresAt: new Date('2025-08-11T10:00:00Z'),
-      isExpired: true
-    }
-  }
+      isExpired: true,
+    },
+  },
 };
 ```
 

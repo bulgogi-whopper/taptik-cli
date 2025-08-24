@@ -107,7 +107,7 @@ describe.skip('BuildCommand CLI Integration Tests', () => {
 
     it('should accept valid platform options', async () => {
       const platforms = ['kiro', 'cursor', 'claude-code'];
-      
+
       // 병렬 처리로 모든 플랫폼 테스트
       const platformPromises = platforms.map(async (platform) => {
         const { stdout, stderr } = await execAsync(
@@ -115,7 +115,7 @@ describe.skip('BuildCommand CLI Integration Tests', () => {
           {
             cwd: originalCwd,
             timeout: 60_000,
-          }
+          },
         );
 
         expect(stderr).not.toContain('Invalid platform');
@@ -128,7 +128,7 @@ describe.skip('BuildCommand CLI Integration Tests', () => {
 
     it('should accept valid category options', async () => {
       const categories = ['personal', 'project', 'prompts', 'personal,project'];
-      
+
       // 병렬 처리로 모든 카테고리 테스트
       const categoryPromises = categories.map(async (categoryList) => {
         const { stdout, stderr } = await execAsync(
@@ -136,7 +136,7 @@ describe.skip('BuildCommand CLI Integration Tests', () => {
           {
             cwd: originalCwd,
             timeout: 60_000,
-          }
+          },
         );
 
         expect(stderr).not.toContain('Invalid category');
@@ -155,7 +155,7 @@ describe.skip('BuildCommand CLI Integration Tests', () => {
         {
           cwd: originalCwd,
           timeout: 60_000,
-        }
+        },
       );
 
       expect(stderr).not.toContain('Error:');
@@ -172,7 +172,7 @@ describe.skip('BuildCommand CLI Integration Tests', () => {
         {
           cwd: originalCwd,
           timeout: 60_000,
-        }
+        },
       );
 
       expect(stderr).not.toContain('Error:');
@@ -188,24 +188,24 @@ describe.skip('BuildCommand CLI Integration Tests', () => {
         {
           cwd: originalCwd,
           timeout: 60_000,
-        }
+        },
       );
 
       expect(stderr).not.toContain('Error:');
       // Quiet mode should have minimal output
-      const outputLines = stdout.split('\n').filter(line => line.trim());
+      const outputLines = stdout.split('\n').filter((line) => line.trim());
       expect(outputLines.length).toBeLessThan(10);
     });
 
     it('should handle custom output path', async () => {
       const customOutput = join(temporaryDirectory, 'custom-output');
-      
+
       const { stdout, stderr } = await execAsync(
         `npm run cli -- build --dry-run --platform kiro --categories personal --output ${customOutput}`,
         {
           cwd: originalCwd,
           timeout: 60_000,
-        }
+        },
       );
 
       expect(stderr).not.toContain('Error:');
@@ -218,7 +218,7 @@ describe.skip('BuildCommand CLI Integration Tests', () => {
         {
           cwd: originalCwd,
           timeout: 60_000,
-        }
+        },
       );
 
       expect(stderr).not.toContain('Error:');
@@ -276,15 +276,17 @@ describe.skip('BuildCommand CLI Integration Tests', () => {
   describe('Error Handling', () => {
     it('should handle missing Kiro configuration gracefully', async () => {
       // Create empty temp directory without Kiro structure
-      const emptyTemporaryDirectory = await fs.mkdtemp(join(tmpdir(), 'taptik-empty-test-'));
-      
+      const emptyTemporaryDirectory = await fs.mkdtemp(
+        join(tmpdir(), 'taptik-empty-test-'),
+      );
+
       try {
         const { stdout } = await execAsync(
           `npm run cli -- build --dry-run --platform kiro --categories personal`,
           {
             cwd: emptyTemporaryDirectory,
             timeout: 60_000,
-          }
+          },
         );
 
         // Should complete with warnings, not fail completely
@@ -305,7 +307,7 @@ describe.skip('BuildCommand CLI Integration Tests', () => {
         {
           cwd: originalCwd,
           timeout: 60_000,
-        }
+        },
       );
 
       // Send interrupt signal after a short delay
@@ -328,7 +330,7 @@ describe.skip('BuildCommand CLI Integration Tests', () => {
         {
           cwd: originalCwd,
           timeout: 60_000,
-        }
+        },
       );
 
       expect(stderr).not.toContain('version');
@@ -344,11 +346,11 @@ describe.skip('BuildCommand CLI Integration Tests', () => {
         {
           cwd: originalCwd,
           timeout: 60_000,
-        }
+        },
       );
 
       expect(stderr).not.toContain('Error:');
-      
+
       // Extract JSON from verbose output (if any)
       const jsonMatches = stdout.match(/{.*}/gs);
       if (jsonMatches) {
@@ -369,7 +371,7 @@ describe.skip('BuildCommand CLI Integration Tests', () => {
         {
           cwd: originalCwd,
           timeout: 60_000,
-        }
+        },
       );
 
       expect(stderr).not.toContain('Error:');
@@ -383,13 +385,13 @@ describe.skip('BuildCommand CLI Integration Tests', () => {
   describe('Performance and Timeout', () => {
     it('should complete dry run within reasonable time', async () => {
       const startTime = Date.now();
-      
+
       await execAsync(
         `npm run cli -- build --dry-run --platform kiro --categories personal`,
         {
           cwd: originalCwd,
           timeout: 60_000, // 15 seconds should be more than enough
-        }
+        },
       );
 
       const executionTime = Date.now() - startTime;
@@ -398,13 +400,13 @@ describe.skip('BuildCommand CLI Integration Tests', () => {
 
     it('should handle large category combinations efficiently', async () => {
       const startTime = Date.now();
-      
+
       await execAsync(
         `npm run cli -- build --dry-run --platform kiro --categories personal,project,prompts`,
         {
           cwd: originalCwd,
           timeout: 60_000,
-        }
+        },
       );
 
       const executionTime = Date.now() - startTime;
@@ -422,38 +424,56 @@ describe.skip('BuildCommand CLI Integration Tests', () => {
     await fs.mkdir('.kiro/hooks', { recursive: true });
 
     // Create basic settings files
-    await fs.writeFile('.kiro/settings/context.md', `# Test Project Context
+    await fs.writeFile(
+      '.kiro/settings/context.md',
+      `# Test Project Context
 This is a test project for CLI integration testing.
 
 ## Architecture
 - Node.js with TypeScript
 - NestJS framework for CLI commands
 - Jest for testing
-`);
+`,
+    );
 
-    await fs.writeFile('.kiro/settings/user-preferences.md', `# User Preferences
+    await fs.writeFile(
+      '.kiro/settings/user-preferences.md',
+      `# User Preferences
 - Editor: VS Code
 - Terminal: iTerm2
 - Package Manager: npm
-`);
+`,
+    );
 
-    await fs.writeFile('.kiro/settings/project-spec.md', `# Project Specification
+    await fs.writeFile(
+      '.kiro/settings/project-spec.md',
+      `# Project Specification
 CLI tool for converting Kiro configurations to taptik format.
-`);
+`,
+    );
 
     // Create basic steering files
-    await fs.writeFile('.kiro/steering/git.md', `# Git Standards
+    await fs.writeFile(
+      '.kiro/steering/git.md',
+      `# Git Standards
 Use conventional commits with gitmoji.
-`);
+`,
+    );
 
-    await fs.writeFile('.kiro/steering/typescript.md', `# TypeScript Standards
+    await fs.writeFile(
+      '.kiro/steering/typescript.md',
+      `# TypeScript Standards
 - Use strict mode
 - Prefer interfaces over types
-`);
+`,
+    );
 
     // Create basic hook file
-    await fs.writeFile('.kiro/hooks/pre-commit.kiro.hook', `#!/bin/bash
+    await fs.writeFile(
+      '.kiro/hooks/pre-commit.kiro.hook',
+      `#!/bin/bash
 echo "Pre-commit hook executed"
-`);
+`,
+    );
   }
 });

@@ -12,7 +12,10 @@ import {
   McpServerConfig,
   SteeringRule,
 } from '../../../context/interfaces/cloud.interface';
-import { HookFile, SettingsData } from '../../interfaces/settings-data.interface';
+import {
+  HookFile,
+  SettingsData,
+} from '../../interfaces/settings-data.interface';
 import {
   TaptikPersonalContext,
   TaptikProjectContext,
@@ -476,15 +479,34 @@ export class TransformationService {
     globalPrefs: Record<string, unknown>,
     localPrefs: Record<string, unknown>,
   ): CodingStyle {
-    const globalStyle = (typeof globalPrefs.coding_style === 'object' && globalPrefs.coding_style !== null) ? globalPrefs.coding_style as Record<string, unknown> : {};
-    const localStyle = (typeof localPrefs.coding_style === 'object' && localPrefs.coding_style !== null) ? localPrefs.coding_style as Record<string, unknown> : {};
+    const globalStyle =
+      typeof globalPrefs.coding_style === 'object' &&
+      globalPrefs.coding_style !== null
+        ? (globalPrefs.coding_style as Record<string, unknown>)
+        : {};
+    const localStyle =
+      typeof localPrefs.coding_style === 'object' &&
+      localPrefs.coding_style !== null
+        ? (localPrefs.coding_style as Record<string, unknown>)
+        : {};
     const style = { ...globalStyle, ...localStyle };
 
     return {
-      indentation: (typeof style.indentation === 'string' ? style.indentation : null) || '2 spaces',
-      naming_convention: (typeof style.naming_convention === 'string' ? style.naming_convention : null) || 'camelCase',
-      comment_style: (typeof style.comment_style === 'string' ? style.comment_style : null) || 'minimal',
-      code_organization: (typeof style.code_organization === 'string' ? style.code_organization : null) || 'feature-based',
+      indentation:
+        (typeof style.indentation === 'string' ? style.indentation : null) ||
+        '2 spaces',
+      naming_convention:
+        (typeof style.naming_convention === 'string'
+          ? style.naming_convention
+          : null) || 'camelCase',
+      comment_style:
+        (typeof style.comment_style === 'string'
+          ? style.comment_style
+          : null) || 'minimal',
+      code_organization:
+        (typeof style.code_organization === 'string'
+          ? style.code_organization
+          : null) || 'feature-based',
     };
   }
 
@@ -543,9 +565,15 @@ export class TransformationService {
     globalConfig: Record<string, unknown>,
     projectSpec: Record<string, unknown>,
   ): string {
-    return (typeof projectSpec.workflow === 'string' ? projectSpec.workflow : null) || 
-           (typeof globalConfig.workflow === 'string' ? globalConfig.workflow : null) || 
-           'agile';
+    return (
+      (typeof projectSpec.workflow === 'string'
+        ? projectSpec.workflow
+        : null) ||
+      (typeof globalConfig.workflow === 'string'
+        ? globalConfig.workflow
+        : null) ||
+      'agile'
+    );
   }
 
   /**
@@ -556,8 +584,12 @@ export class TransformationService {
     projectSpec: Record<string, unknown>,
   ): string {
     return (
-      (typeof globalConfig.problem_solving === 'string' ? globalConfig.problem_solving : null) ||
-      (typeof projectSpec.problem_solving === 'string' ? projectSpec.problem_solving : null) ||
+      (typeof globalConfig.problem_solving === 'string'
+        ? globalConfig.problem_solving
+        : null) ||
+      (typeof projectSpec.problem_solving === 'string'
+        ? projectSpec.problem_solving
+        : null) ||
       'incremental'
     );
   }
@@ -570,8 +602,12 @@ export class TransformationService {
     projectSpec: Record<string, unknown>,
   ): string {
     return (
-      (typeof projectSpec.documentation === 'string' ? projectSpec.documentation : null) || 
-      (typeof globalConfig.documentation === 'string' ? globalConfig.documentation : null) || 
+      (typeof projectSpec.documentation === 'string'
+        ? projectSpec.documentation
+        : null) ||
+      (typeof globalConfig.documentation === 'string'
+        ? globalConfig.documentation
+        : null) ||
       'minimal'
     );
   }
@@ -583,9 +619,13 @@ export class TransformationService {
     globalConfig: Record<string, unknown>,
     projectSpec: Record<string, unknown>,
   ): string {
-    return (typeof projectSpec.testing === 'string' ? projectSpec.testing : null) || 
-           (typeof globalConfig.testing === 'string' ? globalConfig.testing : null) || 
-           'unit-first';
+    return (
+      (typeof projectSpec.testing === 'string' ? projectSpec.testing : null) ||
+      (typeof globalConfig.testing === 'string'
+        ? globalConfig.testing
+        : null) ||
+      'unit-first'
+    );
   }
 
   /**
@@ -1245,16 +1285,22 @@ export class TransformationService {
     try {
       // Type guard to ensure kiroPrompt is an object with string properties
       const promptObj = kiroPrompt as Record<string, unknown>;
-      
-      const name = (typeof promptObj.name === 'string' ? promptObj.name : null) || `Template ${index + 1}`;
-      const id = (typeof promptObj.id === 'string' ? promptObj.id : null) || this.generateTemplateIdFromName(name);
+
+      const name =
+        (typeof promptObj.name === 'string' ? promptObj.name : null) ||
+        `Template ${index + 1}`;
+      const id =
+        (typeof promptObj.id === 'string' ? promptObj.id : null) ||
+        this.generateTemplateIdFromName(name);
       const description =
-        (typeof promptObj.description === 'string' ? promptObj.description : null) ||
+        (typeof promptObj.description === 'string'
+          ? promptObj.description
+          : null) ||
         (typeof promptObj.summary === 'string' ? promptObj.summary : null) ||
         'No description available';
-      const content = 
-        (typeof promptObj.content === 'string' ? promptObj.content : null) || 
-        (typeof promptObj.template === 'string' ? promptObj.template : null) || 
+      const content =
+        (typeof promptObj.content === 'string' ? promptObj.content : null) ||
+        (typeof promptObj.template === 'string' ? promptObj.template : null) ||
         '';
       const category =
         (typeof promptObj.category === 'string' ? promptObj.category : null) ||
@@ -1317,7 +1363,10 @@ export class TransformationService {
         sectionData !== null && // Check if this section contains template-like data
         this.isTemplateSection(section, sectionData)
       ) {
-        const template = this.createTemplateFromSection(section, sectionData as Record<string, unknown>);
+        const template = this.createTemplateFromSection(
+          section,
+          sectionData as Record<string, unknown>,
+        );
         if (template) {
           templates.push(template);
         }
@@ -1330,7 +1379,10 @@ export class TransformationService {
   /**
    * Check if a markdown section represents a template
    */
-  private isTemplateSection(sectionName: string, sectionData: unknown): boolean {
+  private isTemplateSection(
+    sectionName: string,
+    sectionData: unknown,
+  ): boolean {
     const templateKeywords = ['template', 'prompt', 'instruction', 'guide'];
     const lowerSectionName = sectionName.toLowerCase();
 
@@ -1344,8 +1396,11 @@ export class TransformationService {
       sectionData &&
       typeof sectionData === 'object' &&
       sectionData !== null &&
-      (((sectionData as Record<string, unknown>).content && typeof (sectionData as Record<string, unknown>).content === 'string') ||
-        ((sectionData as Record<string, unknown>).template && typeof (sectionData as Record<string, unknown>).template === 'string'));
+      (((sectionData as Record<string, unknown>).content &&
+        typeof (sectionData as Record<string, unknown>).content === 'string') ||
+        ((sectionData as Record<string, unknown>).template &&
+          typeof (sectionData as Record<string, unknown>).template ===
+            'string'));
 
     return hasTemplateKeyword || hasTemplateContent;
   }
@@ -1365,9 +1420,13 @@ export class TransformationService {
       );
 
       const content =
-        (typeof sectionData.content === 'string' ? sectionData.content : null) || 
-        (typeof sectionData.template === 'string' ? sectionData.template : null) || 
-        (typeof sectionData.text === 'string' ? sectionData.text : null) || 
+        (typeof sectionData.content === 'string'
+          ? sectionData.content
+          : null) ||
+        (typeof sectionData.template === 'string'
+          ? sectionData.template
+          : null) ||
+        (typeof sectionData.text === 'string' ? sectionData.text : null) ||
         '';
       if (!content || typeof content !== 'string') {
         this.logger.warn(`No valid content found for section ${sectionName}`);
@@ -1377,12 +1436,17 @@ export class TransformationService {
       const id = this.generateTemplateId(sectionName);
       const name = this.cleanTemplateName(sectionName);
       const description =
-        (typeof sectionData.description === 'string' ? sectionData.description : null) ||
-        (typeof sectionData.summary === 'string' ? sectionData.summary : null) ||
+        (typeof sectionData.description === 'string'
+          ? sectionData.description
+          : null) ||
+        (typeof sectionData.summary === 'string'
+          ? sectionData.summary
+          : null) ||
         `Template extracted from ${sectionName}`;
       const category =
-        (typeof sectionData.category === 'string' ? sectionData.category : null) || 
-        this.inferCategoryFromName(sectionName);
+        (typeof sectionData.category === 'string'
+          ? sectionData.category
+          : null) || this.inferCategoryFromName(sectionName);
 
       const variables = this.extractVariablesFromContent(content);
       const tags = this.extractTagsFromSection(sectionData);
@@ -1483,9 +1547,13 @@ export class TransformationService {
     }
 
     // Generate default tags from name if no explicit tags found
-    if (tags.size === 0 && kiroPrompt.name && typeof kiroPrompt.name === 'string') {
+    if (
+      tags.size === 0 &&
+      kiroPrompt.name &&
+      typeof kiroPrompt.name === 'string'
+    ) {
       const inferredTags = this.inferTagsFromName(kiroPrompt.name);
-      inferredTags.forEach(tag => tags.add(tag));
+      inferredTags.forEach((tag) => tags.add(tag));
     }
 
     return [...tags];
@@ -1494,7 +1562,9 @@ export class TransformationService {
   /**
    * Extract tags from markdown section data
    */
-  private extractTagsFromSection(sectionData: Record<string, unknown>): string[] {
+  private extractTagsFromSection(
+    sectionData: Record<string, unknown>,
+  ): string[] {
     const tags = new Set<string>();
 
     if (sectionData.tags && Array.isArray(sectionData.tags)) {
@@ -1645,15 +1715,21 @@ export class TransformationService {
     return {
       user_id: this.generateUserId(settingsData),
       preferences: {
-        preferred_languages: (Array.isArray(partialData?.languages) ? partialData.languages : null) || ['typescript'],
+        preferred_languages: (Array.isArray(partialData?.languages)
+          ? partialData.languages
+          : null) || ['typescript'],
         coding_style: {
           indentation: '2 spaces',
           naming_convention: 'camelCase',
           comment_style: 'minimal',
           code_organization: 'feature-based',
         },
-        tools_and_frameworks: (Array.isArray(partialData?.tools) ? partialData.tools : null) || [],
-        development_environment: (Array.isArray(partialData?.environment) ? partialData.environment : null) || [],
+        tools_and_frameworks:
+          (Array.isArray(partialData?.tools) ? partialData.tools : null) || [],
+        development_environment:
+          (Array.isArray(partialData?.environment)
+            ? partialData.environment
+            : null) || [],
       },
       work_style: {
         preferred_workflow: 'agile',
@@ -1691,23 +1767,57 @@ export class TransformationService {
     return {
       project_id: this.generateProjectId(settingsData),
       project_info: {
-        name: (typeof partialData?.name === 'string' ? partialData.name : null) || projectName,
-        description: (typeof partialData?.description === 'string' ? partialData.description : null) || 'No description available',
-        version: (typeof partialData?.version === 'string' ? partialData.version : null) || '1.0.0',
-        repository: (typeof partialData?.repository === 'string' ? partialData.repository : null) || '',
+        name:
+          (typeof partialData?.name === 'string' ? partialData.name : null) ||
+          projectName,
+        description:
+          (typeof partialData?.description === 'string'
+            ? partialData.description
+            : null) || 'No description available',
+        version:
+          (typeof partialData?.version === 'string'
+            ? partialData.version
+            : null) || '1.0.0',
+        repository:
+          (typeof partialData?.repository === 'string'
+            ? partialData.repository
+            : null) || '',
       },
       technical_stack: {
-        primary_language: (typeof partialData?.language === 'string' ? partialData.language : null) || 'typescript',
-        frameworks: (Array.isArray(partialData?.frameworks) ? partialData.frameworks : null) || [],
-        databases: (Array.isArray(partialData?.databases) ? partialData.databases : null) || [],
-        tools: (Array.isArray(partialData?.tools) ? partialData.tools : null) || [],
-        deployment: (Array.isArray(partialData?.deployment) ? partialData.deployment : null) || [],
+        primary_language:
+          (typeof partialData?.language === 'string'
+            ? partialData.language
+            : null) || 'typescript',
+        frameworks:
+          (Array.isArray(partialData?.frameworks)
+            ? partialData.frameworks
+            : null) || [],
+        databases:
+          (Array.isArray(partialData?.databases)
+            ? partialData.databases
+            : null) || [],
+        tools:
+          (Array.isArray(partialData?.tools) ? partialData.tools : null) || [],
+        deployment:
+          (Array.isArray(partialData?.deployment)
+            ? partialData.deployment
+            : null) || [],
       },
       development_guidelines: {
-        coding_standards: (Array.isArray(partialData?.standards) ? partialData.standards : null) || [],
-        testing_requirements: (Array.isArray(partialData?.testing) ? partialData.testing : null) || [],
-        documentation_standards: (Array.isArray(partialData?.documentation) ? partialData.documentation : null) || [],
-        review_process: (Array.isArray(partialData?.review) ? partialData.review : null) || [],
+        coding_standards:
+          (Array.isArray(partialData?.standards)
+            ? partialData.standards
+            : null) || [],
+        testing_requirements:
+          (Array.isArray(partialData?.testing) ? partialData.testing : null) ||
+          [],
+        documentation_standards:
+          (Array.isArray(partialData?.documentation)
+            ? partialData.documentation
+            : null) || [],
+        review_process:
+          (Array.isArray(partialData?.review) ? partialData.review : null) ||
+          [],
       },
       metadata: {
         source_platform: sourcePlatform,
@@ -1765,7 +1875,10 @@ export class TransformationService {
   /**
    * Parse JSON content with enhanced error handling
    */
-  private parseJsonWithErrorHandling(content: string, filePath?: string): unknown {
+  private parseJsonWithErrorHandling(
+    content: string,
+    filePath?: string,
+  ): unknown {
     try {
       return JSON.parse(content);
     } catch (error) {
@@ -1879,16 +1992,24 @@ export class TransformationService {
     globalData: ClaudeCodeGlobalSettings,
   ): Promise<TaptikPersonalContext> {
     return {
-      user_id: this.generateUserId({ collectionMetadata: { sourcePlatform: 'claude-code' } } as SettingsData),
+      user_id: this.generateUserId({
+        collectionMetadata: { sourcePlatform: 'claude-code' },
+      } as SettingsData),
       preferences: {
-        preferred_languages: this.extractLanguagesFromClaudeCode(localData, globalData),
+        preferred_languages: this.extractLanguagesFromClaudeCode(
+          localData,
+          globalData,
+        ),
         coding_style: {
           indentation: '2 spaces',
           naming_convention: 'camelCase',
           comment_style: 'minimal',
           code_organization: 'feature-based',
         },
-        tools_and_frameworks: this.extractToolsFromClaudeCode(localData, globalData),
+        tools_and_frameworks: this.extractToolsFromClaudeCode(
+          localData,
+          globalData,
+        ),
         development_environment: ['claude-code'],
       },
       work_style: {
@@ -1917,9 +2038,15 @@ export class TransformationService {
     localData: ClaudeCodeLocalSettings,
     globalData: ClaudeCodeGlobalSettings,
   ): Promise<TaptikProjectContext> {
-    const mergedMcp = this.mergeMcpConfigurations(localData?.mcpServers, globalData?.mcpServers);
-    const mergedCommands = this.mergeClaudeCommands(localData?.commands, globalData?.commands);
-    
+    const mergedMcp = this.mergeMcpConfigurations(
+      localData?.mcpServers,
+      globalData?.mcpServers,
+    );
+    const mergedCommands = this.mergeClaudeCommands(
+      localData?.commands,
+      globalData?.commands,
+    );
+
     return {
       project_id: `claude-project-${randomUUID().slice(0, 8)}`,
       project_info: {
@@ -1939,8 +2066,12 @@ export class TransformationService {
         deployment: [],
       },
       development_guidelines: {
-        coding_standards: this.extractStandardsFromSteeringRules(localData?.steeringRules),
-        testing_requirements: this.extractTestingFromSteeringRules(localData?.steeringRules),
+        coding_standards: this.extractStandardsFromSteeringRules(
+          localData?.steeringRules,
+        ),
+        testing_requirements: this.extractTestingFromSteeringRules(
+          localData?.steeringRules,
+        ),
         documentation_standards: [],
         review_process: [],
       },
@@ -1963,13 +2094,19 @@ export class TransformationService {
     const templates: PromptTemplateEntry[] = [];
 
     // Transform agents to templates
-    const allAgents = this.mergeClaudeAgents(localData?.agents, globalData?.agents);
+    const allAgents = this.mergeClaudeAgents(
+      localData?.agents,
+      globalData?.agents,
+    );
     for (const agent of allAgents) {
       if (agent && agent.name && agent.prompt) {
         templates.push({
           id: agent.id || this.generateTemplateIdFromName(agent.name),
           name: agent.name,
-          description: (typeof agent.description === 'string' ? agent.description : 'Claude Code Agent'),
+          description:
+            typeof agent.description === 'string'
+              ? agent.description
+              : 'Claude Code Agent',
           category: 'claude-agent',
           content: agent.prompt,
           variables: this.extractVariablesFromContent(agent.prompt || ''),
@@ -2025,7 +2162,10 @@ export class TransformationService {
   /**
    * Merge MCP configurations with local precedence
    */
-  mergeMcpConfigurations(localConfig: McpConfig | undefined, globalConfig: McpConfig | undefined): McpConfig {
+  mergeMcpConfigurations(
+    localConfig: McpConfig | undefined,
+    globalConfig: McpConfig | undefined,
+  ): McpConfig {
     if (!localConfig && !globalConfig) {
       return { servers: [] };
     }
@@ -2056,7 +2196,10 @@ export class TransformationService {
   /**
    * Merge Claude instruction files
    */
-  mergeClaudeInstructions(globalInstructions: string | undefined, localInstructions: string | undefined): string {
+  mergeClaudeInstructions(
+    globalInstructions: string | undefined,
+    localInstructions: string | undefined,
+  ): string {
     if (!globalInstructions && !localInstructions) {
       return '';
     }
@@ -2079,13 +2222,19 @@ ${localInstructions}`;
   }
 
   // Helper methods for Claude Code transformations
-  private mergeClaudeSettings(localSettings: ClaudeCodeSettings | undefined, globalSettings: ClaudeCodeSettings | undefined): ClaudeCodeSettings {
+  private mergeClaudeSettings(
+    localSettings: ClaudeCodeSettings | undefined,
+    globalSettings: ClaudeCodeSettings | undefined,
+  ): ClaudeCodeSettings {
     return { ...globalSettings, ...localSettings } as ClaudeCodeSettings;
   }
 
-  private extractLanguagesFromClaudeCode(localData: ClaudeCodeLocalSettings, globalData: ClaudeCodeGlobalSettings): string[] {
+  private extractLanguagesFromClaudeCode(
+    localData: ClaudeCodeLocalSettings,
+    globalData: ClaudeCodeGlobalSettings,
+  ): string[] {
     const languages = new Set<string>();
-    
+
     // Extract from settings - safely handle unknown type
     if (localData?.settings) {
       const langs = (localData.settings as Record<string, unknown>).languages;
@@ -2097,7 +2246,7 @@ ${localInstructions}`;
         }
       }
     }
-    
+
     if (globalData?.settings) {
       const langs = (globalData.settings as Record<string, unknown>).languages;
       if (Array.isArray(langs)) {
@@ -2112,9 +2261,12 @@ ${localInstructions}`;
     return languages.size > 0 ? Array.from(languages) : ['typescript'];
   }
 
-  private extractToolsFromClaudeCode(localData: ClaudeCodeLocalSettings, globalData: ClaudeCodeGlobalSettings): string[] {
+  private extractToolsFromClaudeCode(
+    localData: ClaudeCodeLocalSettings,
+    globalData: ClaudeCodeGlobalSettings,
+  ): string[] {
     const tools = new Set<string>();
-    
+
     // Extract from settings - safely handle unknown type
     if (localData?.settings) {
       const toolList = (localData.settings as Record<string, unknown>).tools;
@@ -2126,7 +2278,7 @@ ${localInstructions}`;
         }
       }
     }
-    
+
     if (globalData?.settings) {
       const toolList = (globalData.settings as Record<string, unknown>).tools;
       if (Array.isArray(toolList)) {
@@ -2141,17 +2293,22 @@ ${localInstructions}`;
     return Array.from(tools);
   }
 
-  private extractAiPreferencesFromAgents(agents: ClaudeAgent[] | undefined): string[] {
+  private extractAiPreferencesFromAgents(
+    agents: ClaudeAgent[] | undefined,
+  ): string[] {
     if (!agents || !Array.isArray(agents)) {
       return [];
     }
 
     return agents
-      .filter(agent => agent && agent.name)
-      .map(agent => agent.name);
+      .filter((agent) => agent && agent.name)
+      .map((agent) => agent.name);
   }
 
-  private mergeClaudeAgents(localAgents: ClaudeAgent[] | undefined, globalAgents: ClaudeAgent[] | undefined): ClaudeAgent[] {
+  private mergeClaudeAgents(
+    localAgents: ClaudeAgent[] | undefined,
+    globalAgents: ClaudeAgent[] | undefined,
+  ): ClaudeAgent[] {
     const agents = new Map<string, ClaudeAgent>();
 
     // Add global agents first
@@ -2175,7 +2332,10 @@ ${localInstructions}`;
     return Array.from(agents.values());
   }
 
-  private mergeClaudeCommands(localCommands: ClaudeCommand[] | undefined, globalCommands: ClaudeCommand[] | undefined): ClaudeCommand[] {
+  private mergeClaudeCommands(
+    localCommands: ClaudeCommand[] | undefined,
+    globalCommands: ClaudeCommand[] | undefined,
+  ): ClaudeCommand[] {
     const commands = new Map<string, ClaudeCommand>();
 
     // Add global commands first
@@ -2206,10 +2366,15 @@ ${localInstructions}`;
 
     return mcpConfig.servers
       .filter((server) => {
-        const serverWithDisabled = server as McpServerConfig & { disabled?: boolean };
+        const serverWithDisabled = server as McpServerConfig & {
+          disabled?: boolean;
+        };
         return server && server.name && !serverWithDisabled.disabled;
       })
-      .map((server) => `${server.name}: ${server.command || server.url || 'configured'}`);
+      .map(
+        (server) =>
+          `${server.name}: ${server.command || server.url || 'configured'}`,
+      );
   }
 
   private extractCommandTools(commands: ClaudeCommand[]): string[] {
@@ -2218,37 +2383,43 @@ ${localInstructions}`;
     }
 
     return commands
-      .filter(cmd => cmd && cmd.name && cmd.command)
-      .map(cmd => `${cmd.name}: ${cmd.command}`);
+      .filter((cmd) => cmd && cmd.name && cmd.command)
+      .map((cmd) => `${cmd.name}: ${cmd.command}`);
   }
 
-  private extractStandardsFromSteeringRules(steeringRules: SteeringRule[] | undefined): string[] {
+  private extractStandardsFromSteeringRules(
+    steeringRules: SteeringRule[] | undefined,
+  ): string[] {
     if (!steeringRules || !Array.isArray(steeringRules)) {
       return [];
     }
 
     return steeringRules
-      .filter(rule => rule && rule.rule)
-      .filter(rule => 
-        rule.rule.toLowerCase().includes('standard') ||
-        rule.rule.toLowerCase().includes('convention') ||
-        rule.rule.toLowerCase().includes('style')
+      .filter((rule) => rule && rule.rule)
+      .filter(
+        (rule) =>
+          rule.rule.toLowerCase().includes('standard') ||
+          rule.rule.toLowerCase().includes('convention') ||
+          rule.rule.toLowerCase().includes('style'),
       )
-      .map(rule => rule.rule);
+      .map((rule) => rule.rule);
   }
 
-  private extractTestingFromSteeringRules(steeringRules: SteeringRule[] | undefined): string[] {
+  private extractTestingFromSteeringRules(
+    steeringRules: SteeringRule[] | undefined,
+  ): string[] {
     if (!steeringRules || !Array.isArray(steeringRules)) {
       return [];
     }
 
     return steeringRules
-      .filter(rule => rule && rule.rule)
-      .filter(rule => 
-        rule.rule.toLowerCase().includes('test') ||
-        rule.rule.toLowerCase().includes('tdd') ||
-        rule.rule.toLowerCase().includes('coverage')
+      .filter((rule) => rule && rule.rule)
+      .filter(
+        (rule) =>
+          rule.rule.toLowerCase().includes('test') ||
+          rule.rule.toLowerCase().includes('tdd') ||
+          rule.rule.toLowerCase().includes('coverage'),
       )
-      .map(rule => rule.rule);
+      .map((rule) => rule.rule);
   }
 }

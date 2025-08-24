@@ -14,8 +14,6 @@ import {
 
 import { PackageService } from './package.service';
 
-
-
 vi.mock('fs/promises', () => ({
   default: {},
   access: vi.fn(),
@@ -70,12 +68,8 @@ describe('PackageService', () => {
             theme: 'dark',
             autoSave: true,
           },
-          agents: [
-            { id: 'agent1', name: 'Test Agent', prompt: 'Test prompt' },
-          ],
-          commands: [
-            { name: 'build', command: 'npm run build' },
-          ],
+          agents: [{ id: 'agent1', name: 'Test Agent', prompt: 'Test prompt' }],
+          commands: [{ name: 'build', command: 'npm run build' }],
         },
       },
     },
@@ -110,7 +104,7 @@ describe('PackageService', () => {
     it('should create a valid TaptikPackage with metadata and sanitized config', async () => {
       const result = await service.createTaptikPackage(
         mockMetadata,
-        mockTaptikContext
+        mockTaptikContext,
       );
 
       expect(result).toMatchObject({
@@ -129,21 +123,21 @@ describe('PackageService', () => {
       const resultGzip = await service.createTaptikPackage(
         mockMetadata,
         mockTaptikContext,
-        { compression: 'gzip' }
+        { compression: 'gzip' },
       );
       expect(resultGzip.compression).toBe('gzip');
 
       const resultBrotli = await service.createTaptikPackage(
         mockMetadata,
         mockTaptikContext,
-        { compression: 'brotli' }
+        { compression: 'brotli' },
       );
       expect(resultBrotli.compression).toBe('brotli');
 
       const resultNone = await service.createTaptikPackage(
         mockMetadata,
         mockTaptikContext,
-        { compression: 'none' }
+        { compression: 'none' },
       );
       expect(resultNone.compression).toBe('none');
     });
@@ -151,7 +145,7 @@ describe('PackageService', () => {
     it('should include manifest with file and directory listings', async () => {
       const result = await service.createTaptikPackage(
         mockMetadata,
-        mockTaptikContext
+        mockTaptikContext,
       );
 
       expect(result.manifest).toHaveProperty('files');
@@ -166,15 +160,19 @@ describe('PackageService', () => {
         data: {
           claudeCode: {
             local: {
-              agents: Array(100).fill(null).map((_, i) => ({
-                id: `agent${i}`,
-                name: `Agent ${i}`,
-                prompt: `Prompt for agent ${i}`,
-              })),
-              commands: Array(50).fill(null).map((_, i) => ({
-                name: `command${i}`,
-                command: `npm run command${i}`,
-              })),
+              agents: Array(100)
+                .fill(null)
+                .map((_, i) => ({
+                  id: `agent${i}`,
+                  name: `Agent ${i}`,
+                  prompt: `Prompt for agent ${i}`,
+                })),
+              commands: Array(50)
+                .fill(null)
+                .map((_, i) => ({
+                  name: `command${i}`,
+                  command: `npm run command${i}`,
+                })),
             },
           },
         },
@@ -182,7 +180,7 @@ describe('PackageService', () => {
 
       const result = await service.createTaptikPackage(
         mockMetadata,
-        largeContext
+        largeContext,
       );
 
       expect(result).toBeDefined();
@@ -191,17 +189,20 @@ describe('PackageService', () => {
 
     it('should throw error for invalid metadata', async () => {
       const invalidMetadata = { ...mockMetadata, title: '' };
-      
+
       await expect(
-        service.createTaptikPackage(invalidMetadata, mockTaptikContext)
+        service.createTaptikPackage(invalidMetadata, mockTaptikContext),
       ).rejects.toThrow('required');
     });
 
     it('should throw error for missing required context fields', async () => {
-      const invalidContext = { ...mockTaptikContext, version: undefined } as unknown as TaptikContext;
-      
+      const invalidContext = {
+        ...mockTaptikContext,
+        version: undefined,
+      } as unknown as TaptikContext;
+
       await expect(
-        service.createTaptikPackage(mockMetadata, invalidContext)
+        service.createTaptikPackage(mockMetadata, invalidContext),
       ).rejects.toThrow('required');
     });
   });
@@ -209,10 +210,10 @@ describe('PackageService', () => {
   describe('generateChecksum', () => {
     it('should generate consistent checksum for the same data', async () => {
       const data = { test: 'data', nested: { value: 123 } };
-      
+
       const checksum1 = await service.generateChecksum(data);
       const checksum2 = await service.generateChecksum(data);
-      
+
       expect(checksum1).toBe(checksum2);
       expect(checksum1).toMatch(/^[\da-f]{64}$/); // SHA-256 hex format
     });
@@ -220,10 +221,10 @@ describe('PackageService', () => {
     it('should generate different checksums for different data', async () => {
       const data1 = { test: 'data1' };
       const data2 = { test: 'data2' };
-      
+
       const checksum1 = await service.generateChecksum(data1);
       const checksum2 = await service.generateChecksum(data2);
-      
+
       expect(checksum1).not.toBe(checksum2);
     });
 
@@ -234,7 +235,7 @@ describe('PackageService', () => {
       }
       const data: CircularData = { test: 'data' };
       data.circular = data;
-      
+
       await expect(service.generateChecksum(data)).resolves.toBeDefined();
     });
 
@@ -243,7 +244,7 @@ describe('PackageService', () => {
         ...mockTaptikContext,
         fileContent: 'file content here',
       };
-      
+
       const checksum = await service.generateChecksum(dataWithFile);
       expect(checksum).toBeDefined();
       expect(checksum).toMatch(/^[\da-f]{64}$/);
@@ -253,16 +254,20 @@ describe('PackageService', () => {
   describe('createPackageManifest', () => {
     it('should create manifest with file listings', async () => {
       const manifest = await service.createPackageManifest(mockTaptikContext);
-      
+
       expect(manifest).toHaveProperty('files');
       expect(manifest.files).toContain('.claude/settings.json');
-      expect(manifest.files.some(f => f.startsWith('.claude/agents/'))).toBe(true);
-      expect(manifest.files.some(f => f.startsWith('.claude/commands/'))).toBe(true);
+      expect(manifest.files.some((f) => f.startsWith('.claude/agents/'))).toBe(
+        true,
+      );
+      expect(
+        manifest.files.some((f) => f.startsWith('.claude/commands/')),
+      ).toBe(true);
     });
 
     it('should include directory structure in manifest', async () => {
       const manifest = await service.createPackageManifest(mockTaptikContext);
-      
+
       expect(manifest).toHaveProperty('directories');
       expect(manifest.directories).toContain('.claude');
       expect(manifest.directories).toContain('.claude/agents');
@@ -271,7 +276,7 @@ describe('PackageService', () => {
 
     it('should calculate total size of all components', async () => {
       const manifest = await service.createPackageManifest(mockTaptikContext);
-      
+
       expect(manifest).toHaveProperty('totalSize');
       expect(manifest.totalSize).toBeGreaterThan(0);
     });
@@ -286,9 +291,9 @@ describe('PackageService', () => {
           timestamp: '2024-01-01T00:00:00Z',
         },
       };
-      
+
       const manifest = await service.createPackageManifest(emptyContext);
-      
+
       expect(manifest.files).toHaveLength(0);
       expect(manifest.directories).toHaveLength(0);
       expect(manifest.totalSize).toBe(0);
@@ -310,19 +315,16 @@ describe('PackageService', () => {
           totalSize: 1024,
         },
       };
-      
+
       const outputPath = '/test/output.taptik';
-      
+
       await service.writePackageToFile(mockPackage, outputPath);
-      
+
       expect(fs.writeFile).toHaveBeenCalled();
-      const {calls} = vi.mocked(fs.writeFile).mock;
-      expect(calls[0][0]).toBe(`${outputPath  }.tmp`);
+      const { calls } = vi.mocked(fs.writeFile).mock;
+      expect(calls[0][0]).toBe(`${outputPath}.tmp`);
       expect(calls[0][1]).toBeInstanceOf(Buffer);
-      expect(fs.rename).toHaveBeenCalledWith(
-        `${outputPath  }.tmp`,
-        outputPath
-      );
+      expect(fs.rename).toHaveBeenCalledWith(`${outputPath}.tmp`, outputPath);
     });
 
     it('should compress package when compression is enabled', async () => {
@@ -339,9 +341,9 @@ describe('PackageService', () => {
           totalSize: 1024,
         },
       };
-      
+
       await service.writePackageToFile(mockPackage, '/test/output.taptik');
-      
+
       expect(fs.writeFile).toHaveBeenCalled();
     });
 
@@ -359,9 +361,9 @@ describe('PackageService', () => {
           totalSize: 1024,
         },
       };
-      
+
       await service.writePackageToFile(mockPackage, '/test/output.taptik');
-      
+
       expect(fs.writeFile).toHaveBeenCalled();
     });
 
@@ -380,15 +382,14 @@ describe('PackageService', () => {
           totalSize: 0,
         },
       };
-      
+
       vi.mocked(fs.access).mockRejectedValue(new Error('Directory not found'));
-      
+
       await service.writePackageToFile(mockPackage, outputPath);
-      
-      expect(fs.mkdir).toHaveBeenCalledWith(
-        path.dirname(outputPath),
-        { recursive: true }
-      );
+
+      expect(fs.mkdir).toHaveBeenCalledWith(path.dirname(outputPath), {
+        recursive: true,
+      });
     });
 
     it('should throw error for invalid file path', async () => {
@@ -405,10 +406,10 @@ describe('PackageService', () => {
           totalSize: 0,
         },
       };
-      
-      await expect(
-        service.writePackageToFile(mockPackage, '')
-      ).rejects.toThrow('Invalid file path');
+
+      await expect(service.writePackageToFile(mockPackage, '')).rejects.toThrow(
+        'Invalid file path',
+      );
     });
 
     it('should handle write permission errors', async () => {
@@ -425,11 +426,11 @@ describe('PackageService', () => {
           totalSize: 0,
         },
       };
-      
+
       vi.mocked(fs.writeFile).mockRejectedValue(new Error('Permission denied'));
-      
+
       await expect(
-        service.writePackageToFile(mockPackage, '/test/output.taptik')
+        service.writePackageToFile(mockPackage, '/test/output.taptik'),
       ).rejects.toThrow('Permission denied');
     });
   });
@@ -437,9 +438,9 @@ describe('PackageService', () => {
   describe('compressPackage', () => {
     it('should compress package data with gzip', async () => {
       const data = { test: 'data' };
-      
+
       const result = await service.compressPackage(data);
-      
+
       expect(result).toBeInstanceOf(Buffer);
       expect(result.length).toBeGreaterThan(0);
     });
@@ -448,9 +449,9 @@ describe('PackageService', () => {
       const largeData = {
         content: 'x'.repeat(10000),
       };
-      
+
       const result = await service.compressPackage(largeData);
-      
+
       expect(result).toBeInstanceOf(Buffer);
       expect(result.length).toBeGreaterThan(0);
     });
@@ -459,10 +460,10 @@ describe('PackageService', () => {
       const repetitiveData = {
         content: 'a'.repeat(1000),
       };
-      
+
       const result = await service.compressPackage(repetitiveData);
       const originalSize = JSON.stringify(repetitiveData, null, 2).length;
-      
+
       expect(result.length).toBeLessThan(originalSize);
     });
   });
@@ -471,8 +472,9 @@ describe('PackageService', () => {
     it('should validate package checksum matches content', async () => {
       // First generate a real checksum for the context
       const actualChecksum = await service.generateChecksum(mockTaptikContext);
-      const actualManifest = await service.createPackageManifest(mockTaptikContext);
-      
+      const actualManifest =
+        await service.createPackageManifest(mockTaptikContext);
+
       const mockPackage: TaptikPackage = {
         metadata: mockMetadata,
         sanitizedConfig: mockTaptikContext,
@@ -482,9 +484,9 @@ describe('PackageService', () => {
         size: 1024,
         manifest: actualManifest,
       };
-      
+
       const isValid = await service.validatePackageIntegrity(mockPackage);
-      
+
       expect(isValid).toBe(true);
     });
 
@@ -502,11 +504,13 @@ describe('PackageService', () => {
           totalSize: 0,
         },
       };
-      
-      vi.spyOn(service, 'generateChecksum').mockResolvedValue('correct-checksum');
-      
+
+      vi.spyOn(service, 'generateChecksum').mockResolvedValue(
+        'correct-checksum',
+      );
+
       const isValid = await service.validatePackageIntegrity(mockPackage);
-      
+
       expect(isValid).toBe(false);
     });
 
@@ -524,12 +528,15 @@ describe('PackageService', () => {
           totalSize: 1024,
         },
       };
-      
-      const actualManifest = await service.createPackageManifest(mockTaptikContext);
-      vi.spyOn(service, 'createPackageManifest').mockResolvedValue(actualManifest);
-      
+
+      const actualManifest =
+        await service.createPackageManifest(mockTaptikContext);
+      vi.spyOn(service, 'createPackageManifest').mockResolvedValue(
+        actualManifest,
+      );
+
       const isValid = await service.validatePackageIntegrity(mockPackage);
-      
+
       expect(isValid).toBeDefined();
     });
   });
@@ -549,19 +556,19 @@ describe('PackageService', () => {
           totalSize: 0,
         },
       };
-      
+
       // Create a real compressed buffer
       const compressedData = await service.compressPackage(mockPackage, 'gzip');
-      
+
       vi.mocked(fs.access).mockResolvedValue(undefined);
       vi.mocked(fs.stat).mockResolvedValue({ size: 1024 } as any);
       vi.mocked(fs.readFile).mockResolvedValue(compressedData);
-      
+
       // Mock the validatePackageIntegrity to return true
       vi.spyOn(service, 'validatePackageIntegrity').mockResolvedValue(true);
-      
+
       const result = await service.readPackageFromFile('/test/input.taptik');
-      
+
       expect(result).toEqual(mockPackage);
     });
 
@@ -579,17 +586,17 @@ describe('PackageService', () => {
           totalSize: 0,
         },
       };
-      
+
       const jsonData = JSON.stringify(mockPackage);
       vi.mocked(fs.access).mockResolvedValue(undefined);
       vi.mocked(fs.stat).mockResolvedValue({ size: jsonData.length } as any);
       vi.mocked(fs.readFile).mockResolvedValue(Buffer.from(jsonData));
-      
+
       // Mock the validatePackageIntegrity to return true
       vi.spyOn(service, 'validatePackageIntegrity').mockResolvedValue(true);
-      
+
       const result = await service.readPackageFromFile('/test/input.taptik');
-      
+
       expect(result).toEqual(mockPackage);
     });
 
@@ -597,9 +604,9 @@ describe('PackageService', () => {
       const error = new Error('File not found') as NodeJS.ErrnoException;
       error.code = 'ENOENT';
       vi.mocked(fs.access).mockRejectedValue(error);
-      
+
       await expect(
-        service.readPackageFromFile('/test/nonexistent.taptik')
+        service.readPackageFromFile('/test/nonexistent.taptik'),
       ).rejects.toThrow('File not found');
     });
 
@@ -607,9 +614,9 @@ describe('PackageService', () => {
       vi.mocked(fs.access).mockResolvedValue(undefined);
       vi.mocked(fs.stat).mockResolvedValue({ size: 100 } as any);
       vi.mocked(fs.readFile).mockResolvedValue(Buffer.from('invalid json'));
-      
+
       await expect(
-        service.readPackageFromFile('/test/invalid.taptik')
+        service.readPackageFromFile('/test/invalid.taptik'),
       ).rejects.toThrow('Invalid package format');
     });
   });
@@ -632,12 +639,18 @@ describe('PackageService', () => {
           },
         },
       };
-      
+
       const optimized = await service.optimizePackageSize(redundantContext);
-      
-      expect(optimized.data.claudeCode.local.settings).not.toHaveProperty('redundant');
-      expect(optimized.data.claudeCode.local.settings).not.toHaveProperty('empty');
-      expect(optimized.data.claudeCode.local.settings).not.toHaveProperty('undefined');
+
+      expect(optimized.data.claudeCode.local.settings).not.toHaveProperty(
+        'redundant',
+      );
+      expect(optimized.data.claudeCode.local.settings).not.toHaveProperty(
+        'empty',
+      );
+      expect(optimized.data.claudeCode.local.settings).not.toHaveProperty(
+        'undefined',
+      );
     });
 
     it('should deduplicate repeated values', async () => {
@@ -655,9 +668,9 @@ describe('PackageService', () => {
           },
         },
       };
-      
+
       const optimized = await service.optimizePackageSize(duplicateContext);
-      
+
       expect(optimized).toBeDefined();
       // Should maintain all agents but potentially optimize storage
       expect(optimized.data.claudeCode.local.agents).toHaveLength(3);
@@ -677,19 +690,21 @@ describe('PackageService', () => {
           },
         },
       };
-      
+
       const optimized = await service.optimizePackageSize(whitespaceContext);
-      
-      expect(optimized.data.claudeCode.local.instructions.global).not.toMatch(/\s{2,}/);
+
+      expect(optimized.data.claudeCode.local.instructions.global).not.toMatch(
+        /\s{2,}/,
+      );
     });
   });
 
   describe('Production Features - Brotli Compression', () => {
     it('should compress with Brotli algorithm', async () => {
       const data = { test: 'data', content: 'x'.repeat(1000) };
-      
+
       const result = await service.compressPackage(data, 'brotli');
-      
+
       expect(result).toBeInstanceOf(Buffer);
       expect(result.length).toBeGreaterThan(0);
       // Brotli should achieve better compression than gzip for text
@@ -699,15 +714,15 @@ describe('PackageService', () => {
 
     it('should use compression cache for repeated operations', async () => {
       const data = { test: 'cacheable data' };
-      
+
       const start = Date.now();
       const result1 = await service.compressPackage(data, 'brotli');
       const firstTime = Date.now() - start;
-      
+
       const cacheStart = Date.now();
       const result2 = await service.compressPackage(data, 'brotli');
       const cachedTime = Date.now() - cacheStart;
-      
+
       expect(result1).toEqual(result2);
       // Cached should be faster (though this might be flaky in CI)
       expect(cachedTime).toBeLessThanOrEqual(firstTime + 1);
@@ -719,14 +734,14 @@ describe('PackageService', () => {
       const largePackage = await service.createTaptikPackage(
         mockMetadata,
         mockTaptikContext,
-        { compression: 'brotli' }
+        { compression: 'brotli' },
       );
-      
+
       const chunked = await service.createChunkedPackage(
         largePackage,
-        512 // Small chunk size for testing
+        512, // Small chunk size for testing
       );
-      
+
       expect(chunked.chunks).toBeInstanceOf(Array);
       expect(chunked.chunks.length).toBeGreaterThan(0);
       expect(chunked.metadata.totalChunks).toBe(chunked.chunks.length);
@@ -739,15 +754,17 @@ describe('PackageService', () => {
         .createHash('sha256')
         .update(originalData)
         .digest('hex');
-      
+
       // Split into chunks
       const chunks: Buffer[] = [];
       for (let i = 0; i < originalData.length; i += 500) {
-        chunks.push(originalData.subarray(i, Math.min(i + 500, originalData.length)));
+        chunks.push(
+          originalData.subarray(i, Math.min(i + 500, originalData.length)),
+        );
       }
-      
+
       const reassembled = await service.reassembleChunks(chunks, checksum);
-      
+
       expect(reassembled).toEqual(originalData);
     });
 
@@ -757,9 +774,9 @@ describe('PackageService', () => {
         Buffer.from('chunk2'),
         Buffer.from('corrupted'),
       ];
-      
+
       await expect(
-        service.reassembleChunks(chunks, 'wrong-checksum')
+        service.reassembleChunks(chunks, 'wrong-checksum'),
       ).rejects.toThrow('checksum mismatch');
     });
   });
@@ -768,15 +785,17 @@ describe('PackageService', () => {
     it('should prepare package for Supabase Edge Functions', async () => {
       const taptikPackage = await service.createTaptikPackage(
         mockMetadata,
-        mockTaptikContext
+        mockTaptikContext,
       );
-      
+
       const prepared = await service.prepareForEdgeFunctions(taptikPackage);
-      
+
       expect(prepared.edgeMetadata).toBeDefined();
       expect(prepared.edgeMetadata.processable).toBe(true);
       expect(prepared.edgeMetadata.estimatedProcessingTime).toBeGreaterThan(0);
-      expect(prepared.edgeMetadata.recommendedTimeout).toBeGreaterThanOrEqual(10);
+      expect(prepared.edgeMetadata.recommendedTimeout).toBeGreaterThanOrEqual(
+        10,
+      );
       expect(prepared.edgeMetadata.memoryRequirement).toBeGreaterThan(0);
     });
 
@@ -786,26 +805,28 @@ describe('PackageService', () => {
         data: {
           claudeCode: {
             local: {
-              agents: Array(1000).fill(null).map((_, i) => ({
-                id: `agent${i}`,
-                name: `Agent ${i}`,
-                prompt: 'x'.repeat(10000),
-              })),
+              agents: Array(1000)
+                .fill(null)
+                .map((_, i) => ({
+                  id: `agent${i}`,
+                  name: `Agent ${i}`,
+                  prompt: 'x'.repeat(10000),
+                })),
             },
           },
         },
       };
-      
+
       const largePackage = await service.createTaptikPackage(
         mockMetadata,
-        largeContext
+        largeContext,
       );
-      
+
       // Mock the size to be over 10MB
       largePackage.size = 11 * 1024 * 1024;
-      
+
       const prepared = await service.prepareForEdgeFunctions(largePackage);
-      
+
       expect(prepared.edgeMetadata.processable).toBe(false);
     });
 
@@ -815,35 +836,49 @@ describe('PackageService', () => {
         data: {
           claudeCode: {
             local: {
-              agents: Array(10).fill(null).map((_, i) => ({ id: `agent${i}` })),
-              commands: Array(10).fill(null).map((_, i) => ({ name: `cmd${i}` })),
+              agents: Array(10)
+                .fill(null)
+                .map((_, i) => ({ 
+                  id: `agent${i}`,
+                  name: `Agent ${i}`,
+                  prompt: `Test prompt for agent ${i}`
+                })),
+              commands: Array(10)
+                .fill(null)
+                .map((_, i) => ({ name: `cmd${i}`, command: `run cmd${i}` })),
               mcpServers: {
-                server1: {},
-                server2: {},
-                server3: {},
+                servers: [
+                  { name: 'server1', protocol: 'stdio', command: 'run server1' },
+                  { name: 'server2', protocol: 'stdio', command: 'run server2' },
+                  { name: 'server3', protocol: 'stdio', command: 'run server3' }
+                ],
               },
             },
           },
         },
       };
-      
+
       const complexPackage = await service.createTaptikPackage(
         mockMetadata,
-        complexContext
+        complexContext,
       );
-      
+
       const prepared = await service.prepareForEdgeFunctions(complexPackage);
-      
+
       expect(prepared.edgeMetadata.estimatedProcessingTime).toBeGreaterThan(0);
       // More complex packages should have higher processing estimates
       const simplePackage = await service.createTaptikPackage(
         mockMetadata,
-        mockTaptikContext
+        mockTaptikContext,
       );
-      const simplePrepared = await service.prepareForEdgeFunctions(simplePackage);
-      
-      expect(prepared.edgeMetadata.estimatedProcessingTime)
-        .toBeGreaterThanOrEqual(simplePrepared.edgeMetadata.estimatedProcessingTime);
+      const simplePrepared =
+        await service.prepareForEdgeFunctions(simplePackage);
+
+      expect(
+        prepared.edgeMetadata.estimatedProcessingTime,
+      ).toBeGreaterThanOrEqual(
+        simplePrepared.edgeMetadata.estimatedProcessingTime,
+      );
     });
   });
 
@@ -852,11 +887,11 @@ describe('PackageService', () => {
       const taptikPackage = await service.createTaptikPackage(
         mockMetadata,
         mockTaptikContext,
-        { compression: 'brotli' }
+        { compression: 'brotli' },
       );
-      
+
       const metrics = await service.getPackageMetrics(taptikPackage);
-      
+
       expect(metrics.compressionAlgorithm).toBe('brotli');
       expect(metrics.streamingUsed).toBeDefined();
       expect(metrics.compressionRatio).toBeLessThanOrEqual(1);
@@ -875,14 +910,14 @@ describe('PackageService', () => {
           },
         },
       };
-      
+
       const largePackage = await service.createTaptikPackage(
         mockMetadata,
-        largeContext
+        largeContext,
       );
-      
+
       const metrics = await service.getPackageMetrics(largePackage);
-      
+
       expect(metrics.streamingUsed).toBe(true);
     });
   });

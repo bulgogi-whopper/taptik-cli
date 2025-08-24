@@ -40,7 +40,7 @@ export class ConfigLoaderService {
   private readonly logger = new Logger(ConfigLoaderService.name);
   private readonly CONFIG_DIR = path.join(os.homedir(), '.taptik');
   private readonly CONFIG_FILE = path.join(this.CONFIG_DIR, 'config.yaml');
-  
+
   private readonly DEFAULT_CONFIG: TaptikConfig = {
     autoUpload: {
       enabled: false,
@@ -78,26 +78,30 @@ export class ConfigLoaderService {
     try {
       // Check if config file exists
       await fs.access(this.CONFIG_FILE);
-      
+
       // Read and parse config file
       const fileContent = await fs.readFile(this.CONFIG_FILE, 'utf-8');
       const fileConfig = yaml.load(fileContent) as Partial<TaptikConfig>;
-      
+
       // Merge with defaults
       const config = this.mergeConfigurations(this.DEFAULT_CONFIG, fileConfig);
-      
+
       // Apply environment variable overrides
       this.applyEnvironmentOverrides(config);
-      
+
       this.logger.log('Configuration loaded successfully');
       return config;
     } catch (_error) {
-      this.logger.debug(`Configuration file not found at ${this.CONFIG_FILE}, using defaults`);
-      
+      this.logger.debug(
+        `Configuration file not found at ${this.CONFIG_FILE}, using defaults`,
+      );
+
       // Create config with defaults and env overrides
-      const config = JSON.parse(JSON.stringify(this.DEFAULT_CONFIG)) as TaptikConfig;
+      const config = JSON.parse(
+        JSON.stringify(this.DEFAULT_CONFIG),
+      ) as TaptikConfig;
       this.applyEnvironmentOverrides(config);
-      
+
       return config;
     }
   }
@@ -116,21 +120,23 @@ export class ConfigLoaderService {
     try {
       // Ensure config directory exists
       await fs.mkdir(this.CONFIG_DIR, { recursive: true });
-      
+
       // Convert to YAML
       const yamlContent = yaml.dump(config, {
         indent: 2,
         lineWidth: 120,
         sortKeys: false,
       });
-      
+
       // Write to file
       await fs.writeFile(this.CONFIG_FILE, yamlContent, 'utf-8');
-      
+
       this.logger.log(`Configuration saved to ${this.CONFIG_FILE}`);
     } catch (error) {
       this.logger.error('Failed to save configuration', error);
-      throw new Error(`Failed to save configuration: ${(error as Error).message}`);
+      throw new Error(
+        `Failed to save configuration: ${(error as Error).message}`,
+      );
     }
   }
 
@@ -139,7 +145,9 @@ export class ConfigLoaderService {
    */
   validateAuthentication(config: TaptikConfig): boolean {
     if (!config.auth.supabaseToken || config.auth.supabaseToken.trim() === '') {
-      this.logger.warn('Authentication token not configured. Auto-upload will be disabled.');
+      this.logger.warn(
+        'Authentication token not configured. Auto-upload will be disabled.',
+      );
       return false;
     }
     return true;
@@ -151,7 +159,7 @@ export class ConfigLoaderService {
   validateConfiguration(config: unknown): ValidationResult {
     const errors: string[] = [];
     const cfg = config as Record<string, unknown>;
-    
+
     // Validate autoUpload
     if (cfg.autoUpload) {
       const autoUpload = cfg.autoUpload as Record<string, unknown>;
@@ -168,7 +176,7 @@ export class ConfigLoaderService {
         errors.push('autoUpload.exclude must be an array');
       }
     }
-    
+
     // Validate auth
     if (cfg.auth) {
       const auth = cfg.auth as Record<string, unknown>;
@@ -176,18 +184,28 @@ export class ConfigLoaderService {
         errors.push('auth.supabaseToken must be a string');
       }
     }
-    
+
     // Validate preferences
     if (cfg.preferences) {
       const preferences = cfg.preferences as Record<string, unknown>;
-      if (!['claude-code', 'kiro-ide', 'cursor-ide'].includes(preferences.defaultIde as string)) {
+      if (
+        !['claude-code', 'kiro-ide', 'cursor-ide'].includes(
+          preferences.defaultIde as string,
+        )
+      ) {
         errors.push('preferences.defaultIde must be a valid IDE');
       }
-      if (!['low', 'medium', 'high'].includes(preferences.compressionLevel as string)) {
-        errors.push('preferences.compressionLevel must be "low", "medium", or "high"');
+      if (
+        !['low', 'medium', 'high'].includes(
+          preferences.compressionLevel as string,
+        )
+      ) {
+        errors.push(
+          'preferences.compressionLevel must be "low", "medium", or "high"',
+        );
       }
     }
-    
+
     return {
       isValid: errors.length === 0,
       errors,
@@ -201,7 +219,7 @@ export class ConfigLoaderService {
     for (const pattern of patterns) {
       // Handle directory patterns
       if (pattern.endsWith('/')) {
-        if (filePath.startsWith(pattern) || filePath.includes(`/${  pattern}`)) {
+        if (filePath.startsWith(pattern) || filePath.includes(`/${pattern}`)) {
           return true;
         }
       }
@@ -218,34 +236,36 @@ export class ConfigLoaderService {
    */
   private mergeConfigurations(
     defaults: TaptikConfig,
-    userConfig: Partial<TaptikConfig>
+    userConfig: Partial<TaptikConfig>,
   ): TaptikConfig {
     const merged: TaptikConfig = JSON.parse(JSON.stringify(defaults));
-    
+
     if (userConfig.autoUpload) {
       merged.autoUpload = {
         ...merged.autoUpload,
         ...userConfig.autoUpload,
         exclude: userConfig.autoUpload.exclude || merged.autoUpload.exclude,
         tags: userConfig.autoUpload.tags || merged.autoUpload.tags,
-        privateFields: userConfig.autoUpload.privateFields || merged.autoUpload.privateFields,
+        privateFields:
+          userConfig.autoUpload.privateFields ||
+          merged.autoUpload.privateFields,
       };
     }
-    
+
     if (userConfig.auth) {
       merged.auth = {
         ...merged.auth,
         ...userConfig.auth,
       };
     }
-    
+
     if (userConfig.preferences) {
       merged.preferences = {
         ...merged.preferences,
         ...userConfig.preferences,
       };
     }
-    
+
     return merged;
   }
 
@@ -257,23 +277,27 @@ export class ConfigLoaderService {
     if (process.env.TAPTIK_AUTO_UPLOAD) {
       config.autoUpload.enabled = process.env.TAPTIK_AUTO_UPLOAD === 'true';
     }
-    
+
     if (process.env.TAPTIK_VISIBILITY) {
-      config.autoUpload.visibility = process.env.TAPTIK_VISIBILITY as 'public' | 'private';
+      config.autoUpload.visibility = process.env.TAPTIK_VISIBILITY as
+        | 'public'
+        | 'private';
     }
-    
+
     // Authentication
     if (process.env.TAPTIK_SUPABASE_TOKEN) {
       config.auth.supabaseToken = process.env.TAPTIK_SUPABASE_TOKEN;
     }
-    
+
     // Preferences
     if (process.env.TAPTIK_DEFAULT_IDE) {
-      config.preferences.defaultIde = process.env.TAPTIK_DEFAULT_IDE as PreferencesConfig['defaultIde'];
+      config.preferences.defaultIde = process.env
+        .TAPTIK_DEFAULT_IDE as PreferencesConfig['defaultIde'];
     }
-    
+
     if (process.env.TAPTIK_COMPRESSION_LEVEL) {
-      config.preferences.compressionLevel = process.env.TAPTIK_COMPRESSION_LEVEL as PreferencesConfig['compressionLevel'];
+      config.preferences.compressionLevel = process.env
+        .TAPTIK_COMPRESSION_LEVEL as PreferencesConfig['compressionLevel'];
     }
   }
 
@@ -296,7 +320,9 @@ export class ConfigLoaderService {
   /**
    * Update specific configuration values
    */
-  async updateConfiguration(updates: Partial<TaptikConfig>): Promise<TaptikConfig> {
+  async updateConfiguration(
+    updates: Partial<TaptikConfig>,
+  ): Promise<TaptikConfig> {
     const currentConfig = await this.loadConfiguration();
     const updatedConfig = this.mergeConfigurations(currentConfig, updates);
     await this.saveConfiguration(updatedConfig);

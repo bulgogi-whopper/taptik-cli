@@ -23,7 +23,9 @@ const mockErrorHandlerService = {
   hasWarnings: vi.fn().mockReturnValue(false),
   displayErrorSummary: vi.fn(),
   exitWithAppropriateCode: vi.fn(),
-  getErrorSummary: vi.fn().mockReturnValue({ warnings: [], criticalErrors: [] }),
+  getErrorSummary: vi
+    .fn()
+    .mockReturnValue({ warnings: [], criticalErrors: [] }),
   handleCriticalErrorAndExit: vi.fn(),
 };
 
@@ -87,7 +89,9 @@ describe('BuildCommand Unit Tests', () => {
     interactiveService = module.get<InteractiveService>(InteractiveService);
     outputService = module.get<OutputService>(OutputService);
     progressService = module.get<ProgressService>(ProgressService);
-    transformationService = module.get<TransformationService>(TransformationService);
+    transformationService = module.get<TransformationService>(
+      TransformationService,
+    );
   });
 
   describe('Command Structure', () => {
@@ -151,7 +155,7 @@ describe('BuildCommand Unit Tests', () => {
     it('should provide help information structure', () => {
       // Test that the command has the expected structure for help
       expect(command).toBeDefined();
-      
+
       // Verify command exists and is callable
       expect(typeof command.run).toBe('function');
     });

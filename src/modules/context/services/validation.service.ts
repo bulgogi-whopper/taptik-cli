@@ -29,7 +29,6 @@ interface ComponentThresholds {
   instructions: number;
 }
 
-
 @Injectable()
 export class ValidationService {
   private readonly logger = new Logger(ValidationService.name);
@@ -44,7 +43,11 @@ export class ValidationService {
   // Format and platform constants
   private readonly SUPPORTED_FORMATS = ['taptik-v1', 'taptik-v2'] as const;
   private readonly SUPPORTED_FORMAT = 'taptik-v2'; // Default for new packages
-  private readonly SUPPORTED_IDES = ['claude-code', 'kiro-ide', 'cursor-ide'] as const;
+  private readonly SUPPORTED_IDES = [
+    'claude-code',
+    'kiro-ide',
+    'cursor-ide',
+  ] as const;
   private readonly KNOWN_FEATURES = [
     'gitIntegration',
     'dockerSupport',
@@ -90,33 +93,49 @@ export class ValidationService {
   };
 
   // Complexity level definitions
-  private readonly COMPLEXITY_LEVELS = ['minimal', 'basic', 'intermediate', 'advanced', 'expert'] as const;
+  private readonly COMPLEXITY_LEVELS = [
+    'minimal',
+    'basic',
+    'intermediate',
+    'advanced',
+    'expert',
+  ] as const;
 
   // Error messages
   private readonly ERROR_MESSAGES = {
     NULL_PACKAGE: 'Invalid package: package is null or undefined',
-    CIRCULAR_REFERENCE: 'Invalid package structure: circular reference detected',
-    INVALID_FORMAT: (format: string) => `Unsupported package format: ${format}. Expected: ${this.SUPPORTED_FORMATS.join(' or ')}`,
+    CIRCULAR_REFERENCE:
+      'Invalid package structure: circular reference detected',
+    INVALID_FORMAT: (format: string) =>
+      `Unsupported package format: ${format}. Expected: ${this.SUPPORTED_FORMATS.join(' or ')}`,
     CHECKSUM_MISMATCH: 'Checksum mismatch: package integrity compromised',
-    SIZE_EXCEEDED: (limit: string) => `Package size exceeds maximum limit of ${limit}`,
+    SIZE_EXCEEDED: (limit: string) =>
+      `Package size exceeds maximum limit of ${limit}`,
     MISSING_FIELD: (field: string) => `Missing required field: ${field}`,
-    INVALID_SCHEMA: (component: string, field: string) => `Invalid ${component} schema: missing required field "${field}"`,
+    INVALID_SCHEMA: (component: string, field: string) =>
+      `Invalid ${component} schema: missing required field "${field}"`,
     NEGATIVE_VALUE: (field: string) => `${field} cannot be negative`,
     EMPTY_VALUE: (field: string) => `${field} cannot be empty`,
     INVALID_COMPLEXITY: (level: string) => `Invalid complexity level: ${level}`,
     INVALID_DATE: (field: string) => `Invalid date format for ${field}`,
     SUPABASE_LIMIT: (type: string) => `Exceeds Supabase ${type} limit`,
     COMPRESSION_INVALID: 'Invalid or unsupported compression format',
-    METADATA_TOO_LARGE: 'Metadata exceeds maximum allowed size for cloud storage',
+    METADATA_TOO_LARGE:
+      'Metadata exceeds maximum allowed size for cloud storage',
   };
 
   // Warning messages
   private readonly WARNING_MESSAGES = {
-    SIZE_APPROACHING: 'Package size is approaching the maximum limit (90% used)',
-    UNSAFE_CHARACTERS: (field: string) => `${field} contains potentially unsafe characters`,
-    HIGH_COMPONENT_COUNT: (component: string, count: number) => `Unusually high number of ${component} (${count})`,
-    UNSUPPORTED_IDE: (ide: string) => `${ide === 'Source' ? 'Source' : 'Target'} IDE "${ide}" may have limited support`,
-    UNSUPPORTED_FEATURE: (feature: string, ide: string) => `Feature "${feature}" may not be supported in ${ide}`,
+    SIZE_APPROACHING:
+      'Package size is approaching the maximum limit (90% used)',
+    UNSAFE_CHARACTERS: (field: string) =>
+      `${field} contains potentially unsafe characters`,
+    HIGH_COMPONENT_COUNT: (component: string, count: number) =>
+      `Unusually high number of ${component} (${count})`,
+    UNSUPPORTED_IDE: (ide: string) =>
+      `${ide === 'Source' ? 'Source' : 'Target'} IDE "${ide}" may have limited support`,
+    UNSUPPORTED_FEATURE: (feature: string, ide: string) =>
+      `Feature "${feature}" may not be supported in ${ide}`,
   };
 
   // Recommendation messages
@@ -130,15 +149,20 @@ export class ValidationService {
     SPECIFY_IDE: 'Specify at least one target IDE',
     GENERATE_CHECKSUM: 'Generate a valid checksum for package integrity',
     REGENERATE_CHECKSUM: 'Regenerate package checksum to ensure integrity',
-    REDUCE_SIZE: 'Reduce package size or consider splitting into multiple packages',
-    SPLIT_PACKAGES: 'Consider splitting into multiple smaller packages for better manageability',
-    OPTIMIZE_COMPONENTS: 'Consider optimizing the number of components for better performance',
+    REDUCE_SIZE:
+      'Reduce package size or consider splitting into multiple packages',
+    SPLIT_PACKAGES:
+      'Consider splitting into multiple smaller packages for better manageability',
+    OPTIMIZE_COMPONENTS:
+      'Consider optimizing the number of components for better performance',
     VALIDATE_SECURITY: 'Review and sanitize potentially unsafe content',
     UPDATE_METADATA: 'Ensure all metadata fields are properly filled',
     USE_BROTLI: 'Use Brotli compression for better size reduction',
     ENABLE_CHUNKING: 'Enable chunked upload for large packages',
-    OPTIMIZE_FOR_EDGE: 'Optimize package for Supabase Edge Functions processing',
-    CHECK_FEATURE_COMPATIBILITY: 'Verify all features are supported by target IDEs',
+    OPTIMIZE_FOR_EDGE:
+      'Optimize package for Supabase Edge Functions processing',
+    CHECK_FEATURE_COMPATIBILITY:
+      'Verify all features are supported by target IDEs',
   };
 
   /**
@@ -151,7 +175,10 @@ export class ValidationService {
     const startTime = Date.now();
     try {
       // Initialize validation context
-      const context = this.initializeValidationContext(taptikPackage, isPremiumUser);
+      const context = this.initializeValidationContext(
+        taptikPackage,
+        isPremiumUser,
+      );
 
       // Quick validation for null/undefined
       if (!taptikPackage) {
@@ -163,7 +190,9 @@ export class ValidationService {
       // Check cache
       const cachedResult = this.getCachedResult(taptikPackage.checksum);
       if (cachedResult) {
-        this.logger.debug(`Returning cached validation result for checksum: ${taptikPackage.checksum}`);
+        this.logger.debug(
+          `Returning cached validation result for checksum: ${taptikPackage.checksum}`,
+        );
         return cachedResult;
       }
 
@@ -183,7 +212,10 @@ export class ValidationService {
 
       // Track performance metrics
       const validationTime = Date.now() - startTime;
-      this.performanceMetrics.set(taptikPackage.checksum || 'unknown', validationTime);
+      this.performanceMetrics.set(
+        taptikPackage.checksum || 'unknown',
+        validationTime,
+      );
       this.logger.debug(`Validation completed in ${validationTime}ms`);
 
       return context.result;
@@ -200,8 +232,10 @@ export class ValidationService {
     taptikPackage: TaptikPackage | null | undefined,
     isPremiumUser: boolean,
   ): ValidationContext {
-    const maxSize = isPremiumUser ? this.SIZE_LIMITS.PREMIUM : this.SIZE_LIMITS.DEFAULT;
-    
+    const maxSize = isPremiumUser
+      ? this.SIZE_LIMITS.PREMIUM
+      : this.SIZE_LIMITS.DEFAULT;
+
     return {
       package: taptikPackage as TaptikPackage,
       isPremiumUser,
@@ -305,15 +339,24 @@ export class ValidationService {
    */
   private validateMetadata(context: ValidationContext): void {
     const { package: pkg, result } = context;
-    
+
     if (!pkg.metadata) return;
 
     const { metadata } = pkg;
     const requiredFields = [
-      'title', 'tags', 'version', 'createdAt', 'sourceIde',
-      'targetIdes', 'complexityLevel', 'componentCount',
-      'features', 'compatibility', 'searchKeywords',
-      'fileSize', 'checksum'
+      'title',
+      'tags',
+      'version',
+      'createdAt',
+      'sourceIde',
+      'targetIdes',
+      'complexityLevel',
+      'componentCount',
+      'features',
+      'compatibility',
+      'searchKeywords',
+      'fileSize',
+      'checksum',
     ];
 
     // Check required fields
@@ -321,7 +364,9 @@ export class ValidationService {
       if (!(field in metadata)) {
         result.isValid = false;
         result.schemaCompliant = false;
-        result.errors.push(this.ERROR_MESSAGES.MISSING_FIELD(`metadata.${field}`));
+        result.errors.push(
+          this.ERROR_MESSAGES.MISSING_FIELD(`metadata.${field}`),
+        );
       }
     }
 
@@ -332,7 +377,10 @@ export class ValidationService {
   /**
    * Validate metadata field values
    */
-  private validateMetadataValues(metadata: CloudMetadata, result: ValidationResult): void {
+  private validateMetadataValues(
+    metadata: CloudMetadata,
+    result: ValidationResult,
+  ): void {
     // Title validation
     if (metadata.title) {
       if (metadata.title.length < 3) {
@@ -363,7 +411,11 @@ export class ValidationService {
     }
 
     // Checksum validation
-    if (!metadata.checksum || metadata.checksum === '' || metadata.checksum === 'pending') {
+    if (
+      !metadata.checksum ||
+      metadata.checksum === '' ||
+      metadata.checksum === 'pending'
+    ) {
       result.isValid = false;
       result.errors.push(this.ERROR_MESSAGES.EMPTY_VALUE('Checksum'));
     }
@@ -375,16 +427,27 @@ export class ValidationService {
     }
 
     // Complexity level validation
-    if (metadata.complexityLevel && !this.COMPLEXITY_LEVELS.includes(metadata.complexityLevel)) {
+    if (
+      metadata.complexityLevel &&
+      !this.COMPLEXITY_LEVELS.includes(metadata.complexityLevel)
+    ) {
       result.isValid = false;
-      result.errors.push(this.ERROR_MESSAGES.INVALID_COMPLEXITY(metadata.complexityLevel));
+      result.errors.push(
+        this.ERROR_MESSAGES.INVALID_COMPLEXITY(metadata.complexityLevel),
+      );
     }
 
     // Component count validation
     if (metadata.componentCount) {
       const counts = metadata.componentCount;
-      const components = ['agents', 'commands', 'mcpServers', 'steeringRules', 'instructions'] as const;
-      
+      const components = [
+        'agents',
+        'commands',
+        'mcpServers',
+        'steeringRules',
+        'instructions',
+      ] as const;
+
       for (const component of components) {
         if (counts[component] < 0) {
           result.isValid = false;
@@ -410,7 +473,12 @@ export class ValidationService {
   private validateFormat(context: ValidationContext): void {
     const { package: pkg, result } = context;
 
-    if (pkg.format && !this.SUPPORTED_FORMATS.includes(pkg.format as typeof this.SUPPORTED_FORMATS[number])) {
+    if (
+      pkg.format &&
+      !this.SUPPORTED_FORMATS.includes(
+        pkg.format as (typeof this.SUPPORTED_FORMATS)[number],
+      )
+    ) {
       result.isValid = false;
       result.errors.push(this.ERROR_MESSAGES.INVALID_FORMAT(pkg.format));
     }
@@ -422,8 +490,11 @@ export class ValidationService {
   private validateChecksum(context: ValidationContext): void {
     const { package: pkg, result } = context;
 
-    if (pkg.metadata?.checksum && pkg.checksum && 
-        pkg.metadata.checksum !== pkg.checksum) {
+    if (
+      pkg.metadata?.checksum &&
+      pkg.checksum &&
+      pkg.metadata.checksum !== pkg.checksum
+    ) {
       result.isValid = false;
       result.errors.push(this.ERROR_MESSAGES.CHECKSUM_MISMATCH);
     }
@@ -434,7 +505,7 @@ export class ValidationService {
    */
   private validateSizeConstraints(context: ValidationContext): void {
     const { package: pkg, result, isPremiumUser } = context;
-    
+
     const sizeValidation = this.validateSizeLimit(pkg.size || 0, isPremiumUser);
     result.sizeLimit = sizeValidation;
 
@@ -443,7 +514,10 @@ export class ValidationService {
       result.cloudCompatible = false;
       const limitStr = isPremiumUser ? '100MB' : '10MB';
       result.errors.push(this.ERROR_MESSAGES.SIZE_EXCEEDED(limitStr));
-    } else if (sizeValidation.percentage >= this.SIZE_LIMITS.WARNING_THRESHOLD * 100) {
+    } else if (
+      sizeValidation.percentage >=
+      this.SIZE_LIMITS.WARNING_THRESHOLD * 100
+    ) {
       result.warnings.push(this.WARNING_MESSAGES.SIZE_APPROACHING);
     }
   }
@@ -488,7 +562,7 @@ export class ValidationService {
   private performSecurityValidations(context: ValidationContext): void {
     const { package: pkg, result } = context;
     const { metadata } = pkg;
-    
+
     if (!metadata) return;
 
     // Check title for unsafe patterns
@@ -501,17 +575,26 @@ export class ValidationService {
     // Check tags for unsafe patterns
     if (metadata.tags && Array.isArray(metadata.tags)) {
       for (const tag of metadata.tags) {
-        if (this.UNSAFE_PATTERNS.XSS.test(tag) || this.UNSAFE_PATTERNS.PATH_TRAVERSAL.test(tag)) {
-          result.warnings.push(`Tag "${tag}" contains potentially unsafe characters`);
+        if (
+          this.UNSAFE_PATTERNS.XSS.test(tag) ||
+          this.UNSAFE_PATTERNS.PATH_TRAVERSAL.test(tag)
+        ) {
+          result.warnings.push(
+            `Tag "${tag}" contains potentially unsafe characters`,
+          );
         }
       }
     }
 
     // Check description for unsafe patterns
     if (metadata.description) {
-      if (this.UNSAFE_PATTERNS.XSS.test(metadata.description) || 
-          this.UNSAFE_PATTERNS.SQL_INJECTION.test(metadata.description)) {
-        result.warnings.push(this.WARNING_MESSAGES.UNSAFE_CHARACTERS('Description'));
+      if (
+        this.UNSAFE_PATTERNS.XSS.test(metadata.description) ||
+        this.UNSAFE_PATTERNS.SQL_INJECTION.test(metadata.description)
+      ) {
+        result.warnings.push(
+          this.WARNING_MESSAGES.UNSAFE_CHARACTERS('Description'),
+        );
       }
     }
   }
@@ -522,15 +605,19 @@ export class ValidationService {
   private validateComponentCounts(context: ValidationContext): void {
     const { package: pkg, result } = context;
     const counts = pkg.metadata?.componentCount;
-    
+
     if (!counts) return;
 
     let totalComponents = 0;
 
-    for (const [component, threshold] of Object.entries(this.COMPONENT_THRESHOLDS)) {
+    for (const [component, threshold] of Object.entries(
+      this.COMPONENT_THRESHOLDS,
+    )) {
       const count = counts[component as keyof typeof counts];
       if (count > threshold) {
-        result.warnings.push(this.WARNING_MESSAGES.HIGH_COMPONENT_COUNT(component, count));
+        result.warnings.push(
+          this.WARNING_MESSAGES.HIGH_COMPONENT_COUNT(component, count),
+        );
       }
       totalComponents += count;
     }
@@ -587,12 +674,12 @@ export class ValidationService {
     }
 
     // Add security recommendations if needed
-    if (result.warnings.some(w => w.includes('unsafe'))) {
+    if (result.warnings.some((w) => w.includes('unsafe'))) {
       recommendations.push(this.RECOMMENDATIONS.VALIDATE_SECURITY);
     }
 
     // Add metadata recommendations if needed
-    if (result.errors.some(e => e.includes('metadata'))) {
+    if (result.errors.some((e) => e.includes('metadata'))) {
       recommendations.push(this.RECOMMENDATIONS.UPDATE_METADATA);
     }
 
@@ -609,7 +696,10 @@ export class ValidationService {
   /**
    * Validate TaptikContext schema compliance
    */
-  private validateSchemaCompliance(sanitizedConfig: unknown): { isCompliant: boolean; errors: string[] } {
+  private validateSchemaCompliance(sanitizedConfig: unknown): {
+    isCompliant: boolean;
+    errors: string[];
+  } {
     const errors: string[] = [];
 
     if (!sanitizedConfig || typeof sanitizedConfig !== 'object') {
@@ -619,7 +709,13 @@ export class ValidationService {
     const config = sanitizedConfig as Record<string, unknown>;
 
     // Check required TaptikContext fields
-    const requiredFields = ['version', 'sourceIde', 'targetIdes', 'data', 'metadata'];
+    const requiredFields = [
+      'version',
+      'sourceIde',
+      'targetIdes',
+      'data',
+      'metadata',
+    ];
     for (const field of requiredFields) {
       if (!(field in config)) {
         errors.push(this.ERROR_MESSAGES.MISSING_FIELD(field));
@@ -644,7 +740,7 @@ export class ValidationService {
   private validateClaudeCodeSchemas(context: ValidationContext): void {
     const { package: pkg, result } = context;
     const claudeCode = pkg.sanitizedConfig?.data?.claudeCode;
-    
+
     if (!claudeCode) return;
 
     const { local } = claudeCode;
@@ -666,7 +762,10 @@ export class ValidationService {
   /**
    * Validate agents configuration
    */
-  private validateAgents(agents: ClaudeAgent[] | undefined, result: ValidationResult): void {
+  private validateAgents(
+    agents: ClaudeAgent[] | undefined,
+    result: ValidationResult,
+  ): void {
     if (!agents || !Array.isArray(agents)) return;
 
     for (const agent of agents) {
@@ -683,7 +782,9 @@ export class ValidationService {
       if (!agent.prompt) {
         result.isValid = false;
         result.schemaCompliant = false;
-        result.errors.push(this.ERROR_MESSAGES.INVALID_SCHEMA('agent', 'prompt'));
+        result.errors.push(
+          this.ERROR_MESSAGES.INVALID_SCHEMA('agent', 'prompt'),
+        );
       }
     }
   }
@@ -691,19 +792,26 @@ export class ValidationService {
   /**
    * Validate commands configuration
    */
-  private validateCommands(commands: ClaudeCommand[] | undefined, result: ValidationResult): void {
+  private validateCommands(
+    commands: ClaudeCommand[] | undefined,
+    result: ValidationResult,
+  ): void {
     if (!commands || !Array.isArray(commands)) return;
 
     for (const command of commands) {
       if (!command.name) {
         result.isValid = false;
         result.schemaCompliant = false;
-        result.errors.push(this.ERROR_MESSAGES.INVALID_SCHEMA('command', 'name'));
+        result.errors.push(
+          this.ERROR_MESSAGES.INVALID_SCHEMA('command', 'name'),
+        );
       }
       if (!command.command) {
         result.isValid = false;
         result.schemaCompliant = false;
-        result.errors.push(this.ERROR_MESSAGES.INVALID_SCHEMA('command', 'command'));
+        result.errors.push(
+          this.ERROR_MESSAGES.INVALID_SCHEMA('command', 'command'),
+        );
       }
     }
   }
@@ -711,19 +819,26 @@ export class ValidationService {
   /**
    * Validate MCP servers configuration
    */
-  private validateMcpServers(servers: McpServerConfig[] | undefined, result: ValidationResult): void {
+  private validateMcpServers(
+    servers: McpServerConfig[] | undefined,
+    result: ValidationResult,
+  ): void {
     if (!servers || !Array.isArray(servers)) return;
 
     for (const server of servers) {
       if (!server.name) {
         result.isValid = false;
         result.schemaCompliant = false;
-        result.errors.push(this.ERROR_MESSAGES.INVALID_SCHEMA('MCP server', 'name'));
+        result.errors.push(
+          this.ERROR_MESSAGES.INVALID_SCHEMA('MCP server', 'name'),
+        );
       }
       if (!server.protocol) {
         result.isValid = false;
         result.schemaCompliant = false;
-        result.errors.push(this.ERROR_MESSAGES.INVALID_SCHEMA('MCP server', 'protocol'));
+        result.errors.push(
+          this.ERROR_MESSAGES.INVALID_SCHEMA('MCP server', 'protocol'),
+        );
       }
     }
   }
@@ -731,19 +846,26 @@ export class ValidationService {
   /**
    * Validate steering rules configuration
    */
-  private validateSteeringRules(rules: SteeringRule[] | undefined, result: ValidationResult): void {
+  private validateSteeringRules(
+    rules: SteeringRule[] | undefined,
+    result: ValidationResult,
+  ): void {
     if (!rules || !Array.isArray(rules)) return;
 
     for (const rule of rules) {
       if (!rule.pattern) {
         result.isValid = false;
         result.schemaCompliant = false;
-        result.errors.push(this.ERROR_MESSAGES.INVALID_SCHEMA('steering rule', 'pattern'));
+        result.errors.push(
+          this.ERROR_MESSAGES.INVALID_SCHEMA('steering rule', 'pattern'),
+        );
       }
       if (!rule.rule) {
         result.isValid = false;
         result.schemaCompliant = false;
-        result.errors.push(this.ERROR_MESSAGES.INVALID_SCHEMA('steering rule', 'rule'));
+        result.errors.push(
+          this.ERROR_MESSAGES.INVALID_SCHEMA('steering rule', 'rule'),
+        );
       }
     }
   }
@@ -770,27 +892,41 @@ export class ValidationService {
     const { sourceIde } = metadata;
     const targetIdes = metadata.targetIdes || [];
 
-    if (sourceIde && !this.SUPPORTED_IDES.includes(sourceIde as typeof this.SUPPORTED_IDES[number])) {
-      result.warnings.push(this.WARNING_MESSAGES.UNSUPPORTED_IDE(`Source IDE "${sourceIde}"`));
+    if (
+      sourceIde &&
+      !this.SUPPORTED_IDES.includes(
+        sourceIde as (typeof this.SUPPORTED_IDES)[number],
+      )
+    ) {
+      result.warnings.push(
+        this.WARNING_MESSAGES.UNSUPPORTED_IDE(`Source IDE "${sourceIde}"`),
+      );
     }
 
     for (const targetIde of targetIdes) {
-      if (!this.SUPPORTED_IDES.includes(targetIde as typeof this.SUPPORTED_IDES[number])) {
-        result.warnings.push(this.WARNING_MESSAGES.UNSUPPORTED_IDE(`Target IDE "${targetIde}"`));
+      if (
+        !this.SUPPORTED_IDES.includes(
+          targetIde as (typeof this.SUPPORTED_IDES)[number],
+        )
+      ) {
+        result.warnings.push(
+          this.WARNING_MESSAGES.UNSUPPORTED_IDE(`Target IDE "${targetIde}"`),
+        );
       }
     }
 
     // Auto-detect supported features based on sourceIde and componentCount
     if (sourceIde === 'claude-code' && metadata.componentCount) {
-      const { agents, commands, mcpServers, steeringRules, instructions } = metadata.componentCount;
-      
+      const { agents, commands, mcpServers, steeringRules, instructions } =
+        metadata.componentCount;
+
       // Add base features for Claude Code
       if (agents > 0) result.supportedFeatures.push('agents');
       if (commands > 0) result.supportedFeatures.push('commands');
       if (mcpServers > 0) result.supportedFeatures.push('mcpServers');
       if (steeringRules > 0) result.supportedFeatures.push('steeringRules');
       if (instructions > 0) result.supportedFeatures.push('instructions');
-      
+
       // Add general supported features
       result.supportedFeatures.push('settings', 'themes', 'preferences');
     }
@@ -798,7 +934,11 @@ export class ValidationService {
     // Check explicitly declared features
     const features = metadata.features || [];
     for (const feature of features) {
-      if (this.KNOWN_FEATURES.includes(feature as typeof this.KNOWN_FEATURES[number])) {
+      if (
+        this.KNOWN_FEATURES.includes(
+          feature as (typeof this.KNOWN_FEATURES)[number],
+        )
+      ) {
         if (!result.supportedFeatures.includes(feature)) {
           result.supportedFeatures.push(feature);
         }
@@ -807,7 +947,9 @@ export class ValidationService {
         // Check if targeting unsupported IDE
         for (const targetIde of targetIdes) {
           if (targetIde !== sourceIde) {
-            result.warnings.push(this.WARNING_MESSAGES.UNSUPPORTED_FEATURE(feature, targetIde));
+            result.warnings.push(
+              this.WARNING_MESSAGES.UNSUPPORTED_FEATURE(feature, targetIde),
+            );
           }
         }
       }
@@ -822,8 +964,15 @@ export class ValidationService {
   private validateSizeLimit(
     size: number,
     isPremiumUser = false,
-  ): { current: number; maximum: number; withinLimit: boolean; percentage: number } {
-    const maximum = isPremiumUser ? this.SIZE_LIMITS.PREMIUM : this.SIZE_LIMITS.DEFAULT;
+  ): {
+    current: number;
+    maximum: number;
+    withinLimit: boolean;
+    percentage: number;
+  } {
+    const maximum = isPremiumUser
+      ? this.SIZE_LIMITS.PREMIUM
+      : this.SIZE_LIMITS.DEFAULT;
     const percentage = Math.round((size / maximum) * 100);
 
     return {
@@ -837,7 +986,9 @@ export class ValidationService {
   /**
    * Get cached validation result
    */
-  private getCachedResult(checksum: string | undefined): ValidationResult | null {
+  private getCachedResult(
+    checksum: string | undefined,
+  ): ValidationResult | null {
     if (!checksum) return null;
 
     const cached = this.validationCache.get(checksum);
@@ -940,9 +1091,11 @@ export class ValidationService {
   /**
    * Validate Supabase-specific compatibility requirements
    */
-  private async validateSupabaseCompatibility(context: ValidationContext): Promise<void> {
+  private async validateSupabaseCompatibility(
+    context: ValidationContext,
+  ): Promise<void> {
     const { package: pkg, result } = context;
-    
+
     // Check Supabase storage limits
     if (pkg.size > this.SUPABASE_LIMITS.STORAGE_MAX_FILE_SIZE) {
       result.isValid = false;
@@ -950,7 +1103,7 @@ export class ValidationService {
       result.errors.push(this.ERROR_MESSAGES.SUPABASE_LIMIT('storage'));
       result.recommendations.push(this.RECOMMENDATIONS.ENABLE_CHUNKING);
     }
-    
+
     // Check metadata size
     const metadataSize = Buffer.from(JSON.stringify(pkg.metadata)).length;
     if (metadataSize > this.SUPABASE_LIMITS.MAX_METADATA_SIZE) {
@@ -958,22 +1111,25 @@ export class ValidationService {
       result.errors.push(this.ERROR_MESSAGES.METADATA_TOO_LARGE);
       result.recommendations.push(this.RECOMMENDATIONS.REDUCE_SIZE);
     }
-    
+
     // Validate compression format for cloud
-    if (pkg.compression && !['gzip', 'brotli', 'none'].includes(pkg.compression)) {
+    if (
+      pkg.compression &&
+      !['gzip', 'brotli', 'none'].includes(pkg.compression)
+    ) {
       result.warnings.push(this.ERROR_MESSAGES.COMPRESSION_INVALID);
       result.recommendations.push(this.RECOMMENDATIONS.USE_BROTLI);
     }
-    
+
     // Check for Edge Functions compatibility
     const estimatedProcessingTime = this.estimateProcessingTime(pkg);
     if (estimatedProcessingTime > this.SUPABASE_LIMITS.EDGE_FUNCTION_TIMEOUT) {
       result.warnings.push(
-        `Package may exceed Edge Function timeout (estimated: ${Math.ceil(estimatedProcessingTime / 1000)}s)`
+        `Package may exceed Edge Function timeout (estimated: ${Math.ceil(estimatedProcessingTime / 1000)}s)`,
       );
       result.recommendations.push(this.RECOMMENDATIONS.OPTIMIZE_FOR_EDGE);
     }
-    
+
     // Validate feature compatibility across target IDEs
     await this.validateCrossIdeCompatibility(context);
   }
@@ -981,41 +1137,67 @@ export class ValidationService {
   /**
    * Validate cross-IDE feature compatibility
    */
-  private async validateCrossIdeCompatibility(context: ValidationContext): Promise<void> {
+  private async validateCrossIdeCompatibility(
+    context: ValidationContext,
+  ): Promise<void> {
     const { package: pkg, result } = context;
-    
-    if (!pkg.metadata?.targetIdes || pkg.metadata.targetIdes.length === 0) return;
-    
+
+    if (!pkg.metadata?.targetIdes || pkg.metadata.targetIdes.length === 0)
+      return;
+
     const features = pkg.metadata.features || [];
-    
+
     // Define IDE feature support matrix
     const ideFeatureSupport: Record<string, string[]> = {
-      'claude-code': ['agents', 'commands', 'mcpServers', 'steeringRules', 'instructions', 'aiAssistance'],
-      'kiro-ide': ['gitIntegration', 'dockerSupport', 'kubernetesIntegration', 'autocomplete'],
-      'cursor-ide': ['aiAssistance', 'autocomplete', 'collaborativeEditing', 'remoteDebugging'],
+      'claude-code': [
+        'agents',
+        'commands',
+        'mcpServers',
+        'steeringRules',
+        'instructions',
+        'aiAssistance',
+      ],
+      'kiro-ide': [
+        'gitIntegration',
+        'dockerSupport',
+        'kubernetesIntegration',
+        'autocomplete',
+      ],
+      'cursor-ide': [
+        'aiAssistance',
+        'autocomplete',
+        'collaborativeEditing',
+        'remoteDebugging',
+      ],
     };
-    
+
     // Check each target IDE
     for (const targetIde of pkg.metadata.targetIdes) {
       const supportedFeatures = ideFeatureSupport[targetIde] || [];
-      
+
       for (const feature of features) {
         if (!supportedFeatures.includes(feature)) {
           result.warnings.push(
-            `Feature "${feature}" may not be fully supported in ${targetIde}`
+            `Feature "${feature}" may not be fully supported in ${targetIde}`,
           );
         }
       }
-      
+
       // Check component compatibility
       if (pkg.metadata.componentCount) {
-        const { agents, mcpServers, steeringRules } = pkg.metadata.componentCount;
-        
-        if (targetIde !== 'claude-code' && (agents > 0 || mcpServers > 0 || steeringRules > 0)) {
+        const { agents, mcpServers, steeringRules } =
+          pkg.metadata.componentCount;
+
+        if (
+          targetIde !== 'claude-code' &&
+          (agents > 0 || mcpServers > 0 || steeringRules > 0)
+        ) {
           result.warnings.push(
-            `Claude Code specific components may not work in ${targetIde}`
+            `Claude Code specific components may not work in ${targetIde}`,
           );
-          result.recommendations.push(this.RECOMMENDATIONS.CHECK_FEATURE_COMPATIBILITY);
+          result.recommendations.push(
+            this.RECOMMENDATIONS.CHECK_FEATURE_COMPATIBILITY,
+          );
         }
       }
     }
@@ -1027,19 +1209,19 @@ export class ValidationService {
   private calculateValidationScore(context: ValidationContext): number {
     const { result } = context;
     let score = 100;
-    
+
     // Deduct points for errors (10 points each)
     score -= result.errors.length * 10;
-    
+
     // Deduct points for warnings (3 points each)
     score -= result.warnings.length * 3;
-    
+
     // Bonus points for optimizations
     if (context.package.compression === 'brotli') score += 5;
     if (context.package.size < this.SIZE_LIMITS.DEFAULT * 0.5) score += 5;
     if (result.schemaCompliant) score += 10;
     if (result.cloudCompatible) score += 10;
-    
+
     // Ensure score is between 0 and 100
     return Math.max(0, Math.min(100, score));
   }
@@ -1050,21 +1232,27 @@ export class ValidationService {
   private estimateProcessingTime(pkg: TaptikPackage): number {
     // Base time in milliseconds
     let time = 1000;
-    
+
     // Add time based on size (1ms per KB)
     time += pkg.size / 1024;
-    
+
     // Add time based on components
     if (pkg.metadata?.componentCount) {
-      const { agents, commands, mcpServers, steeringRules, instructions } = pkg.metadata.componentCount;
-      time += (agents * 100) + (commands * 50) + (mcpServers * 200) + (steeringRules * 75) + (instructions * 150);
+      const { agents, commands, mcpServers, steeringRules, instructions } =
+        pkg.metadata.componentCount;
+      time +=
+        agents * 100 +
+        commands * 50 +
+        mcpServers * 200 +
+        steeringRules * 75 +
+        instructions * 150;
     }
-    
+
     // Add time for complex features
     if (pkg.metadata?.features) {
       time += pkg.metadata.features.length * 100;
     }
-    
+
     return time;
   }
 
@@ -1073,7 +1261,7 @@ export class ValidationService {
    */
   async getValidationReport(
     taptikPackage: TaptikPackage,
-    isPremiumUser = false
+    isPremiumUser = false,
   ): Promise<{
     result: ValidationResult;
     metrics: {
@@ -1087,18 +1275,23 @@ export class ValidationService {
   }> {
     const startTime = Date.now();
     const cacheHit = !!this.getCachedResult(taptikPackage.checksum);
-    
-    const result = await this.validateForCloudUpload(taptikPackage, isPremiumUser);
-    
+
+    const result = await this.validateForCloudUpload(
+      taptikPackage,
+      isPremiumUser,
+    );
+
     const validationTime = Date.now() - startTime;
     const checksPerformed = result.errors.length + result.warnings.length + 10; // Base checks
     const estimatedUploadTime = Math.ceil(taptikPackage.size / 1024 / 100); // 100KB/s estimate
-    const score = result.validationScore || this.calculateValidationScore({ 
-      package: taptikPackage, 
-      isPremiumUser, 
-      result 
-    });
-    
+    const score =
+      result.validationScore ||
+      this.calculateValidationScore({
+        package: taptikPackage,
+        isPremiumUser,
+        result,
+      });
+
     return {
       result,
       metrics: {
@@ -1117,21 +1310,24 @@ export class ValidationService {
    */
   async batchValidate(
     packages: TaptikPackage[],
-    isPremiumUser = false
+    isPremiumUser = false,
   ): Promise<ValidationResult[]> {
     const results = await Promise.all(
-      packages.map(pkg => this.validateForCloudUpload(pkg, isPremiumUser))
+      packages.map((pkg) => this.validateForCloudUpload(pkg, isPremiumUser)),
     );
-    
+
     // Log batch validation metrics
-    const totalTime = Array.from(this.performanceMetrics.values()).reduce((a, b) => a + b, 0);
+    const totalTime = Array.from(this.performanceMetrics.values()).reduce(
+      (a, b) => a + b,
+      0,
+    );
     const avgTime = totalTime / packages.length;
-    
+
     this.logger.log(
       `Batch validation completed: ${packages.length} packages, ` +
-      `avg time: ${avgTime.toFixed(2)}ms`
+        `avg time: ${avgTime.toFixed(2)}ms`,
     );
-    
+
     return results;
   }
 }

@@ -110,7 +110,8 @@ describe('Deploy Module Integration Tests', () => {
     deploymentService = module.get<DeploymentService>(DeploymentService);
     importService = module.get<ImportService>(ImportService);
     backupService = module.get<BackupService>(BackupService);
-    errorRecoveryService = module.get<ErrorRecoveryService>(ErrorRecoveryService);
+    errorRecoveryService =
+      module.get<ErrorRecoveryService>(ErrorRecoveryService);
     supabaseService = module.get<SupabaseService>(SupabaseService);
   });
 
@@ -140,7 +141,7 @@ describe('Deploy Module Integration Tests', () => {
     it('should handle module lifecycle correctly', async () => {
       // Test that the module can be created and destroyed without issues
       expect(module).toBeDefined();
-      
+
       // This test mainly ensures the module setup doesn't throw errors
       await expect(module.close()).resolves.not.toThrow();
     });
@@ -162,7 +163,7 @@ describe('Deploy Module Integration Tests', () => {
       // Test that ImportService can call the mocked Supabase client
       const client = supabaseService.getClient();
       const bucket = client.storage.from('configurations');
-      
+
       const result = await bucket.download('test-config.json');
       expect(result.data).toBeDefined();
       expect(result.error).toBeNull();
@@ -176,7 +177,7 @@ describe('Deploy Module Integration Tests', () => {
         backupService.toString();
         errorRecoveryService.toString();
       }).not.toThrow();
-      
+
       // Verify that complex service dependency chains work
       expect(typeof deploymentService.deployToClaudeCode).toBe('function');
       expect(typeof importService.importConfiguration).toBe('function');
@@ -204,7 +205,7 @@ describe('Deploy Module Integration Tests', () => {
             validate: true,
           },
         };
-        
+
         // Just verify method signatures, don't actually call them
         expect(typeof deploymentService.deployToClaudeCode).toBe('function');
       }).not.toThrow();
@@ -215,7 +216,7 @@ describe('Deploy Module Integration Tests', () => {
     it('should inject SupabaseService into ImportService', () => {
       // ImportService should have access to SupabaseService
       expect(importService).toBeDefined();
-      
+
       // Test that the mocked SupabaseService is properly injected
       const client = supabaseService.getClient();
       expect(client).toBeDefined();
@@ -227,7 +228,7 @@ describe('Deploy Module Integration Tests', () => {
       expect(deploymentService).toBeDefined();
       expect(backupService).toBeDefined();
       expect(errorRecoveryService).toBeDefined();
-      
+
       // These services should be able to work together
       // (Actual integration is tested in unit tests)
       expect(typeof deploymentService.deployToClaudeCode).toBe('function');

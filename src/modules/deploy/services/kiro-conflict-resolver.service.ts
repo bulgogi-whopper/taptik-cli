@@ -3,19 +3,14 @@ import * as path from 'node:path';
 
 import { Injectable } from '@nestjs/common';
 
-import { DeploymentError, DeploymentWarning } from '../interfaces/deployment-result.interface';
+import {
+  DeploymentError,
+  DeploymentWarning,
+} from '../interfaces/deployment-result.interface';
 import {
   KiroConflictStrategy,
   KiroMergeStrategy,
   KiroComponentType,
-  KiroGlobalSettings,
-  KiroProjectSettings,
-  KiroSteeringDocument,
-  KiroSpecDocument,
-  KiroHookConfiguration,
-  KiroAgentConfiguration,
-  KiroTemplateConfiguration,
-  KiroTask,
   KiroMergedConfiguration,
 } from '../interfaces/kiro-deployment.interface';
 
@@ -35,7 +30,11 @@ export interface ConflictResolutionResult {
 export interface ConflictDetail {
   filePath: string;
   componentType: KiroComponentType;
-  conflictType: 'file_exists' | 'content_differs' | 'structure_mismatch' | 'version_conflict';
+  conflictType:
+    | 'file_exists'
+    | 'content_differs'
+    | 'structure_mismatch'
+    | 'version_conflict';
   description: string;
   resolution?: string;
 }
@@ -59,7 +58,7 @@ export class KiroConflictResolverService {
       }
 
       const existingContent = await fs.readFile(filePath, 'utf-8');
-      
+
       // 내용이 동일한지 확인
       if (existingContent === newContent) {
         return []; // 동일한 내용이므로 충돌 없음
@@ -94,7 +93,6 @@ export class KiroConflictResolverService {
         );
         conflicts.push(...sectionConflicts);
       }
-
     } catch (error) {
       conflicts.push({
         filePath,
@@ -124,7 +122,11 @@ export class KiroConflictResolverService {
 
     try {
       // 충돌 감지
-      result.conflicts = await this.detectConflicts(filePath, newContent, componentType);
+      result.conflicts = await this.detectConflicts(
+        filePath,
+        newContent,
+        componentType,
+      );
 
       if (result.conflicts.length === 0) {
         // 충돌이 없으므로 파일을 그대로 작성
@@ -153,11 +155,22 @@ export class KiroConflictResolverService {
 
         case 'merge':
         case 'merge-intelligent':
-          await this.mergeFiles(filePath, newContent, componentType, mergeStrategy, result);
+          await this.mergeFiles(
+            filePath,
+            newContent,
+            componentType,
+            mergeStrategy,
+            result,
+          );
           break;
 
         case 'preserve-tasks':
-          await this.preserveTasksAndMerge(filePath, newContent, componentType, result);
+          await this.preserveTasksAndMerge(
+            filePath,
+            newContent,
+            componentType,
+            result,
+          );
           break;
 
         case 'prompt':
@@ -175,7 +188,6 @@ export class KiroConflictResolverService {
             severity: 'error',
           });
       }
-
     } catch (error) {
       result.errors.push({
         message: `Conflict resolution failed: ${error instanceof Error ? error.message : String(error)}`,
@@ -217,7 +229,6 @@ export class KiroConflictResolverService {
         message: `Backed up existing file to ${backupPath} and overwrote with new content`,
         code: 'FILE_BACKED_UP_AND_OVERWRITTEN',
       });
-
     } catch (error) {
       result.errors.push({
         message: `Backup creation failed: ${error instanceof Error ? error.message : String(error)}`,
@@ -280,7 +291,6 @@ export class KiroConflictResolverService {
         message: `Merged content using ${mergeStrategy} strategy`,
         code: 'CONTENT_MERGED',
       });
-
     } catch (error) {
       result.errors.push({
         message: `Merge failed: ${error instanceof Error ? error.message : String(error)}`,
@@ -298,14 +308,23 @@ export class KiroConflictResolverService {
   ): Promise<void> {
     if (componentType !== 'specs' || !filePath.endsWith('.md')) {
       // 작업 보존은 스펙 마크다운 파일에서만 지원
-      await this.mergeFiles(filePath, newContent, componentType, 'markdown-section-merge', result);
+      await this.mergeFiles(
+        filePath,
+        newContent,
+        componentType,
+        'markdown-section-merge',
+        result,
+      );
       return;
     }
 
     try {
       const existingContent = await fs.readFile(filePath, 'utf-8');
       const preservedTasks = this.extractCompletedTasks(existingContent);
-      const mergedContent = this.preserveTaskStatusInContent(newContent, preservedTasks);
+      const mergedContent = this.preserveTaskStatusInContent(
+        newContent,
+        preservedTasks,
+      );
 
       await fs.writeFile(filePath, mergedContent, 'utf-8');
       result.resolved = true;
@@ -319,7 +338,6 @@ export class KiroConflictResolverService {
         message: `Preserved ${preservedTasks.length} completed task statuses`,
         code: 'TASKS_PRESERVED',
       });
-
     } catch (error) {
       result.errors.push({
         message: `Task preservation failed: ${error instanceof Error ? error.message : String(error)}`,
@@ -333,7 +351,7 @@ export class KiroConflictResolverService {
     existingContent: string,
     newContent: string,
     mergeStrategy: KiroMergeStrategy,
-    componentType: KiroComponentType,
+    _componentType: KiroComponentType,
   ): Promise<string> {
     try {
       const existing = JSON.parse(existingContent);
@@ -355,9 +373,10 @@ export class KiroConflictResolverService {
       }
 
       return JSON.stringify(merged, null, 2);
-
     } catch (error) {
-      throw new Error(`JSON merge failed: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `JSON merge failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
@@ -387,7 +406,7 @@ export class KiroConflictResolverService {
   private async mergeTextContent(
     existingContent: string,
     newContent: string,
-    mergeStrategy: KiroMergeStrategy,
+    _mergeStrategy: KiroMergeStrategy,
   ): Promise<string> {
     // 일반 텍스트 파일의 경우 라인 기반 병합
     const existingLines = existingContent.split('\n');
@@ -398,7 +417,8 @@ export class KiroConflictResolverService {
     return mergedLines.join('\n');
   }
 
-  private deepMergeObjects(existing: any, newData: any): any { // eslint-disable-line @typescript-eslint/no-explicit-any
+  private deepMergeObjects(existing: Record<string, unknown>, newData: Record<string, unknown>): Record<string, unknown> {
+     
     if (typeof existing !== 'object' || existing === null) {
       return newData;
     }
@@ -411,8 +431,15 @@ export class KiroConflictResolverService {
 
     for (const key in newData) {
       if (Object.prototype.hasOwnProperty.call(newData, key)) {
-        if (typeof newData[key] === 'object' && newData[key] !== null && !Array.isArray(newData[key])) {
-          result[key] = this.deepMergeObjects(existing[key], newData[key]);
+        if (
+          typeof newData[key] === 'object' &&
+          newData[key] !== null &&
+          !Array.isArray(newData[key])
+        ) {
+          result[key] = this.deepMergeObjects(
+            existing[key] as Record<string, unknown>,
+            newData[key] as Record<string, unknown>
+          );
         } else {
           result[key] = newData[key];
         }
@@ -422,18 +449,24 @@ export class KiroConflictResolverService {
     return result;
   }
 
-  private mergeWithArrayAppend(existing: any, newData: any): any { // eslint-disable-line @typescript-eslint/no-explicit-any
+  private mergeWithArrayAppend(existing: Record<string, unknown>, newData: Record<string, unknown>): Record<string, unknown> {
+     
     const result = this.deepMergeObjects(existing, newData);
 
     // 배열 필드들을 찾아서 병합
-    const mergeArrays = (obj1: any, obj2: any, target: any): void => { // eslint-disable-line @typescript-eslint/no-explicit-any
+    const mergeArrays = (obj1: Record<string, unknown>, obj2: Record<string, unknown>, target: Record<string, unknown>): void => {
+       
       for (const key in obj2) {
         if (Object.prototype.hasOwnProperty.call(obj2, key)) {
           if (Array.isArray(obj1[key]) && Array.isArray(obj2[key])) {
             // 중복 제거하여 배열 병합
             target[key] = [...new Set([...obj1[key], ...obj2[key]])];
           } else if (typeof obj2[key] === 'object' && obj2[key] !== null) {
-            mergeArrays(obj1[key] || {}, obj2[key], target[key] || {});
+            mergeArrays(
+              (obj1[key] as Record<string, unknown>) || {},
+              obj2[key] as Record<string, unknown>,
+              (target[key] as Record<string, unknown>) || {}
+            );
           }
         }
       }
@@ -454,7 +487,10 @@ export class KiroConflictResolverService {
       if (mergedSections.has(sectionName)) {
         // 기존 섹션이 있는 경우 내용을 스마트 병합
         const existingSectionContent = mergedSections.get(sectionName) || '';
-        const mergedSectionContent = this.mergeSectionContent(existingSectionContent, sectionContent);
+        const mergedSectionContent = this.mergeSectionContent(
+          existingSectionContent,
+          sectionContent,
+        );
         mergedSections.set(sectionName, mergedSectionContent);
       } else {
         // 새 섹션 추가
@@ -477,7 +513,7 @@ export class KiroConflictResolverService {
         if (currentSection) {
           sections.set(currentSection, currentContent.join('\n'));
         }
-        
+
         // 새 섹션 시작
         currentSection = line.replace(/^#+\s*/, '').trim();
         currentContent = [line];
@@ -494,9 +530,15 @@ export class KiroConflictResolverService {
     return sections;
   }
 
-  private mergeSectionContent(existingContent: string, newContent: string): string {
+  private mergeSectionContent(
+    existingContent: string,
+    newContent: string,
+  ): string {
     // 작업 목록이 포함된 섹션의 경우 특별 처리
-    if (this.containsTaskList(existingContent) && this.containsTaskList(newContent)) {
+    if (
+      this.containsTaskList(existingContent) &&
+      this.containsTaskList(newContent)
+    ) {
       return this.mergeTaskLists(existingContent, newContent);
     }
 
@@ -529,10 +571,15 @@ export class KiroConflictResolverService {
       }
     }
 
-    return this.reconstructContentWithTasks(newContent, Array.from(mergedTasks.values()));
+    return this.reconstructContentWithTasks(
+      newContent,
+      Array.from(mergedTasks.values()),
+    );
   }
 
-  private extractCompletedTasks(content: string): Array<{ id: string; completed: boolean }> {
+  private extractCompletedTasks(
+    content: string,
+  ): Array<{ id: string; completed: boolean }> {
     const tasks: Array<{ id: string; completed: boolean }> = [];
     const lines = content.split('\n');
 
@@ -549,7 +596,9 @@ export class KiroConflictResolverService {
     return tasks;
   }
 
-  private extractTasksFromContent(content: string): Array<{ id: string; text: string; completed: boolean }> {
+  private extractTasksFromContent(
+    content: string,
+  ): Array<{ id: string; text: string; completed: boolean }> {
     const tasks: Array<{ id: string; text: string; completed: boolean }> = [];
     const lines = content.split('\n');
 
@@ -572,7 +621,7 @@ export class KiroConflictResolverService {
     if (match) {
       return match[1]; // 작업 번호 사용
     }
-    
+
     // 작업 번호가 없으면 텍스트의 첫 단어들 사용
     return taskText.split(' ').slice(0, 3).join('-').toLowerCase();
   }
@@ -587,12 +636,12 @@ export class KiroConflictResolverService {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const match = line.match(/^\s*-\s*\[([ x])]\s*(.+)/);
-      
+
       if (match) {
         const taskText = match[2].trim();
         const taskId = this.generateTaskId(taskText);
-        const preservedTask = preservedTasks.find(t => t.id === taskId);
-        
+        const preservedTask = preservedTasks.find((t) => t.id === taskId);
+
         if (preservedTask && preservedTask.completed) {
           // 완료된 작업으로 마크
           lines[i] = line.replace(/\[ ]/, '[x]');
@@ -613,12 +662,12 @@ export class KiroConflictResolverService {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const match = line.match(/^\s*-\s*\[([ x])]\s*(.+)/);
-      
+
       if (match) {
         const taskText = match[2].trim();
         const taskId = this.generateTaskId(taskText);
-        const task = tasks.find(t => t.id === taskId);
-        
+        const task = tasks.find((t) => t.id === taskId);
+
         if (task) {
           const checkbox = task.completed ? '[x]' : '[ ]';
           lines[i] = line.replace(/\[([ x])]/, checkbox);
@@ -629,7 +678,9 @@ export class KiroConflictResolverService {
     return lines.join('\n');
   }
 
-  private reconstructMarkdownFromSections(sections: Map<string, string>): string {
+  private reconstructMarkdownFromSections(
+    sections: Map<string, string>,
+  ): string {
     const sortedSections = Array.from(sections.values());
     return sortedSections.join('\n\n');
   }
@@ -647,7 +698,11 @@ export class KiroConflictResolverService {
       const newData = JSON.parse(newContent);
 
       // 버전 충돌 감지
-      if (existing.version && newData.version && existing.version !== newData.version) {
+      if (
+        existing.version &&
+        newData.version &&
+        existing.version !== newData.version
+      ) {
         conflicts.push({
           filePath,
           componentType,
@@ -659,9 +714,13 @@ export class KiroConflictResolverService {
       // 구조적 차이 감지
       const existingKeys = new Set(Object.keys(existing));
       const newKeys = new Set(Object.keys(newData));
-      
-      const removedKeys = Array.from(existingKeys).filter(key => !newKeys.has(key));
-      const addedKeys = Array.from(newKeys).filter(key => !existingKeys.has(key));
+
+      const removedKeys = Array.from(existingKeys).filter(
+        (key) => !newKeys.has(key),
+      );
+      const addedKeys = Array.from(newKeys).filter(
+        (key) => !existingKeys.has(key),
+      );
 
       if (removedKeys.length > 0 || addedKeys.length > 0) {
         conflicts.push({
@@ -671,7 +730,6 @@ export class KiroConflictResolverService {
           description: `Structure changes: removed [${removedKeys.join(', ')}], added [${addedKeys.join(', ')}]`,
         });
       }
-
     } catch (error) {
       conflicts.push({
         filePath,
@@ -745,7 +803,7 @@ export class KiroConflictResolverService {
     const results: ConflictResolutionResult[] = [];
 
     for (const conflict of conflicts) {
-      const result = await this.resolveConflict(
+      const result = await this.resolveConflict( // eslint-disable-line no-await-in-loop
         conflict.filePath,
         conflict.newContent,
         conflict.componentType,
@@ -760,7 +818,7 @@ export class KiroConflictResolverService {
 
   async validateMergeCompatibility(
     filePath: string,
-    componentType: KiroComponentType,
+    _componentType: KiroComponentType,
     mergeStrategy: KiroMergeStrategy,
   ): Promise<{ compatible: boolean; reason?: string }> {
     // JSON 파일에 대한 병합 호환성 검사
@@ -768,20 +826,24 @@ export class KiroConflictResolverService {
       if (['deep-merge', 'array-append'].includes(mergeStrategy)) {
         return { compatible: true };
       }
-      return { 
-        compatible: false, 
-        reason: `Merge strategy ${mergeStrategy} not compatible with JSON files` 
+      return {
+        compatible: false,
+        reason: `Merge strategy ${mergeStrategy} not compatible with JSON files`,
       };
     }
 
     // 마크다운 파일에 대한 병합 호환성 검사
     if (filePath.endsWith('.md')) {
-      if (['markdown-section-merge', 'task-status-preserve'].includes(mergeStrategy)) {
+      if (
+        ['markdown-section-merge', 'task-status-preserve'].includes(
+          mergeStrategy,
+        )
+      ) {
         return { compatible: true };
       }
-      return { 
-        compatible: false, 
-        reason: `Merge strategy ${mergeStrategy} not compatible with Markdown files` 
+      return {
+        compatible: false,
+        reason: `Merge strategy ${mergeStrategy} not compatible with Markdown files`,
       };
     }
 
@@ -802,7 +864,7 @@ export class KiroConflictResolverService {
     ];
 
     const groupedConflicts = new Map<KiroComponentType, ConflictDetail[]>();
-    
+
     // 컴포넌트 타입별로 충돌 그룹화
     for (const conflict of conflicts) {
       if (!groupedConflicts.has(conflict.componentType)) {
@@ -812,7 +874,9 @@ export class KiroConflictResolverService {
     }
 
     for (const [componentType, componentConflicts] of groupedConflicts) {
-      report.push(`## ${componentType.charAt(0).toUpperCase() + componentType.slice(1)} Conflicts`);
+      report.push(
+        `## ${componentType.charAt(0).toUpperCase() + componentType.slice(1)} Conflicts`,
+      );
       report.push('');
 
       for (const conflict of componentConflicts) {
@@ -829,7 +893,9 @@ export class KiroConflictResolverService {
     report.push('## Recommended Actions');
     report.push('');
     report.push('1. Review conflicts carefully before proceeding');
-    report.push('2. Choose appropriate resolution strategy for each component type');
+    report.push(
+      '2. Choose appropriate resolution strategy for each component type',
+    );
     report.push('3. Consider backing up important configurations');
     report.push('4. Test deployment in dry-run mode first');
 
@@ -857,40 +923,46 @@ export class KiroConflictResolverService {
         return {
           strategy: 'merge-intelligent',
           mergeStrategy: 'deep-merge',
-          reasoning: 'Settings files benefit from intelligent merging to preserve user customizations',
+          reasoning:
+            'Settings files benefit from intelligent merging to preserve user customizations',
         };
 
       case 'steering':
         return {
           strategy: 'merge-intelligent',
           mergeStrategy: 'markdown-section-merge',
-          reasoning: 'Steering documents should merge by sections to preserve existing guidance',
+          reasoning:
+            'Steering documents should merge by sections to preserve existing guidance',
         };
 
       case 'specs':
         return {
           strategy: 'preserve-tasks',
           mergeStrategy: 'task-status-preserve',
-          reasoning: 'Spec files should preserve task completion status to maintain progress',
+          reasoning:
+            'Spec files should preserve task completion status to maintain progress',
         };
 
       case 'hooks':
         return {
           strategy: 'prompt',
-          reasoning: 'Hook configurations should be reviewed manually due to security implications',
+          reasoning:
+            'Hook configurations should be reviewed manually due to security implications',
         };
 
       case 'agents':
         return {
           strategy: 'backup',
-          reasoning: 'Agent configurations should be backed up before replacement due to complexity',
+          reasoning:
+            'Agent configurations should be backed up before replacement due to complexity',
         };
 
       case 'templates':
         return {
           strategy: 'merge-intelligent',
           mergeStrategy: 'array-append',
-          reasoning: 'Template collections benefit from merging to combine existing and new templates',
+          reasoning:
+            'Template collections benefit from merging to combine existing and new templates',
         };
 
       default:

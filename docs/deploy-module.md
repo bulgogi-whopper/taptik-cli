@@ -25,16 +25,16 @@ taptik deploy [options]
 
 ### Options
 
-| Flag | Description | Default | Example |
-|------|-------------|---------|---------|
-| `-p, --platform <platform>` | Target platform for deployment | `claudeCode` | `--platform claudeCode` |
-| `-c, --context-id <id>` | Configuration ID to deploy | `latest` | `--context-id config-123` |
-| `-d, --dry-run` | Simulate deployment without changes | `false` | `--dry-run` |
-| `-v, --validate-only` | Only validate configuration | `false` | `--validate-only` |
-| `-s, --conflict-strategy <strategy>` | Conflict resolution strategy | `prompt` | `--conflict-strategy overwrite` |
-| `--components <components...>` | Specific components to deploy | all | `--components settings agents` |
-| `--skip-components <components...>` | Components to skip | none | `--skip-components commands` |
-| `-f, --force` | Force deployment without prompts | `false` | `--force` |
+| Flag                                 | Description                         | Default      | Example                         |
+| ------------------------------------ | ----------------------------------- | ------------ | ------------------------------- |
+| `-p, --platform <platform>`          | Target platform for deployment      | `claudeCode` | `--platform claudeCode`         |
+| `-c, --context-id <id>`              | Configuration ID to deploy          | `latest`     | `--context-id config-123`       |
+| `-d, --dry-run`                      | Simulate deployment without changes | `false`      | `--dry-run`                     |
+| `-v, --validate-only`                | Only validate configuration         | `false`      | `--validate-only`               |
+| `-s, --conflict-strategy <strategy>` | Conflict resolution strategy        | `prompt`     | `--conflict-strategy overwrite` |
+| `--components <components...>`       | Specific components to deploy       | all          | `--components settings agents`  |
+| `--skip-components <components...>`  | Components to skip                  | none         | `--skip-components commands`    |
+| `-f, --force`                        | Force deployment without prompts    | `false`      | `--force`                       |
 
 ### Conflict Strategies
 
@@ -172,14 +172,12 @@ Main orchestrator for deployment operations.
 
 ```typescript
 class DeploymentService {
-  async deployToClaudeCode(
-    context: TaptikContext,
-    options: DeployOptions
-  ): Promise<DeploymentResult>
+  async deployToClaudeCode(context: TaptikContext, options: DeployOptions): Promise<DeploymentResult>;
 }
 ```
 
 **Key Features:**
+
 - Component-specific deployment logic
 - Dry-run and validation modes
 - Automatic backup creation
@@ -191,13 +189,14 @@ Handles importing configurations from Supabase.
 
 ```typescript
 class ImportService {
-  async importFromSupabase(configId: string): Promise<TaptikContext>
-  async importConfiguration(configId: string): Promise<TaptikContext>
-  async validateConfigExists(configId: string): Promise<boolean>
+  async importFromSupabase(configId: string): Promise<TaptikContext>;
+  async importConfiguration(configId: string): Promise<TaptikContext>;
+  async validateConfigExists(configId: string): Promise<boolean>;
 }
 ```
 
 **Features:**
+
 - Automatic retry with exponential backoff
 - Configuration caching
 - Metadata validation
@@ -208,14 +207,15 @@ Manages backup creation and restoration.
 
 ```typescript
 class BackupService {
-  async createBackup(filePath: string): Promise<string>
-  async rollback(backupPath: string): Promise<void>
-  async rollbackComponent(manifestPath: string, componentType: string): Promise<void>
-  async rollbackWithDependencies(manifestPath: string, componentType: string): Promise<void>
+  async createBackup(filePath: string): Promise<string>;
+  async rollback(backupPath: string): Promise<void>;
+  async rollbackComponent(manifestPath: string, componentType: string): Promise<void>;
+  async rollbackWithDependencies(manifestPath: string, componentType: string): Promise<void>;
 }
 ```
 
 **Features:**
+
 - Timestamped backups
 - Component-level rollback
 - Dependency-aware restoration
@@ -227,13 +227,14 @@ Validates configurations for security threats.
 
 ```typescript
 class SecurityScannerService {
-  async scanForMaliciousCommands(commands: any[]): Promise<SecurityScanResult>
-  async detectDirectoryTraversal(paths: string[]): Promise<boolean>
-  async sanitizeSensitiveData(context: TaptikContext): Promise<TaptikContext>
+  async scanForMaliciousCommands(commands: any[]): Promise<SecurityScanResult>;
+  async detectDirectoryTraversal(paths: string[]): Promise<boolean>;
+  async sanitizeSensitiveData(context: TaptikContext): Promise<TaptikContext>;
 }
 ```
 
 **Security Checks:**
+
 - Malicious command patterns (rm -rf, format, etc.)
 - Directory traversal attempts
 - Sensitive data exposure (API keys, passwords)
@@ -245,14 +246,15 @@ Provides structured error handling with recovery strategies.
 
 ```typescript
 class ErrorHandlerService {
-  async handleError(error: unknown, context: ErrorContext): Promise<DeployError>
-  async executeWithRetry<T>(fn: () => Promise<T>, context: ErrorContext): Promise<T>
-  async handleNetworkError<T>(fn: () => Promise<T>): Promise<T>
-  async handleFileSystemError<T>(fn: () => Promise<T>): Promise<T>
+  async handleError(error: unknown, context: ErrorContext): Promise<DeployError>;
+  async executeWithRetry<T>(fn: () => Promise<T>, context: ErrorContext): Promise<T>;
+  async handleNetworkError<T>(fn: () => Promise<T>): Promise<T>;
+  async handleFileSystemError<T>(fn: () => Promise<T>): Promise<T>;
 }
 ```
 
 **Recovery Strategies:**
+
 - Network errors: 5 retries with exponential backoff
 - File system errors: Alternative path attempts
 - Security violations: Immediate rollback
@@ -264,14 +266,15 @@ Prevents concurrent deployments.
 
 ```typescript
 class LockingService {
-  async acquireLock(lockFile: string): Promise<LockHandle>
-  async releaseLock(handle: LockHandle): Promise<void>
-  async isLocked(lockFile: string): Promise<boolean>
-  async waitForLock(lockFile: string, timeout: number): Promise<boolean>
+  async acquireLock(lockFile: string): Promise<LockHandle>;
+  async releaseLock(handle: LockHandle): Promise<void>;
+  async isLocked(lockFile: string): Promise<boolean>;
+  async waitForLock(lockFile: string, timeout: number): Promise<boolean>;
 }
 ```
 
 **Features:**
+
 - Process-based locking
 - Stale lock detection
 - Automatic cleanup
@@ -281,27 +284,27 @@ class LockingService {
 
 ### Error Code Categories
 
-| Range | Category | Description |
-|-------|----------|-------------|
-| 1xx | Import | Configuration import errors |
-| 2xx | Validation | Validation failures |
-| 3xx | Security | Security violations |
-| 4xx | File System | File operation errors |
-| 5xx | Deployment | Deployment failures |
-| 6xx | Recovery | Recovery errors |
-| 9xx | Unknown | Unexpected errors |
+| Range | Category    | Description                 |
+| ----- | ----------- | --------------------------- |
+| 1xx   | Import      | Configuration import errors |
+| 2xx   | Validation  | Validation failures         |
+| 3xx   | Security    | Security violations         |
+| 4xx   | File System | File operation errors       |
+| 5xx   | Deployment  | Deployment failures         |
+| 6xx   | Recovery    | Recovery errors             |
+| 9xx   | Unknown     | Unexpected errors           |
 
 ### Common Error Codes
 
-| Code | Name | Description | Recovery |
-|------|------|-------------|----------|
-| 100 | IMPORT_FAILED | Failed to import configuration | Check network, verify config ID |
-| 103 | NETWORK_ERROR | Network connectivity issue | Automatic retry with backoff |
-| 200 | VALIDATION_FAILED | Configuration validation failed | Fix configuration format |
-| 301 | MALICIOUS_CONTENT | Malicious patterns detected | Review configuration, automatic rollback |
-| 304 | PERMISSION_DENIED | Insufficient permissions | Check file permissions, try sudo |
-| 500 | DEPLOYMENT_FAILED | Deployment operation failed | Automatic rollback |
-| 504 | LOCK_ACQUISITION_FAILED | Could not acquire deployment lock | Wait or force unlock |
+| Code | Name                    | Description                       | Recovery                                 |
+| ---- | ----------------------- | --------------------------------- | ---------------------------------------- |
+| 100  | IMPORT_FAILED           | Failed to import configuration    | Check network, verify config ID          |
+| 103  | NETWORK_ERROR           | Network connectivity issue        | Automatic retry with backoff             |
+| 200  | VALIDATION_FAILED       | Configuration validation failed   | Fix configuration format                 |
+| 301  | MALICIOUS_CONTENT       | Malicious patterns detected       | Review configuration, automatic rollback |
+| 304  | PERMISSION_DENIED       | Insufficient permissions          | Check file permissions, try sudo         |
+| 500  | DEPLOYMENT_FAILED       | Deployment operation failed       | Automatic rollback                       |
+| 504  | LOCK_ACQUISITION_FAILED | Could not acquire deployment lock | Wait or force unlock                     |
 
 ### Error Recovery Examples
 
@@ -401,6 +404,7 @@ try {
 **Error**: `Lock file already exists. Another deployment may be in progress.`
 
 **Solutions**:
+
 ```bash
 # Wait for current deployment to complete
 taptik deploy --wait
@@ -417,6 +421,7 @@ ls -la ~/.claude/.locks/
 **Error**: `EACCES: permission denied`
 
 **Solutions**:
+
 ```bash
 # Check file permissions
 ls -la ~/.claude/
@@ -434,6 +439,7 @@ sudo taptik deploy
 **Error**: `Network timeout` or `ECONNREFUSED`
 
 **Solutions**:
+
 ```bash
 # Check internet connection
 ping supabase.co
@@ -450,6 +456,7 @@ taptik deploy --offline --context-file ./backup.json
 **Error**: `Configuration validation failed`
 
 **Solutions**:
+
 ```bash
 # Run validation only to see details
 taptik deploy --validate-only
@@ -466,6 +473,7 @@ cat ~/.taptik/logs/deploy-*.log | grep VALIDATION
 **Error**: `Malicious patterns detected in configuration`
 
 **Solutions**:
+
 1. Review the configuration for dangerous commands
 2. Check for unintended system modifications
 3. Validate the source of the configuration
@@ -563,16 +571,19 @@ if (platform === 'kiroIde') {
 Each platform may have unique features that require special handling:
 
 #### Claude Code
+
 - MCP server configurations
 - CLAUDE.md documentation
 - Global and project settings
 
 #### Kiro IDE (Future)
+
 - Spec-driven development files
 - Steering configurations
 - Hook scripts
 
 #### Cursor IDE (Future)
+
 - AI model configurations
 - Custom prompts
 - Extension settings
@@ -652,6 +663,7 @@ pnpm test:coverage src/modules/deploy
 ```
 
 Current coverage targets:
+
 - Lines: 80%
 - Statements: 80%
 - Branches: 60%

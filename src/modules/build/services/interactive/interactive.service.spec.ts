@@ -2,7 +2,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
-import { BuildPlatform, BuildCategoryName } from '../../interfaces/build-config.interface';
+import {
+  BuildPlatform,
+  BuildCategoryName,
+} from '../../interfaces/build-config.interface';
 
 import { InteractiveService } from './interactive.service';
 
@@ -38,9 +41,12 @@ describe('InteractiveService', () => {
       expect(select).toHaveBeenCalledWith({
         message: '🚀 Select a platform for your Taptik build:',
         choices: expect.arrayContaining([
-          expect.objectContaining({ value: BuildPlatform.KIRO, name: 'Kiro (Ready)' })
+          expect.objectContaining({
+            value: BuildPlatform.KIRO,
+            name: 'Kiro (Ready)',
+          }),
         ]),
-        default: BuildPlatform.KIRO
+        default: BuildPlatform.KIRO,
       });
     });
 
@@ -69,11 +75,17 @@ describe('InteractiveService', () => {
       await service.selectPlatform();
 
       const selectCall = (select as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      const {choices} = selectCall;
-      
-      const cursorChoice = choices.find((c: { value: BuildPlatform; disabled?: string }) => c.value === BuildPlatform.CURSOR);
-      const claudeCodeChoice = choices.find((c: { value: BuildPlatform; disabled?: string }) => c.value === BuildPlatform.CLAUDE_CODE);
-      
+      const { choices } = selectCall;
+
+      const cursorChoice = choices.find(
+        (c: { value: BuildPlatform; disabled?: string }) =>
+          c.value === BuildPlatform.CURSOR,
+      );
+      const claudeCodeChoice = choices.find(
+        (c: { value: BuildPlatform; disabled?: string }) =>
+          c.value === BuildPlatform.CLAUDE_CODE,
+      );
+
       expect(cursorChoice.disabled).toBe('(Coming soon)');
       expect(claudeCodeChoice.disabled).toBeUndefined();
     });
@@ -82,8 +94,11 @@ describe('InteractiveService', () => {
   describe('selectCategories', () => {
     it('should return selected categories when user makes valid selection', async () => {
       const { checkbox } = await import('@inquirer/prompts');
-      (checkbox as any).mockResolvedValue([BuildCategoryName.PERSONAL_CONTEXT, BuildCategoryName.PROJECT_CONTEXT]);
-      
+      (checkbox as any).mockResolvedValue([
+        BuildCategoryName.PERSONAL_CONTEXT,
+        BuildCategoryName.PROJECT_CONTEXT,
+      ]);
+
       const result = await service.selectCategories();
 
       expect(Array.isArray(result)).toBe(true);
@@ -102,23 +117,24 @@ describe('InteractiveService', () => {
 
       expect(checkbox).toHaveBeenCalledWith({
         message: '📁 Select categories to include in your build:',
-        instructions: 'Use spacebar to select, arrow keys to navigate, \'a\' to toggle all, enter to confirm',
+        instructions:
+          "Use spacebar to select, arrow keys to navigate, 'a' to toggle all, enter to confirm",
         choices: expect.arrayContaining([
-          expect.objectContaining({ 
+          expect.objectContaining({
             value: BuildCategoryName.PERSONAL_CONTEXT,
-            name: 'Personal Context'
+            name: 'Personal Context',
           }),
-          expect.objectContaining({ 
+          expect.objectContaining({
             value: BuildCategoryName.PROJECT_CONTEXT,
-            name: 'Project Context'
+            name: 'Project Context',
           }),
-          expect.objectContaining({ 
+          expect.objectContaining({
             value: BuildCategoryName.PROMPT_TEMPLATES,
-            name: 'Prompt Templates'
-          })
+            name: 'Prompt Templates',
+          }),
         ]),
         required: true,
-        validate: expect.any(Function)
+        validate: expect.any(Function),
       });
     });
 
@@ -130,8 +146,10 @@ describe('InteractiveService', () => {
 
       const checkboxCall = (checkbox as any).mock.calls[0][0];
       const validateFunction = checkboxCall.validate;
-      
-      expect(validateFunction([])).toBe('At least one category must be selected.');
+
+      expect(validateFunction([])).toBe(
+        'At least one category must be selected.',
+      );
       expect(validateFunction([BuildCategoryName.PERSONAL_CONTEXT])).toBe(true);
     });
 
@@ -140,21 +158,21 @@ describe('InteractiveService', () => {
       const allCategories = [
         BuildCategoryName.PERSONAL_CONTEXT,
         BuildCategoryName.PROJECT_CONTEXT,
-        BuildCategoryName.PROMPT_TEMPLATES
+        BuildCategoryName.PROMPT_TEMPLATES,
       ];
       (checkbox as any).mockResolvedValue(allCategories);
-      
+
       const result = await service.selectCategories();
 
       expect(result).toHaveLength(3);
-      expect(result.map(cat => cat.name)).toEqual(allCategories);
-      expect(result.every(cat => cat.enabled)).toBe(true);
+      expect(result.map((cat) => cat.name)).toEqual(allCategories);
+      expect(result.every((cat) => cat.enabled)).toBe(true);
     });
 
     it('should handle single category selection', async () => {
       const { checkbox } = await import('@inquirer/prompts');
       (checkbox as any).mockResolvedValue([BuildCategoryName.PROMPT_TEMPLATES]);
-      
+
       const result = await service.selectCategories();
 
       expect(result).toHaveLength(1);
@@ -169,25 +187,29 @@ describe('InteractiveService', () => {
       await service.selectCategories();
 
       const checkboxCall = (checkbox as any).mock.calls[0][0];
-      const {choices} = checkboxCall;
-      
-      expect(choices).toEqual(expect.arrayContaining([
-        expect.objectContaining({
-          name: 'Personal Context',
-          value: BuildCategoryName.PERSONAL_CONTEXT,
-          description: 'User preferences, work style, and communication settings'
-        }),
-        expect.objectContaining({
-          name: 'Project Context',
-          value: BuildCategoryName.PROJECT_CONTEXT,
-          description: 'Project information, technical stack, and development guidelines'
-        }),
-        expect.objectContaining({
-          name: 'Prompt Templates',
-          value: BuildCategoryName.PROMPT_TEMPLATES,
-          description: 'Reusable prompt templates for AI interactions'
-        })
-      ]));
+      const { choices } = checkboxCall;
+
+      expect(choices).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: 'Personal Context',
+            value: BuildCategoryName.PERSONAL_CONTEXT,
+            description:
+              'User preferences, work style, and communication settings',
+          }),
+          expect.objectContaining({
+            name: 'Project Context',
+            value: BuildCategoryName.PROJECT_CONTEXT,
+            description:
+              'Project information, technical stack, and development guidelines',
+          }),
+          expect.objectContaining({
+            name: 'Prompt Templates',
+            value: BuildCategoryName.PROMPT_TEMPLATES,
+            description: 'Reusable prompt templates for AI interactions',
+          }),
+        ]),
+      );
     });
   });
 });

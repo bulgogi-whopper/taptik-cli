@@ -59,7 +59,7 @@ export interface SanitizationResult {
   secretMapping: SecretMapping[];
 }
 
-export type SecretType = 
+export type SecretType =
   | 'api_key'
   | 'token'
   | 'password'
@@ -70,7 +70,7 @@ export type SecretType =
   | 'encryption_key'
   | 'unknown';
 
-export type SecretStatus = 
+export type SecretStatus =
   | 'active'
   | 'expired'
   | 'unused'

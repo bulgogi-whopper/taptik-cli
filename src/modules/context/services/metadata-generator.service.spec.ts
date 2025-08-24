@@ -31,14 +31,14 @@ describe('MetadataGeneratorService', () => {
           data: {
             claudeCode: {
               local: {
-                settings: {}
-              }
-            }
+                settings: {},
+              },
+            },
           },
           metadata: {
             timestamp: new Date().toISOString(),
-            exportedBy: 'test-user'
-          }
+            exportedBy: 'test-user',
+          },
         };
 
         const result = await service.generateCloudMetadata(minimalContext);
@@ -53,7 +53,7 @@ describe('MetadataGeneratorService', () => {
           commands: 0,
           mcpServers: 0,
           steeringRules: 0,
-          instructions: 0
+          instructions: 0,
         });
         expect(result.complexityLevel).toBe('minimal');
       });
@@ -70,44 +70,56 @@ describe('MetadataGeneratorService', () => {
                   theme: 'dark',
                   features: {
                     autocomplete: true,
-                    gitIntegration: true
-                  }
+                    gitIntegration: true,
+                  },
                 },
                 agents: [
-                  { id: 'agent1', name: 'Code Assistant', prompt: 'Help with coding' },
-                  { id: 'agent2', name: 'Test Writer', prompt: 'Write unit tests' }
+                  {
+                    id: 'agent1',
+                    name: 'Code Assistant',
+                    prompt: 'Help with coding',
+                  },
+                  {
+                    id: 'agent2',
+                    name: 'Test Writer',
+                    prompt: 'Write unit tests',
+                  },
                 ],
                 commands: [
                   { name: 'format', command: 'npm run format' },
                   { name: 'test', command: 'npm test' },
-                  { name: 'build', command: 'npm run build' }
+                  { name: 'build', command: 'npm run build' },
                 ],
                 mcpServers: {
                   servers: [
                     { name: 'file-server', protocol: 'stdio', command: 'node' },
-                    { name: 'db-server', protocol: 'http', url: 'http://localhost:3000' }
-                  ]
+                    {
+                      name: 'db-server',
+                      protocol: 'http',
+                      url: 'http://localhost:3000',
+                    },
+                  ],
                 },
                 steeringRules: [
                   { pattern: '*.ts', rule: 'typescript' },
-                  { pattern: '*.md', rule: 'markdown' }
+                  { pattern: '*.md', rule: 'markdown' },
                 ],
                 instructions: {
                   global: 'Follow TypeScript best practices',
-                  local: 'Use functional programming'
-                }
+                  local: 'Use functional programming',
+                },
               },
               global: {
                 settings: {
-                  defaultTheme: 'light'
-                }
-              }
-            }
+                  defaultTheme: 'light',
+                },
+              },
+            },
           },
           metadata: {
             timestamp: new Date().toISOString(),
-            exportedBy: 'test-user'
-          }
+            exportedBy: 'test-user',
+          },
         };
 
         const result = await service.generateCloudMetadata(fullContext);
@@ -118,7 +130,7 @@ describe('MetadataGeneratorService', () => {
           commands: 3,
           mcpServers: 2,
           steeringRules: 2,
-          instructions: 2
+          instructions: 2,
         });
         expect(result.complexityLevel).toBe('advanced');
         expect(result.features).toContain('git-integration');
@@ -133,8 +145,8 @@ describe('MetadataGeneratorService', () => {
           targetIdes: [],
           data: {},
           metadata: {
-            timestamp: new Date().toISOString()
-          }
+            timestamp: new Date().toISOString(),
+          },
         };
 
         const result = await service.generateCloudMetadata(emptyContext);
@@ -145,7 +157,7 @@ describe('MetadataGeneratorService', () => {
           commands: 0,
           mcpServers: 0,
           steeringRules: 0,
-          instructions: 0
+          instructions: 0,
         });
         expect(result.complexityLevel).toBe('minimal');
         expect(result.searchKeywords).toEqual(['claude-code', 'configuration']);
@@ -161,17 +173,21 @@ describe('MetadataGeneratorService', () => {
               global: {
                 settings: {
                   theme: 'dark',
-                  autoSave: true
+                  autoSave: true,
                 },
                 agents: [
-                  { id: 'global-agent', name: 'Global Assistant', prompt: 'Global help' }
-                ]
-              }
-            }
+                  {
+                    id: 'global-agent',
+                    name: 'Global Assistant',
+                    prompt: 'Global help',
+                  },
+                ],
+              },
+            },
           },
           metadata: {
-            timestamp: new Date().toISOString()
-          }
+            timestamp: new Date().toISOString(),
+          },
         };
 
         const result = await service.generateCloudMetadata(globalOnlyContext);
@@ -189,7 +205,7 @@ describe('MetadataGeneratorService', () => {
           sourceIde: 'claude-code',
           targetIdes: ['kiro-ide', 'cursor-ide'],
           data: {},
-          metadata: { timestamp: new Date().toISOString() }
+          metadata: { timestamp: new Date().toISOString() },
         };
 
         const result = await service.generateCloudMetadata(context);
@@ -212,16 +228,16 @@ describe('MetadataGeneratorService', () => {
                   features: {
                     gitIntegration: true,
                     dockerSupport: true,
-                    kubernetesIntegration: true
-                  }
+                    kubernetesIntegration: true,
+                  },
                 },
                 mcpServers: {
-                  servers: [{ name: 'test', protocol: 'stdio' }]
-                }
-              }
-            }
+                  servers: [{ name: 'test', protocol: 'stdio' }],
+                },
+              },
+            },
           },
-          metadata: { timestamp: new Date().toISOString() }
+          metadata: { timestamp: new Date().toISOString() },
         };
 
         const result = await service.generateCloudMetadata(context);
@@ -245,17 +261,17 @@ describe('MetadataGeneratorService', () => {
                   { pattern: '*.ts', rule: 'typescript' },
                   { pattern: '*.tsx', rule: 'react' },
                   { pattern: '*.py', rule: 'python' },
-                  { pattern: '*.rs', rule: 'rust' }
+                  { pattern: '*.rs', rule: 'rust' },
                 ],
                 commands: [
                   { name: 'test', command: 'npm test' },
                   { name: 'pytest', command: 'pytest' },
-                  { name: 'cargo-test', command: 'cargo test' }
-                ]
-              }
-            }
+                  { name: 'cargo-test', command: 'cargo test' },
+                ],
+              },
+            },
           },
-          metadata: { timestamp: new Date().toISOString() }
+          metadata: { timestamp: new Date().toISOString() },
         };
 
         const result = await service.generateCloudMetadata(context);
@@ -283,15 +299,15 @@ describe('MetadataGeneratorService', () => {
                   { name: 'lint', command: 'eslint .' },
                   { name: 'format', command: 'prettier --write' },
                   { name: 'ci', command: 'npm run ci' },
-                  { name: 'deploy', command: 'npm run deploy' }
+                  { name: 'deploy', command: 'npm run deploy' },
                 ],
                 instructions: {
-                  global: 'Follow TDD practices. Write tests first.'
-                }
-              }
-            }
+                  global: 'Follow TDD practices. Write tests first.',
+                },
+              },
+            },
           },
-          metadata: { timestamp: new Date().toISOString() }
+          metadata: { timestamp: new Date().toISOString() },
         };
 
         const result = await service.generateCloudMetadata(context);
@@ -315,17 +331,15 @@ describe('MetadataGeneratorService', () => {
               local: {
                 agents: [
                   { id: '1', name: 'Agent 1', prompt: 'Prompt 1' },
-                  { id: '2', name: 'Agent 2', prompt: 'Prompt 2' }
-                ]
+                  { id: '2', name: 'Agent 2', prompt: 'Prompt 2' },
+                ],
               },
               global: {
-                agents: [
-                  { id: '3', name: 'Agent 3', prompt: 'Prompt 3' }
-                ]
-              }
-            }
+                agents: [{ id: '3', name: 'Agent 3', prompt: 'Prompt 3' }],
+              },
+            },
           },
-          metadata: { timestamp: new Date().toISOString() }
+          metadata: { timestamp: new Date().toISOString() },
         };
 
         const result = await service.generateCloudMetadata(context);
@@ -345,17 +359,15 @@ describe('MetadataGeneratorService', () => {
                   { name: 'cmd1', command: 'echo 1' },
                   { name: 'cmd2', command: 'echo 2' },
                   { name: 'cmd3', command: 'echo 3' },
-                  { name: 'cmd4', command: 'echo 4' }
-                ]
+                  { name: 'cmd4', command: 'echo 4' },
+                ],
               },
               global: {
-                commands: [
-                  { name: 'global-cmd', command: 'echo global' }
-                ]
-              }
-            }
+                commands: [{ name: 'global-cmd', command: 'echo global' }],
+              },
+            },
           },
-          metadata: { timestamp: new Date().toISOString() }
+          metadata: { timestamp: new Date().toISOString() },
         };
 
         const result = await service.generateCloudMetadata(context);
@@ -375,13 +387,13 @@ describe('MetadataGeneratorService', () => {
                   servers: [
                     { name: 'server1', protocol: 'stdio' },
                     { name: 'server2', protocol: 'http' },
-                    { name: 'server3', protocol: 'ws' }
-                  ]
-                }
-              }
-            }
+                    { name: 'server3', protocol: 'ws' },
+                  ],
+                },
+              },
+            },
           },
-          metadata: { timestamp: new Date().toISOString() }
+          metadata: { timestamp: new Date().toISOString() },
         };
 
         const result = await service.generateCloudMetadata(context);
@@ -399,19 +411,19 @@ describe('MetadataGeneratorService', () => {
               local: {
                 steeringRules: [
                   { pattern: '*.ts', rule: 'typescript' },
-                  { pattern: '*.js', rule: 'javascript' }
-                ]
+                  { pattern: '*.js', rule: 'javascript' },
+                ],
               },
               global: {
                 steeringRules: [
                   { pattern: '*.py', rule: 'python' },
                   { pattern: '*.rs', rule: 'rust' },
-                  { pattern: '*.go', rule: 'golang' }
-                ]
-              }
-            }
+                  { pattern: '*.go', rule: 'golang' },
+                ],
+              },
+            },
           },
-          metadata: { timestamp: new Date().toISOString() }
+          metadata: { timestamp: new Date().toISOString() },
         };
 
         const result = await service.generateCloudMetadata(context);
@@ -429,17 +441,17 @@ describe('MetadataGeneratorService', () => {
               local: {
                 instructions: {
                   global: 'Global instruction',
-                  local: 'Local instruction'
-                }
+                  local: 'Local instruction',
+                },
               },
               global: {
                 instructions: {
-                  global: 'Another global instruction'
-                }
-              }
-            }
+                  global: 'Another global instruction',
+                },
+              },
+            },
           },
-          metadata: { timestamp: new Date().toISOString() }
+          metadata: { timestamp: new Date().toISOString() },
         };
 
         const result = await service.generateCloudMetadata(context);
@@ -458,20 +470,32 @@ describe('MetadataGeneratorService', () => {
             claudeCode: {
               local: {
                 agents: [
-                  { id: '1', name: 'React Developer', prompt: 'Help with React and Redux' },
-                  { id: '2', name: 'Node.js Expert', prompt: 'Backend development with Express' }
+                  {
+                    id: '1',
+                    name: 'React Developer',
+                    prompt: 'Help with React and Redux',
+                  },
+                  {
+                    id: '2',
+                    name: 'Node.js Expert',
+                    prompt: 'Backend development with Express',
+                  },
                 ],
                 commands: [
                   { name: 'docker-build', command: 'docker build -t app .' },
-                  { name: 'k8s-deploy', command: 'kubectl apply -f deployment.yaml' }
+                  {
+                    name: 'k8s-deploy',
+                    command: 'kubectl apply -f deployment.yaml',
+                  },
                 ],
                 instructions: {
-                  global: 'Use TypeScript for all JavaScript projects. Follow SOLID principles.'
-                }
-              }
-            }
+                  global:
+                    'Use TypeScript for all JavaScript projects. Follow SOLID principles.',
+                },
+              },
+            },
           },
-          metadata: { timestamp: new Date().toISOString() }
+          metadata: { timestamp: new Date().toISOString() },
         };
 
         const result = await service.generateCloudMetadata(context);
@@ -499,12 +523,12 @@ describe('MetadataGeneratorService', () => {
                   { name: 'build', command: 'vite build' },
                   { name: 'test', command: 'jest --coverage' },
                   { name: 'e2e', command: 'cypress run' },
-                  { name: 'lint', command: 'eslint . --ext .ts,.tsx' }
-                ]
-              }
-            }
+                  { name: 'lint', command: 'eslint . --ext .ts,.tsx' },
+                ],
+              },
+            },
           },
-          metadata: { timestamp: new Date().toISOString() }
+          metadata: { timestamp: new Date().toISOString() },
         };
 
         const result = await service.generateCloudMetadata(context);
@@ -526,25 +550,36 @@ describe('MetadataGeneratorService', () => {
             claudeCode: {
               local: {
                 agents: [
-                  { id: '1', name: 'React React Developer', prompt: 'React development' }
+                  {
+                    id: '1',
+                    name: 'React React Developer',
+                    prompt: 'React development',
+                  },
                 ],
                 commands: [
-                  { name: 'react-start', command: 'REACT_APP_ENV=dev npm start' }
+                  {
+                    name: 'react-start',
+                    command: 'REACT_APP_ENV=dev npm start',
+                  },
                 ],
                 instructions: {
-                  global: 'Use React hooks and React context'
-                }
-              }
-            }
+                  global: 'Use React hooks and React context',
+                },
+              },
+            },
           },
-          metadata: { timestamp: new Date().toISOString() }
+          metadata: { timestamp: new Date().toISOString() },
         };
 
         const result = await service.generateCloudMetadata(context);
 
-        const reactCount = result.searchKeywords.filter(k => k === 'react').length;
+        const reactCount = result.searchKeywords.filter(
+          (k) => k === 'react',
+        ).length;
         expect(reactCount).toBe(1); // Should deduplicate
-        expect(result.searchKeywords.every(k => k === k.toLowerCase())).toBe(true); // Should be lowercase
+        expect(result.searchKeywords.every((k) => k === k.toLowerCase())).toBe(
+          true,
+        ); // Should be lowercase
       });
 
       it('should limit keywords to reasonable amount', async () => {
@@ -556,15 +591,16 @@ describe('MetadataGeneratorService', () => {
             claudeCode: {
               local: {
                 instructions: {
-                  global: 'This is a very long instruction with many words that could generate too many keywords if not limited properly. ' +
-                          'It includes various technologies like React, Vue, Angular, Svelte, Next.js, Nuxt.js, Gatsby, Remix, ' +
-                          'Express, Fastify, Koa, Hapi, NestJS, AdonisJS, Strapi, KeystoneJS, Django, Flask, FastAPI, ' +
-                          'Rails, Laravel, Spring, ASP.NET, and many more frameworks and libraries.'
-                }
-              }
-            }
+                  global:
+                    'This is a very long instruction with many words that could generate too many keywords if not limited properly. ' +
+                    'It includes various technologies like React, Vue, Angular, Svelte, Next.js, Nuxt.js, Gatsby, Remix, ' +
+                    'Express, Fastify, Koa, Hapi, NestJS, AdonisJS, Strapi, KeystoneJS, Django, Flask, FastAPI, ' +
+                    'Rails, Laravel, Spring, ASP.NET, and many more frameworks and libraries.',
+                },
+              },
+            },
           },
-          metadata: { timestamp: new Date().toISOString() }
+          metadata: { timestamp: new Date().toISOString() },
         };
 
         const result = await service.generateCloudMetadata(context);
@@ -583,11 +619,11 @@ describe('MetadataGeneratorService', () => {
           data: {
             claudeCode: {
               local: {
-                settings: { theme: 'dark' }
-              }
-            }
+                settings: { theme: 'dark' },
+              },
+            },
           },
-          metadata: { timestamp: new Date().toISOString() }
+          metadata: { timestamp: new Date().toISOString() },
         };
 
         const result = await service.generateCloudMetadata(context);
@@ -606,12 +642,12 @@ describe('MetadataGeneratorService', () => {
                 settings: { theme: 'dark' },
                 commands: [
                   { name: 'test', command: 'npm test' },
-                  { name: 'build', command: 'npm run build' }
-                ]
-              }
-            }
+                  { name: 'build', command: 'npm run build' },
+                ],
+              },
+            },
           },
-          metadata: { timestamp: new Date().toISOString() }
+          metadata: { timestamp: new Date().toISOString() },
         };
 
         const result = await service.generateCloudMetadata(context);
@@ -628,21 +664,17 @@ describe('MetadataGeneratorService', () => {
             claudeCode: {
               local: {
                 settings: { theme: 'dark' },
-                agents: [
-                  { id: '1', name: 'Agent 1', prompt: 'Prompt' }
-                ],
+                agents: [{ id: '1', name: 'Agent 1', prompt: 'Prompt' }],
                 commands: [
                   { name: 'cmd1', command: 'echo 1' },
                   { name: 'cmd2', command: 'echo 2' },
-                  { name: 'cmd3', command: 'echo 3' }
+                  { name: 'cmd3', command: 'echo 3' },
                 ],
-                steeringRules: [
-                  { pattern: '*.ts', rule: 'typescript' }
-                ]
-              }
-            }
+                steeringRules: [{ pattern: '*.ts', rule: 'typescript' }],
+              },
+            },
           },
-          metadata: { timestamp: new Date().toISOString() }
+          metadata: { timestamp: new Date().toISOString() },
         };
 
         const result = await service.generateCloudMetadata(context);
@@ -662,24 +694,30 @@ describe('MetadataGeneratorService', () => {
                 agents: [
                   { id: '1', name: 'Agent 1', prompt: 'Prompt' },
                   { id: '2', name: 'Agent 2', prompt: 'Prompt' },
-                  { id: '3', name: 'Agent 3', prompt: 'Prompt' }
+                  { id: '3', name: 'Agent 3', prompt: 'Prompt' },
                 ],
-                commands: Array(8).fill(null).map((_, i) => ({
-                  name: `cmd${i}`, command: `echo ${i}`
-                })),
+                commands: Array(8)
+                  .fill(null)
+                  .map((_, i) => ({
+                    name: `cmd${i}`,
+                    command: `echo ${i}`,
+                  })),
                 mcpServers: {
                   servers: [
                     { name: 'server1', protocol: 'stdio' },
-                    { name: 'server2', protocol: 'http' }
-                  ]
+                    { name: 'server2', protocol: 'http' },
+                  ],
                 },
-                steeringRules: Array(5).fill(null).map((_, i) => ({
-                  pattern: `*.ext${i}`, rule: `rule${i}`
-                }))
-              }
-            }
+                steeringRules: Array(5)
+                  .fill(null)
+                  .map((_, i) => ({
+                    pattern: `*.ext${i}`,
+                    rule: `rule${i}`,
+                  })),
+              },
+            },
           },
-          metadata: { timestamp: new Date().toISOString() }
+          metadata: { timestamp: new Date().toISOString() },
         };
 
         const result = await service.generateCloudMetadata(context);
@@ -696,34 +734,51 @@ describe('MetadataGeneratorService', () => {
             claudeCode: {
               local: {
                 settings: { theme: 'dark' },
-                agents: Array(10).fill(null).map((_, i) => ({
-                  id: `${i}`, name: `Agent ${i}`, prompt: `Prompt ${i}`
-                })),
-                commands: Array(15).fill(null).map((_, i) => ({
-                  name: `cmd${i}`, command: `echo ${i}`
-                })),
+                agents: Array(10)
+                  .fill(null)
+                  .map((_, i) => ({
+                    id: `${i}`,
+                    name: `Agent ${i}`,
+                    prompt: `Prompt ${i}`,
+                  })),
+                commands: Array(15)
+                  .fill(null)
+                  .map((_, i) => ({
+                    name: `cmd${i}`,
+                    command: `echo ${i}`,
+                  })),
                 mcpServers: {
-                  servers: Array(5).fill(null).map((_, i) => ({
-                    name: `server${i}`, protocol: 'stdio'
-                  }))
+                  servers: Array(5)
+                    .fill(null)
+                    .map((_, i) => ({
+                      name: `server${i}`,
+                      protocol: 'stdio',
+                    })),
                 },
-                steeringRules: Array(10).fill(null).map((_, i) => ({
-                  pattern: `*.ext${i}`, rule: `rule${i}`
-                })),
+                steeringRules: Array(10)
+                  .fill(null)
+                  .map((_, i) => ({
+                    pattern: `*.ext${i}`,
+                    rule: `rule${i}`,
+                  })),
                 instructions: {
                   global: 'Complex global instructions',
-                  local: 'Complex local instructions'
-                }
+                  local: 'Complex local instructions',
+                },
               },
               global: {
                 settings: { theme: 'light' },
-                agents: Array(5).fill(null).map((_, i) => ({
-                  id: `g${i}`, name: `Global Agent ${i}`, prompt: `Global Prompt ${i}`
-                }))
-              }
-            }
+                agents: Array(5)
+                  .fill(null)
+                  .map((_, i) => ({
+                    id: `g${i}`,
+                    name: `Global Agent ${i}`,
+                    prompt: `Global Prompt ${i}`,
+                  })),
+              },
+            },
           },
-          metadata: { timestamp: new Date().toISOString() }
+          metadata: { timestamp: new Date().toISOString() },
         };
 
         const result = await service.generateCloudMetadata(context);
@@ -741,11 +796,11 @@ describe('MetadataGeneratorService', () => {
           data: {
             claudeCode: {
               local: {
-                settings: {}
-              }
-            }
+                settings: {},
+              },
+            },
           },
-          metadata: { timestamp: new Date().toISOString() }
+          metadata: { timestamp: new Date().toISOString() },
         };
 
         const result = await service.generateCloudMetadata(context);
@@ -764,12 +819,12 @@ describe('MetadataGeneratorService', () => {
             claudeCode: {
               local: {
                 mcpServers: {
-                  servers: [{ name: 'test', protocol: 'stdio' }]
-                }
-              }
-            }
+                  servers: [{ name: 'test', protocol: 'stdio' }],
+                },
+              },
+            },
           },
-          metadata: { timestamp: new Date().toISOString() }
+          metadata: { timestamp: new Date().toISOString() },
         };
 
         const result = await service.generateCloudMetadata(context);
@@ -786,11 +841,11 @@ describe('MetadataGeneratorService', () => {
           data: {
             claudeCode: {
               local: {
-                settings: {}
-              }
-            }
+                settings: {},
+              },
+            },
           },
-          metadata: { timestamp: new Date().toISOString() }
+          metadata: { timestamp: new Date().toISOString() },
         };
 
         const result = await service.generateCloudMetadata(context);
