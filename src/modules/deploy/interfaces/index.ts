@@ -3,3 +3,4 @@ export * from './deployment-result.interface';
 export * from './platform-config.interface';
 export * from './security-config.interface';
 export * from './merge-strategy.interface';
+export * from './kiro-deployment.interface';

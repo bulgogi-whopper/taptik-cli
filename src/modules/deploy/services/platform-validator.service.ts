@@ -6,23 +6,28 @@ import {
   ValidationWarning,
 } from '../../context/dto/validation-result.dto';
 import { TaptikContext } from '../../context/interfaces/taptik-context.interface';
+import { KiroDeploymentOptions } from '../interfaces/kiro-deployment.interface';
 import {
   AgentConfig,
   CommandConfig,
   ClaudeCodeSettings,
 } from '../interfaces/platform-config.interface';
 
+import { KiroValidatorService } from './kiro-validator.service';
+
 @Injectable()
 export class PlatformValidatorService {
+  constructor(private readonly kiroValidator: KiroValidatorService) {}
   private readonly SUPPORTED_PLATFORMS = {
     'claude-code': true,
-    'kiro-ide': false, // Phase 2
+    'kiro-ide': true,
     'cursor-ide': false, // Phase 2
   };
 
   async validateForPlatform(
     context: TaptikContext,
     platform: string,
+    options?: any, // eslint-disable-line @typescript-eslint/no-explicit-any
   ): Promise<ValidationResult> {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
@@ -87,6 +92,13 @@ export class PlatformValidatorService {
       const claudeResult = await this.validateClaudeCode(context);
       errors.push(...claudeResult.errors);
       warnings.push(...(claudeResult.warnings || []));
+    } else if (platform === 'kiro-ide') {
+      const kiroOptions = options as KiroDeploymentOptions;
+      if (kiroOptions) {
+        const kiroResult = await this.kiroValidator.validateForKiro(context, kiroOptions);
+        errors.push(...kiroResult.errors);
+        warnings.push(...(kiroResult.warnings || []));
+      }
     }
 
     return {
