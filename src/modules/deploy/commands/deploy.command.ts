@@ -2,11 +2,9 @@ import { Injectable } from '@nestjs/common';
 
 import { Command, CommandRunner, Option } from 'nest-commander';
 
-import {
-  ComponentType,
-  SupportedPlatform,
-} from '../interfaces/component-types.interface';
-import { ConflictStrategy } from '../interfaces/conflict-strategy.interface';
+import { ComponentType } from '../interfaces/component-types.interface';
+import { SupportedPlatform, ConflictStrategy } from '../interfaces/deploy-options.interface';
+import { DeploymentResult } from '../interfaces/deployment-result.interface';
 import { DeploymentService } from '../services/deployment.service';
 import { ImportService } from '../services/import.service';
 
@@ -23,7 +21,7 @@ interface DeployCommandOptions {
 
 @Command({
   name: 'deploy',
-  description: 'Deploy Taptik context to target platform (Claude Code)',
+  description: 'Deploy Taptik context to target platform (Claude Code, Kiro IDE)',
 })
 @Injectable()
 export class DeployCommand extends CommandRunner {
@@ -40,14 +38,16 @@ export class DeployCommand extends CommandRunner {
   ): Promise<void> {
     try {
       // Set default platform
-      const platform = options.platform || 'claudeCode';
+      const platform = options.platform || 'claude-code';
 
-      if (platform !== 'claudeCode') {
+      if (platform !== 'claude-code' && platform !== 'kiro-ide') {
         console.error(
-          `❌ Platform '${platform}' is not supported. Only 'claudeCode' is currently available.`,
+          `❌ Platform '${platform}' is not supported. Supported platforms: 'claude-code', 'kiro-ide'`,
         );
         process.exit(1);
       }
+
+      // Note: Kiro deployment will show feature development status in results
 
       console.log(`🚀 Starting deployment to ${platform}...`);
 
@@ -68,7 +68,7 @@ export class DeployCommand extends CommandRunner {
 
       // Step 2: Prepare deployment options
       const deployOptions = {
-        platform: 'claude-code' as const,
+        platform: platform as SupportedPlatform,
         dryRun: options.dryRun || false,
         validateOnly: options.validateOnly || false,
         conflictStrategy: options.conflictStrategy || 'prompt',
@@ -76,19 +76,31 @@ export class DeployCommand extends CommandRunner {
         skipComponents: options.skipComponents?.map((c) => c as ComponentType),
       };
 
-      // Step 3: Deploy to Claude Code
+      // Step 3: Deploy to target platform
       if (options.validateOnly) {
         console.log('🔍 Running validation only...');
       } else if (options.dryRun) {
         console.log('🧪 Running in dry-run mode...');
       } else {
-        console.log('🚀 Deploying to Claude Code...');
+        console.log(`🚀 Deploying to ${platform === 'claude-code' ? 'Claude Code' : 'Kiro IDE'}...`);
       }
 
-      const result = await this.deploymentService.deployToClaudeCode(
-        context,
-        deployOptions,
-      );
+      // Step 3: Route to appropriate deployment method based on platform
+      let result: DeploymentResult;
+      if (platform === 'claude-code') {
+        result = await this.deploymentService.deployToClaudeCode(
+          context,
+          deployOptions,
+        );
+      } else if (platform === 'kiro-ide') {
+        result = await this.deploymentService.deployToKiro(
+          context,
+          deployOptions,
+        );
+      } else {
+        console.error(`❌ Platform '${platform}' deployment is not implemented yet.`);
+        process.exit(5); // Platform Error exit code
+      }
 
       // Step 4: Display results
       if (result.success) {
@@ -136,12 +148,13 @@ export class DeployCommand extends CommandRunner {
 
   @Option({
     flags: '-p, --platform <platform>',
-    description: 'Target platform (currently only "claudeCode" is supported)',
-    defaultValue: 'claudeCode',
+    description: 'Target platform ("claude-code" or "kiro-ide")',
+    defaultValue: 'claude-code',
   })
   parsePlatform(value: string): SupportedPlatform {
-    if (value !== 'claudeCode') {
-      throw new Error(`Unsupported platform: ${value}`);
+    const supportedPlatforms: SupportedPlatform[] = ['claude-code', 'kiro-ide'];
+    if (!supportedPlatforms.includes(value as SupportedPlatform)) {
+      throw new Error(`Unsupported platform: ${value}. Supported platforms: ${supportedPlatforms.join(', ')}`);
     }
     return value as SupportedPlatform;
   }
