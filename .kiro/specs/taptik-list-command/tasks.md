@@ -14,7 +14,7 @@
   - Add private helper methods for filtering by title, sorting, and validation
   - _Requirements: 1.1, 2.1, 2.2, 3.1, 3.2, 4.1, 4.2, 5.1_
 
-- [ ] 3. Create ListCommand for CLI interface
+- [x] 3. Create ListCommand for CLI interface
   - Create ListCommand class in src/modules/info/commands/list.command.ts
   - Implement command options parsing (--filter, --sort, --limit)
   - Add subcommand support for "liked" configurations
