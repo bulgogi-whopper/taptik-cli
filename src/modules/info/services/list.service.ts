@@ -8,6 +8,7 @@ import {
   SortField,
   ValidationResult,
   toDisplayConfiguration,
+  validateListOptions,
   DEFAULT_LIST_OPTIONS,
   MAX_LIST_LIMIT,
 } from '../../../models/config-bundle.model';
@@ -33,7 +34,7 @@ export class ListService {
     options: ListConfigurationsOptions = {},
   ): Promise<ConfigurationListResult> {
     // Validate input options
-    const validation = this.validateListOptions(options);
+    const validation = validateListOptions(options);
     if (!validation.isValid) {
       throw new Error(`Invalid options: ${validation.errors.join(', ')}`);
     }
@@ -115,7 +116,7 @@ export class ListService {
     options: ListOptions = {},
   ): Promise<ConfigurationListResult> {
     // Validate input options
-    const validation = this.validateListOptions(options);
+    const validation = validateListOptions(options);
     if (!validation.isValid) {
       throw new Error(`Invalid options: ${validation.errors.join(', ')}`);
     }
