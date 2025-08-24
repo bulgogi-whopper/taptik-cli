@@ -90,7 +90,7 @@ This document outlines the implementation plan for adding Kiro IDE deployment su
   - _Requirements: 3.1, 3.2, 3.3, 11.1, 11.2_
   - _Estimated: 2 days_
 
-- [ ] 3.2 Create Kiro file conflict resolution service
+- [x] 3.2 Create Kiro file conflict resolution service
   - Create `src/modules/deploy/services/kiro-conflict-resolver.service.ts`
   - Implement conflict detection for Kiro configuration files
   - Add intelligent merging for JSON settings files

@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
 
 import { DeploymentError, DeploymentWarning } from '../interfaces/deployment-result.interface';
+import { KiroConflictResolverService } from './kiro-conflict-resolver.service';
 import {
   KiroGlobalSettings,
   KiroProjectSettings,
@@ -20,6 +21,10 @@ import {
 @Injectable()
 export class KiroComponentHandlerService {
   private readonly logger = new Logger(KiroComponentHandlerService.name);
+
+  constructor(
+    private readonly conflictResolver: KiroConflictResolverService,
+  ) {}
 
   /**
    * Deploy global and project settings
@@ -47,28 +52,72 @@ export class KiroComponentHandlerService {
       if (options.globalSettings !== false) {
         await this.ensureDirectoryExists(path.dirname(context.paths.globalSettings));
         
-        const existingGlobal = await this.loadExistingSettings(context.paths.globalSettings);
-        const mergedGlobal = existingGlobal 
-          ? this.mergeSettings(existingGlobal, globalSettings, options.mergeStrategy || 'deep-merge')
-          : globalSettings;
+        // 충돌 해결 서비스를 사용한 배포
+        if (this.conflictResolver && options.conflictStrategy !== 'overwrite') {
+          const globalContent = JSON.stringify(globalSettings, null, 2);
+          const globalResult = await this.conflictResolver.resolveConflict(
+            context.paths.globalSettings,
+            globalContent,
+            'settings',
+            options.conflictStrategy,
+            options.mergeStrategy,
+          );
 
-        await this.writeJsonFile(context.paths.globalSettings, mergedGlobal);
-        globalDeployed = true;
-        this.logger.debug(`Global settings deployed to: ${context.paths.globalSettings}`);
+          if (globalResult.resolved) {
+            globalDeployed = true;
+            this.logger.debug(`Global settings deployed to: ${context.paths.globalSettings}`);
+          } else {
+            errors.push(...globalResult.errors);
+          }
+
+          warnings.push(...globalResult.warnings);
+        } else {
+          // 기존 로직 사용 (백업 호환성)
+          const existingGlobal = await this.loadExistingSettings(context.paths.globalSettings);
+          const mergedGlobal = existingGlobal 
+            ? this.mergeSettings(existingGlobal, globalSettings, options.mergeStrategy || 'deep-merge')
+            : globalSettings;
+
+          await this.writeJsonFile(context.paths.globalSettings, mergedGlobal);
+          globalDeployed = true;
+          this.logger.debug(`Global settings deployed to: ${context.paths.globalSettings}`);
+        }
       }
 
       // Deploy project settings if enabled
       if (options.projectSettings !== false) {
         await this.ensureDirectoryExists(path.dirname(context.paths.projectSettings));
         
-        const existingProject = await this.loadExistingSettings(context.paths.projectSettings);
-        const mergedProject = existingProject 
-          ? this.mergeSettings(existingProject, projectSettings, options.mergeStrategy || 'deep-merge')
-          : projectSettings;
+        // 충돌 해결 서비스를 사용한 배포
+        if (this.conflictResolver && options.conflictStrategy !== 'overwrite') {
+          const projectContent = JSON.stringify(projectSettings, null, 2);
+          const projectResult = await this.conflictResolver.resolveConflict(
+            context.paths.projectSettings,
+            projectContent,
+            'settings',
+            options.conflictStrategy,
+            options.mergeStrategy,
+          );
 
-        await this.writeJsonFile(context.paths.projectSettings, mergedProject);
-        projectDeployed = true;
-        this.logger.debug(`Project settings deployed to: ${context.paths.projectSettings}`);
+          if (projectResult.resolved) {
+            projectDeployed = true;
+            this.logger.debug(`Project settings deployed to: ${context.paths.projectSettings}`);
+          } else {
+            errors.push(...projectResult.errors);
+          }
+
+          warnings.push(...projectResult.warnings);
+        } else {
+          // 기존 로직 사용 (백업 호환성)
+          const existingProject = await this.loadExistingSettings(context.paths.projectSettings);
+          const mergedProject = existingProject 
+            ? this.mergeSettings(existingProject, projectSettings, options.mergeStrategy || 'deep-merge')
+            : projectSettings;
+
+          await this.writeJsonFile(context.paths.projectSettings, mergedProject);
+          projectDeployed = true;
+          this.logger.debug(`Project settings deployed to: ${context.paths.projectSettings}`);
+        }
       }
 
     } catch (error) {

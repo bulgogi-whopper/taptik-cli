@@ -18,23 +18,53 @@ import {
 } from '../interfaces/kiro-deployment.interface';
 
 import { KiroComponentHandlerService } from './kiro-component-handler.service';
+import { KiroConflictResolverService } from './kiro-conflict-resolver.service';
 
 // Mock fs promises
 vi.mock('node:fs/promises');
+vi.mock('./kiro-conflict-resolver.service');
 const mockFs = fs as any;
 
 describe('KiroComponentHandlerService', () => {
   let service: KiroComponentHandlerService;
+  let mockConflictResolver: any;
 
   beforeEach(async () => {
+    mockConflictResolver = {
+      resolveConflict: vi.fn().mockResolvedValue({
+        resolved: true,
+        conflicts: [],
+        errors: [],
+        warnings: [],
+      }),
+      detectConflicts: vi.fn().mockResolvedValue([]),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
-      providers: [KiroComponentHandlerService],
+      providers: [
+        KiroComponentHandlerService,
+        { provide: KiroConflictResolverService, useValue: mockConflictResolver },
+      ],
     }).compile();
 
     service = module.get<KiroComponentHandlerService>(KiroComponentHandlerService);
 
     // Reset mocks
     vi.clearAllMocks();
+    
+    // Setup default mock responses
+    mockFs.mkdir.mockResolvedValue(undefined);
+    mockFs.access.mockResolvedValue(undefined);
+    mockFs.readFile.mockResolvedValue('{}');
+    mockFs.writeFile.mockResolvedValue(undefined);
+    
+    // Setup conflict resolver mock
+    mockConflictResolver.resolveConflict.mockResolvedValue({
+      resolved: true,
+      conflicts: [],
+      errors: [],
+      warnings: [],
+    });
   });
 
   describe('deploySettings', () => {
