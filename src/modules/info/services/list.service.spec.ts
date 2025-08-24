@@ -4,11 +4,9 @@ import { describe, it, expect, beforeEach, vi, Mock } from 'vitest';
 
 import {
   ConfigBundle,
-  DisplayConfiguration,
   ListConfigurationsOptions,
   ListOptions,
 } from '../../../models/config-bundle.model';
-import { User } from '../../../models/user.model';
 import { AuthService } from '../../auth/auth.service';
 
 import { ListService } from './list.service';
@@ -24,7 +22,6 @@ vi.mock('../../../supabase/supabase-client', () => ({
 
 describe('ListService', () => {
   let service: ListService;
-  let authService: AuthService;
   let mockQuery: {
     select: Mock;
     eq: Mock;
@@ -32,14 +29,6 @@ describe('ListService', () => {
     ilike: Mock;
     order: Mock;
     range: Mock;
-  };
-
-  const mockUser: User = {
-    id: 'user-123',
-    email: 'test@example.com',
-    name: 'Test User',
-    avatarUrl: null,
-    provider: 'google',
   };
 
   const mockConfigBundle: ConfigBundle = {
@@ -90,7 +79,6 @@ describe('ListService', () => {
     }).compile();
 
     service = module.get<ListService>(ListService);
-    authService = module.get<AuthService>(AuthService);
   });
 
   describe('listConfigurations', () => {

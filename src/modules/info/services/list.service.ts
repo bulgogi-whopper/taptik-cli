@@ -6,13 +6,10 @@ import {
   ListConfigurationsOptions,
   ListOptions,
   SortField,
-  ValidationResult,
   toDisplayConfiguration,
   validateListOptions,
   DEFAULT_LIST_OPTIONS,
-  MAX_LIST_LIMIT,
 } from '../../../models/config-bundle.model';
-import { User } from '../../../models/user.model';
 import { getSupabaseClient } from '../../../supabase/supabase-client';
 import { AuthService } from '../../auth/auth.service';
 
@@ -195,30 +192,6 @@ export class ListService {
   }
 
   /**
-   * Apply sorting to configurations
-   * Private helper method for sorting logic
-   */
-  private applySorting(
-    configs: ConfigBundle[],
-    sort: SortField,
-  ): ConfigBundle[] {
-    return [...configs].sort((a, b) => {
-      switch (sort) {
-        case 'date':
-          // Sort by creation date (newest first)
-          return (
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          );
-        case 'name':
-          // Sort alphabetically by title
-          return a.title.localeCompare(b.title);
-        default:
-          return 0;
-      }
-    });
-  }
-
-  /**
    * Get database sort mapping for Supabase queries
    * Private helper method for database sorting
    */
@@ -233,55 +206,6 @@ export class ListService {
         return { field: 'title', ascending: true }; // Alphabetical
       default:
         return { field: 'created_at', ascending: false };
-    }
-  }
-
-  /**
-   * Format configurations for display
-   * Private helper method for data transformation
-   */
-  private formatForDisplay(configs: ConfigBundle[]): DisplayConfiguration[] {
-    return configs.map((config) => toDisplayConfiguration(config));
-  }
-
-  /**
-   * Sanitize filter input to prevent injection attacks
-   * Private helper method for security
-   */
-  private sanitizeFilter(filter: string): string {
-    if (!filter) return '';
-
-    // Remove potentially dangerous characters and trim
-    return filter
-      .replace(/["';\\]/g, '')
-      .trim()
-      .substring(0, 100); // Limit length
-  }
-
-  /**
-   * Check if user is authenticated and get user info
-   * Private helper method for authentication validation
-   */
-  private async requireAuthentication(): Promise<User> {
-    const user = await this.authService.getCurrentUser();
-    if (!user) {
-      throw new Error(
-        'Authentication required. Please run "taptik login" first.',
-      );
-    }
-    return user;
-  }
-
-  /**
-   * Get current user ID if authenticated, null otherwise
-   * Private helper method for optional authentication
-   */
-  private async getCurrentUserId(): Promise<string | null> {
-    try {
-      const user = await this.authService.getCurrentUser();
-      return user?.id || null;
-    } catch {
-      return null;
     }
   }
 }
