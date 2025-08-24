@@ -283,12 +283,12 @@ export class ErrorHandlerService {
 
     if (this.hasWarnings()) {
       this.logger.log('\n✅ Build completed with warnings');
-       
+      console.log('\n✅ Build completed with warnings');
       process.exit(0);
     }
 
     this.logger.log('\n✅ Build completed successfully');
-     
+    console.log('\n✅ Build completed successfully');
     process.exit(0);
   }
 

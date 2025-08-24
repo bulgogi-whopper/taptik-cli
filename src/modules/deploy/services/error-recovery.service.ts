@@ -238,7 +238,7 @@ export class ErrorRecoveryService {
       await this.lockingService.cleanupStaleLocks();
 
       // Clean up old backups
-      const retention = platform === 'claudeCode' ? 5 : 10;
+      const retention = platform === 'claude-code' ? 5 : 10;
       await this.backupService.cleanupOldBackups(retention);
 
       this.logger.log('Cleaned up partial deployments');
