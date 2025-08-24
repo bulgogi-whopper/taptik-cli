@@ -195,63 +195,6 @@ export class ListService {
   }
 
   /**
-   * Validate list options with enhanced validation
-   * Private helper method for input validation
-   */
-  private validateListOptions(options: ListOptions): ValidationResult {
-    const errors: string[] = [];
-
-    // Validate sort option
-    if (options.sort && !['date', 'name'].includes(options.sort)) {
-      errors.push(
-        `Invalid sort option '${options.sort}'. Valid options: date, name`,
-      );
-    }
-
-    // Validate limit option
-    if (options.limit !== undefined) {
-      if (!Number.isInteger(options.limit) || options.limit <= 0) {
-        errors.push('Limit must be a positive integer');
-      }
-      if (options.limit > MAX_LIST_LIMIT) {
-        errors.push(`Limit cannot exceed ${MAX_LIST_LIMIT}`);
-      }
-    }
-
-    // Validate filter (basic sanitization)
-    if (options.filter !== undefined) {
-      if (typeof options.filter !== 'string') {
-        errors.push('Filter must be a string');
-      } else if (options.filter.length > 100) {
-        errors.push('Filter cannot exceed 100 characters');
-      }
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-    };
-  }
-
-  /**
-   * Apply title-based filtering to configurations
-   * Private helper method for filtering logic
-   */
-  private applyFilters(
-    configs: ConfigBundle[],
-    filter: string,
-  ): ConfigBundle[] {
-    if (!filter || !filter.trim()) {
-      return configs;
-    }
-
-    const searchTerm = filter.trim().toLowerCase();
-    return configs.filter((config) =>
-      config.title.toLowerCase().includes(searchTerm),
-    );
-  }
-
-  /**
    * Apply sorting to configurations
    * Private helper method for sorting logic
    */
