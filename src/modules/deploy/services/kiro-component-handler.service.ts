@@ -4,7 +4,6 @@ import * as path from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
 
 import { DeploymentError, DeploymentWarning } from '../interfaces/deployment-result.interface';
-import { KiroConflictResolverService } from './kiro-conflict-resolver.service';
 import {
   KiroGlobalSettings,
   KiroProjectSettings,
@@ -17,6 +16,8 @@ import {
   KiroDeploymentOptions,
   KiroMergeStrategy
 } from '../interfaces/kiro-deployment.interface';
+
+import { KiroConflictResolverService } from './kiro-conflict-resolver.service';
 
 @Injectable()
 export class KiroComponentHandlerService {

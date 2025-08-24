@@ -2,11 +2,13 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
 import { Test, TestingModule } from '@nestjs/testing';
+
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-import { KiroConflictResolverService, ConflictResolutionResult } from './kiro-conflict-resolver.service';
-import { BackupService } from './backup.service';
 import { KiroComponentType } from '../interfaces/kiro-deployment.interface';
+
+import { BackupService } from './backup.service';
+import { KiroConflictResolverService, ConflictResolutionResult } from './kiro-conflict-resolver.service';
 
 vi.mock('node:fs/promises');
 vi.mock('./backup.service');

@@ -3,6 +3,7 @@ import * as path from 'node:path';
 
 import { Injectable } from '@nestjs/common';
 
+import { DeploymentError, DeploymentWarning } from '../interfaces/deployment-result.interface';
 import {
   KiroConflictStrategy,
   KiroMergeStrategy,
@@ -17,7 +18,7 @@ import {
   KiroTask,
   KiroMergedConfiguration,
 } from '../interfaces/kiro-deployment.interface';
-import { DeploymentError, DeploymentWarning } from '../interfaces/deployment-result.interface';
+
 import { BackupService } from './backup.service';
 
 export interface ConflictResolutionResult {
@@ -504,7 +505,7 @@ export class KiroConflictResolverService {
   }
 
   private containsTaskList(content: string): boolean {
-    return /^\s*-\s*\[[ x]\]/m.test(content);
+    return /^\s*-\s*\[[ x]]/m.test(content);
   }
 
   private mergeTaskLists(existingContent: string, newContent: string): string {
@@ -536,7 +537,7 @@ export class KiroConflictResolverService {
     const lines = content.split('\n');
 
     for (const line of lines) {
-      const match = line.match(/^\s*-\s*\[([x ])\]\s*(.+)/);
+      const match = line.match(/^\s*-\s*\[([ x])]\s*(.+)/);
       if (match) {
         const completed = match[1] === 'x';
         const taskText = match[2].trim();
@@ -553,7 +554,7 @@ export class KiroConflictResolverService {
     const lines = content.split('\n');
 
     for (const line of lines) {
-      const match = line.match(/^\s*-\s*\[([x ])\]\s*(.+)/);
+      const match = line.match(/^\s*-\s*\[([ x])]\s*(.+)/);
       if (match) {
         const completed = match[1] === 'x';
         const text = match[2].trim();
@@ -580,12 +581,12 @@ export class KiroConflictResolverService {
     newContent: string,
     preservedTasks: Array<{ id: string; completed: boolean }>,
   ): string {
-    let result = newContent;
+    const result = newContent;
     const lines = result.split('\n');
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      const match = line.match(/^\s*-\s*\[([x ])\]\s*(.+)/);
+      const match = line.match(/^\s*-\s*\[([ x])]\s*(.+)/);
       
       if (match) {
         const taskText = match[2].trim();
@@ -594,7 +595,7 @@ export class KiroConflictResolverService {
         
         if (preservedTask && preservedTask.completed) {
           // 완료된 작업으로 마크
-          lines[i] = line.replace(/\[[ ]\]/, '[x]');
+          lines[i] = line.replace(/\[ ]/, '[x]');
         }
       }
     }
@@ -606,12 +607,12 @@ export class KiroConflictResolverService {
     baseContent: string,
     tasks: Array<{ id: string; text: string; completed: boolean }>,
   ): string {
-    let result = baseContent;
+    const result = baseContent;
     const lines = result.split('\n');
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      const match = line.match(/^\s*-\s*\[([x ])\]\s*(.+)/);
+      const match = line.match(/^\s*-\s*\[([ x])]\s*(.+)/);
       
       if (match) {
         const taskText = match[2].trim();
@@ -620,7 +621,7 @@ export class KiroConflictResolverService {
         
         if (task) {
           const checkbox = task.completed ? '[x]' : '[ ]';
-          lines[i] = line.replace(/\[([x ])\]/, checkbox);
+          lines[i] = line.replace(/\[([ x])]/, checkbox);
         }
       }
     }
@@ -713,7 +714,7 @@ export class KiroConflictResolverService {
   }
 
   private async createBackup(filePath: string): Promise<string> {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const timestamp = new Date().toISOString().replace(/[.:]/g, '-');
     const backupDir = path.dirname(filePath);
     const fileName = path.basename(filePath);
     const backupFileName = `${fileName}.backup-${timestamp}`;
