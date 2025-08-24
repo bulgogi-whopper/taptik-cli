@@ -108,14 +108,22 @@ export class CollectionService {
     try {
       await fs.access(claudePath);
     } catch (_error: unknown) {
-      this.logger.warn(`Claude Code not found. Please ensure Claude Code is installed and configured.`);
+      this.logger.warn(`Claude Code directory not found at ${claudePath}. Using default configuration.`);
       errors.push({
         type: 'CLAUDE_NOT_FOUND',
-        message: 'Claude Code not found. Please ensure Claude Code is installed and configured.',
-        suggestedResolution: 'Install Claude Code or verify the installation path.',
+        message: 'Claude Code directory not found. Using default configuration.',
+        suggestedResolution: 'Create .claude directory with your Claude Code settings.',
         filePath: claudePath,
       });
-      recoveryStrategy = 'CONTINUE_WITH_EMPTY';
+      recoveryStrategy = 'USE_DEFAULTS';
+      
+      // Return minimal valid data structure for Claude Code
+      result.settings = {
+        theme: 'default'
+      };
+      result.claudeMd = '# Claude Code Configuration\n\nNo Claude Code configuration found. Using defaults.';
+      result.claudeLocalMd = '';
+      
       return { ...result, errors, recoveryStrategy };
     }
 

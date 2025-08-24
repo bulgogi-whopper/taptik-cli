@@ -185,7 +185,12 @@ describe('CollectionService - Claude Code Support (RED Phase)', () => {
 
       // Assert
       expect(result).toBeDefined();
-      expect(result.settings).toBeUndefined();
+      // Now returns default settings instead of undefined
+      expect(result.settings).toEqual({
+        theme: 'default'
+      });
+      expect(result.claudeMd).toBe('# Claude Code Configuration\n\nNo Claude Code configuration found. Using defaults.');
+      expect(result.claudeLocalMd).toBe('');
       expect(result.agents).toEqual([]);
       expect(result.commands).toEqual([]);
       expect(result.steeringFiles).toEqual([]);

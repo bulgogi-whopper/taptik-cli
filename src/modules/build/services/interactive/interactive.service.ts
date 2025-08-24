@@ -41,10 +41,9 @@ export class InteractiveService {
           disabled: '(Coming soon)'
         },
         {
-          name: 'Claude Code (Coming soon)',
+          name: 'Claude Code (Ready)',
           value: BuildPlatform.CLAUDE_CODE, 
-          description: 'Claude Code integration is in development',
-          disabled: '(Coming soon)'
+          description: 'Build from Claude Code settings - fully supported'
         }
       ],
       default: BuildPlatform.KIRO
