@@ -17,7 +17,7 @@ export class LocalQueueService implements OnModuleInit, OnModuleDestroy {
   private queue: Map<string, QueuedUpload> = new Map();
   private syncInterval: NodeJS.Timeout | null = null;
   private saveDebounceTimer: NodeJS.Timeout | null = null;
-  
+
   private readonly queueConfig = {
     filePath: path.join(os.homedir(), '.taptik', 'upload-queue.json'),
     syncInterval: 30000, // 30 seconds
@@ -47,7 +47,7 @@ export class LocalQueueService implements OnModuleInit, OnModuleDestroy {
       if (fs.existsSync(this.queueConfig.filePath)) {
         const data = fs.readFileSync(this.queueConfig.filePath, 'utf-8');
         const storage: QueueStorage = JSON.parse(data);
-        
+
         // Convert dates from strings
         for (const item of storage.queue) {
           if (item.lastAttempt) {
@@ -97,7 +97,7 @@ export class LocalQueueService implements OnModuleInit, OnModuleDestroy {
     if (this.saveDebounceTimer) {
       clearTimeout(this.saveDebounceTimer);
     }
-    
+
     this.saveDebounceTimer = setTimeout(() => {
       this.saveQueue();
     }, this.queueConfig.saveDebounceDelay);
@@ -140,7 +140,7 @@ export class LocalQueueService implements OnModuleInit, OnModuleDestroy {
 
     this.queue.set(id, queuedUpload);
     this.debounceSave();
-    
+
     return id;
   }
 
@@ -153,7 +153,7 @@ export class LocalQueueService implements OnModuleInit, OnModuleDestroy {
         false,
       );
     }
-    
+
     this.queue.delete(id);
     this.debounceSave();
   }
@@ -176,7 +176,7 @@ export class LocalQueueService implements OnModuleInit, OnModuleDestroy {
     item.status = status;
     item.error = error;
     item.updatedAt = new Date();
-    
+
     this.queue.set(id, item);
     this.debounceSave();
   }
@@ -194,14 +194,14 @@ export class LocalQueueService implements OnModuleInit, OnModuleDestroy {
 
     item.attempts++;
     item.lastAttempt = new Date();
-    
+
     const retryDelay = this.calculateRetryDelay(item.attempts);
     item.nextRetry = new Date(Date.now() + retryDelay);
     item.updatedAt = new Date();
-    
+
     this.queue.set(id, item);
     this.debounceSave();
-    
+
     return item.attempts;
   }
 
@@ -218,9 +218,9 @@ export class LocalQueueService implements OnModuleInit, OnModuleDestroy {
   async getPendingUploads(): Promise<QueuedUpload[]> {
     const now = Date.now();
     const items = Array.from(this.queue.values());
-    
+
     return items
-      .filter(item => {
+      .filter((item) => {
         if (item.status !== 'pending') return false;
         if (item.attempts >= this.queueConfig.maxRetryAttempts) return false;
         if (item.nextRetry && item.nextRetry.getTime() > now) return false;
@@ -235,9 +235,9 @@ export class LocalQueueService implements OnModuleInit, OnModuleDestroy {
   }
 
   async clearFailedUploads(olderThanDays: number = 7): Promise<number> {
-    const cutoffTime = Date.now() - (olderThanDays * 24 * 60 * 60 * 1000);
+    const cutoffTime = Date.now() - olderThanDays * 24 * 60 * 60 * 1000;
     let cleared = 0;
-    
+
     for (const [id, item] of this.queue.entries()) {
       if (
         item.status === 'failed' &&
@@ -248,28 +248,28 @@ export class LocalQueueService implements OnModuleInit, OnModuleDestroy {
         cleared++;
       }
     }
-    
+
     if (cleared > 0) {
       this.debounceSave();
     }
-    
+
     return cleared;
   }
 
   async clearCompletedUploads(): Promise<number> {
     let cleared = 0;
-    
+
     for (const [id, item] of this.queue.entries()) {
       if (item.status === 'completed') {
         this.queue.delete(id);
         cleared++;
       }
     }
-    
+
     if (cleared > 0) {
       this.debounceSave();
     }
-    
+
     return cleared;
   }
 
@@ -277,13 +277,15 @@ export class LocalQueueService implements OnModuleInit, OnModuleDestroy {
     // Process queue with external handler
     // This method is called manually or via background sync
     await this.getPendingUploads();
-    
+
     // Processing will be handled by PushService
     // This just returns the pending uploads for processing
     return Promise.resolve();
   }
 
-  startBackgroundSync(onProcess: (upload: QueuedUpload) => Promise<void>): void {
+  startBackgroundSync(
+    onProcess: (upload: QueuedUpload) => Promise<void>,
+  ): void {
     if (this.syncInterval) {
       clearInterval(this.syncInterval);
     }
@@ -305,12 +307,14 @@ export class LocalQueueService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private async processQueueWithHandler(onProcess: (upload: QueuedUpload) => Promise<void>): Promise<void> {
+  private async processQueueWithHandler(
+    onProcess: (upload: QueuedUpload) => Promise<void>,
+  ): Promise<void> {
     try {
       const pendingUploads = await this.getPendingUploads();
-      
+
       // Process uploads sequentially
-       
+
       for (const upload of pendingUploads) {
         try {
           // eslint-disable-next-line no-await-in-loop
@@ -322,7 +326,7 @@ export class LocalQueueService implements OnModuleInit, OnModuleDestroy {
         } catch (error) {
           // eslint-disable-next-line no-await-in-loop
           const attempts = await this.incrementRetryAttempt(upload.id);
-          
+
           if (attempts >= this.queueConfig.maxRetryAttempts) {
             // eslint-disable-next-line no-await-in-loop
             await this.updateQueueStatus(
@@ -362,7 +366,7 @@ export class LocalQueueService implements OnModuleInit, OnModuleDestroy {
 
   private getQueueSize(): number {
     return Array.from(this.queue.values()).filter(
-      item => item.status !== 'completed',
+      (item) => item.status !== 'completed',
     ).length;
   }
 
@@ -390,10 +394,10 @@ export class LocalQueueService implements OnModuleInit, OnModuleDestroy {
     }
 
     // Don't override updatedAt if it's being explicitly set
-    const finalUpdates = updates.updatedAt 
-      ? updates 
+    const finalUpdates = updates.updatedAt
+      ? updates
       : { ...updates, updatedAt: new Date() };
-    
+
     Object.assign(item, finalUpdates);
     this.queue.set(id, item);
     this.debounceSave();

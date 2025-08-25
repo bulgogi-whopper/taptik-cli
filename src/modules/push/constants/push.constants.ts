@@ -28,7 +28,7 @@ export enum PushErrorCode {
   DATABASE_ERROR = 'SYS_001',
   INTERNAL_ERROR = 'SYS_002',
   SYSTEM_ERROR = 'SYS_003',
-  
+
   // Queue errors (9xx)
   QUEUE_FULL = 'QUEUE_001',
   QUEUE_ITEM_NOT_FOUND = 'QUEUE_002',

@@ -86,7 +86,17 @@ describe('PackageRegistryService', () => {
     };
 
     // Make methods return mockSupabaseClient for chaining
-    ['from', 'select', 'insert', 'update', 'eq', 'is', 'or', 'order', 'limit'].forEach(method => {
+    [
+      'from',
+      'select',
+      'insert',
+      'update',
+      'eq',
+      'is',
+      'or',
+      'order',
+      'limit',
+    ].forEach((method) => {
       mockSupabaseClient[method].mockReturnValue(mockSupabaseClient);
     });
 
@@ -125,12 +135,12 @@ describe('PackageRegistryService', () => {
           error: null,
         });
 
-      // Create version history mock 
+      // Create version history mock
       const versionHistoryMock = {
         from: vi.fn().mockReturnThis(),
         insert: vi.fn().mockResolvedValue({ error: null }),
       };
-      
+
       // Setup getClient to return version history mock on second call
       mockSupabaseService.getClient
         .mockReturnValueOnce(mockSupabaseClient)
