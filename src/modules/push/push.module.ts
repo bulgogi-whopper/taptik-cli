@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module';
+import { DeployCoreModule } from '../deploy/core/deploy-core.module';
 import { SupabaseModule } from '../supabase/supabase.module';
 
 import { PushCommand } from './commands/push.command';
@@ -15,7 +16,7 @@ import { SanitizationService } from './services/sanitization.service';
 import { SignedUrlService } from './services/signed-url.service';
 
 @Module({
-  imports: [SupabaseModule, AuthModule],
+  imports: [SupabaseModule, AuthModule, DeployCoreModule],
   providers: [
     PushCommand,
     PushService,
@@ -28,6 +29,6 @@ import { SignedUrlService } from './services/signed-url.service';
     PackageValidatorService,
     LocalQueueService,
   ],
-  exports: [PushService],
+  exports: [PushService, PackageRegistryService],
 })
 export class PushModule {}

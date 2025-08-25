@@ -3,7 +3,11 @@ import { createHash } from 'crypto';
 import { Injectable } from '@nestjs/common';
 
 import { SupabaseService } from '../../supabase/supabase.service';
-import { PushError, PushErrorCode, UPLOAD_CONFIG } from '../constants/push.constants';
+import {
+  PushError,
+  PushErrorCode,
+  UPLOAD_CONFIG,
+} from '../constants/push.constants';
 import { PackageMetadata, UploadProgress } from '../interfaces';
 
 import { SignedUrlService } from './signed-url.service';
@@ -100,7 +104,8 @@ export class CloudUploadService {
       );
 
       // 3. Determine upload strategy based on file size
-      const useChunkedUpload = packageBuffer.length > this.BUCKET_CONFIG.CHUNKED_UPLOAD_THRESHOLD;
+      const useChunkedUpload =
+        packageBuffer.length > this.BUCKET_CONFIG.CHUNKED_UPLOAD_THRESHOLD;
 
       onProgress?.({
         phase: 'uploading',
@@ -166,7 +171,8 @@ export class CloudUploadService {
       }
 
       // Calculate progress from uploaded chunks
-      const uploadedBytes = uploadInfo.uploadedChunks.length * uploadInfo.chunkSize;
+      const uploadedBytes =
+        uploadInfo.uploadedChunks.length * uploadInfo.chunkSize;
       const totalBytes = packageBuffer.length;
 
       onProgress?.({
@@ -201,8 +207,10 @@ export class CloudUploadService {
       // Extract the storage path from the URL
       const url = new globalThis.URL(storageUrl);
       const pathSegments = url.pathname.split('/');
-      const bucketIndex = pathSegments.findIndex(segment => segment === this.BUCKET_CONFIG.BUCKET_NAME);
-      
+      const bucketIndex = pathSegments.findIndex(
+        (segment) => segment === this.BUCKET_CONFIG.BUCKET_NAME,
+      );
+
       if (bucketIndex === -1) {
         throw new PushError(
           PushErrorCode.UPLOAD_FAILED,
@@ -250,11 +258,17 @@ export class CloudUploadService {
     return this.signedUrlService.generateDownloadUrl(packageId, userId);
   }
 
-  private generateStoragePath(userId: string, configId: string, version: string): string {
-    return `${this.BUCKET_CONFIG.STORAGE_PATH_PATTERN
-      .replace('{userId}', userId)
+  private generateStoragePath(
+    userId: string,
+    configId: string,
+    version: string,
+  ): string {
+    return `${this.BUCKET_CONFIG.STORAGE_PATH_PATTERN.replace(
+      '{userId}',
+      userId,
+    )
       .replace('{configId}', configId)
-      .replace('{version}', version)  }package.taptik`;
+      .replace('{version}', version)}package.taptik`;
   }
 
   private async performDirectUpload(
@@ -325,7 +339,12 @@ export class CloudUploadService {
     this.activeUploads.set(uploadId, uploadInfo);
 
     try {
-      return await this.continueChunkedUpload(packageBuffer, uploadInfo, onProgress, storagePath);
+      return await this.continueChunkedUpload(
+        packageBuffer,
+        uploadInfo,
+        onProgress,
+        storagePath,
+      );
     } finally {
       this.activeUploads.delete(uploadId);
     }
@@ -355,10 +374,11 @@ export class CloudUploadService {
       }
     }
 
-     
     for (const chunkIndex of missingChunks) {
-      const chunkPath = storagePath ? `${storagePath}.chunk.${chunkIndex}` : `temp/chunk.${uploadInfo.uploadId}.${chunkIndex}`;
-      
+      const chunkPath = storagePath
+        ? `${storagePath}.chunk.${chunkIndex}`
+        : `temp/chunk.${uploadInfo.uploadId}.${chunkIndex}`;
+
       // eslint-disable-next-line no-await-in-loop
       const { error } = await client.storage
         .from(this.BUCKET_CONFIG.BUCKET_NAME)
@@ -378,8 +398,12 @@ export class CloudUploadService {
       uploadInfo.uploadedChunks.push(chunkIndex);
 
       // Update progress
-      const uploadedBytes = uploadInfo.uploadedChunks.length * uploadInfo.chunkSize;
-      const percentage = Math.min((uploadedBytes / packageBuffer.length) * 100, 100);
+      const uploadedBytes =
+        uploadInfo.uploadedChunks.length * uploadInfo.chunkSize;
+      const percentage = Math.min(
+        (uploadedBytes / packageBuffer.length) * 100,
+        100,
+      );
 
       onProgress?.({
         phase: 'uploading',
@@ -391,7 +415,8 @@ export class CloudUploadService {
     }
 
     // Combine chunks into final file
-    const finalPath = storagePath || `packages/combined/${uploadInfo.uploadId}/package.taptik`;
+    const finalPath =
+      storagePath || `packages/combined/${uploadInfo.uploadId}/package.taptik`;
     const combinedBuffer = Buffer.concat(chunks);
 
     const { data, error } = await client.storage
@@ -429,13 +454,18 @@ export class CloudUploadService {
     return urlData.publicUrl;
   }
 
-  private async cleanupChunks(uploadInfo: ChunkedUpload, storagePath?: string): Promise<void> {
+  private async cleanupChunks(
+    uploadInfo: ChunkedUpload,
+    storagePath?: string,
+  ): Promise<void> {
     try {
       const client = this.supabaseService.getClient();
       const chunkPaths: string[] = [];
 
       for (let i = 0; i < uploadInfo.totalChunks; i++) {
-        const chunkPath = storagePath ? `${storagePath}.chunk.${i}` : `temp/chunk.${uploadInfo.uploadId}.${i}`;
+        const chunkPath = storagePath
+          ? `${storagePath}.chunk.${i}`
+          : `temp/chunk.${uploadInfo.uploadId}.${i}`;
         chunkPaths.push(chunkPath);
       }
 
