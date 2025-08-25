@@ -37,6 +37,78 @@ npm run cli -- --help
 | `build:test`     | Test build functionality  | `npm run build:test`          |
 | `test:cli`       | Run CLI integration tests | `npm run test:cli`            |
 
+## 📋 List Command Deep Dive
+
+### Overview
+
+The list command provides discovery and exploration of configuration packages stored in the Taptik cloud. It allows users to browse, filter, and sort available configurations through an intuitive command-line interface.
+
+### Basic Usage
+
+```bash
+# List all public configurations
+npm run cli -- list
+
+# Filter configurations by title
+npm run cli -- list --filter "frontend"
+npm run cli -- list --filter "typescript"
+
+# Sort configurations
+npm run cli -- list --sort date    # Sort by creation date (default)
+npm run cli -- list --sort name    # Sort alphabetically by title
+
+# Limit results
+npm run cli -- list --limit 10     # Show 10 results
+npm run cli -- list --limit 50     # Show 50 results (max: 100)
+
+# Combine options
+npm run cli -- list --filter "react" --sort name --limit 20
+```
+
+### Subcommands
+
+#### Liked Configurations
+
+```bash
+# List configurations you've liked (requires authentication)
+npm run cli -- list liked
+npm run cli -- list liked --sort date --limit 10
+```
+
+### Command Options
+
+| Option | Description | Default | Example |
+|--------|-------------|---------|---------|
+| `--filter <query>` | Filter by configuration title | None | `--filter "frontend"` |
+| `--sort <field>` | Sort by date or name | `date` | `--sort name` |
+| `--limit <n>` | Limit results (1-100) | `20` | `--limit 50` |
+
+### Output Format
+
+The list command displays configurations in a table format:
+
+```
+ID       Title                    Created      Size     Access
+─────────────────────────────────────────────────────────────
+abc12345 Frontend React Setup     2 days ago   2.3MB    Public
+def67890 TypeScript Backend       1 week ago   1.8MB    Public
+ghi11121 Full Stack Template      3 days ago   4.1MB    Public
+```
+
+### Error Handling
+
+The list command provides specific error messages for different scenarios:
+
+- **Network Error**: "Unable to connect to Taptik cloud. Please check your internet connection."
+- **Authentication Error**: "Authentication failed. Please run 'taptik login' first."
+- **Server Error**: "Taptik cloud is temporarily unavailable. Please try again later."
+- **Invalid Options**: Shows help with valid options
+
+### Authentication Requirements
+
+- **Public listings**: No authentication required
+- **Liked configurations**: Requires authentication with `taptik login`
+
 ## 🏗️ Build Command Deep Dive
 
 ### Architecture Overview
@@ -117,6 +189,12 @@ npm run cli -- build --platform kiro --output ./dist/taptik-config --quiet
 npm run cli -- build --categories personal     # User context only
 npm run cli -- build --categories project      # Project context only
 npm run cli -- build --categories prompts      # Templates only
+
+# 6. List available configurations
+npm run cli -- list                            # List public configurations
+npm run cli -- list --filter "frontend"        # Filter by title
+npm run cli -- list --sort name --limit 50     # Sort and limit results
+npm run cli -- list liked                      # List liked configurations (requires auth)
 ```
 
 ### Advanced Options

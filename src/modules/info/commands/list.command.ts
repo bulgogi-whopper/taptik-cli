@@ -361,12 +361,7 @@ export class ListCommand extends CommandRunner {
     return `${str.substring(0, maxLength - 3)}...`;
   }
 
-  /**
-   * Pad string to specified length
-   */
-  private padString(str: string, length: number): string {
-    return str.padEnd(length);
-  }
+
 
   /**
    * Handle errors with specific error messages
