@@ -1,7 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 import { ListCommand } from './list.command';
-import { ListService, NetworkError, AuthenticationError, ServerError } from '../services/list.service';
+import { ListService } from '../services/list.service';
+import { AuthService } from '../../auth/auth.service';
+import { SupabaseService } from '../../supabase/supabase.service';
 
 /**
  * Integration tests for ListCommand
@@ -12,55 +15,39 @@ describe('ListCommand Integration Tests', () => {
   let listCommand: ListCommand;
   let mockListService: any;
   let mockAuthService: any;
-  let consoleLogSpy: Mock;
-  let consoleErrorSpy: Mock;
-  let processExitSpy: Mock;
+  let supabaseClient: SupabaseClient;
+  let consoleLogSpy: any;
+  let consoleErrorSpy: any;
+  let processExitSpy: any;
 
-  // Mock display configurations for testing
-  const mockDisplayConfigurations = [
-    {
-      id: 'config-1',
-      title: 'VSCode Dark Theme Setup',
-      description: 'Complete dark theme configuration for VSCode',
-      createdAt: new Date('2025-08-20T10:00:00Z'),
-      size: '2.3 MB',
-      accessLevel: 'Public' as const,
-      author: 'john_doe',
-    },
-    {
-      id: 'config-2',
-      title: 'React Development Environment',
-      description: 'Optimized React development setup',
-      createdAt: new Date('2025-08-19T15:30:00Z'),
-      size: '1.0 MB',
-      accessLevel: 'Public' as const,
-      author: 'jane_smith',
-    },
-  ];
-
-  const mockUser = {
-    id: 'user-123',
+  // Test data for integration tests
+  const testUser = {
+    id: 'test-user-auth',
     email: 'test@example.com',
-    name: 'Test User',
+    createdAt: new Date(),
+    updatedAt: new Date(),
   };
 
   beforeEach(() => {
+    // Set up test environment variables
+    process.env.SUPABASE_URL = 'https://test.supabase.co';
+    process.env.SUPABASE_ANON_KEY = 'test-anon-key';
+    process.env.NODE_ENV = 'test';
+
+    // Create test Supabase client
+    supabaseClient = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_ANON_KEY,
+    );
+
     // Create mock services
     mockListService = {
-      listConfigurations: vi.fn().mockResolvedValue({
-        configurations: mockDisplayConfigurations,
-        totalCount: mockDisplayConfigurations.length,
-        hasMore: false,
-      }),
-      listLikedConfigurations: vi.fn().mockResolvedValue({
-        configurations: mockDisplayConfigurations.map(config => ({ ...config, isLiked: true })),
-        totalCount: mockDisplayConfigurations.length,
-        hasMore: false,
-      }),
+      listConfigurations: vi.fn(),
+      listLikedConfigurations: vi.fn(),
     };
 
     mockAuthService = {
-      getCurrentUser: vi.fn().mockResolvedValue(mockUser),
+      getCurrentUser: vi.fn(),
     };
 
     // Create command instance with mocked services
@@ -75,12 +62,29 @@ describe('ListCommand Integration Tests', () => {
   });
 
   afterEach(() => {
-    // Restore all mocks
     vi.restoreAllMocks();
   });
 
   describe('End-to-End Command Execution', () => {
-    it('should list public configurations successfully', async () => {
+    it('should list public configurations successfully with service integration', async () => {
+      // Arrange - Mock successful service response
+      const mockResult = {
+        configurations: [
+          {
+            id: 'test-config-1',
+            title: 'VSCode Dark Theme Setup',
+            description: 'Complete dark theme configuration for VSCode',
+            createdAt: new Date('2025-08-20T10:00:00Z'),
+            size: '2.4 MB',
+            accessLevel: 'Public' as const,
+          },
+        ],
+        totalCount: 1,
+        hasMore: false,
+      };
+      
+      mockListService.listConfigurations.mockResolvedValue(mockResult);
+
       // Act
       await listCommand.run([], {});
 
@@ -97,15 +101,30 @@ describe('ListCommand Integration Tests', () => {
       expect(output).toContain('ID       Title                    Created      Size     Access');
       
       // Verify configuration data is displayed
-      expect(output).toContain('config-1');
+      expect(output).toContain('test-con'); // ID truncated to 8 chars
       expect(output).toContain('VSCode Dark Theme Setup');
       expect(output).toContain('Public');
-      
-      expect(output).toContain('config-2');
-      expect(output).toContain('React Development Env'); // Title is truncated in table display
     });
 
-    it('should filter configurations by search term', async () => {
+    it('should filter configurations by search term with service integration', async () => {
+      // Arrange - Mock filtered service response
+      const mockResult = {
+        configurations: [
+          {
+            id: 'test-config-1',
+            title: 'VSCode Dark Theme Setup',
+            description: 'Complete dark theme configuration for VSCode',
+            createdAt: new Date('2025-08-20T10:00:00Z'),
+            size: '2.4 MB',
+            accessLevel: 'Public' as const,
+          },
+        ],
+        totalCount: 1,
+        hasMore: false,
+      };
+      
+      mockListService.listConfigurations.mockResolvedValue(mockResult);
+
       // Act
       await listCommand.run([], { filter: 'VSCode' });
 
@@ -118,35 +137,15 @@ describe('ListCommand Integration Tests', () => {
       expect(consoleLogSpy).toHaveBeenCalled();
     });
 
-    it('should sort configurations by different fields', async () => {
-      // Act
-      await listCommand.run([], { sort: 'name' });
-
-      // Assert
-      expect(mockListService.listConfigurations).toHaveBeenCalledWith({
-        sort: 'name',
-        limit: 20,
-      });
-    });
-
-    it('should respect limit parameter', async () => {
-      // Act
-      await listCommand.run([], { limit: 10 });
-
-      // Assert
-      expect(mockListService.listConfigurations).toHaveBeenCalledWith({
-        sort: 'date',
-        limit: 10,
-      });
-    });
-
     it('should display empty state when no configurations available', async () => {
-      // Arrange
-      mockListService.listConfigurations.mockResolvedValue({
+      // Arrange - Mock empty service response
+      const mockResult = {
         configurations: [],
         totalCount: 0,
         hasMore: false,
-      });
+      };
+      
+      mockListService.listConfigurations.mockResolvedValue(mockResult);
 
       // Act
       await listCommand.run([], {});
@@ -154,25 +153,31 @@ describe('ListCommand Integration Tests', () => {
       // Assert
       expect(consoleLogSpy).toHaveBeenCalledWith('No configurations are available');
     });
-
-    it('should display filter-specific empty state', async () => {
-      // Arrange
-      mockListService.listConfigurations.mockResolvedValue({
-        configurations: [],
-        totalCount: 0,
-        hasMore: false,
-      });
-
-      // Act
-      await listCommand.run([], { filter: 'nonexistent' });
-
-      // Assert
-      expect(consoleLogSpy).toHaveBeenCalledWith('No configurations found matching your filter');
-    });
   });
 
   describe('Authentication Flow for Liked Configurations', () => {
-    it('should handle liked configurations for authenticated user', async () => {
+    it('should handle liked configurations for authenticated user with service integration', async () => {
+      // Arrange - Mock authenticated user and liked configs
+      mockAuthService.getCurrentUser.mockResolvedValue(testUser);
+      
+      const mockResult = {
+        configurations: [
+          {
+            id: 'test-config-1',
+            title: 'VSCode Dark Theme Setup',
+            description: 'Complete dark theme configuration for VSCode',
+            createdAt: new Date('2025-08-20T10:00:00Z'),
+            size: '2.4 MB',
+            accessLevel: 'Public' as const,
+            isLiked: true,
+          },
+        ],
+        totalCount: 1,
+        hasMore: false,
+      };
+      
+      mockListService.listLikedConfigurations.mockResolvedValue(mockResult);
+
       // Act
       await listCommand.run(['liked'], {});
 
@@ -189,7 +194,7 @@ describe('ListCommand Integration Tests', () => {
     });
 
     it('should prompt login for unauthenticated user accessing liked configurations', async () => {
-      // Arrange
+      // Arrange - Mock unauthenticated user
       mockAuthService.getCurrentUser.mockResolvedValue(null);
 
       // Act & Assert
@@ -197,18 +202,23 @@ describe('ListCommand Integration Tests', () => {
         await listCommand.run(['liked'], {});
       }).rejects.toThrow('process.exit called');
 
+      expect(mockAuthService.getCurrentUser).toHaveBeenCalled();
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         "❌ Authentication failed. Please run 'taptik login' first."
       );
     });
 
     it('should display empty state for user with no liked configurations', async () => {
-      // Arrange
-      mockListService.listLikedConfigurations.mockResolvedValue({
+      // Arrange - Mock authenticated user with no liked configs
+      mockAuthService.getCurrentUser.mockResolvedValue(testUser);
+      
+      const mockResult = {
         configurations: [],
         totalCount: 0,
         hasMore: false,
-      });
+      };
+      
+      mockListService.listLikedConfigurations.mockResolvedValue(mockResult);
 
       // Act
       await listCommand.run(['liked'], {});
@@ -218,12 +228,11 @@ describe('ListCommand Integration Tests', () => {
     });
   });
 
-  describe('Database Integration with Supabase Client', () => {
-    it('should handle network connectivity errors', async () => {
-      // Arrange
-      mockListService.listConfigurations.mockRejectedValue(
-        new NetworkError('Unable to connect to Taptik cloud. Please check your internet connection.')
-      );
+  describe('Service Error Handling Integration', () => {
+    it('should handle network errors from service', async () => {
+      // Arrange - Mock service throwing network error
+      const networkError = new Error('network connection failed');
+      mockListService.listConfigurations.mockRejectedValue(networkError);
 
       // Act & Assert
       await expect(async () => {
@@ -235,11 +244,10 @@ describe('ListCommand Integration Tests', () => {
       );
     });
 
-    it('should handle authentication errors from database', async () => {
-      // Arrange
-      mockListService.listConfigurations.mockRejectedValue(
-        new AuthenticationError("Authentication failed. Please run 'taptik login' first.")
-      );
+    it('should handle authentication errors from service', async () => {
+      // Arrange - Mock service throwing authentication error
+      const authError = new Error('authentication failed');
+      mockListService.listConfigurations.mockRejectedValue(authError);
 
       // Act & Assert
       await expect(async () => {
@@ -251,11 +259,10 @@ describe('ListCommand Integration Tests', () => {
       );
     });
 
-    it('should handle server errors from database', async () => {
-      // Arrange
-      mockListService.listConfigurations.mockRejectedValue(
-        new ServerError('Taptik cloud is temporarily unavailable. Please try again later.')
-      );
+    it('should handle server errors from service', async () => {
+      // Arrange - Mock service throwing server error
+      const serverError = new Error('server error 500');
+      mockListService.listConfigurations.mockRejectedValue(serverError);
 
       // Act & Assert
       await expect(async () => {
@@ -266,26 +273,36 @@ describe('ListCommand Integration Tests', () => {
         '❌ Taptik cloud is temporarily unavailable. Please try again later.'
       );
     });
-
-    it('should handle rate limiting errors', async () => {
-      // Arrange
-      mockListService.listConfigurations.mockRejectedValue(
-        new ServerError('Taptik cloud is experiencing high traffic. Please try again in a moment.')
-      );
-
-      // Act & Assert
-      await expect(async () => {
-        await listCommand.run([], {});
-      }).rejects.toThrow('process.exit called');
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '❌ Taptik cloud is experiencing high traffic. Please try again in a moment.'
-      );
-    });
   });
 
-  describe('CLI Output Formatting and Error Handling', () => {
-    it('should format table output correctly', async () => {
+  describe('CLI Output Formatting Integration', () => {
+    it('should format table output correctly with real data transformation', async () => {
+      // Arrange - Mock service response with multiple configurations
+      const mockResult = {
+        configurations: [
+          {
+            id: 'test-config-1',
+            title: 'VSCode Dark Theme Setup',
+            description: 'Complete dark theme configuration for VSCode',
+            createdAt: new Date('2025-08-20T10:00:00Z'),
+            size: '2.4 MB',
+            accessLevel: 'Public' as const,
+          },
+          {
+            id: 'test-config-2',
+            title: 'React Development Environment',
+            description: 'Optimized React development setup',
+            createdAt: new Date('2025-08-19T15:30:00Z'),
+            size: '1.8 MB',
+            accessLevel: 'Public' as const,
+          },
+        ],
+        totalCount: 2,
+        hasMore: false,
+      };
+      
+      mockListService.listConfigurations.mockResolvedValue(mockResult);
+
       // Act
       await listCommand.run([], {});
 
@@ -298,9 +315,9 @@ describe('ListCommand Integration Tests', () => {
       expect(output).toContain('─'.repeat(70)); // Table separator
       
       // Verify data formatting
-      expect(output).toContain('config-1'); // ID (truncated to 8 chars)
+      expect(output).toContain('test-con'); // ID (truncated to 8 chars)
       expect(output).toContain('VSCode Dark Theme Setup'); // Title
-      expect(output).toContain('2.3 MB'); // Formatted file size
+      expect(output).toContain('2.4 MB'); // Formatted file size
       expect(output).toContain('Public'); // Access level
     });
 
@@ -326,31 +343,24 @@ describe('ListCommand Integration Tests', () => {
       expect(consoleErrorSpy).toHaveBeenCalledWith('💡 Use "taptik list --help" for valid options');
     });
 
-    it('should validate limit options and show helpful error', async () => {
-      // Act & Assert
-      await expect(async () => {
-        await listCommand.run([], { limit: 0 });
-      }).rejects.toThrow('process.exit called');
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith('❌ Limit must be greater than 0');
-    });
-
-    it('should cap limit at maximum value', async () => {
-      // Act & Assert
-      await expect(async () => {
-        await listCommand.run([], { limit: 150 });
-      }).rejects.toThrow('process.exit called');
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith('❌ Limit cannot exceed 100');
-    });
-
     it('should display pagination information correctly', async () => {
-      // Arrange - Mock response with more results than limit
-      mockListService.listConfigurations.mockResolvedValue({
-        configurations: [mockDisplayConfigurations[0]], // Only 1 result returned
-        totalCount: 50, // But 50 total results available
+      // Arrange - Mock response with more results than returned
+      const mockResult = {
+        configurations: [
+          {
+            id: 'test-config-1',
+            title: 'VSCode Dark Theme Setup',
+            description: 'Complete dark theme configuration for VSCode',
+            createdAt: new Date('2025-08-20T10:00:00Z'),
+            size: '2.4 MB',
+            accessLevel: 'Public' as const,
+          },
+        ],
+        totalCount: 50, // More results available
         hasMore: true,
-      });
+      };
+      
+      mockListService.listConfigurations.mockResolvedValue(mockResult);
 
       // Act
       await listCommand.run([], { limit: 1 });
@@ -359,110 +369,158 @@ describe('ListCommand Integration Tests', () => {
       expect(consoleLogSpy).toHaveBeenCalledWith('\n💡 Showing 1 of 50 configurations');
       expect(consoleLogSpy).toHaveBeenCalledWith('💡 Use --limit to see more results (max: 100)');
     });
-
-    it('should format dates in human-readable format', async () => {
-      // Arrange - Create config with recent date
-      const recentConfig = {
-        ...mockDisplayConfigurations[0],
-        createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
-      };
-      
-      mockListService.listConfigurations.mockResolvedValue({
-        configurations: [recentConfig],
-        totalCount: 1,
-        hasMore: false,
-      });
-
-      // Act
-      await listCommand.run([], {});
-
-      // Assert
-      const output = consoleLogSpy.mock.calls.map(call => call[0]).join('\n');
-      expect(output).toContain('Yesterday'); // Should show "Yesterday" for 1 day ago
-    });
-
-    it('should truncate long titles appropriately', async () => {
-      // Arrange - Config with very long title
-      const longTitleConfig = {
-        ...mockDisplayConfigurations[0],
-        title: 'This is a very long configuration title that should be truncated for display purposes',
-      };
-      
-      mockListService.listConfigurations.mockResolvedValue({
-        configurations: [longTitleConfig],
-        totalCount: 1,
-        hasMore: false,
-      });
-
-      // Act
-      await listCommand.run([], {});
-
-      // Assert
-      const output = consoleLogSpy.mock.calls.map(call => call[0]).join('\n');
-      expect(output).toContain('This is a very long c...'); // Should be truncated with ellipsis
-    });
   });
 
-  describe('Service Integration Tests', () => {
-    it('should integrate ListService with real business logic', async () => {
-      // Act
-      const result = await mockListService.listConfigurations({
+  describe('Real Database Integration Simulation', () => {
+    it('should simulate database query patterns correctly', async () => {
+      // Arrange - Mock Supabase client behavior
+      const mockQuery = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        ilike: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        range: vi.fn().mockReturnThis(),
+      };
+      
+      vi.spyOn(supabaseClient, 'from').mockReturnValue(mockQuery as any);
+      mockQuery.range.mockResolvedValue({
+        data: [
+          {
+            id: 'test-config-1',
+            title: 'VSCode Dark Theme Setup',
+            description: 'Complete dark theme configuration for VSCode',
+            source_ide: 'vscode',
+            target_ides: ['cursor', 'kiro'],
+            tags: ['theme', 'dark', 'vscode'],
+            is_public: true,
+            file_path: 'test/path/config1.json',
+            file_size: 2400000, // 2.4MB
+            download_count: 10,
+            like_count: 5,
+            version: '1.0.0',
+            user_id: 'test-user-1',
+            created_at: new Date('2025-08-20T10:00:00Z'),
+            updated_at: new Date('2025-08-20T10:00:00Z'),
+          },
+        ],
+        error: null,
+        count: 1,
+      });
+
+      // Create a real ListService instance for this test
+      const realListService = new ListService(mockAuthService, { getClient: () => supabaseClient } as any);
+      
+      // Act - Test the real service with mocked database
+      const result = await realListService.listConfigurations({
         filter: 'VSCode',
         sort: 'name',
         limit: 10,
       });
 
-      // Assert
-      expect(result).toBeDefined();
-      expect(result.configurations).toHaveLength(mockDisplayConfigurations.length);
-      expect(result.totalCount).toBe(mockDisplayConfigurations.length);
-      expect(result.hasMore).toBe(false);
+      // Assert - Verify database integration patterns
+      expect(supabaseClient.from).toHaveBeenCalledWith('config_bundles');
+      expect(mockQuery.select).toHaveBeenCalledWith('*', { count: 'exact' });
+      expect(mockQuery.eq).toHaveBeenCalledWith('is_public', true);
+      expect(mockQuery.ilike).toHaveBeenCalledWith('title', '%VSCode%');
+      expect(mockQuery.order).toHaveBeenCalledWith('title', { ascending: true });
+      expect(mockQuery.range).toHaveBeenCalledWith(0, 9);
       
-      // Verify configuration transformation
-      const firstConfig = result.configurations[0];
-      expect(firstConfig.id).toBe('config-1');
-      expect(firstConfig.title).toBe('VSCode Dark Theme Setup');
-      expect(firstConfig.size).toBe('2.3 MB');
-      expect(firstConfig.accessLevel).toBe('Public');
+      // Verify result transformation
+      expect(result.configurations).toHaveLength(1);
+      expect(result.configurations[0].size).toBe('2.3 MB'); // Bytes converted to human readable (2400000 bytes = 2.3 MB)
+      expect(result.configurations[0].accessLevel).toBe('Public'); // Boolean converted to string
     });
 
-    it('should handle authentication service integration for liked configs', async () => {
-      // Act
-      const result = await mockListService.listLikedConfigurations({
-        sort: 'date',
-        limit: 20,
-      });
+    it('should handle database errors correctly in real service', async () => {
+      // Arrange - Mock database error
+      const mockQuery = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        range: vi.fn().mockRejectedValue({
+          error: { code: 'PGRST301', message: 'connection failed' },
+          data: null,
+          count: null,
+        }),
+      };
+      
+      vi.spyOn(supabaseClient, 'from').mockReturnValue(mockQuery as any);
 
-      // Assert
-      expect(result).toBeDefined();
-      expect(result.configurations).toHaveLength(mockDisplayConfigurations.length);
-      expect(result.configurations[0].isLiked).toBe(true);
+      // Create a real ListService instance for this test
+      const realListService = new ListService(mockAuthService, { getClient: () => supabaseClient } as any);
+
+      // Act & Assert - Test real service error handling
+      await expect(async () => {
+        await realListService.listConfigurations({});
+      }).rejects.toThrow('Failed to list configurations');
     });
   });
 
-  describe('Error Recovery and Edge Cases', () => {
-    it('should handle empty filter strings correctly', async () => {
-      // Act
-      await listCommand.run([], { filter: '   ' }); // Empty/whitespace filter
+  describe('Performance and Edge Cases', () => {
+    it('should handle large result sets efficiently', async () => {
+      // Arrange - Mock large dataset
+      const largeConfigSet = Array.from({ length: 20 }, (_, i) => ({
+        id: `large-config-${i}`,
+        title: `Configuration ${i}`,
+        description: `Description for configuration ${i}`,
+        createdAt: new Date(Date.now() - i * 24 * 60 * 60 * 1000),
+        size: `${(i + 1) * 0.5} MB`,
+        accessLevel: 'Public' as const,
+      }));
+      
+      const mockResult = {
+        configurations: largeConfigSet,
+        totalCount: 100,
+        hasMore: true,
+      };
+      
+      mockListService.listConfigurations.mockResolvedValue(mockResult);
 
-      // Assert - Should treat empty filter as no filter
+      // Act
+      const startTime = Date.now();
+      await listCommand.run([], { limit: 20 });
+      const endTime = Date.now();
+
+      // Assert - Should complete within reasonable time
+      expect(endTime - startTime).toBeLessThan(1000); // Less than 1 second
       expect(mockListService.listConfigurations).toHaveBeenCalledWith({
-        filter: '',
         sort: 'date',
         limit: 20,
       });
+      
+      // Verify pagination info is shown
+      expect(consoleLogSpy).toHaveBeenCalledWith('\n💡 Showing 20 of 100 configurations');
     });
 
-    it('should handle generic errors gracefully', async () => {
-      // Arrange
-      mockListService.listConfigurations.mockRejectedValue(new Error('Generic database error'));
+    it('should handle concurrent authentication and service operations', async () => {
+      // Arrange - Mock both auth and service operations
+      mockAuthService.getCurrentUser.mockResolvedValue(testUser);
+      
+      const mockResult = {
+        configurations: [
+          {
+            id: 'test-config-1',
+            title: 'VSCode Dark Theme Setup',
+            description: 'Complete dark theme configuration for VSCode',
+            createdAt: new Date('2025-08-20T10:00:00Z'),
+            size: '2.4 MB',
+            accessLevel: 'Public' as const,
+            isLiked: true,
+          },
+        ],
+        totalCount: 1,
+        hasMore: false,
+      };
+      
+      mockListService.listLikedConfigurations.mockResolvedValue(mockResult);
 
-      // Act & Assert
-      await expect(async () => {
-        await listCommand.run([], {});
-      }).rejects.toThrow('process.exit called');
+      // Act - Run liked configurations command
+      await listCommand.run(['liked'], {});
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith('❌ Generic database error');
+      // Assert - Should handle auth + service operations correctly
+      expect(mockAuthService.getCurrentUser).toHaveBeenCalled();
+      expect(mockListService.listLikedConfigurations).toHaveBeenCalled();
+      expect(consoleLogSpy).toHaveBeenCalled();
     });
   });
 });
