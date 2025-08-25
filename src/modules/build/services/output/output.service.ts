@@ -39,30 +39,21 @@ export class OutputService {
     try {
       const workingDirectory = basePath || process.cwd();
       const timestamp = this.generateTimestamp();
-      let outputPath = join(workingDirectory, `taptik-build-${timestamp}`);
-      let counter = 1;
+      const baseOutputPath = join(
+        workingDirectory,
+        `taptik-build-${timestamp}`,
+      );
 
-      // Handle directory conflicts with incremental numbering
-      // eslint-disable-next-line no-await-in-loop
-      while (await this.directoryExists(outputPath)) {
-        outputPath = join(
-          workingDirectory,
-          `taptik-build-${timestamp}-${counter}`,
-        );
-        counter++;
+      const uniqueOutputPath = await this.findUniqueDirectoryPath(
+        baseOutputPath,
+        timestamp,
+        workingDirectory,
+      );
 
-        // Prevent infinite loops
-        if (counter > 1000) {
-          throw new Error(
-            'Unable to create unique directory after 1000 attempts',
-          );
-        }
-      }
+      await fs.mkdir(uniqueOutputPath, { recursive: true });
+      this.logger.log(`Created output directory: ${uniqueOutputPath}`);
 
-      await fs.mkdir(outputPath, { recursive: true });
-      this.logger.log(`Created output directory: ${outputPath}`);
-
-      return resolve(outputPath);
+      return resolve(uniqueOutputPath);
     } catch (error) {
       const errorResult = FileSystemErrorHandler.handleError(
         error,
@@ -84,6 +75,150 @@ export class OutputService {
         return this.createFallbackDirectory();
       }
     }
+  }
+
+  /**
+   * Find a unique directory path by checking for conflicts and incrementing counter
+   * @param baseOutputPath Initial path to try
+   * @param timestamp Timestamp for directory naming
+   * @param workingDirectory Working directory for fallback paths
+   * @returns Promise resolving to a unique directory path
+   */
+  private async findUniqueDirectoryPath(
+    baseOutputPath: string,
+    timestamp: string,
+    workingDirectory: string,
+  ): Promise<string> {
+    // Check if the base path is available
+    if (!(await this.directoryExists(baseOutputPath))) {
+      return baseOutputPath;
+    }
+
+    // If base path exists, try numbered alternatives in batches
+    const maxAttempts = 1000;
+    const batchSize = 10; // Check paths in batches to avoid overwhelming the system
+
+    return this.checkDirectoryBatches(
+      workingDirectory,
+      timestamp,
+      maxAttempts,
+      batchSize,
+    );
+  }
+
+  /**
+   * Check directory existence in batches to find an available path
+   * @param workingDirectory Working directory for path generation
+   * @param timestamp Timestamp for directory naming
+   * @param maxAttempts Maximum number of attempts
+   * @param batchSize Number of paths to check per batch
+   * @returns Promise resolving to an available directory path
+   */
+  private async checkDirectoryBatches(
+    workingDirectory: string,
+    timestamp: string,
+    maxAttempts: number,
+    batchSize: number,
+  ): Promise<string> {
+    // Generate all batch ranges
+    const batchRanges: Array<{ start: number; end: number }> = [];
+    for (
+      let startCounter = 1;
+      startCounter <= maxAttempts;
+      startCounter += batchSize
+    ) {
+      const endCounter = Math.min(startCounter + batchSize - 1, maxAttempts);
+      batchRanges.push({ start: startCounter, end: endCounter });
+    }
+
+    // Process batches recursively to avoid await in loop
+    return this.processBatchRanges(workingDirectory, timestamp, batchRanges, 0);
+  }
+
+  /**
+   * Process batch ranges recursively to find an available directory path
+   * @param workingDirectory Working directory for path generation
+   * @param timestamp Timestamp for directory naming
+   * @param batchRanges Array of batch ranges to process
+   * @param batchIndex Current batch index being processed
+   * @returns Promise resolving to an available directory path
+   */
+  private async processBatchRanges(
+    workingDirectory: string,
+    timestamp: string,
+    batchRanges: Array<{ start: number; end: number }>,
+    batchIndex: number,
+  ): Promise<string> {
+    if (batchIndex >= batchRanges.length) {
+      throw new Error(
+        `Unable to create unique directory after ${batchRanges.length * 10} attempts`,
+      );
+    }
+
+    const { start, end } = batchRanges[batchIndex];
+
+    // Create batch of directory existence check promises
+    const pathChecks = this.createBatchPathChecks(
+      workingDirectory,
+      timestamp,
+      start,
+      end,
+    );
+
+    // Execute all checks in this batch concurrently
+    const results = await Promise.all(pathChecks);
+
+    // Find the first available path
+    const availablePath = results.find((result) => !result.exists);
+    if (availablePath) {
+      return availablePath.path;
+    }
+
+    // Recursively check the next batch
+    return this.processBatchRanges(
+      workingDirectory,
+      timestamp,
+      batchRanges,
+      batchIndex + 1,
+    );
+  }
+
+  /**
+   * Create an array of directory existence check promises for a batch
+   * @param workingDirectory Working directory for path generation
+   * @param timestamp Timestamp for directory naming
+   * @param startCounter Starting counter for the batch
+   * @param endCounter Ending counter for the batch
+   * @returns Array of promises that check directory existence
+   */
+  private createBatchPathChecks(
+    workingDirectory: string,
+    timestamp: string,
+    startCounter: number,
+    endCounter: number,
+  ): Promise<{ counter: number; path: string; exists: boolean }>[] {
+    const checks: Promise<{
+      counter: number;
+      path: string;
+      exists: boolean;
+    }>[] = [];
+
+    for (let counter = startCounter; counter <= endCounter; counter++) {
+      const path = join(
+        workingDirectory,
+        `taptik-build-${timestamp}-${counter}`,
+      );
+
+      // Create a promise that checks if this specific path exists
+      const checkPromise = (async () => {
+        const exists = await this.directoryExists(path);
+        return { counter, path, exists };
+      })();
+
+      checks.push(checkPromise);
+    }
+
+    return checks;
   }
 
   /**

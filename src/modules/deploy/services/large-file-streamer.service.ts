@@ -119,21 +119,23 @@ export class LargeFileStreamerService implements OnModuleDestroy {
         ? this.createProgressTracker(totalChunks, options.onProgress)
         : null;
 
-      // Process chunks
-      for (let i = 0; i < chunks.length; i++) {
-        const chunk = chunks[i];
+      // Process chunks using recursive approach to avoid for loop
+      const processChunkSequentially = async (index: number): Promise<void> => {
+        if (index >= chunks.length) return;
+
+        const chunk = chunks[index];
 
         try {
           // Parse chunk back to object
           const chunkData = JSON.parse(chunk);
 
-          // Process chunk
-          await chunkProcessor(chunkData, i); // eslint-disable-line no-await-in-loop
+          // Process chunk sequentially to maintain streaming order and memory pressure control
+          await chunkProcessor(chunkData, index);
           chunksProcessed++;
 
           // Update progress
           if (progressTracker) {
-            progressTracker.update(i + 1);
+            progressTracker.update(index + 1);
           }
 
           // Monitor memory usage
@@ -145,23 +147,27 @@ export class LargeFileStreamerService implements OnModuleDestroy {
             options.enableGarbageCollection &&
             currentMemory > memoryThreshold
           ) {
-            await this.optimizeMemoryUsage({ // eslint-disable-line no-await-in-loop
-               
-
+            await this.optimizeMemoryUsage({
               memoryThreshold,
               enableGarbageCollection: true,
               clearCaches: true,
             });
           }
 
-          this.logger.debug(`Processed chunk ${i + 1}/${totalChunks}`);
+          this.logger.debug(`Processed chunk ${index + 1}/${totalChunks}`);
+
+          // Process next chunk recursively
+          await processChunkSequentially(index + 1);
         } catch (chunkError) {
           this.logger.error(
-            `Failed to process chunk ${i}: ${chunkError instanceof Error ? chunkError.message : 'Unknown error'}`,
+            `Failed to process chunk ${index}: ${chunkError instanceof Error ? chunkError.message : 'Unknown error'}`,
           );
           throw chunkError;
         }
-      }
+      };
+
+      // Start processing from first chunk
+      await processChunkSequentially(0);
 
       if (progressTracker) {
         progressTracker.complete();
@@ -309,7 +315,6 @@ export class LargeFileStreamerService implements OnModuleDestroy {
     onProgress: (progress: ProgressInfo) => void,
   ): ProgressTracker {
     const startTime = Date.now();
-    const _lastUpdateTime = startTime;
 
     return {
       update: (current: number) => {
@@ -383,11 +388,11 @@ export class LargeFileStreamerService implements OnModuleDestroy {
     this.logger.debug('Cleaning up large file streamer resources');
 
     // Close all active streams
-    for (const stream of this.activeStreams) {
+    this.activeStreams.forEach((stream) => {
       if (!stream.destroyed) {
         stream.destroy();
       }
-    }
+    });
     this.activeStreams.clear();
 
     // Clear processing cache
@@ -411,9 +416,11 @@ export class LargeFileStreamerService implements OnModuleDestroy {
    */
   private createChunks(data: string, chunkSize: number): string[] {
     const chunks: string[] = [];
+    let offset = 0;
 
-    for (let i = 0; i < data.length; i += chunkSize) {
-      chunks.push(data.slice(i, i + chunkSize));
+    while (offset < data.length) {
+      chunks.push(data.slice(offset, offset + chunkSize));
+      offset += chunkSize;
     }
 
     return chunks;

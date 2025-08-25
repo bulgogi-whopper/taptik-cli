@@ -30,24 +30,24 @@ export class PackageValidatorService {
     /rm\s+-rf\s+\//gi,
     /format\s+c:/gi,
     /del\s+\/f\s+\/s\s+\/q/gi,
-    
+
     // Code execution patterns
     /exec\s*\(\s*["']os\.system/gi,
     /eval\s*\(\s*atob/gi,
     /require\s*\(\s*["']child_process["']\s*\)\s*\.\s*exec/gi,
     /spawn\s*\(\s*["']sh["']/gi,
-    
+
     // Network backdoor patterns
     /new\s+websocket\s*\(\s*["']ws:\/\/[^"']*:\d{4}/gi,
     /\.connect\s*\(\s*\d{4,5}\s*,\s*["'][^"']+["']\s*\)/gi,
     /fetch\s*\(\s*["']https?:\/\/[^"']*\/steal-data/gi,
-    
+
     // Crypto mining patterns
     /coinhive\./gi,
     /cryptonight_hash/gi,
     /stratum\+tcp:\/\//gi,
     /minergate/gi,
-    
+
     // Command injection via template literals
     /`[^`]*rm\s+-rf[^`]*`/gi,
     /\$\([^)]*curl[^)]*\|[^)]*sh[^)]*\)/gi,
@@ -67,7 +67,7 @@ export class PackageValidatorService {
 
       // Parse tar.gz package
       const stream = Readable.from(buffer);
-      
+
       await new Promise<void>((resolve, reject) => {
         stream
           .pipe(
@@ -212,7 +212,7 @@ export class PackageValidatorService {
         const beforePattern = line.substring(0, patternIndex);
         const singleQuotes = (beforePattern.match(/'/g) || []).length;
         const doubleQuotes = (beforePattern.match(/"/g) || []).length;
-        
+
         if (singleQuotes % 2 !== 0 || doubleQuotes % 2 !== 0) {
           continue; // Likely in a string
         }

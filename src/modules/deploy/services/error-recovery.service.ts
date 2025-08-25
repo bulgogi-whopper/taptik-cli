@@ -90,17 +90,14 @@ export class ErrorRecoveryService {
       // Step 4: Attempt component-specific recovery
       const deployedComponents = deploymentResult.deployedComponents || [];
 
-      for (const component of deployedComponents) {
-        try {
-          await this.recoverComponent(component as ComponentType, options); // eslint-disable-line no-await-in-loop
-          result.recoveredComponents.push(component as ComponentType);
-        } catch (componentError) {
-          result.errors.push({
-            component: component as ComponentType,
-            error: (componentError as Error).message,
-          });
-        }
-      }
+      // Process components with proper error handling and parallel processing when safe
+      const componentResults = await this.processComponentsRecovery(
+        deployedComponents,
+        options,
+      );
+
+      result.recoveredComponents.push(...componentResults.recovered);
+      result.errors.push(...componentResults.errors);
 
       // Step 5: Clean up partial deployments
       await this.cleanupPartialDeployments(options.platform);
@@ -250,6 +247,52 @@ export class ErrorRecoveryService {
   /**
    * Validate recovery was successful
    */
+  private async processComponentsRecovery(
+    deployedComponents: unknown[],
+    options: RecoveryOptions,
+  ): Promise<{
+    recovered: ComponentType[];
+    errors: Array<{ component: ComponentType; error: string }>;
+  }> {
+    const recovered: ComponentType[] = [];
+    const errors: Array<{ component: ComponentType; error: string }> = [];
+
+    // Use Promise.allSettled to process components in parallel
+    // while maintaining proper error handling for each component
+    const componentPromises = deployedComponents.map(async (component) => {
+      try {
+        await this.recoverComponent(component as ComponentType, options);
+        return { success: true, component: component as ComponentType };
+      } catch (componentError) {
+        return {
+          success: false,
+          component: component as ComponentType,
+          error: (componentError as Error).message,
+        };
+      }
+    });
+
+    const results = await Promise.allSettled(componentPromises);
+
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        if (result.value.success) {
+          recovered.push(result.value.component);
+        } else {
+          errors.push({
+            component: result.value.component,
+            error: result.value.error,
+          });
+        }
+      } else {
+        // This shouldn't happen since we handle errors inside the promise
+        this.logger.error(`Unexpected error in component recovery: ${result.reason}`);
+      }
+    }
+
+    return { recovered, errors };
+  }
+
   async validateRecovery(
     result: RecoveryResult,
     expectedComponents: ComponentType[],

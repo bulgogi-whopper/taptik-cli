@@ -501,9 +501,7 @@ export class KiroTransformerService {
     return hooks;
   }
 
-  private extractVariables(
-    content: string,
-  ): Array<{
+  private extractVariables(content: string): Array<{
     name: string;
     type: 'string' | 'number' | 'boolean' | 'array' | 'object';
     description: string;

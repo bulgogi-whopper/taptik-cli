@@ -298,19 +298,33 @@ export interface KiroTemplateConfiguration {
 }
 
 /**
+ * Primitive types for Kiro template variables
+ */
+export type KiroTemplatePrimitive = string | number | boolean;
+
+/**
+ * Supported types for Kiro template variables
+ */
+export type KiroTemplateVariableValue =
+  | KiroTemplatePrimitive
+  | KiroTemplatePrimitive[]
+  | Record<string, KiroTemplatePrimitive>
+  | Record<string, KiroTemplatePrimitive[]>;
+
+/**
  * Kiro template variable definition
  */
 export interface KiroTemplateVariable {
   name: string;
   type: 'string' | 'number' | 'boolean' | 'array' | 'object';
   description?: string;
-  default?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  default?: KiroTemplateVariableValue;
   required?: boolean;
   validation?: {
     pattern?: string;
     min?: number;
     max?: number;
-    enum?: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
+    enum?: KiroTemplateVariableValue[];
   };
 }
 

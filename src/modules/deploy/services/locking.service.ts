@@ -107,28 +107,44 @@ export class LockingService {
     const startTime = Date.now();
     const resolvedPath = PathResolver.resolvePath(lockFile);
 
-    while (Date.now() - startTime < timeout) {
-      // eslint-disable-next-line no-await-in-loop
+    return this.pollForLockAvailability(resolvedPath, startTime, timeout);
+  }
+
+  private async pollForLockAvailability(
+    resolvedPath: string,
+    startTime: number,
+    timeout: number,
+  ): Promise<boolean> {
+    const checkLockAvailability = async (): Promise<boolean> => {
       const isCurrentlyLocked = await this.isLocked(resolvedPath);
 
       if (!isCurrentlyLocked) {
         try {
-          // eslint-disable-next-line no-await-in-loop
           await this.acquireLock(resolvedPath);
           return true;
         } catch {
           // Another process might have acquired it, continue waiting
+          return false;
         }
       }
+      return false;
+    };
 
-      // Wait before checking again
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise((resolve) =>
-        setTimeout(resolve, this.LOCK_CHECK_INTERVAL),
-      );
+    const sleep = (ms: number): Promise<void> =>
+      new Promise((resolve) => setTimeout(resolve, ms));
+
+    if (Date.now() - startTime >= timeout) {
+      return false;
     }
 
-    return false;
+    const acquired = await checkLockAvailability();
+    if (acquired) {
+      return true;
+    }
+
+    // Wait before next poll
+    await sleep(this.LOCK_CHECK_INTERVAL);
+    return this.pollForLockAvailability(resolvedPath, startTime, timeout);
   }
 
   private async createLockFile(lockFile: string): Promise<LockHandle> {
@@ -164,22 +180,30 @@ export class LockingService {
       path.join(process.cwd(), '.claude', '.locks'),
     ];
 
-    for (const lockDirectory of lockDirectories) {
+    const cleanupPromises = lockDirectories.map(async (lockDirectory) => {
       try {
-        const exists = await this.fileExists(lockDirectory); // eslint-disable-line no-await-in-loop
+        const exists = await this.fileExists(lockDirectory);
         if (exists) {
-          const files = await fs.readdir(lockDirectory); // eslint-disable-line no-await-in-loop
-          for (const file of files) {
-            if (file.includes(platform)) {
-              const lockPath = path.join(lockDirectory, file);
-              await fs.unlink(lockPath); // eslint-disable-line no-await-in-loop
+          const files = await fs.readdir(lockDirectory);
+          const platformFiles = files.filter((file) => file.includes(platform));
+
+          const unlinkPromises = platformFiles.map(async (file) => {
+            const lockPath = path.join(lockDirectory, file);
+            try {
+              await fs.unlink(lockPath);
+            } catch {
+              // Ignore individual file deletion errors
             }
-          }
+          });
+
+          await Promise.allSettled(unlinkPromises);
         }
       } catch {
         // Ignore errors when releasing locks
       }
-    }
+    });
+
+    await Promise.allSettled(cleanupPromises);
   }
 
   private async fileExists(filePath: string): Promise<boolean> {

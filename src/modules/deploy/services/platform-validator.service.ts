@@ -6,6 +6,7 @@ import {
   ValidationWarning,
 } from '../../context/dto/validation-result.dto';
 import { TaptikContext } from '../../context/interfaces/taptik-context.interface';
+import { DeployOptions } from '../interfaces/deploy-options.interface';
 import { KiroDeploymentOptions } from '../interfaces/kiro-deployment.interface';
 import {
   AgentConfig,
@@ -27,7 +28,7 @@ export class PlatformValidatorService {
   async validateForPlatform(
     context: TaptikContext,
     platform: string,
-    options?: any, // eslint-disable-line @typescript-eslint/no-explicit-any
+    options?: DeployOptions | KiroDeploymentOptions,
   ): Promise<ValidationResult> {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
@@ -115,25 +116,75 @@ export class PlatformValidatorService {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
-    const ide = context.content.ide as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const { ide, tools } = context.content;
 
-    // Validate agents if present
-    if (ide?.agents && Array.isArray(ide.agents)) {
-      const agentErrors = this.validateAgents(ide.agents);
+    // Get Claude Code specific settings
+    const claudeCodeSettings = ide?.['claude-code'] || ide?.claudeCode;
+
+    // Validate agents if present (from tools context or ide context)
+    const agentsFromTools =
+      tools?.agents && Array.isArray(tools.agents) ? tools.agents : [];
+    const agentsFromIde =
+      ide?.agents && Array.isArray(ide.agents) ? ide.agents : [];
+    const allAgents = [...agentsFromTools, ...agentsFromIde];
+
+    if (allAgents.length > 0) {
+      const adaptedAgents = allAgents.map((agent) => ({
+        name: agent.name,
+        description:
+          (agent.metadata?.description as string) || agent.description || '',
+        content: agent.content,
+        metadata: {
+          version: (agent.metadata?.version as string) || '1.0.0',
+          author: (agent.metadata?.author as string) || '',
+          tags: (agent.metadata?.tags as string[]) || [],
+          created: agent.metadata?.created as Date,
+          updated: agent.metadata?.updated as Date,
+        },
+      }));
+
+      const agentErrors = this.validateAgents(adaptedAgents);
       errors.push(...agentErrors.errors);
       warnings.push(...(agentErrors.warnings || []));
     }
 
-    // Validate commands if present
-    if (ide?.commands && Array.isArray(ide.commands)) {
-      const commandErrors = this.validateCommands(ide.commands);
+    // Validate commands if present (from tools context or ide context)
+    const commandsFromTools =
+      tools?.commands && Array.isArray(tools.commands) ? tools.commands : [];
+    const commandsFromIde =
+      ide?.commands && Array.isArray(ide.commands) ? ide.commands : [];
+    const allCommands = [...commandsFromTools, ...commandsFromIde];
+
+    if (allCommands.length > 0) {
+      const adaptedCommands = allCommands.map((command) => ({
+        name: command.name,
+        description:
+          (command.metadata?.description as string) ||
+          command.description ||
+          '',
+        content: command.content,
+        permissions: command.permissions || [],
+        metadata: {
+          version: (command.metadata?.version as string) || '1.0.0',
+          author: (command.metadata?.author as string) || '',
+          created: command.metadata?.created as Date,
+          updated: command.metadata?.updated as Date,
+        },
+      }));
+
+      const commandErrors = this.validateCommands(adaptedCommands);
       errors.push(...commandErrors.errors);
       warnings.push(...(commandErrors.warnings || []));
     }
 
     // Validate settings if present
-    if (ide?.settings) {
-      const settingsErrors = this.validateSettings(ide.settings);
+    if (
+      claudeCodeSettings?.settings &&
+      typeof claudeCodeSettings.settings === 'object'
+    ) {
+      const settingsErrors = this.validateSettings(
+        claudeCodeSettings.settings as ClaudeCodeSettings,
+      );
       errors.push(...settingsErrors.errors);
       warnings.push(...(settingsErrors.warnings || []));
     }

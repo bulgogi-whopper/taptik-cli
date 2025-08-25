@@ -162,8 +162,8 @@ export class DeploymentService {
       // Step 7: Deploy components based on options
       const componentsToDeploy = this.getComponentsToDeploy(options);
 
-      // Deploy components sequentially to maintain order and handle dependencies
-      for (const component of componentsToDeploy) {
+      // Deploy components in parallel for better performance
+      const deploymentTasks = componentsToDeploy.map(async (component) => {
         try {
           // Start component timing
           this.performanceMonitor.startComponentTiming(deploymentId, component);
@@ -171,18 +171,18 @@ export class DeploymentService {
           if (component === 'settings') {
             // Deploy settings even if empty for testing purposes
             const settings = context.content.ide?.claudeCode?.settings || {};
-            await this.deployGlobalSettings(settings); // eslint-disable-line no-await-in-loop
+            await this.deployGlobalSettings(settings);
             (result.deployedComponents as string[]).push('settings');
             result.summary.filesDeployed++;
           } else if (component === 'agents' && context.content.tools?.agents) {
-            await this.deployAgents(context.content.tools.agents); // eslint-disable-line no-await-in-loop
+            await this.deployAgents(context.content.tools.agents);
             (result.deployedComponents as string[]).push('agents');
             result.summary.filesDeployed++;
           } else if (
             component === 'commands' &&
             context.content.tools?.commands
           ) {
-            await this.deployCommands(context.content.tools.commands); // eslint-disable-line no-await-in-loop
+            await this.deployCommands(context.content.tools.commands);
             (result.deployedComponents as string[]).push('commands');
             result.summary.filesDeployed++;
           } else if (
@@ -190,9 +190,7 @@ export class DeploymentService {
             context.content.project &&
             Object.keys(context.content.project).length > 0
           ) {
-            await this.deployProjectSettings( // eslint-disable-line no-await-in-loop
-               
-
+            await this.deployProjectSettings(
               context.content.project as Record<string, unknown>,
             );
             (result.deployedComponents as string[]).push('project');
@@ -209,7 +207,10 @@ export class DeploymentService {
           });
           // Continue with other components instead of failing completely
         }
-      }
+      });
+
+      // Wait for all deployments to complete
+      await Promise.all(deploymentTasks);
 
       result.success = true;
 
@@ -1001,7 +1002,8 @@ export class DeploymentService {
       // Step 6: Deploy components with memory optimization
       const componentsToDeploy = this.getComponentsToDeploy(options);
 
-      for (const component of componentsToDeploy) {
+      // Create deployment tasks for all components
+      const deploymentTasks = componentsToDeploy.map(async (component) => {
         try {
           this.performanceMonitor.startComponentTiming(deploymentId, component);
           this.performanceMonitor.recordMemoryUsage(
@@ -1009,34 +1011,31 @@ export class DeploymentService {
             `component-${component}-start`,
           );
 
+          let deployed = false;
+
           if (component === 'settings') {
             const settings = context.content.ide?.claudeCode?.settings || {};
-            await this.deployGlobalSettings(settings); // eslint-disable-line no-await-in-loop
-            (result.deployedComponents as string[]).push('settings');
-            result.summary.filesDeployed++;
+            await this.deployGlobalSettings(settings);
+            deployed = true;
           } else if (component === 'agents' && context.content.tools?.agents) {
             // For large configurations, deploy agents in smaller batches
-            await this.deployAgentsStreaming(context.content.tools.agents); // eslint-disable-line no-await-in-loop
-            (result.deployedComponents as string[]).push('agents');
-            result.summary.filesDeployed++;
+            await this.deployAgentsStreaming(context.content.tools.agents);
+            deployed = true;
           } else if (
             component === 'commands' &&
             context.content.tools?.commands
           ) {
-            await this.deployCommandsStreaming(context.content.tools.commands); // eslint-disable-line no-await-in-loop
-            (result.deployedComponents as string[]).push('commands');
-            result.summary.filesDeployed++;
+            await this.deployCommandsStreaming(context.content.tools.commands);
+            deployed = true;
           } else if (
             component === 'project' &&
             context.content.project &&
             Object.keys(context.content.project).length > 0
           ) {
-            await this.deployProjectSettings( // eslint-disable-line no-await-in-loop
-               
+            await this.deployProjectSettings(
               context.content.project as Record<string, unknown>,
             );
-            (result.deployedComponents as string[]).push('project');
-            result.summary.filesDeployed++;
+            deployed = true;
           }
 
           this.performanceMonitor.endComponentTiming(deploymentId, component);
@@ -1045,22 +1044,32 @@ export class DeploymentService {
             `component-${component}-end`,
           );
 
-          // Trigger memory optimization after each component
-          await this.largeFileStreamer.optimizeMemoryUsage({ // eslint-disable-line no-await-in-loop
-             
+          if (deployed) {
+            (result.deployedComponents as string[]).push(component);
+            result.summary.filesDeployed++;
+          }
 
-            memoryThreshold: 100 * 1024 * 1024,
-            enableGarbageCollection: true,
-            clearCaches: true,
-          });
+          // Return component for memory optimization after all deployments
+          return component;
         } catch (componentError) {
           result.errors.push({
             message: `Failed to deploy ${component}: ${(componentError as Error).message}`,
             code: 'COMPONENT_DEPLOYMENT_ERROR',
             severity: 'HIGH',
           });
+          return null;
         }
-      }
+      });
+
+      // Execute all deployment tasks in parallel
+      await Promise.all(deploymentTasks);
+
+      // Optimize memory after all components are deployed
+      await this.largeFileStreamer.optimizeMemoryUsage({
+        memoryThreshold: 100 * 1024 * 1024,
+        enableGarbageCollection: true,
+        clearCaches: true,
+      });
 
       result.success = true;
 
@@ -1133,21 +1142,27 @@ export class DeploymentService {
     const batchSize = 50; // 50 agents per batch
     const validAgents = agents.filter((agent) => agent.name && agent.content);
 
+    // Create batches of write operations
+    const batches: Array<Promise<void>[]> = [];
     for (let i = 0; i < validAgents.length; i += batchSize) {
       const batch = validAgents.slice(i, i + batchSize);
-
       const writePromises = batch.map((agent) => {
         const agentPath = path.join(agentsDirectory, `${agent.name}.md`);
         return fs.writeFile(agentPath, agent.content);
       });
+      batches.push(writePromises);
+    }
 
-      await Promise.all(writePromises); // eslint-disable-line no-await-in-loop
+    // Execute batches sequentially to manage memory using reduce to avoid await in loop
+    await batches.reduce(async (previousBatch, currentBatch) => {
+      await previousBatch;
+      await Promise.all(currentBatch);
 
       // Trigger GC between batches for large collections
       if (validAgents.length > 100 && global.gc) {
         global.gc();
       }
-    }
+    }, Promise.resolve());
   }
 
   /**
@@ -1173,9 +1188,10 @@ export class DeploymentService {
       (command) => command.name && command.content,
     );
 
+    // Create batches of write operations
+    const batches: Array<Promise<void>[]> = [];
     for (let i = 0; i < validCommands.length; i += batchSize) {
       const batch = validCommands.slice(i, i + batchSize);
-
       const writePromises = batch.map((command) => {
         const commandPath = path.join(commandsDirectory, `${command.name}.sh`);
 
@@ -1189,14 +1205,19 @@ export class DeploymentService {
 
         return fs.writeFile(commandPath, fileContent);
       });
+      batches.push(writePromises);
+    }
 
-      await Promise.all(writePromises); // eslint-disable-line no-await-in-loop
+    // Execute batches sequentially to manage memory using reduce to avoid await in loop
+    await batches.reduce(async (previousBatch, currentBatch) => {
+      await previousBatch;
+      await Promise.all(currentBatch);
 
       // Trigger GC between batches
       if (validCommands.length > 100 && global.gc) {
         global.gc();
       }
-    }
+    }, Promise.resolve());
   }
 
   async deployGlobalSettings(
@@ -1375,14 +1396,20 @@ export class DeploymentService {
     ];
 
     // Find the first existing path to use as backup base
-    for (const kiroPath of kiroPaths) {
+    const pathChecks = kiroPaths.map(async (kiroPath) => {
       try {
-        await fs.access(kiroPath); // eslint-disable-line no-await-in-loop
-        return await this.backupService.createBackup(kiroPath); // eslint-disable-line no-await-in-loop
+        await fs.access(kiroPath);
+        return { path: kiroPath, exists: true };
       } catch {
-        // Path doesn't exist, continue checking
-        continue;
+        return { path: kiroPath, exists: false };
       }
+    });
+
+    const results = await Promise.all(pathChecks);
+    const existingPath = results.find((result) => result.exists);
+
+    if (existingPath) {
+      return await this.backupService.createBackup(existingPath.path);
     }
 
     // No existing Kiro config found, create empty backup

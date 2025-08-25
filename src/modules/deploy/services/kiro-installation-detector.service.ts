@@ -308,18 +308,52 @@ export class KiroInstallationDetectorService {
       // Perform version-specific migrations
       const migrations = this.getMigrationSteps(fromVersion, toVersion);
 
-      for (const migration of migrations) {
-        try {
-          // eslint-disable-next-line no-await-in-loop
-          const migrationResult = await migration.execute();
-          result.migratedFiles.push(...migrationResult.files);
-          result.warnings.push(...migrationResult.warnings);
-        } catch (migrationError) {
+      // Execute migrations concurrently and handle results
+      const migrationResults = await Promise.allSettled(
+        migrations.map(async (migration) => {
+          try {
+            const migrationResult = await migration.execute();
+            return {
+              success: true,
+              migration,
+              result: migrationResult,
+            };
+          } catch (migrationError) {
+            return {
+              success: false,
+              migration,
+              error: migrationError as Error,
+            };
+          }
+        }),
+      );
+
+      // Process migration results
+      for (const migrationResult of migrationResults) {
+        if (migrationResult.status === 'fulfilled') {
+          const {
+            success,
+            migration,
+            result: migrationData,
+            error,
+          } = migrationResult.value;
+          if (success && migrationData) {
+            result.migratedFiles.push(...migrationData.files);
+            result.warnings.push(...migrationData.warnings);
+          } else if (error) {
+            result.errors.push({
+              message: `Migration step failed: ${migration.name}`,
+              code: 'MIGRATION_STEP_FAILED',
+              severity: 'HIGH',
+              details: error.message,
+            });
+          }
+        } else {
           result.errors.push({
-            message: `Migration step failed: ${migration.name}`,
+            message: 'Migration step failed unexpectedly',
             code: 'MIGRATION_STEP_FAILED',
             severity: 'HIGH',
-            details: (migrationError as Error).message,
+            details: migrationResult.reason,
           });
         }
       }
@@ -363,13 +397,18 @@ export class KiroInstallationDetectorService {
       '/snap/kiro-ide/current',
     ];
 
-    for (const installPath of commonPaths) {
-      try {
-        // eslint-disable-next-line no-await-in-loop
+    // Check all paths concurrently
+    const accessResults = await Promise.allSettled(
+      commonPaths.map(async (installPath) => {
         await fs.access(installPath);
         return installPath;
-      } catch {
-        continue;
+      }),
+    );
+
+    // Return the first successful path
+    for (const result of accessResults) {
+      if (result.status === 'fulfilled') {
+        return result.value;
       }
     }
 
@@ -423,14 +462,27 @@ export class KiroInstallationDetectorService {
         path.join(installationPath, 'Contents', 'Resources', 'version.json'), // macOS app bundle
       ];
 
-      for (const versionPath of versionFilePaths) {
-        try {
-          // eslint-disable-next-line no-await-in-loop
+      // Read all version files concurrently
+      const versionResults = await Promise.allSettled(
+        versionFilePaths.map(async (versionPath) => {
           const content = await fs.readFile(versionPath, 'utf8');
+          return { versionPath, content };
+        }),
+      );
+
+      // Process the results and extract version
+      for (const result of versionResults) {
+        if (result.status === 'fulfilled') {
+          const { versionPath, content } = result.value;
 
           if (versionPath.endsWith('.json')) {
-            const json = JSON.parse(content);
-            return json.version || json.app_version;
+            try {
+              const json = JSON.parse(content);
+              const version = json.version || json.app_version;
+              if (version) return version;
+            } catch {
+              continue;
+            }
           } else {
             // Extract version from text file
             const versionMatch = content.match(/(\d+\.\d+\.\d+)/);
@@ -438,8 +490,6 @@ export class KiroInstallationDetectorService {
               return versionMatch[1];
             }
           }
-        } catch {
-          continue;
         }
       }
 
@@ -581,22 +631,29 @@ export class KiroInstallationDetectorService {
       path.join(process.cwd(), '.kiro', 'settings.json'),
     ];
 
-    for (const configPath of configPaths) {
-      try {
-        // eslint-disable-next-line no-await-in-loop
+    // Check all configuration files concurrently
+    const configResults = await Promise.allSettled(
+      configPaths.map(async (configPath) => {
         await fs.access(configPath);
-
-        // Try to parse configuration file
-        // eslint-disable-next-line no-await-in-loop
         const content = await fs.readFile(configPath, 'utf8');
-        JSON.parse(content);
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        JSON.parse(content); // Validate JSON
+        return configPath;
+      }),
+    );
+
+    // Process results and collect issues
+    for (let i = 0; i < configResults.length; i++) {
+      const result = configResults[i];
+      const configPath = configPaths[i];
+
+      if (result.status === 'rejected') {
+        const error = result.reason as NodeJS.ErrnoException;
+        if (error.code !== 'ENOENT') {
           issues.push({
             category: 'configuration',
             severity: 'medium',
             message: `Configuration file is corrupted or invalid: ${configPath}`,
-            details: (error as Error).message,
+            details: error.message,
             autoFixable: true,
           });
         }
@@ -616,11 +673,20 @@ export class KiroInstallationDetectorService {
       path.join(process.cwd(), '.kiro'),
     ];
 
-    for (const checkPath of pathsToCheck) {
-      try {
-        // eslint-disable-next-line no-await-in-loop
+    // Check all paths concurrently
+    const permissionResults = await Promise.allSettled(
+      pathsToCheck.map(async (checkPath) => {
         await fs.access(checkPath, fs.constants.R_OK | fs.constants.W_OK);
-      } catch {
+        return checkPath;
+      }),
+    );
+
+    // Process results and collect issues
+    for (let i = 0; i < permissionResults.length; i++) {
+      const result = permissionResults[i];
+      const checkPath = pathsToCheck[i];
+
+      if (result.status === 'rejected') {
         issues.push({
           category: 'permissions',
           severity: 'high',
@@ -759,15 +825,25 @@ export class KiroInstallationDetectorService {
       path.join(process.cwd(), '.kiro'),
     ];
 
-    for (const configPath of configPaths) {
-      try {
-        // eslint-disable-next-line no-await-in-loop
+    // Check all configuration paths concurrently
+    const backupResults = await Promise.allSettled(
+      configPaths.map(async (configPath) => {
         await fs.access(configPath);
         // Copy configuration (simplified - would need recursive copy implementation)
-        // For now, return the backup path
-      } catch {
-        // Path doesn't exist, skip
-      }
+        return configPath;
+      }),
+    );
+
+    // Process successful backup operations (simplified for now)
+    const accessiblePaths = backupResults
+      .filter((result) => result.status === 'fulfilled')
+      .map((result) => (result as PromiseFulfilledResult<string>).value);
+
+    // Log accessible paths for backup (actual copying logic would go here)
+    if (accessiblePaths.length > 0) {
+      this.logger.log(
+        `Found ${accessiblePaths.length} configuration paths for backup`,
+      );
     }
 
     return backupPath;

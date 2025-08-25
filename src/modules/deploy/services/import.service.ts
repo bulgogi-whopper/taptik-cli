@@ -201,37 +201,39 @@ export class ImportService {
   }
 
   private async fetchFromStorage(configId: string): Promise<Buffer> {
-    let lastError: Error | null = null;
+    return this.retryFetchOperation(configId, 0);
+  }
 
-    for (let attempt = 0; attempt < this.RETRY_ATTEMPTS; attempt++) {
-      try {
-        const client = this.supabaseService.getClient();
-        const { data, error } = await client.storage // eslint-disable-line no-await-in-loop
-          .from('taptik-configs')
-          .download(`configs/${configId}.json`);
+  private async retryFetchOperation(
+    configId: string,
+    attempt: number,
+  ): Promise<Buffer> {
+    try {
+      const client = this.supabaseService.getClient();
+      const { data, error } = await client.storage
+        .from('taptik-configs')
+        .download(`configs/${configId}.json`);
 
-        if (error) {
-          throw new Error(`Supabase error: ${error.message}`);
-        }
-
-        if (!data) {
-          throw new Error('No data received from Supabase');
-        }
-
-        return Buffer.from(await data.arrayBuffer()); // eslint-disable-line no-await-in-loop
-      } catch (error) {
-        lastError = error as Error;
-
-        // Don't retry on the last attempt
-        if (attempt < this.RETRY_ATTEMPTS - 1) {
-          await this.delay(this.RETRY_DELAY * Math.pow(2, attempt)); // eslint-disable-line no-await-in-loop
-        }
+      if (error) {
+        throw new Error(`Supabase error: ${error.message}`);
       }
-    }
 
-    throw new Error(
-      `Failed to fetch configuration after ${this.RETRY_ATTEMPTS} attempts: ${lastError?.message}`,
-    );
+      if (!data) {
+        throw new Error('No data received from Supabase');
+      }
+
+      return Buffer.from(await data.arrayBuffer());
+    } catch (error) {
+      if (attempt >= this.RETRY_ATTEMPTS - 1) {
+        throw new Error(
+          `Failed to fetch configuration after ${this.RETRY_ATTEMPTS} attempts: ${(error as Error).message}`,
+        );
+      }
+
+      // Wait before retry with exponential backoff
+      await this.delay(this.RETRY_DELAY * Math.pow(2, attempt));
+      return this.retryFetchOperation(configId, attempt + 1);
+    }
   }
 
   private async parseConfiguration(data: Buffer): Promise<TaptikContext> {

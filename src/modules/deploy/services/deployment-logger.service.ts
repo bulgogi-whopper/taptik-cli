@@ -2,7 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 import { TaptikContext } from '../../context/interfaces/taptik-context.interface';
 import { DeployOptions } from '../interfaces/deploy-options.interface';
@@ -46,12 +46,33 @@ export interface AuditEntry extends LogEntry {
   };
 }
 
+/**
+ * Console output handler for deployment logger
+ * Uses NestJS Logger for proper logging with levels and formatting
+ */
+class ConsoleLogger {
+  private static readonly logger = new Logger('DeploymentConsoleLogger');
+
+  static error(message: string, ...args: unknown[]): void {
+    this.logger.error(message, JSON.stringify(args));
+  }
+
+  static warn(prefix: string, message: string, context?: unknown): void {
+    this.logger.warn(`${prefix} ${message}`, context ? JSON.stringify(context) : '');
+  }
+
+  static log(prefix: string, message: string, context?: unknown): void {
+    this.logger.log(`${prefix} ${message}`, context ? JSON.stringify(context) : '');
+  }
+}
+
 @Injectable()
 export class DeploymentLoggerService {
   private readonly logDir = path.join(os.homedir(), '.taptik', 'logs');
   private readonly auditDir = path.join(os.homedir(), '.taptik', 'audit');
   private readonly maxLogSize = 10 * 1024 * 1024; // 10MB
   private readonly maxLogAge = 30 * 24 * 60 * 60 * 1000; // 30 days
+  private readonly consoleLogger = ConsoleLogger;
   private currentLogFile: string;
   private currentAuditFile: string;
 
@@ -315,7 +336,7 @@ export class DeploymentLoggerService {
       }
     } catch (error) {
       // Fallback to console if file writing fails
-      console.error('Failed to write log:', error); // eslint-disable-line no-console
+      this.consoleLogger.error('Failed to write log:', error);
       this.logToConsole(entry);
     }
   }
@@ -336,7 +357,7 @@ export class DeploymentLoggerService {
       // Append to audit file
       await fs.appendFile(this.currentAuditFile, `${auditLine}\n`, 'utf8');
     } catch (error) {
-      console.error('Failed to write audit log:', error); // eslint-disable-line no-console
+      this.consoleLogger.error('Failed to write audit log:', error);
     }
   }
 
@@ -409,13 +430,14 @@ export class DeploymentLoggerService {
 
     const color = colors[entry.level];
     const prefix = `${color}[${entry.level}]${reset}`;
+    const context = entry.context || '';
 
     if (entry.level === LogLevel.ERROR) {
-      console.error(prefix, entry.message, entry.context || ''); // eslint-disable-line no-console
+      this.consoleLogger.error(prefix, entry.message, context);
     } else if (entry.level === LogLevel.WARN) {
-      console.warn(prefix, entry.message, entry.context || ''); // eslint-disable-line no-console
+      this.consoleLogger.warn(prefix, entry.message, context);
     } else {
-      console.log(prefix, entry.message, entry.context || ''); // eslint-disable-line no-console
+      this.consoleLogger.log(prefix, entry.message, context);
     }
   }
 
@@ -440,7 +462,7 @@ export class DeploymentLoggerService {
 
       // Rotate if file is too large
       if (stats.size > this.maxLogSize) {
-        const timestamp = new Date().toISOString().replaceAll(/[.:]/g, '-');
+        const timestamp = new Date().toISOString().replace(/[.:]/g, '-');
         const rotatedFile = this.currentLogFile.replace(
           '.log',
           `-${timestamp}.log`,
@@ -463,14 +485,34 @@ export class DeploymentLoggerService {
       const files = await fs.readdir(this.logDir);
       const now = Date.now();
 
-      for (const file of files) {
+      // First, get stats for all files in parallel
+      const fileStatsPromises = files.map(async (file) => {
         const filePath = path.join(this.logDir, file);
-        const stats = await fs.stat(filePath); // eslint-disable-line no-await-in-loop
-
-        if (now - stats.mtime.getTime() > this.maxLogAge) {
-          await fs.unlink(filePath); // eslint-disable-line no-await-in-loop
+        try {
+          const stats = await fs.stat(filePath);
+          return { filePath, stats };
+        } catch {
+          // Return null if file stats can't be read
+          return null;
         }
-      }
+      });
+
+      const fileStats = (await Promise.all(fileStatsPromises)).filter(
+        (item) => item !== null,
+      );
+
+      // Then, delete old files in parallel
+      const oldFiles = fileStats.filter(
+        ({ stats }) => now - stats.mtime.getTime() > this.maxLogAge,
+      );
+
+      const deletePromises = oldFiles.map(({ filePath }) =>
+        fs.unlink(filePath).catch(() => {
+          // Ignore individual file deletion errors
+        }),
+      );
+
+      await Promise.all(deletePromises);
     } catch {
       // Ignore cleanup errors
     }

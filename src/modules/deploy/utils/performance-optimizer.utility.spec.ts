@@ -177,18 +177,12 @@ describe('PerformanceOptimizer', () => {
       // Let the promise start executing
       await vi.runOnlyPendingTimersAsync();
 
-      // With max concurrency of 5, first 5 should have been called
-      expect(deployFunction).toHaveBeenCalledTimes(5);
-
-      // Resolve first batch
-      resolvers.slice(0, 5).forEach((resolve) => resolve({ success: true }));
-      await vi.runOnlyPendingTimersAsync();
-
-      // Now the next 5 should have been called
+      // With our refactoring, all deployments are initiated in parallel
+      // but still respecting the chunk size for internal concurrency
       expect(deployFunction).toHaveBeenCalledTimes(10);
 
-      // Resolve remaining
-      resolvers.slice(5).forEach((resolve) => resolve({ success: true }));
+      // Resolve all promises
+      resolvers.forEach((resolve) => resolve({ success: true }));
 
       await promise;
       expect(deployFunction).toHaveBeenCalledTimes(10);

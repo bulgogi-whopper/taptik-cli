@@ -187,13 +187,14 @@ export class KiroComponentHandlerService {
     try {
       await this.ensureDirectoryExists(context.paths.steeringDirectory);
 
-      for (const doc of documents) {
+      // Deploy all documents in parallel
+      const deploymentPromises = documents.map(async (doc) => {
         try {
           const fileName = this.sanitizeFileName(`${doc.name}.md`);
           const filePath = path.join(context.paths.steeringDirectory, fileName);
 
           // Check for existing file
-          const existingContent = await this.loadExistingMarkdown(filePath); // eslint-disable-line no-await-in-loop
+          const existingContent = await this.loadExistingMarkdown(filePath);
           let contentToWrite = doc.content;
 
           if (existingContent && options.conflictStrategy !== 'overwrite') {
@@ -202,16 +203,23 @@ export class KiroComponentHandlerService {
                 existingContent,
                 doc.content,
               );
-              warnings.push({
-                message: `Merged existing steering document: ${fileName}`,
-                code: 'KIRO_STEERING_MERGED',
-              });
+              return {
+                fileName,
+                success: true,
+                warning: {
+                  message: `Merged existing steering document: ${fileName}`,
+                  code: 'KIRO_STEERING_MERGED',
+                },
+              };
             } else if (options.conflictStrategy === 'skip') {
-              warnings.push({
-                message: `Skipped existing steering document: ${fileName}`,
-                code: 'KIRO_STEERING_SKIPPED',
-              });
-              continue;
+              return {
+                fileName,
+                success: false,
+                warning: {
+                  message: `Skipped existing steering document: ${fileName}`,
+                  code: 'KIRO_STEERING_SKIPPED',
+                },
+              };
             }
           }
 
@@ -226,18 +234,45 @@ export class KiroComponentHandlerService {
             updated_at: new Date().toISOString(),
           });
 
-          await this.writeTextFile(filePath, fullContent); // eslint-disable-line no-await-in-loop
-          deployedFiles.push(fileName);
+          await this.writeTextFile(filePath, fullContent);
           this.logger.debug(`Steering document deployed: ${fileName}`);
+          return { fileName, success: true };
         } catch (error) {
           const errorMessage = `Failed to deploy steering document ${doc.name}: ${(error as Error).message}`;
+          return {
+            fileName: this.sanitizeFileName(`${doc.name}.md`),
+            success: false,
+            error: {
+              message: errorMessage,
+              code: 'KIRO_STEERING_DEPLOY_ERROR',
+              severity: 'error' as const,
+            },
+          };
+        }
+      });
+
+      const results = await Promise.allSettled(deploymentPromises);
+
+      results.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          const { fileName, success, warning, error } = result.value;
+          if (success) {
+            deployedFiles.push(fileName);
+          }
+          if (warning) {
+            warnings.push(warning);
+          }
+          if (error) {
+            errors.push(error);
+          }
+        } else {
           errors.push({
-            message: errorMessage,
+            message: `Deployment promise rejected: ${result.reason}`,
             code: 'KIRO_STEERING_DEPLOY_ERROR',
             severity: 'error',
           });
         }
-      }
+      });
     } catch (error) {
       const errorMessage = `Failed to deploy steering documents: ${(error as Error).message}`;
       this.logger.error(errorMessage);
@@ -276,21 +311,23 @@ export class KiroComponentHandlerService {
     try {
       await this.ensureDirectoryExists(context.paths.specsDirectory);
 
-      for (const spec of specs) {
+      // Deploy all specs in parallel
+      const deploymentPromises = specs.map(async (spec) => {
         try {
           const fileName = this.sanitizeFileName(`${spec.name}.md`);
           const filePath = path.join(context.paths.specsDirectory, fileName);
 
           // Check for existing file and preserve task status if enabled
-          const existingContent = await this.loadExistingMarkdown(filePath); // eslint-disable-line no-await-in-loop
+          const existingContent = await this.loadExistingMarkdown(filePath);
           let contentToWrite = spec.content;
+          const warningsToAdd: DeploymentWarning[] = [];
 
           if (existingContent && options.preserveTaskStatus) {
             contentToWrite = this.preserveTaskStatus(
               existingContent,
               spec.content,
             );
-            warnings.push({
+            warningsToAdd.push({
               message: `Preserved task status in spec: ${fileName}`,
               code: 'KIRO_SPEC_TASK_STATUS_PRESERVED',
             });
@@ -302,7 +339,7 @@ export class KiroComponentHandlerService {
               existingContent,
               spec.content,
             );
-            warnings.push({
+            warningsToAdd.push({
               message: `Merged existing spec document: ${fileName}`,
               code: 'KIRO_SPEC_MERGED',
             });
@@ -318,18 +355,50 @@ export class KiroComponentHandlerService {
             updated_at: new Date().toISOString(),
           });
 
-          await this.writeTextFile(filePath, fullContent); // eslint-disable-line no-await-in-loop
-          deployedFiles.push(fileName);
+          await this.writeTextFile(filePath, fullContent);
           this.logger.debug(`Spec document deployed: ${fileName}`);
+          return { fileName, success: true, warnings: warningsToAdd };
         } catch (error) {
           const errorMessage = `Failed to deploy spec document ${spec.name}: ${(error as Error).message}`;
+          return {
+            fileName: this.sanitizeFileName(`${spec.name}.md`),
+            success: false,
+            error: {
+              message: errorMessage,
+              code: 'KIRO_SPEC_DEPLOY_ERROR',
+              severity: 'error' as const,
+            },
+          };
+        }
+      });
+
+      const results = await Promise.allSettled(deploymentPromises);
+
+      results.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          const {
+            fileName,
+            success,
+            warnings: resultWarnings,
+            error,
+          } = result.value;
+          if (success) {
+            deployedFiles.push(fileName);
+          }
+          if (resultWarnings) {
+            warnings.push(...resultWarnings);
+          }
+          if (error) {
+            errors.push(error);
+          }
+        } else {
           errors.push({
-            message: errorMessage,
+            message: `Deployment promise rejected: ${result.reason}`,
             code: 'KIRO_SPEC_DEPLOY_ERROR',
             severity: 'error',
           });
         }
-      }
+      });
     } catch (error) {
       const errorMessage = `Failed to deploy spec documents: ${(error as Error).message}`;
       this.logger.error(errorMessage);
@@ -368,13 +437,14 @@ export class KiroComponentHandlerService {
     try {
       await this.ensureDirectoryExists(context.paths.hooksDirectory);
 
-      for (const hook of hooks) {
+      // Deploy all hooks in parallel
+      const deploymentPromises = hooks.map(async (hook) => {
         try {
           const fileName = this.sanitizeFileName(`${hook.name}.json`);
           const filePath = path.join(context.paths.hooksDirectory, fileName);
 
           // Check for existing hook
-          const existingHook = await this.loadExistingJsonFile(filePath); // eslint-disable-line no-await-in-loop
+          const existingHook = await this.loadExistingJsonFile(filePath);
           let hookToWrite = hook;
 
           if (existingHook && options.conflictStrategy !== 'overwrite') {
@@ -383,31 +453,65 @@ export class KiroComponentHandlerService {
                 ...(existingHook as KiroHookConfiguration),
                 ...hook,
               };
-              warnings.push({
-                message: `Merged existing hook: ${fileName}`,
-                code: 'KIRO_HOOK_MERGED',
-              });
+              return {
+                fileName,
+                success: true,
+                warning: {
+                  message: `Merged existing hook: ${fileName}`,
+                  code: 'KIRO_HOOK_MERGED',
+                },
+              };
             } else if (options.conflictStrategy === 'skip') {
-              warnings.push({
-                message: `Skipped existing hook: ${fileName}`,
-                code: 'KIRO_HOOK_SKIPPED',
-              });
-              continue;
+              return {
+                fileName,
+                success: false,
+                warning: {
+                  message: `Skipped existing hook: ${fileName}`,
+                  code: 'KIRO_HOOK_SKIPPED',
+                },
+              };
             }
           }
 
-          await this.writeJsonFile(filePath, hookToWrite); // eslint-disable-line no-await-in-loop
-          deployedFiles.push(fileName);
+          await this.writeJsonFile(filePath, hookToWrite);
           this.logger.debug(`Hook deployed: ${fileName}`);
+          return { fileName, success: true };
         } catch (error) {
           const errorMessage = `Failed to deploy hook ${hook.name}: ${(error as Error).message}`;
+          return {
+            fileName: this.sanitizeFileName(`${hook.name}.json`),
+            success: false,
+            error: {
+              message: errorMessage,
+              code: 'KIRO_HOOK_DEPLOY_ERROR',
+              severity: 'error' as const,
+            },
+          };
+        }
+      });
+
+      const results = await Promise.allSettled(deploymentPromises);
+
+      results.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          const { fileName, success, warning, error } = result.value;
+          if (success) {
+            deployedFiles.push(fileName);
+          }
+          if (warning) {
+            warnings.push(warning);
+          }
+          if (error) {
+            errors.push(error);
+          }
+        } else {
           errors.push({
-            message: errorMessage,
+            message: `Deployment promise rejected: ${result.reason}`,
             code: 'KIRO_HOOK_DEPLOY_ERROR',
             severity: 'error',
           });
         }
-      }
+      });
     } catch (error) {
       const errorMessage = `Failed to deploy hooks: ${(error as Error).message}`;
       this.logger.error(errorMessage);
@@ -446,13 +550,14 @@ export class KiroComponentHandlerService {
     try {
       await this.ensureDirectoryExists(context.paths.agentsDirectory);
 
-      for (const agent of agents) {
+      // Deploy all agents in parallel
+      const deploymentPromises = agents.map(async (agent) => {
         try {
           const fileName = this.sanitizeFileName(`${agent.name}.json`);
           const filePath = path.join(context.paths.agentsDirectory, fileName);
 
           // Check for existing agent
-          const existingAgent = await this.loadExistingJsonFile(filePath); // eslint-disable-line no-await-in-loop
+          const existingAgent = await this.loadExistingJsonFile(filePath);
           let agentToWrite = agent;
 
           if (existingAgent && options.conflictStrategy !== 'overwrite') {
@@ -461,31 +566,65 @@ export class KiroComponentHandlerService {
                 ...(existingAgent as KiroAgentConfiguration),
                 ...agent,
               };
-              warnings.push({
-                message: `Merged existing agent: ${fileName}`,
-                code: 'KIRO_AGENT_MERGED',
-              });
+              return {
+                fileName,
+                success: true,
+                warning: {
+                  message: `Merged existing agent: ${fileName}`,
+                  code: 'KIRO_AGENT_MERGED',
+                },
+              };
             } else if (options.conflictStrategy === 'skip') {
-              warnings.push({
-                message: `Skipped existing agent: ${fileName}`,
-                code: 'KIRO_AGENT_SKIPPED',
-              });
-              continue;
+              return {
+                fileName,
+                success: false,
+                warning: {
+                  message: `Skipped existing agent: ${fileName}`,
+                  code: 'KIRO_AGENT_SKIPPED',
+                },
+              };
             }
           }
 
-          await this.writeJsonFile(filePath, agentToWrite); // eslint-disable-line no-await-in-loop
-          deployedFiles.push(fileName);
+          await this.writeJsonFile(filePath, agentToWrite);
           this.logger.debug(`Agent deployed: ${fileName}`);
+          return { fileName, success: true };
         } catch (error) {
           const errorMessage = `Failed to deploy agent ${agent.name}: ${(error as Error).message}`;
+          return {
+            fileName: this.sanitizeFileName(`${agent.name}.json`),
+            success: false,
+            error: {
+              message: errorMessage,
+              code: 'KIRO_AGENT_DEPLOY_ERROR',
+              severity: 'error' as const,
+            },
+          };
+        }
+      });
+
+      const results = await Promise.allSettled(deploymentPromises);
+
+      results.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          const { fileName, success, warning, error } = result.value;
+          if (success) {
+            deployedFiles.push(fileName);
+          }
+          if (warning) {
+            warnings.push(warning);
+          }
+          if (error) {
+            errors.push(error);
+          }
+        } else {
           errors.push({
-            message: errorMessage,
+            message: `Deployment promise rejected: ${result.reason}`,
             code: 'KIRO_AGENT_DEPLOY_ERROR',
             severity: 'error',
           });
         }
-      }
+      });
     } catch (error) {
       const errorMessage = `Failed to deploy agents: ${(error as Error).message}`;
       this.logger.error(errorMessage);
@@ -524,7 +663,8 @@ export class KiroComponentHandlerService {
     try {
       await this.ensureDirectoryExists(context.paths.templatesDirectory);
 
-      for (const template of templates) {
+      // Deploy all templates in parallel
+      const deploymentPromises = templates.map(async (template) => {
         try {
           const fileName = this.sanitizeFileName(`${template.name}.json`);
           const filePath = path.join(
@@ -533,7 +673,7 @@ export class KiroComponentHandlerService {
           );
 
           // Check for existing template
-          const existingTemplate = await this.loadExistingJsonFile(filePath); // eslint-disable-line no-await-in-loop
+          const existingTemplate = await this.loadExistingJsonFile(filePath);
           let templateToWrite = template;
 
           if (existingTemplate && options.conflictStrategy !== 'overwrite') {
@@ -542,31 +682,65 @@ export class KiroComponentHandlerService {
                 ...(existingTemplate as KiroTemplateConfiguration),
                 ...template,
               };
-              warnings.push({
-                message: `Merged existing template: ${fileName}`,
-                code: 'KIRO_TEMPLATE_MERGED',
-              });
+              return {
+                fileName,
+                success: true,
+                warning: {
+                  message: `Merged existing template: ${fileName}`,
+                  code: 'KIRO_TEMPLATE_MERGED',
+                },
+              };
             } else if (options.conflictStrategy === 'skip') {
-              warnings.push({
-                message: `Skipped existing template: ${fileName}`,
-                code: 'KIRO_TEMPLATE_SKIPPED',
-              });
-              continue;
+              return {
+                fileName,
+                success: false,
+                warning: {
+                  message: `Skipped existing template: ${fileName}`,
+                  code: 'KIRO_TEMPLATE_SKIPPED',
+                },
+              };
             }
           }
 
-          await this.writeJsonFile(filePath, templateToWrite); // eslint-disable-line no-await-in-loop
-          deployedFiles.push(fileName);
+          await this.writeJsonFile(filePath, templateToWrite);
           this.logger.debug(`Template deployed: ${fileName}`);
+          return { fileName, success: true };
         } catch (error) {
           const errorMessage = `Failed to deploy template ${template.name}: ${(error as Error).message}`;
+          return {
+            fileName: this.sanitizeFileName(`${template.name}.json`),
+            success: false,
+            error: {
+              message: errorMessage,
+              code: 'KIRO_TEMPLATE_DEPLOY_ERROR',
+              severity: 'error' as const,
+            },
+          };
+        }
+      });
+
+      const results = await Promise.allSettled(deploymentPromises);
+
+      results.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          const { fileName, success, warning, error } = result.value;
+          if (success) {
+            deployedFiles.push(fileName);
+          }
+          if (warning) {
+            warnings.push(warning);
+          }
+          if (error) {
+            errors.push(error);
+          }
+        } else {
           errors.push({
-            message: errorMessage,
+            message: `Deployment promise rejected: ${result.reason}`,
             code: 'KIRO_TEMPLATE_DEPLOY_ERROR',
             severity: 'error',
           });
         }
-      }
+      });
     } catch (error) {
       const errorMessage = `Failed to deploy templates: ${(error as Error).message}`;
       this.logger.error(errorMessage);

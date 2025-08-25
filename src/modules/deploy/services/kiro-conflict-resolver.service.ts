@@ -354,10 +354,10 @@ export class KiroConflictResolverService {
     _componentType: KiroComponentType,
   ): Promise<string> {
     try {
-      const existing = JSON.parse(existingContent);
-      const newData = JSON.parse(newContent);
+      const existing = JSON.parse(existingContent) as Record<string, unknown>;
+      const newData = JSON.parse(newContent) as Record<string, unknown>;
 
-      let merged: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+      let merged: Record<string, unknown>;
 
       switch (mergeStrategy) {
         case 'deep-merge':
@@ -413,7 +413,8 @@ export class KiroConflictResolverService {
     const newLines = newContent.split('\n');
 
     // 간단한 라인 기반 병합 (중복 제거)
-    const mergedLines = [...new Set([...existingLines, ...newLines])];
+    const uniqueLines = new Set([...existingLines, ...newLines]);
+    const mergedLines = Array.from(uniqueLines);
     return mergedLines.join('\n');
   }
 
@@ -467,7 +468,8 @@ export class KiroConflictResolverService {
         if (Object.prototype.hasOwnProperty.call(obj2, key)) {
           if (Array.isArray(obj1[key]) && Array.isArray(obj2[key])) {
             // 중복 제거하여 배열 병합
-            target[key] = [...new Set([...obj1[key], ...obj2[key]])];
+            const uniqueItems = new Set([...obj1[key], ...obj2[key]]);
+            target[key] = Array.from(uniqueItems);
           } else if (typeof obj2[key] === 'object' && obj2[key] !== null) {
             mergeArrays(
               (obj1[key] as Record<string, unknown>) || {},
@@ -490,7 +492,7 @@ export class KiroConflictResolverService {
     const mergedSections = new Map(existingSections);
 
     // 새 섹션들을 병합
-    for (const [sectionName, sectionContent] of newSections) {
+    for (const [sectionName, sectionContent] of Array.from(newSections)) {
       if (mergedSections.has(sectionName)) {
         // 기존 섹션이 있는 경우 내용을 스마트 병합
         const existingSectionContent = mergedSections.get(sectionName) || '';
@@ -761,7 +763,7 @@ export class KiroConflictResolverService {
     const newSections = this.parseMarkdownSections(newContent);
 
     // 섹션 변경 사항 감지
-    for (const [sectionName, newSectionContent] of newSections) {
+    for (const [sectionName, newSectionContent] of Array.from(newSections)) {
       if (existingSections.has(sectionName)) {
         const existingSectionContent = existingSections.get(sectionName);
         if (existingSectionContent !== newSectionContent) {
@@ -807,21 +809,17 @@ export class KiroConflictResolverService {
     strategy: KiroConflictStrategy,
     mergeStrategy?: KiroMergeStrategy,
   ): Promise<ConflictResolutionResult[]> {
-    const results: ConflictResolutionResult[] = [];
-
-    for (const conflict of conflicts) {
-      const result = await this.resolveConflict( // eslint-disable-line no-await-in-loop
-         
+    const conflictPromises = conflicts.map((conflict) =>
+      this.resolveConflict(
         conflict.filePath,
         conflict.newContent,
         conflict.componentType,
         strategy,
         mergeStrategy,
-      );
-      results.push(result);
-    }
+      ),
+    );
 
-    return results;
+    return await Promise.all(conflictPromises);
   }
 
   async validateMergeCompatibility(
@@ -881,7 +879,9 @@ export class KiroConflictResolverService {
       groupedConflicts.get(conflict.componentType)!.push(conflict);
     }
 
-    for (const [componentType, componentConflicts] of groupedConflicts) {
+    for (const [componentType, componentConflicts] of Array.from(
+      groupedConflicts,
+    )) {
       report.push(
         `## ${componentType.charAt(0).toUpperCase() + componentType.slice(1)} Conflicts`,
       );

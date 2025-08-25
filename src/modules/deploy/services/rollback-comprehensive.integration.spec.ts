@@ -203,21 +203,21 @@ describe('Comprehensive Rollback Integration Tests', () => {
         .mockRejectedValueOnce(new Error('Temporary network failure'))
         .mockResolvedValueOnce(undefined);
 
-      // Test retry mechanism with exponential backoff
-      let attempts = 0;
-      const maxRetries = 3;
-
-      while (attempts < maxRetries) {
+      // Test retry mechanism with exponential backoff using recursive approach
+      const performRollbackWithRetry = async (
+        remainingAttempts: number,
+      ): Promise<void> => {
         try {
-          await backupService.rollback('/mock/backup/path'); // eslint-disable-line no-await-in-loop
-          break; // Success
+          await backupService.rollback('/mock/backup/path');
         } catch (error) {
-          attempts++;
-          if (attempts >= maxRetries) throw error;
+          if (remainingAttempts <= 1) throw error;
           // Wait before retry (simplified for test)
-          await new Promise((resolve) => setTimeout(resolve, 10)); // eslint-disable-line no-await-in-loop
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          return performRollbackWithRetry(remainingAttempts - 1);
         }
-      }
+      };
+
+      await performRollbackWithRetry(3);
 
       expect(backupService.rollback).toHaveBeenCalledTimes(3);
     });

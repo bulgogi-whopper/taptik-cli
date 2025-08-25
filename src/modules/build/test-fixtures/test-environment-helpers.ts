@@ -22,6 +22,7 @@ import {
   comprehensivePromptTemplatesOutput,
   sampleManifestOutput,
 } from './taptik-output-fixtures';
+import { TestLogger } from './test-logger.utility';
 
 /**
  * Test environment configuration
@@ -369,8 +370,10 @@ export class TestEnvironmentManager {
         try {
           await handler();
         } catch (error) {
-          // eslint-disable-next-line no-console
-          console.warn('Cleanup handler failed:', error);
+          const logger = TestLogger.getInstance();
+          logger.warn('Cleanup handler failed', {
+            error: (error as Error).message,
+          });
         }
       });
       await Promise.allSettled(cleanupPromises);
@@ -380,8 +383,10 @@ export class TestEnvironmentManager {
         try {
           await fs.rmdir(tempDir, { recursive: true });
         } catch (error) {
-          // eslint-disable-next-line no-console
-          console.warn(`Failed to clean up temp directory ${tempDir}:`, error);
+          const logger = TestLogger.getInstance();
+          logger.warn(`Failed to clean up temp directory ${tempDir}`, {
+            error: (error as Error).message,
+          });
         }
       });
       await Promise.allSettled(dirCleanupPromises);
@@ -631,8 +636,10 @@ export class TestSuiteUtils {
         try {
           await cleanup();
         } catch (cleanupError) {
-          // eslint-disable-next-line no-console
-          console.warn('Cleanup failed:', cleanupError);
+          const logger = TestLogger.getInstance();
+          logger.warn('Cleanup failed', {
+            error: (cleanupError as Error).message,
+          });
         }
       }
       throw error;
@@ -647,26 +654,24 @@ export class TestSuiteUtils {
     maxAttempts = 3,
     baseDelayMs = 100,
   ): Promise<{ result: T; attempts: number }> {
-    let lastError: Error;
-
-    // Sequential retry is intentional for exponential backoff strategy
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const retryAttempt = async (
+      attempt: number,
+    ): Promise<{ result: T; attempts: number }> => {
       try {
-        // eslint-disable-next-line no-await-in-loop
         const result = await operation();
         return { result, attempts: attempt };
       } catch (error) {
-        lastError = error as Error;
-
-        if (attempt < maxAttempts) {
-          const delay = baseDelayMs * Math.pow(2, attempt - 1);
-          // eslint-disable-next-line no-await-in-loop
-          await new Promise((resolve) => setTimeout(resolve, delay));
+        if (attempt >= maxAttempts) {
+          throw error;
         }
-      }
-    }
 
-    throw lastError!;
+        const delay = baseDelayMs * Math.pow(2, attempt - 1);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return retryAttempt(attempt + 1);
+      }
+    };
+
+    return retryAttempt(1);
   }
 
   /**

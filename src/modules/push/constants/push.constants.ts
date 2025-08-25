@@ -27,6 +27,7 @@ export enum PushErrorCode {
   // System errors (8xx)
   DATABASE_ERROR = 'SYS_001',
   INTERNAL_ERROR = 'SYS_002',
+  SYSTEM_ERROR = 'SYS_003',
 }
 
 export const UPLOAD_CONFIG = {

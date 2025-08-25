@@ -32,11 +32,19 @@ let keytar:
       ) => Promise<Array<{ account: string; password: string }>>;
     }
   | undefined;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  keytar = require('keytar') as typeof keytar;
-} catch {
-  // Keytar not available, will use fallback
+
+async function loadKeytar(): Promise<typeof keytar> {
+  if (keytar !== undefined) {
+    return keytar;
+  }
+
+  try {
+    keytar = await import('keytar');
+    return keytar;
+  } catch {
+    // Keytar not available, will use fallback
+    return undefined;
+  }
 }
 
 @Injectable()
@@ -184,7 +192,8 @@ export class SecretManagementService {
     metadata: SecretMetadata,
   ): Promise<string> {
     try {
-      if (!this.isKeychainAvailable()) {
+      const keytarInstance = await loadKeytar();
+      if (!keytarInstance) {
         throw new Error('System keychain not available');
       }
 
@@ -199,7 +208,7 @@ export class SecretManagementService {
         },
       };
 
-      await keytar.setPassword(
+      await keytarInstance.setPassword(
         this.serviceName,
         fullSecretId,
         JSON.stringify(secretData),
@@ -219,7 +228,8 @@ export class SecretManagementService {
    */
   async retrieveSecret(secretId: string): Promise<string | null> {
     try {
-      if (!this.isKeychainAvailable()) {
+      const keytarInstance = await loadKeytar();
+      if (!keytarInstance) {
         this.logger.warn(
           'System keychain not available, checking environment variables',
         );
@@ -227,7 +237,7 @@ export class SecretManagementService {
       }
 
       const fullSecretId = `taptik:${secretId}`;
-      const storedData = await keytar.getPassword(
+      const storedData = await keytarInstance.getPassword(
         this.serviceName,
         fullSecretId,
       );
@@ -252,7 +262,7 @@ export class SecretManagementService {
       secretStorage.metadata.lastAccessed = new Date();
       secretStorage.metadata.accessed =
         (secretStorage.metadata.accessed || 0) + 1;
-      await keytar.setPassword(
+      await keytarInstance.setPassword(
         this.serviceName,
         fullSecretId,
         JSON.stringify(secretStorage),
@@ -277,12 +287,13 @@ export class SecretManagementService {
    */
   async deleteSecret(secretId: string): Promise<boolean> {
     try {
-      if (!this.isKeychainAvailable()) {
+      const keytarInstance = await loadKeytar();
+      if (!keytarInstance) {
         return false;
       }
 
       const fullSecretId = `taptik:${secretId}`;
-      const deleted = await keytar.deletePassword(
+      const deleted = await keytarInstance.deletePassword(
         this.serviceName,
         fullSecretId,
       );
@@ -401,12 +412,15 @@ export class SecretManagementService {
     const auditEntries: SecretAuditEntry[] = [];
 
     try {
-      if (!this.isKeychainAvailable()) {
+      const keytarInstance = await loadKeytar();
+      if (!keytarInstance) {
         this.logger.warn('Keychain not available for audit');
         return auditEntries;
       }
 
-      const credentials = await keytar.findCredentials(this.serviceName);
+      const credentials = await keytarInstance.findCredentials(
+        this.serviceName,
+      );
 
       for (const credential of credentials) {
         try {
@@ -562,8 +576,9 @@ export class SecretManagementService {
     return Math.min(confidence, 1);
   }
 
-  private isKeychainAvailable(): boolean {
-    return keytar !== undefined;
+  private async isKeychainAvailable(): Promise<boolean> {
+    const keytarInstance = await loadKeytar();
+    return keytarInstance !== undefined;
   }
 
   private isValidEnvironmentVariableName(name: string): boolean {
@@ -615,12 +630,13 @@ export class SecretManagementService {
     secretId: string,
   ): Promise<SecretMetadata | null> {
     try {
-      if (!this.isKeychainAvailable()) {
+      const keytarInstance = await loadKeytar();
+      if (!keytarInstance) {
         return null;
       }
 
       const fullSecretId = `taptik:${secretId}`;
-      const storedData = await keytar.getPassword(
+      const storedData = await keytarInstance.getPassword(
         this.serviceName,
         fullSecretId,
       );
@@ -662,10 +678,13 @@ export class SecretManagementService {
     secretId: string,
     maxBackups: number,
   ): Promise<void> {
-    if (!this.isKeychainAvailable()) return;
+    const keytarInstance = await loadKeytar();
+    if (!keytarInstance) return;
 
     try {
-      const credentials = await keytar.findCredentials(this.serviceName);
+      const credentials = await keytarInstance.findCredentials(
+        this.serviceName,
+      );
       const backups = credentials
         .filter((cred) => cred.account.includes(`${secretId}.backup`))
         .map((cred) => ({
@@ -681,7 +700,7 @@ export class SecretManagementService {
       const deletePromises = backups
         .slice(maxBackups)
         .map((backup) =>
-          keytar!.deletePassword(this.serviceName, backup.account),
+          keytarInstance.deletePassword(this.serviceName, backup.account),
         );
       await Promise.all(deletePromises);
     } catch (error) {

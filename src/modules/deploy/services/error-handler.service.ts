@@ -72,45 +72,68 @@ export class ErrorHandlerService {
     customConfig?: Partial<ErrorRetryConfig>,
   ): Promise<T> {
     const config = { ...this.defaultRetryConfig, ...customConfig };
-    let lastError: Error | undefined;
-    let delay = config.initialDelay;
+    return this.performRetryAttempts(function_, context, config, 1);
+  }
 
-    for (let attempt = 1; attempt <= config.maxAttempts; attempt++) {
-      try {
-        return await function_(); // eslint-disable-line no-await-in-loop
-      } catch (error) {
-        lastError = error as Error;
-
-        const deployError = DeployError.fromError(error, {
-          ...context,
-          attempt,
-          maxAttempts: config.maxAttempts,
-        });
-
-        // Check if error is retryable
-        const strategy = this.getRecoveryStrategy(deployError);
-        if (!strategy.shouldRetry || attempt === config.maxAttempts) {
-          throw deployError;
-        }
-
-        // Log retry attempt
-        this.logger.log(
-          `⏳ Retry attempt ${attempt}/${config.maxAttempts} after ${delay}ms...`,
-        );
-
-        // Wait before retry with exponential backoff
-        await this.delay(delay); // eslint-disable-line no-await-in-loop
-        delay = Math.min(delay * config.backoffMultiplier, config.maxDelay);
-      }
+  /**
+   * Recursive implementation of retry logic to avoid await-in-loop
+   */
+  private async performRetryAttempts<T>(
+    function_: () => Promise<T>,
+    context: ErrorContext,
+    config: ErrorRetryConfig,
+    attempt: number,
+    delay: number = config.initialDelay,
+    lastError?: Error,
+  ): Promise<T> {
+    if (attempt > config.maxAttempts) {
+      throw new DeployError(
+        DeployErrorCode.UNKNOWN_ERROR,
+        `Operation failed after ${config.maxAttempts} attempts`,
+        'error',
+        context,
+        lastError,
+      );
     }
 
-    throw new DeployError(
-      DeployErrorCode.UNKNOWN_ERROR,
-      `Operation failed after ${config.maxAttempts} attempts`,
-      'error',
-      context,
-      lastError,
-    );
+    try {
+      return await function_();
+    } catch (error) {
+      const currentError = error as Error;
+      const deployError = DeployError.fromError(error, {
+        ...context,
+        attempt,
+        maxAttempts: config.maxAttempts,
+      });
+
+      // Check if error is retryable
+      const strategy = this.getRecoveryStrategy(deployError);
+      if (!strategy.shouldRetry || attempt === config.maxAttempts) {
+        throw deployError;
+      }
+
+      // Log retry attempt
+      this.logger.log(
+        `⏳ Retry attempt ${attempt}/${config.maxAttempts} after ${delay}ms...`,
+      );
+
+      // Wait before retry with exponential backoff
+      await this.delay(delay);
+      const nextDelay = Math.min(
+        delay * config.backoffMultiplier,
+        config.maxDelay,
+      );
+
+      // Recursive call for next attempt
+      return this.performRetryAttempts(
+        function_,
+        context,
+        config,
+        attempt + 1,
+        nextDelay,
+        currentError,
+      );
+    }
   }
 
   /**
@@ -312,7 +335,7 @@ export class ErrorHandlerService {
 
     // Additional logging for critical errors
     if (error.severity === 'critical') {
-      console.error('🚨 CRITICAL ERROR - Immediate action required'); // eslint-disable-line no-console
+      this.logger.error('🚨 CRITICAL ERROR - Immediate action required');
 
       // In production, this could send alerts to monitoring services
       if (process.env.NODE_ENV === 'production') {

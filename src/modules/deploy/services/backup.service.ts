@@ -163,16 +163,40 @@ export class BackupService {
       const now = Date.now();
       const retentionMs = retentionDays * 24 * 60 * 60 * 1000;
 
-      for (const file of files) {
-        if (!file.startsWith('backup_')) continue;
+      // Filter backup files first
+      const backupFiles = files.filter((file) => file.startsWith('backup_'));
 
+      // Get stats for all files in parallel
+      const fileStatsPromises = backupFiles.map(async (file) => {
         const filePath = path.join(this.backupDir, file);
-        const stats = await fs.stat(filePath); // eslint-disable-line no-await-in-loop
+        try {
+          const stats = await fs.stat(filePath);
+          return { filePath, stats, file };
+        } catch (_error) {
+          // If file doesn't exist or can't be accessed, skip it
+          return null;
+        }
+      });
 
-        if (stats.isFile() && now - stats.mtime.getTime() > retentionMs) {
-          await fs.rm(filePath, { force: true }); // eslint-disable-line no-await-in-loop
+      const fileStatsResults = await Promise.allSettled(fileStatsPromises);
+
+      // Collect files to delete
+      const filesToDelete: string[] = [];
+      for (const result of fileStatsResults) {
+        if (result.status === 'fulfilled' && result.value) {
+          const { filePath, stats } = result.value;
+          if (stats.isFile() && now - stats.mtime.getTime() > retentionMs) {
+            filesToDelete.push(filePath);
+          }
         }
       }
+
+      // Delete files in parallel
+      const deletePromises = filesToDelete.map((filePath) =>
+        fs.rm(filePath, { force: true }),
+      );
+
+      await Promise.allSettled(deletePromises);
     } catch (error) {
       throw new Error(
         `Failed to cleanup old backups: ${(error as Error).message}`,
@@ -196,20 +220,44 @@ export class BackupService {
       await this.ensureBackupDirectory();
 
       const files = await fs.readdir(this.backupDir);
-      const backups: BackupInfo[] = [];
 
-      for (const file of files) {
-        if (!file.startsWith('backup_')) continue;
+      // Filter backup files first
+      const backupFiles = files.filter((file) => file.startsWith('backup_'));
 
+      // Get stats for all files in parallel
+      const backupStatsPromises = backupFiles.map(async (file) => {
         const filePath = path.join(this.backupDir, file);
-        const stats = await fs.stat(filePath); // eslint-disable-line no-await-in-loop
-
-        if (stats.isFile()) {
-          backups.push({
+        try {
+          const stats = await fs.stat(filePath);
+          return {
             filename: file,
             path: filePath,
             size: stats.size,
             created: stats.mtime,
+            isFile: stats.isFile(),
+          };
+        } catch (_error) {
+          // If file doesn't exist or can't be accessed, skip it
+          return null;
+        }
+      });
+
+      const backupStatsResults = await Promise.allSettled(backupStatsPromises);
+
+      // Collect successful results that are files
+      const backups: BackupInfo[] = [];
+      for (const result of backupStatsResults) {
+        if (
+          result.status === 'fulfilled' &&
+          result.value &&
+          result.value.isFile
+        ) {
+          const { filename, path: filePath, size, created } = result.value;
+          backups.push({
+            filename,
+            path: filePath,
+            size,
+            created,
           });
         }
       }
@@ -248,13 +296,15 @@ export class BackupService {
     const manifestData = await fs.readFile(manifestPath, 'utf8');
     const manifest = JSON.parse(manifestData) as BackupManifest;
 
-    // Restore each file
+    // Restore each file in parallel
     if (manifest.files) {
-      for (const file of manifest.files) {
+      const restorePromises = manifest.files.map(async (file) => {
         const backupFilePath = path.join(backupPath, file.backupPath);
-        const backupData = await fs.readFile(backupFilePath); // eslint-disable-line no-await-in-loop
-        await fs.writeFile(file.originalPath, backupData); // eslint-disable-line no-await-in-loop
-      }
+        const backupData = await fs.readFile(backupFilePath);
+        await fs.writeFile(file.originalPath, backupData);
+      });
+
+      await Promise.allSettled(restorePromises);
     }
   }
 
@@ -287,13 +337,13 @@ export class BackupService {
 
     const component = manifest.components[componentType];
 
-    // First rollback dependencies
+    // First rollback dependencies - parallel processing for performance
     if (component.dependencies) {
-      for (const dep of component.dependencies) {
-        if (!rolledBack.has(dep)) {
-          await this.rollbackComponentRecursive(manifest, dep, rolledBack); // eslint-disable-line no-await-in-loop
-        }
-      }
+      const dependencyPromises = component.dependencies
+        .filter((dep) => !rolledBack.has(dep))
+        .map((dep) => this.rollbackComponentRecursive(manifest, dep, rolledBack));
+      
+      await Promise.all(dependencyPromises);
     }
 
     // Then rollback this component

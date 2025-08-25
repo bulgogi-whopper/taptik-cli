@@ -5,6 +5,8 @@
  * Following the Red-Green-Refactor cycle for all implementations.
  */
 
+import { TestLogger } from './test-logger.utility';
+
 // Import vi from vitest only when in test environment
 declare const vi: {
   clearAllMocks(): void;
@@ -341,9 +343,11 @@ export class PerformanceTestUtils {
     const duration = Date.now() - start;
 
     if (threshold && duration > threshold) {
-      // eslint-disable-next-line no-console
-      console.warn(
+      const logger = TestLogger.getInstance();
+      logger.performance(
         `Performance threshold exceeded: ${duration}ms > ${threshold}ms`,
+        duration,
+        { threshold },
       );
     }
 
@@ -521,8 +525,8 @@ export class TddPhaseManager {
       timestamp: new Date(),
       description,
     });
-    // eslint-disable-next-line no-console
-    console.log(`🔴 RED PHASE: ${description}`);
+    const logger = TestLogger.getInstance();
+    logger.tddPhase('RED', description);
   }
 
   /**
@@ -535,8 +539,8 @@ export class TddPhaseManager {
       timestamp: new Date(),
       description,
     });
-    // eslint-disable-next-line no-console
-    console.log(`🟢 GREEN PHASE: ${description}`);
+    const logger = TestLogger.getInstance();
+    logger.tddPhase('GREEN', description);
   }
 
   /**
@@ -549,8 +553,8 @@ export class TddPhaseManager {
       timestamp: new Date(),
       description,
     });
-    // eslint-disable-next-line no-console
-    console.log(`🔵 REFACTOR PHASE: ${description}`);
+    const logger = TestLogger.getInstance();
+    logger.tddPhase('REFACTOR', description);
   }
 
   /**

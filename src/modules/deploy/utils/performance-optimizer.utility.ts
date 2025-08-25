@@ -1,6 +1,7 @@
 import { ValidationResult } from '../../context/dto/validation-result.dto';
 import { TaptikContext } from '../../context/interfaces/taptik-context.interface';
 import { PERFORMANCE_CONFIG } from '../constants/deployment.constants';
+import { ComponentType } from '../interfaces/deploy-options.interface';
 import { DeploymentResult } from '../interfaces/deployment-result.interface';
 
 export interface ComponentDeployment {
@@ -78,47 +79,47 @@ export class PerformanceOptimizer {
   async parallelDeploy(
     components: ComponentDeployment[],
   ): Promise<DeploymentResult[]> {
-    const results: DeploymentResult[] = [];
     const chunks = this.chunkArray(components, this.MAX_CONCURRENCY);
 
-    for (const chunk of chunks) {
-      const chunkResults = await Promise.all( // eslint-disable-line no-await-in-loop
-         
-
-        chunk.map(async (component) => {
-          try {
-            return await component.deploy();
-          } catch (error) {
-            return {
-              success: false,
-              deployedComponents: [],
-              conflicts: [],
-              summary: {
-                totalFiles: 0,
-                filesDeployed: 0,
-                filesSkipped: 0,
-                conflictsResolved: 0,
-                warnings: [],
-                duration: 0,
-                platform: '',
-              },
-              errors: [
-                {
-                  code: 'DEPLOYMENT_FAILED',
-                  message: (error as Error).message,
-                  component: component.type as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+    const allChunkResults = await Promise.all(
+      chunks.map(async (chunk) =>
+        Promise.all(
+          chunk.map(async (component) => {
+            try {
+              return await component.deploy();
+            } catch (error) {
+              const deploymentError: DeploymentResult & { error?: string } = {
+                success: false,
+                platform: '', // Required at top level
+                deployedComponents: [],
+                conflicts: [],
+                summary: {
+                  totalFiles: 0,
+                  filesDeployed: 0,
+                  filesSkipped: 0,
+                  conflictsResolved: 0,
+                  warnings: [],
+                  duration: 0,
+                  platform: '', // Also required in summary
                 },
-              ],
-              error: (error as Error).message,
-            } as DeploymentResult & { error: string };
-          }
-        }),
-      );
+                errors: [
+                  {
+                    code: 'DEPLOYMENT_FAILED',
+                    message: (error as Error).message,
+                    component: component.type as ComponentType,
+                  },
+                ],
+                // Add simplified error property for easier access in tests
+                error: (error as Error).message,
+              };
+              return deploymentError;
+            }
+          }),
+        ),
+      ),
+    );
 
-      results.push(...chunkResults);
-    }
-
-    return results;
+    return allChunkResults.flat();
   }
 
   async streamLargeFile(
@@ -154,13 +155,13 @@ export class PerformanceOptimizer {
     // Clean up expired cache entries
     const now = Date.now();
 
-    for (const [key, value] of this.importCache.entries()) {
+    for (const [key, value] of Array.from(this.importCache.entries())) {
       if (now - value.timestamp > this.TTL) {
         this.importCache.delete(key);
       }
     }
 
-    for (const [key, value] of this.validationCache.entries()) {
+    for (const [key, value] of Array.from(this.validationCache.entries())) {
       if (now - value.timestamp > this.TTL) {
         this.validationCache.delete(key);
       }
@@ -171,7 +172,7 @@ export class PerformanceOptimizer {
 
     if (this.importCache.size > maxCacheSize) {
       // Remove oldest entries
-      const entries = [...this.importCache.entries()].sort(
+      const entries = Array.from(this.importCache.entries()).sort(
         ([, a], [, b]) => a.timestamp - b.timestamp,
       );
 
@@ -180,7 +181,7 @@ export class PerformanceOptimizer {
     }
 
     if (this.validationCache.size > maxCacheSize) {
-      const entries = [...this.validationCache.entries()].sort(
+      const entries = Array.from(this.validationCache.entries()).sort(
         ([, a], [, b]) => a.timestamp - b.timestamp,
       );
 

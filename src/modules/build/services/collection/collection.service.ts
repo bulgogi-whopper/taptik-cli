@@ -596,18 +596,15 @@ export class CollectionService {
       const agentsPath = path.join(claudePath, 'agents');
       const agentFiles = await fs.readdir(agentsPath);
 
-      const validAgents = [];
-      for (const filename of agentFiles) {
+      const agentPromises = agentFiles.map(async (filename) => {
         const filePath = path.join(agentsPath, filename);
         try {
-          // eslint-disable-next-line no-await-in-loop
           const content = await fs.readFile(filePath, 'utf8');
 
           if (filename.endsWith('.json')) {
             // Handle corrupted files first
             if (content === 'corrupted') {
-              corruptedFiles.push(filename);
-              continue;
+              return { type: 'corrupted', filename };
             }
 
             // Try to parse valid JSON files
@@ -615,27 +612,42 @@ export class CollectionService {
               const parsed = JSON.parse(content);
               if (parsed.instructions) {
                 // Valid agent must have instructions
-                validAgents.push({
-                  filename,
-                  content,
-                  path: filePath,
-                  parsed: {
-                    name: parsed.name,
-                    description: parsed.description || '',
-                    instructions: parsed.instructions,
-                    tools: parsed.tools,
-                    metadata: parsed.metadata,
+                return {
+                  type: 'valid',
+                  agent: {
+                    filename,
+                    content,
+                    path: filePath,
+                    parsed: {
+                      name: parsed.name,
+                      description: parsed.description || '',
+                      instructions: parsed.instructions,
+                      tools: parsed.tools,
+                      metadata: parsed.metadata,
+                    },
                   },
-                });
+                };
               } else {
-                corruptedFiles.push(filename);
+                return { type: 'corrupted', filename };
               }
             } catch (_parseError) {
-              corruptedFiles.push(filename);
+              return { type: 'corrupted', filename };
             }
           }
+          return null;
         } catch (_error) {
-          corruptedFiles.push(filename);
+          return { type: 'corrupted', filename };
+        }
+      });
+
+      const agentResults = await Promise.all(agentPromises);
+      const validAgents = [];
+
+      for (const result of agentResults) {
+        if (result?.type === 'valid') {
+          validAgents.push(result.agent);
+        } else if (result?.type === 'corrupted') {
+          corruptedFiles.push(result.filename);
         }
       }
 
@@ -1536,37 +1548,51 @@ export class CollectionService {
       await fs.access(agentsPath);
       const agentFiles = await fs.readdir(agentsPath);
 
-      const validAgents = [];
-      for (const filename of agentFiles.filter((f) => f.endsWith('.json'))) {
-        const filePath = path.join(agentsPath, filename);
-        try {
-          // eslint-disable-next-line no-await-in-loop
-          const content = await fs.readFile(filePath, 'utf8');
+      const agentPromises = agentFiles
+        .filter((f) => f.endsWith('.json'))
+        .map(async (filename) => {
+          const filePath = path.join(agentsPath, filename);
+          try {
+            const content = await fs.readFile(filePath, 'utf8');
 
-          // Check if it's valid JSON and has required structure
-          if (filename === 'valid.json') {
-            const parsed = JSON.parse(content);
-            if (parsed.instructions) {
-              validAgents.push({
-                filename,
-                content,
-                path: filePath,
-                parsed: {
-                  name: parsed.name || 'Valid Agent',
-                  description: parsed.description || '',
-                  instructions: parsed.instructions,
-                  tools: parsed.tools,
-                  metadata: parsed.metadata,
-                },
-              });
+            // Check if it's valid JSON and has required structure
+            if (filename === 'valid.json') {
+              const parsed = JSON.parse(content);
+              if (parsed.instructions) {
+                return {
+                  type: 'valid',
+                  agent: {
+                    filename,
+                    content,
+                    path: filePath,
+                    parsed: {
+                      name: parsed.name || 'Valid Agent',
+                      description: parsed.description || '',
+                      instructions: parsed.instructions,
+                      tools: parsed.tools,
+                      metadata: parsed.metadata,
+                    },
+                  },
+                };
+              }
+            } else if (filename === 'invalid.json') {
+              // This should be invalid JSON - skip it
+              return { type: 'skip', filename };
             }
-          } else if (filename === 'invalid.json') {
-            // This should be invalid JSON - skip it
-            skippedFiles.push(filename);
-            recoveryStrategy = 'SKIP_INVALID_FILES';
+            return null;
+          } catch (_error) {
+            return { type: 'skip', filename };
           }
-        } catch (_error) {
-          skippedFiles.push(filename);
+        });
+
+      const agentResults = await Promise.all(agentPromises);
+      const validAgents = [];
+
+      for (const result of agentResults) {
+        if (result?.type === 'valid') {
+          validAgents.push(result.agent);
+        } else if (result?.type === 'skip') {
+          skippedFiles.push(result.filename);
           recoveryStrategy = 'SKIP_INVALID_FILES';
         }
       }
@@ -1576,35 +1602,32 @@ export class CollectionService {
       // Directory doesn't exist or can't be read
     }
 
-    // Try collecting settings with retry logic
-    let settingsAttempts = 0;
+    // Try collecting settings with retry logic using recursive approach
     const maxRetries = 3;
+    const settingsPath = path.join(claudePath, 'settings.json');
 
-    while (settingsAttempts < maxRetries) {
-      settingsAttempts++; // Increment at start of each attempt
+    const tryReadSettingsWithRetry = async (
+      attemptNum: number = 1,
+    ): Promise<{ success: boolean; settings?: unknown; attempts: number }> => {
       try {
-        const settingsPath = path.join(claudePath, 'settings.json');
-        // eslint-disable-next-line no-await-in-loop
         const content = await fs.readFile(settingsPath, 'utf8');
         const settings = JSON.parse(content);
-        result.settings = settings;
-        if (settingsAttempts > 1) {
-          // More than 1 attempt means retries happened
-          retryAttempts = settingsAttempts; // Just use the attempt count directly
-          recoveryStrategy = 'RETRY_WITH_TIMEOUT';
-        }
-        break;
+        return { success: true, settings, attempts: attemptNum };
       } catch (error: unknown) {
-        if (
-          (error as { code?: string }).code === 'ETIMEDOUT' &&
-          settingsAttempts < maxRetries
-        ) {
-          // Will retry
-          continue;
-        } else {
-          // Give up
-          break;
+        const isTimeout = (error as { code?: string }).code === 'ETIMEDOUT';
+        if (isTimeout && attemptNum < maxRetries) {
+          return tryReadSettingsWithRetry(attemptNum + 1);
         }
+        return { success: false, attempts: attemptNum };
+      }
+    };
+
+    const settingsResult = await tryReadSettingsWithRetry();
+    if (settingsResult.success) {
+      result.settings = settingsResult.settings;
+      if (settingsResult.attempts > 1) {
+        retryAttempts = settingsResult.attempts;
+        recoveryStrategy = 'RETRY_WITH_TIMEOUT';
       }
     }
 
@@ -1927,21 +1950,22 @@ export class CollectionService {
         await fs.access(agentsPath);
         const agentFiles = await fs.readdir(agentsPath);
 
-        for (const filename of agentFiles) {
+        const agentPromises = agentFiles.map(async (filename) => {
           const filePath = path.join(agentsPath, filename);
           try {
-            // eslint-disable-next-line no-await-in-loop
             const content = await fs.readFile(filePath, 'utf8');
 
             if (filename === 'agent1.json') {
               // This should be invalid JSON from the mock
               if (content === 'invalid json') {
-                errors.push({
-                  type: 'INVALID_JSON',
-                  message: 'Invalid JSON in agent file',
-                  filePath: filename,
-                });
-                continue;
+                return {
+                  type: 'error',
+                  error: {
+                    type: 'INVALID_JSON' as ClaudeCodeErrorType,
+                    message: 'Invalid JSON in agent file',
+                    filePath: filename,
+                  },
+                };
               }
             }
 
@@ -1950,50 +1974,77 @@ export class CollectionService {
               try {
                 const parsed = JSON.parse(content);
                 if (!parsed.instructions) {
-                  errors.push({
-                    type: 'MALFORMED_AGENT',
-                    message: 'Agent missing required instructions field',
-                    filePath: filename,
-                  });
-                  continue;
+                  return {
+                    type: 'error',
+                    error: {
+                      type: 'MALFORMED_AGENT' as ClaudeCodeErrorType,
+                      message: 'Agent missing required instructions field',
+                      filePath: filename,
+                    },
+                  };
                 }
 
                 // Valid agent file
-                result.agents.push({
-                  filename,
-                  content,
-                  path: filePath,
-                });
+                return {
+                  type: 'agent',
+                  agent: {
+                    filename,
+                    content,
+                    path: filePath,
+                  },
+                };
               } catch (_parseError) {
-                errors.push({
-                  type: 'INVALID_JSON',
-                  message: 'Invalid JSON in agent file',
-                  filePath: filename,
-                });
+                return {
+                  type: 'error',
+                  error: {
+                    type: 'INVALID_JSON' as ClaudeCodeErrorType,
+                    message: 'Invalid JSON in agent file',
+                    filePath: filename,
+                  },
+                };
               }
             } else {
               // Try to parse other agents normally
               try {
                 JSON.parse(content);
-                result.agents.push({
-                  filename,
-                  content,
-                  path: filePath,
-                });
+                return {
+                  type: 'agent',
+                  agent: {
+                    filename,
+                    content,
+                    path: filePath,
+                  },
+                };
               } catch (_parseError) {
-                errors.push({
-                  type: 'INVALID_JSON',
-                  message: 'Invalid JSON in agent file',
-                  filePath: filename,
-                });
+                return {
+                  type: 'error',
+                  error: {
+                    type: 'INVALID_JSON' as ClaudeCodeErrorType,
+                    message: 'Invalid JSON in agent file',
+                    filePath: filename,
+                  },
+                };
               }
             }
           } catch (_readError) {
-            errors.push({
-              type: 'INVALID_JSON',
-              message: 'Invalid JSON in agent file',
-              filePath: filename,
-            });
+            return {
+              type: 'error',
+              error: {
+                type: 'INVALID_JSON' as ClaudeCodeErrorType,
+                message: 'Invalid JSON in agent file',
+                filePath: filename,
+              },
+            };
+          }
+        });
+
+        const agentResults = await Promise.all(agentPromises);
+
+        for (const agentResult of agentResults) {
+          if (agentResult.type === 'error') {
+            errors.push(agentResult.error);
+          } else if (agentResult.type === 'agent') {
+            result.agents.push(agentResult.agent);
           }
         }
       } catch (_error) {
@@ -2006,27 +2057,43 @@ export class CollectionService {
         await fs.access(commandsPath);
         const commandFiles = await fs.readdir(commandsPath);
 
-        for (const filename of commandFiles) {
+        const commandPromises = commandFiles.map(async (filename) => {
           const filePath = path.join(commandsPath, filename);
           try {
-            // eslint-disable-next-line no-await-in-loop
             const content = await fs.readFile(filePath, 'utf8');
 
             // Process command file normally
-            result.commands.push({
-              filename,
-              content,
-              path: filePath,
-            });
+            return {
+              type: 'command',
+              command: {
+                filename,
+                content,
+                path: filePath,
+              },
+            };
           } catch (error: unknown) {
             const err = error as { message?: string };
             if (err.message === 'EACCES') {
-              errors.push({
-                type: 'PERMISSION_DENIED',
-                message: 'Permission denied accessing command file',
-                filePath: filename,
-              });
+              return {
+                type: 'error',
+                error: {
+                  type: 'PERMISSION_DENIED' as ClaudeCodeErrorType,
+                  message: 'Permission denied accessing command file',
+                  filePath: filename,
+                },
+              };
             }
+            return null;
+          }
+        });
+
+        const commandResults = await Promise.all(commandPromises);
+
+        for (const commandResult of commandResults) {
+          if (commandResult?.type === 'error') {
+            errors.push(commandResult.error);
+          } else if (commandResult?.type === 'command') {
+            result.commands.push(commandResult.command);
           }
         }
       } catch (_error) {

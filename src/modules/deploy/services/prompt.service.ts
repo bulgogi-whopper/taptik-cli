@@ -71,40 +71,32 @@ export class PromptService implements OnModuleDestroy {
     this.write('  [d] Show diff\n');
     this.write('\n');
 
-    let validChoice = false;
-    let choice: ConflictResolution | 'diff' = 'skip';
+    return this.promptForValidChoice(conflict);
+  }
 
-    while (!validChoice) {
-      const answer = await this.rl.question('Choose action: '); // eslint-disable-line no-await-in-loop
-      const lowerAnswer = answer.toLowerCase();
+  private async promptForValidChoice(
+    conflict: ConflictResult,
+  ): Promise<ConflictResolution> {
+    const answer = await this.rl.question('Choose action: ');
+    const lowerAnswer = answer.toLowerCase();
 
-      switch (lowerAnswer) {
-        case 'o':
-          choice = 'overwrite';
-          validChoice = true;
-          break;
-        case 's':
-          choice = 'skip';
-          validChoice = true;
-          break;
-        case 'm':
-          choice = 'merge';
-          validChoice = true;
-          break;
-        case 'b':
-          choice = 'backup';
-          validChoice = true;
-          break;
-        case 'd':
-          // Show diff and continue loop
-          this.showDiff(conflict);
-          break;
-        default:
-          this.write('Invalid option. Please choose o, s, m, b, or d.\n');
-      }
+    switch (lowerAnswer) {
+      case 'o':
+        return 'overwrite';
+      case 's':
+        return 'skip';
+      case 'm':
+        return 'merge';
+      case 'b':
+        return 'backup';
+      case 'd':
+        // Show diff and ask again
+        this.showDiff(conflict);
+        return this.promptForValidChoice(conflict);
+      default:
+        this.write('Invalid option. Please choose o, s, m, b, or d.\n');
+        return this.promptForValidChoice(conflict);
     }
-
-    return choice;
   }
 
   showProgress(message: string, current: number, total: number): void {

@@ -615,29 +615,27 @@ export class ErrorScenarioTestUtilities {
     operation: () => Promise<unknown>,
     maxRetries = 3,
   ): Promise<{ success: boolean; attempts: number; error?: Error }> {
-    let attempts = 0;
-
-    for (let i = 0; i <= maxRetries; i++) {
-      attempts++;
+    const attemptOperation = async (
+      attemptNum: number,
+    ): Promise<{ success: boolean; attempts: number; error?: Error }> => {
       try {
-        // eslint-disable-next-line no-await-in-loop
         await operation();
-        return { success: true, attempts };
+        return { success: true, attempts: attemptNum };
       } catch (error: unknown) {
         const err = error as { code?: string };
-        if (err.code === 'EAGAIN' && i < maxRetries) {
-          // Wait before retry
-          // eslint-disable-next-line no-await-in-loop
-          await new Promise((resolve) =>
-            setTimeout(resolve, Math.pow(2, i) * 100),
-          );
-          continue;
-        }
-        return { success: false, attempts, error: error as Error };
-      }
-    }
 
-    return { success: false, attempts };
+        if (err.code === 'EAGAIN' && attemptNum <= maxRetries) {
+          // Wait before retry with exponential backoff
+          const delay = Math.pow(2, attemptNum - 1) * 100;
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          return attemptOperation(attemptNum + 1);
+        }
+
+        return { success: false, attempts: attemptNum, error: error as Error };
+      }
+    };
+
+    return attemptOperation(1);
   }
 
   /**
@@ -689,20 +687,27 @@ export class ErrorScenarioTestUtilities {
     maxTime: number;
     successRate: number;
   }> {
-    const times: number[] = [];
-    let successes = 0;
-
-    for (let i = 0; i < iterations; i++) {
+    // Run operations in parallel for performance benchmarking
+    const operationPromises = Array.from({ length: iterations }, async () => {
       const start = Date.now();
+      let success = false;
+
       try {
-        // eslint-disable-next-line no-await-in-loop
         await operation();
-        successes++;
+        success = true;
       } catch {
         // Count failed operations in timing
       }
-      times.push(Date.now() - start);
-    }
+
+      return {
+        time: Date.now() - start,
+        success,
+      };
+    });
+
+    const results = await Promise.all(operationPromises);
+    const times = results.map((r) => r.time);
+    const successes = results.filter((r) => r.success).length;
 
     return {
       averageTime: times.reduce((a, b) => a + b, 0) / times.length,
