@@ -25,7 +25,12 @@ describe('DeleteCommand', () => {
     user: {
       id: 'test-user-id',
       email: 'test@example.com',
+      createdAt: new Date(),
+      updatedAt: new Date(),
     },
+    accessToken: 'test-token',
+    refreshToken: 'test-refresh-token',
+    expiresAt: new Date(Date.now() + 3600000),
   };
 
   const mockPackage: PackageMetadata = {
@@ -81,9 +86,9 @@ describe('DeleteCommand', () => {
 
   describe('run', () => {
     it('should delete package with confirmation', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
-      packageRegistry.deletePackage.mockResolvedValue(undefined);
+      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
+      vi.mocked(packageRegistry.getPackageByConfigId).mockResolvedValue(mockPackage);
+      vi.mocked(packageRegistry.deletePackage).mockResolvedValue(undefined);
       vi.mocked(inquirer.prompt).mockResolvedValue({ confirmText: 'DELETE' });
 
       await command.run(['config-1'], {});
@@ -95,9 +100,9 @@ describe('DeleteCommand', () => {
     });
 
     it('should delete package with --yes flag', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
-      packageRegistry.deletePackage.mockResolvedValue(undefined);
+      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
+      vi.mocked(packageRegistry.getPackageByConfigId).mockResolvedValue(mockPackage);
+      vi.mocked(packageRegistry.deletePackage).mockResolvedValue(undefined);
       vi.mocked(inquirer.prompt).mockResolvedValue({ confirm: true });
 
       await command.run(['config-1'], { yes: true });
@@ -113,9 +118,9 @@ describe('DeleteCommand', () => {
     });
 
     it('should delete package with --force flag without prompts', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
-      packageRegistry.deletePackage.mockResolvedValue(undefined);
+      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
+      vi.mocked(packageRegistry.getPackageByConfigId).mockResolvedValue(mockPackage);
+      vi.mocked(packageRegistry.deletePackage).mockResolvedValue(undefined);
 
       await command.run(['config-1'], { force: true });
 
@@ -124,8 +129,8 @@ describe('DeleteCommand', () => {
     });
 
     it('should show warning for public packages', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue({
+      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
+      vi.mocked(packageRegistry.getPackageByConfigId).mockResolvedValue({
         ...mockPackage,
         isPublic: true,
       });
@@ -139,8 +144,8 @@ describe('DeleteCommand', () => {
     });
 
     it('should cancel deletion when confirmation text is wrong', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
+      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
+      vi.mocked(packageRegistry.getPackageByConfigId).mockResolvedValue(mockPackage);
       vi.mocked(inquirer.prompt).mockResolvedValue({ confirmText: 'wrong' });
 
       await command.run(['config-1'], {});
@@ -152,8 +157,8 @@ describe('DeleteCommand', () => {
     });
 
     it('should cancel deletion when user declines with --yes flag', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
+      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
+      vi.mocked(packageRegistry.getPackageByConfigId).mockResolvedValue(mockPackage);
       vi.mocked(inquirer.prompt).mockResolvedValue({ confirm: false });
 
       await command.run(['config-1'], { yes: true });
@@ -165,8 +170,8 @@ describe('DeleteCommand', () => {
     });
 
     it('should fail when package not found', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(null);
+      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
+      vi.mocked(packageRegistry.getPackageByConfigId).mockResolvedValue(null);
 
       await command.run(['config-1'], {});
 
@@ -174,8 +179,8 @@ describe('DeleteCommand', () => {
     });
 
     it('should fail when user does not own the package', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue({
+      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
+      vi.mocked(packageRegistry.getPackageByConfigId).mockResolvedValue({
         ...mockPackage,
         userId: 'other-user-id',
       });
@@ -186,7 +191,7 @@ describe('DeleteCommand', () => {
     });
 
     it('should fail when not authenticated', async () => {
-      authService.getSession.mockResolvedValue(null);
+      vi.mocked(authService.getSession).mockResolvedValue(null);
 
       await command.run(['config-1'], {});
 
@@ -194,7 +199,7 @@ describe('DeleteCommand', () => {
     });
 
     it('should fail when no config ID provided', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
+      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
 
       await command.run([], {});
 
@@ -202,8 +207,8 @@ describe('DeleteCommand', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockRejectedValue(
+      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
+      vi.mocked(packageRegistry.getPackageByConfigId).mockRejectedValue(
         new Error('Network error')
       );
 

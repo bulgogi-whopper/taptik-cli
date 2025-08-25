@@ -106,7 +106,20 @@ export interface PushErrorContext {
   fileName?: string;
   userId?: string;
   attemptNumber?: number;
-  details?: Record<string, unknown>;
+  details?: Record<string, unknown> | any;
+  packagePath?: string;
+  size?: number;
+  remaining?: number;
+  report?: unknown;
+  originalError?: unknown;
+  configId?: string;
+  path?: string;
+  currentSize?: number;
+  id?: string;
+  tier?: string;
+  resetAt?: Date;
+  error?: unknown;
+  [key: string]: unknown; // Allow additional properties
 }
 
 export class PushError extends Error {

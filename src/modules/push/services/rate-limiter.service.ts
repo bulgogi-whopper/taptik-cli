@@ -127,7 +127,6 @@ export class RateLimiterService {
           PushErrorCode.SYSTEM_ERROR,
           'Failed to check upload limit',
           _error,
-          false,
         ),
       );
       // Return permissive state on error to avoid blocking users
@@ -190,7 +189,6 @@ export class RateLimiterService {
           PushErrorCode.SYSTEM_ERROR,
           'Failed to check bandwidth limit',
           _error,
-          false,
         ),
       );
       // Return permissive state on error
@@ -271,7 +269,6 @@ export class RateLimiterService {
             PushErrorCode.SYSTEM_ERROR,
             'Failed to record upload count',
             uploadError,
-            false,
           ),
         );
       }
@@ -293,7 +290,6 @@ export class RateLimiterService {
             PushErrorCode.SYSTEM_ERROR,
             'Failed to record bandwidth usage',
             bandwidthError,
-            false,
           ),
         );
       }
@@ -304,7 +300,6 @@ export class RateLimiterService {
           PushErrorCode.SYSTEM_ERROR,
           'Failed to record upload metrics',
           _error,
-          false,
         ),
       );
     }
@@ -429,7 +424,6 @@ export class RateLimiterService {
             PushErrorCode.SYSTEM_ERROR,
             'Failed to clean up rate limits',
             rateLimitError,
-            false,
           ),
         );
       }
@@ -451,7 +445,6 @@ export class RateLimiterService {
             PushErrorCode.SYSTEM_ERROR,
             'Failed to clean up bandwidth records',
             bandwidthError,
-            false,
           ),
         );
       }
@@ -462,7 +455,6 @@ export class RateLimiterService {
           PushErrorCode.SYSTEM_ERROR,
           'Failed to cleanup expired limits',
           _error,
-          false,
         ),
       );
     }

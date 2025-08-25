@@ -20,7 +20,12 @@ describe('StatsCommand', () => {
     user: {
       id: 'test-user-id',
       email: 'test@example.com',
+      createdAt: new Date(),
+      updatedAt: new Date(),
     },
+    accessToken: 'test-token',
+    refreshToken: 'test-refresh-token',
+    expiresAt: new Date(Date.now() + 3600000),
   };
 
   const mockPackage: PackageMetadata = {

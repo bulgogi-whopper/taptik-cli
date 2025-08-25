@@ -111,7 +111,6 @@ export class LocalQueueService implements OnModuleInit, OnModuleDestroy {
         PushErrorCode.QUEUE_FULL,
         `Queue is full. Maximum size is ${this.queueConfig.maxQueueSize}`,
         { currentSize: queueSize },
-        false,
       );
     }
 
@@ -121,7 +120,6 @@ export class LocalQueueService implements OnModuleInit, OnModuleDestroy {
         PushErrorCode.FILE_NOT_FOUND,
         `Package file not found: ${packagePath}`,
         { path: packagePath },
-        false,
       );
     }
 
@@ -150,7 +148,6 @@ export class LocalQueueService implements OnModuleInit, OnModuleDestroy {
         PushErrorCode.QUEUE_ITEM_NOT_FOUND,
         `Queue item not found: ${id}`,
         { id },
-        false,
       );
     }
 
@@ -189,7 +186,6 @@ export class LocalQueueService implements OnModuleInit, OnModuleDestroy {
         PushErrorCode.QUEUE_ITEM_NOT_FOUND,
         `Queue item not found: ${id}`,
         { id },
-        false,
       );
     }
 
@@ -208,7 +204,6 @@ export class LocalQueueService implements OnModuleInit, OnModuleDestroy {
         PushErrorCode.QUEUE_ITEM_NOT_FOUND,
         `Queue item not found: ${id}`,
         { id },
-        false,
       );
     }
 
@@ -409,7 +404,6 @@ export class LocalQueueService implements OnModuleInit, OnModuleDestroy {
         PushErrorCode.QUEUE_ITEM_NOT_FOUND,
         `Queue item not found: ${id}`,
         { id },
-        false,
       );
     }
 

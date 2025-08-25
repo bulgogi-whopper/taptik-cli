@@ -5,15 +5,13 @@ import * as path from 'path';
 import { Injectable, Logger } from '@nestjs/common';
 
 import { AuthService } from '../../auth/auth.service';
-import { PushError, PushErrorCode } from '../constants/push.constants';
+import { PushError, PushErrorCode, PushErrorContext } from '../constants/push.constants';
 import { 
   PackageMetadata, 
   PushOptions, 
   UploadProgress,
   AnalyticsEventType 
 } from '../interfaces';
-
-import { PushError, PushErrorCode, PushErrorContext } from '../constants/push.constants';
 
 import { AnalyticsService } from './analytics.service';
 import { CloudUploadService } from './cloud-upload.service';
@@ -246,7 +244,7 @@ export class PushService {
         PushErrorCode.UPLOAD_FAILED,
         'Failed to upload package',
         { originalError: error },
-        true, // retryable
+        error instanceof Error ? error : undefined,
       );
     }
   }

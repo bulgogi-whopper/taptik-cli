@@ -12,14 +12,18 @@ import { StatsCommand } from './commands/stats.command';
 import { UpdateCommand } from './commands/update.command';
 import { VisibilityCommand } from './commands/visibility.command';
 import { AnalyticsService } from './services/analytics.service';
+import { AuditLoggerService } from './services/audit-logger.service';
 import { CloudUploadService } from './services/cloud-upload.service';
 import { ErrorRecoveryService } from './services/error-recovery.service';
 import { LocalQueueService } from './services/local-queue.service';
+import { OperationLockService } from './services/operation-lock.service';
 import { PackageRegistryService } from './services/package-registry.service';
 import { PackageValidatorService } from './services/package-validator.service';
 import { PushService } from './services/push.service';
 import { RateLimiterService } from './services/rate-limiter.service';
 import { SanitizationService } from './services/sanitization.service';
+import { SecureStorageService } from './services/secure-storage.service';
+import { SecurityValidatorService } from './services/security-validator.service';
 import { SignedUrlService } from './services/signed-url.service';
 
 @Module({
@@ -42,6 +46,10 @@ import { SignedUrlService } from './services/signed-url.service';
     LocalQueueService,
     ErrorHandlerService,
     ErrorRecoveryService,
+    AuditLoggerService,
+    SecurityValidatorService,
+    SecureStorageService,
+    OperationLockService,
   ],
   exports: [PushService, PackageRegistryService],
 })

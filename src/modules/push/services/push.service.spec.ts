@@ -21,6 +21,7 @@ describe('PushService', () => {
   let mockPackageValidatorService: any;
   let mockLocalQueueService: any;
   let mockRateLimiterService: any;
+  let mockErrorRecoveryService: any;
 
   const mockUser = { id: 'user-123', email: 'test@example.com' };
   const mockPackageBuffer = Buffer.from('mock package content');
@@ -96,6 +97,15 @@ describe('PushService', () => {
       recordUpload: vi.fn(),
     };
 
+    mockErrorRecoveryService = {
+      executeWithRetry: vi.fn((operation) => operation()),
+      createRecoveryState: vi.fn(),
+      recordSuccess: vi.fn(),
+      recordFailure: vi.fn(),
+      shouldRetry: vi.fn(),
+      generateRecoverySuggestion: vi.fn(),
+    };
+
     // Create service instance directly with mocks
     service = new PushService(
       mockCloudUploadService as any,
@@ -106,6 +116,7 @@ describe('PushService', () => {
       mockPackageValidatorService as any,
       mockLocalQueueService as any,
       mockRateLimiterService as any,
+      mockErrorRecoveryService as any,
     );
 
     // Reset all mocks
