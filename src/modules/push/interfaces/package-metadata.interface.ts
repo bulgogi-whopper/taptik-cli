@@ -16,6 +16,7 @@ export interface PackageMetadata {
   sanitizationLevel: 'safe' | 'warning' | 'blocked';
   checksum: string;
   storageUrl: string;
+  shareableUrl?: string;
   packageSize: number;
   userId: string;
   teamId?: string;

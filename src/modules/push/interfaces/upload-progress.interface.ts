@@ -1,8 +1,10 @@
 export interface UploadProgress {
-  phase: 'validating' | 'sanitizing' | 'uploading' | 'registering' | 'complete';
+  stage: string;
   percentage: number;
-  bytesUploaded: number;
-  totalBytes: number;
+  message?: string;
   eta?: number;
-  message: string;
+  bytesUploaded?: number;
+  totalBytes?: number;
+  configId?: string;
+  shareUrl?: string;
 }

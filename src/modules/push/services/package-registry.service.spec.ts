@@ -5,7 +5,7 @@ import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 import { ErrorHandlerService } from '../../deploy/services/error-handler.service';
 import { SupabaseService } from '../../supabase/supabase.service';
 import { PushError } from '../constants/push.constants';
-import { PackageMetadata } from '../interfaces';
+import { PackageMetadata, PackageVisibility } from '../interfaces';
 
 import {
   PackageRegistryService,
@@ -48,7 +48,7 @@ describe('PackageRegistryService', () => {
     description: 'Test description',
     version: '1.0.0',
     platform: 'claude-code',
-    is_public: false,
+    is_visibility: PackageVisibility.Private,
     sanitization_level: 'safe',
     checksum: 'test-checksum',
     storage_url: 'https://storage.example.com/test',

@@ -1,11 +1,21 @@
+export enum PackageVisibility {
+  Public = 'public',
+  Private = 'private',
+}
+
 export interface PushOptions {
-  public?: boolean;
-  private?: boolean;
-  title?: string;
+  file: {
+    buffer: Buffer;
+    name: string;
+    size: number;
+    path: string;
+  };
+  visibility: PackageVisibility;
+  title: string;
   description?: string;
-  tags?: string[];
-  team?: string;
-  version?: string;
-  force?: boolean;
-  dryRun?: boolean;
+  tags: string[];
+  teamId?: string;
+  version: string;
+  force: boolean;
+  dryRun: boolean;
 }
