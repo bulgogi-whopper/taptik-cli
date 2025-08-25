@@ -8,6 +8,7 @@ import {
   ListOptions,
 } from '../../../models/config-bundle.model';
 import { AuthService } from '../../auth/auth.service';
+import { SupabaseService } from '../../supabase/supabase.service';
 
 import {
   ListService,
@@ -22,9 +23,10 @@ const mockSupabaseClient = {
   from: vi.fn(),
 };
 
-vi.mock('../../../supabase/supabase-client', () => ({
-  getSupabaseClient: () => mockSupabaseClient,
-}));
+// Mock SupabaseService
+const mockSupabaseService = {
+  getClient: vi.fn(() => mockSupabaseClient),
+};
 
 describe('ListService', () => {
   let service: ListService;
@@ -85,13 +87,18 @@ describe('ListService', () => {
           provide: AuthService,
           useValue: mockAuthService,
         },
+        {
+          provide: SupabaseService,
+          useValue: mockSupabaseService,
+        },
       ],
     }).compile();
 
     service = module.get<ListService>(ListService);
 
-    // 서비스 인스턴스의 authService를 직접 설정
+    // Manually assign the mocked services to ensure they're available
     (service as any).authService = mockAuthService;
+    (service as any).supabaseService = mockSupabaseService;
   });
 
   describe('listConfigurations', () => {

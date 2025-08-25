@@ -103,7 +103,6 @@ export class ListCommand extends CommandRunner {
 
     // Get liked configurations from service
     const result = await this.listService.listLikedConfigurations(
-      user.id,
       processedOptions,
     );
 

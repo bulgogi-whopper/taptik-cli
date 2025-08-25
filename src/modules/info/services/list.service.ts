@@ -10,8 +10,8 @@ import {
   validateListOptions,
   DEFAULT_LIST_OPTIONS,
 } from '../../../models/config-bundle.model';
-import { getSupabaseClient } from '../../../supabase/supabase-client';
 import { AuthService } from '../../auth/auth.service';
+import { SupabaseService } from '../../supabase/supabase.service';
 import { EXIT_CODES, CLIError } from '../constants/exit-codes.constants';
 
 /**
@@ -58,9 +58,10 @@ export class ValidationError extends CLIError {
  */
 @Injectable()
 export class ListService {
-  private supabase = getSupabaseClient();
-
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly supabaseService: SupabaseService,
+  ) {}
 
   /**
    * Check if user is authenticated for liked configurations
@@ -156,7 +157,7 @@ export class ListService {
 
     try {
       // Build base query for public configurations
-      let query = this.supabase
+      let query = this.supabaseService.getClient()
         .from('config_bundles')
         .select('*', { count: 'exact' });
 
@@ -255,7 +256,7 @@ export class ListService {
 
     try {
       // Query liked configurations through user_likes join
-      let query = this.supabase
+      let query = this.supabaseService.getClient()
         .from('config_bundles')
         .select(
           `

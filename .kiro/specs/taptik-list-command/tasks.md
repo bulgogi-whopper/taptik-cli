@@ -43,7 +43,7 @@
   - Implement result limiting and pagination display
   - _Requirements: 1.2, 1.3, 1.4, 2.3, 4.5, 5.3_
 
-- [ ] 7. Update InfoModule to include ListCommand and ListService
+- [x] 7. Update InfoModule to include ListCommand and ListService
   - Add ListCommand and ListService to InfoModule providers
   - Export ListService for potential use by other modules
   - Ensure proper dependency injection setup
