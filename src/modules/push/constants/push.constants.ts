@@ -3,12 +3,17 @@ export enum PushErrorCode {
   AUTH_REQUIRED = 'AUTH_001',
   AUTH_EXPIRED = 'AUTH_002',
   INSUFFICIENT_PERMISSIONS = 'AUTH_003',
+  AUTH_NOT_AUTHENTICATED = 'AUTH_004',
+  AUTH_INSUFFICIENT_PERMISSIONS = 'AUTH_005',
+  AUTH_SESSION_EXPIRED = 'AUTH_006',
 
   // Validation errors (4xx)
   INVALID_PACKAGE = 'VAL_001',
   INVALID_VERSION = 'VAL_002',
   PACKAGE_TOO_LARGE = 'VAL_003',
   UNSUPPORTED_PLATFORM = 'VAL_004',
+  VAL_INVALID_FILE = 'VAL_005',
+  VAL_FILE_TOO_LARGE = 'VAL_006',
 
   // Security errors (5xx)
   SENSITIVE_DATA_DETECTED = 'SEC_001',
@@ -19,6 +24,10 @@ export enum PushErrorCode {
   UPLOAD_FAILED = 'NET_001',
   STORAGE_QUOTA_EXCEEDED = 'NET_002',
   NETWORK_TIMEOUT = 'NET_003',
+  NET_CONNECTION_FAILED = 'NET_004',
+  NET_TIMEOUT = 'NET_005',
+  NET_RATE_LIMITED = 'NET_006',
+  NET_SERVICE_UNAVAILABLE = 'NET_007',
 
   // Rate limiting errors (7xx)
   RATE_LIMIT_EXCEEDED = 'RATE_001',
@@ -28,11 +37,17 @@ export enum PushErrorCode {
   DATABASE_ERROR = 'SYS_001',
   INTERNAL_ERROR = 'SYS_002',
   SYSTEM_ERROR = 'SYS_003',
+  SYS_UNKNOWN_ERROR = 'SYS_004',
+  SYS_INTERNAL_ERROR = 'SYS_005',
 
   // Queue errors (9xx)
   QUEUE_FULL = 'QUEUE_001',
   QUEUE_ITEM_NOT_FOUND = 'QUEUE_002',
   FILE_NOT_FOUND = 'QUEUE_003',
+
+  // Storage errors (10xx)
+  STOR_QUOTA_EXCEEDED = 'STOR_001',
+  STOR_UPLOAD_FAILED = 'STOR_002',
 }
 
 export const UPLOAD_CONFIG = {
@@ -158,9 +173,15 @@ export class PushError extends Error {
   private isRetryable(): boolean {
     const retryableCodes = [
       PushErrorCode.NETWORK_TIMEOUT,
+      PushErrorCode.NET_TIMEOUT,
+      PushErrorCode.NET_CONNECTION_FAILED,
+      PushErrorCode.NET_SERVICE_UNAVAILABLE,
       PushErrorCode.UPLOAD_FAILED,
+      PushErrorCode.STOR_UPLOAD_FAILED,
       PushErrorCode.AUTH_EXPIRED,
+      PushErrorCode.AUTH_SESSION_EXPIRED,
       PushErrorCode.STORAGE_QUOTA_EXCEEDED,
+      PushErrorCode.STOR_QUOTA_EXCEEDED,
     ];
     
     return retryableCodes.includes(this.code);
@@ -171,11 +192,16 @@ export class PushError extends Error {
       [PushErrorCode.AUTH_REQUIRED]: 'You need to be logged in to perform this action',
       [PushErrorCode.AUTH_EXPIRED]: 'Your session has expired. Please log in again',
       [PushErrorCode.INSUFFICIENT_PERMISSIONS]: 'You do not have permission to perform this action',
+      [PushErrorCode.AUTH_NOT_AUTHENTICATED]: 'You are not authenticated',
+      [PushErrorCode.AUTH_INSUFFICIENT_PERMISSIONS]: 'You do not have sufficient permissions',
+      [PushErrorCode.AUTH_SESSION_EXPIRED]: 'Your session has expired',
       
       [PushErrorCode.INVALID_PACKAGE]: 'The selected package is invalid or corrupted',
       [PushErrorCode.INVALID_VERSION]: 'The package version is invalid',
       [PushErrorCode.PACKAGE_TOO_LARGE]: 'The package size exceeds the maximum allowed limit',
       [PushErrorCode.UNSUPPORTED_PLATFORM]: 'The platform is not supported',
+      [PushErrorCode.VAL_INVALID_FILE]: 'The file is invalid or corrupted',
+      [PushErrorCode.VAL_FILE_TOO_LARGE]: 'The file size exceeds the maximum allowed limit',
       
       [PushErrorCode.SENSITIVE_DATA_DETECTED]: 'Sensitive data was detected in the package',
       [PushErrorCode.SANITIZATION_FAILED]: 'Failed to sanitize the package',
@@ -184,6 +210,10 @@ export class PushError extends Error {
       [PushErrorCode.UPLOAD_FAILED]: 'Failed to upload the package to the cloud',
       [PushErrorCode.STORAGE_QUOTA_EXCEEDED]: 'Your storage quota has been exceeded',
       [PushErrorCode.NETWORK_TIMEOUT]: 'The request timed out',
+      [PushErrorCode.NET_CONNECTION_FAILED]: 'Network connection failed',
+      [PushErrorCode.NET_TIMEOUT]: 'Network request timed out',
+      [PushErrorCode.NET_RATE_LIMITED]: 'Too many requests, please slow down',
+      [PushErrorCode.NET_SERVICE_UNAVAILABLE]: 'Service is temporarily unavailable',
       
       [PushErrorCode.RATE_LIMIT_EXCEEDED]: 'Rate limit exceeded. Please wait and try again',
       [PushErrorCode.DAILY_QUOTA_EXCEEDED]: 'Daily upload quota exceeded',
@@ -191,10 +221,15 @@ export class PushError extends Error {
       [PushErrorCode.DATABASE_ERROR]: 'Database operation failed',
       [PushErrorCode.INTERNAL_ERROR]: 'An internal error occurred',
       [PushErrorCode.SYSTEM_ERROR]: 'A system error occurred',
+      [PushErrorCode.SYS_UNKNOWN_ERROR]: 'An unknown system error occurred',
+      [PushErrorCode.SYS_INTERNAL_ERROR]: 'An internal system error occurred',
       
       [PushErrorCode.QUEUE_FULL]: 'The upload queue is full',
       [PushErrorCode.QUEUE_ITEM_NOT_FOUND]: 'Queue item not found',
       [PushErrorCode.FILE_NOT_FOUND]: 'File not found',
+
+      [PushErrorCode.STOR_QUOTA_EXCEEDED]: 'Storage quota has been exceeded',
+      [PushErrorCode.STOR_UPLOAD_FAILED]: 'Failed to upload to storage',
     };
     
     return messages[this.code] || this.message;
@@ -205,15 +240,26 @@ export class PushError extends Error {
       [PushErrorCode.AUTH_REQUIRED]: 'Run "taptik auth login" to authenticate',
       [PushErrorCode.AUTH_EXPIRED]: 'Run "taptik auth login" to renew your session',
       [PushErrorCode.INSUFFICIENT_PERMISSIONS]: 'Contact your administrator for access',
+      [PushErrorCode.AUTH_NOT_AUTHENTICATED]: 'Run "taptik auth login" to authenticate',
+      [PushErrorCode.AUTH_INSUFFICIENT_PERMISSIONS]: 'Contact your administrator for access',
+      [PushErrorCode.AUTH_SESSION_EXPIRED]: 'Run "taptik auth login" to renew your session',
       
       [PushErrorCode.PACKAGE_TOO_LARGE]: 'Try reducing the package size or contact support',
       [PushErrorCode.INVALID_PACKAGE]: 'Ensure the file is a valid .taptik package',
+      [PushErrorCode.VAL_INVALID_FILE]: 'Ensure the file is valid and not corrupted',
+      [PushErrorCode.VAL_FILE_TOO_LARGE]: 'Try reducing the file size or contact support',
       
       [PushErrorCode.NETWORK_TIMEOUT]: 'Check your internet connection and try again',
+      [PushErrorCode.NET_TIMEOUT]: 'Check your internet connection and try again',
+      [PushErrorCode.NET_CONNECTION_FAILED]: 'Check your internet connection and try again',
+      [PushErrorCode.NET_RATE_LIMITED]: 'Wait a few minutes before trying again',
+      [PushErrorCode.NET_SERVICE_UNAVAILABLE]: 'Service is temporarily down, try again later',
       [PushErrorCode.RATE_LIMIT_EXCEEDED]: 'Wait a few minutes before trying again',
       
       [PushErrorCode.STORAGE_QUOTA_EXCEEDED]: 'Delete unused packages or upgrade your plan',
+      [PushErrorCode.STOR_QUOTA_EXCEEDED]: 'Delete unused packages or upgrade your plan',
       [PushErrorCode.UPLOAD_FAILED]: 'Try uploading again or contact support',
+      [PushErrorCode.STOR_UPLOAD_FAILED]: 'Try uploading again or contact support',
       
       [PushErrorCode.SENSITIVE_DATA_DETECTED]: 'Review and remove sensitive information',
     };

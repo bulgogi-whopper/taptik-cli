@@ -8,11 +8,76 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { OperationLockService } from './operation-lock.service';
 
+// Mock fs module
+vi.mock('fs/promises', () => ({
+  mkdir: vi.fn(),
+  readFile: vi.fn(),
+  writeFile: vi.fn(),
+  access: vi.fn(),
+  unlink: vi.fn(),
+  rm: vi.fn(),
+  readdir: vi.fn(),
+}));
+
 describe('OperationLockService', () => {
   let service: OperationLockService;
   let testDir: string;
+  let mockLockFiles: Record<string, any>;
 
   beforeEach(async () => {
+    // Reset mocks
+    vi.clearAllMocks();
+
+    // Set up mock implementations
+    const mockFs = vi.mocked(fs);
+    mockLockFiles = {};
+
+    // Mock mkdir to succeed
+    mockFs.mkdir.mockResolvedValue(undefined);
+
+    // Mock file operations
+    mockFs.readFile.mockImplementation(async (filePath: any) => {
+      const pathStr = filePath.toString();
+      const fileName = path.basename(pathStr);
+      
+      if (mockLockFiles[fileName]) {
+        return JSON.stringify(mockLockFiles[fileName]);
+      }
+      
+      throw new Error('ENOENT: no such file or directory');
+    });
+
+    mockFs.writeFile.mockImplementation(async (filePath: any, data: any) => {
+      const pathStr = filePath.toString();
+      const fileName = path.basename(pathStr);
+      mockLockFiles[fileName] = JSON.parse(data.toString());
+      return undefined;
+    });
+
+    mockFs.access.mockImplementation(async (filePath: any) => {
+      const pathStr = filePath.toString();
+      const fileName = path.basename(pathStr);
+      
+      if (!mockLockFiles[fileName]) {
+        throw new Error('ENOENT: no such file or directory');
+      }
+      
+      return undefined;
+    });
+
+    mockFs.unlink.mockImplementation(async (filePath: any) => {
+      const pathStr = filePath.toString();
+      const fileName = path.basename(pathStr);
+      delete mockLockFiles[fileName];
+      return undefined;
+    });
+
+    mockFs.readdir.mockImplementation(async () => {
+      return Object.keys(mockLockFiles) as any;
+    });
+
+    mockFs.rm.mockResolvedValue(undefined);
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [OperationLockService],
     }).compile();
@@ -22,24 +87,11 @@ describe('OperationLockService', () => {
     // Use test directory
     testDir = path.join(os.tmpdir(), 'taptik-test', 'locks');
     (service as any).lockDir = testDir;
-    
-    // Clean up test directory
-    try {
-      await fs.rm(testDir, { recursive: true, force: true });
-    } catch {
-      // Directory may not exist
-    }
-    
-    await fs.mkdir(testDir, { recursive: true });
   });
 
-  afterEach(async () => {
-    // Clean up test directory
-    try {
-      await fs.rm(testDir, { recursive: true, force: true });
-    } catch {
-      // Directory may not exist
-    }
+  afterEach(() => {
+    vi.clearAllMocks();
+    mockLockFiles = {};
   });
 
   describe('acquireLock', () => {
@@ -48,13 +100,11 @@ describe('OperationLockService', () => {
       
       expect(acquired).toBe(true);
       
-      const lockFile = path.join(testDir, 'upload_package-123.lock');
-      const content = await fs.readFile(lockFile, 'utf-8');
-      const lockInfo = JSON.parse(content);
-      
-      expect(lockInfo.operation).toBe('upload');
-      expect(lockInfo.userId).toBe('user-456');
-      expect(lockInfo.pid).toBe(process.pid);
+      const lockFileName = 'upload_package-123.lock';
+      expect(mockLockFiles[lockFileName]).toBeDefined();
+      expect(mockLockFiles[lockFileName].operation).toBe('upload');
+      expect(mockLockFiles[lockFileName].userId).toBe('user-456');
+      expect(mockLockFiles[lockFileName].pid).toBe(process.pid);
     });
 
     it('should fail to acquire lock when already locked', async () => {
@@ -96,16 +146,14 @@ describe('OperationLockService', () => {
         operation: 'upload',
       };
       
-      const lockFile = path.join(testDir, 'upload_package-123.lock');
-      await fs.writeFile(lockFile, JSON.stringify(expiredLock));
+      const lockFileName = 'upload_package-123.lock';
+      mockLockFiles[lockFileName] = expiredLock;
       
       // Should remove expired lock and acquire new one
       const acquired = await service.acquireLock('upload', 'package-123');
       expect(acquired).toBe(true);
       
-      const content = await fs.readFile(lockFile, 'utf-8');
-      const lockInfo = JSON.parse(content);
-      expect(lockInfo.pid).toBe(process.pid);
+      expect(mockLockFiles[lockFileName].pid).toBe(process.pid);
     });
   });
 
@@ -114,8 +162,8 @@ describe('OperationLockService', () => {
       await service.acquireLock('upload', 'package-123');
       await service.releaseLock('upload', 'package-123');
       
-      const lockFile = path.join(testDir, 'upload_package-123.lock');
-      await expect(fs.access(lockFile)).rejects.toThrow();
+      const lockFileName = 'upload_package-123.lock';
+      expect(mockLockFiles[lockFileName]).toBeUndefined();
     });
 
     it('should not release lock owned by different process', async () => {
@@ -126,13 +174,13 @@ describe('OperationLockService', () => {
         operation: 'upload',
       };
       
-      const lockFile = path.join(testDir, 'upload_package-123.lock');
-      await fs.writeFile(lockFile, JSON.stringify(lockInfo));
+      const lockFileName = 'upload_package-123.lock';
+      mockLockFiles[lockFileName] = lockInfo;
       
       await service.releaseLock('upload', 'package-123');
       
       // Lock should still exist
-      await expect(fs.access(lockFile)).resolves.not.toThrow();
+      expect(mockLockFiles[lockFileName]).toBeDefined();
     });
 
     it('should handle releasing non-existent lock', async () => {
@@ -163,15 +211,15 @@ describe('OperationLockService', () => {
         operation: 'upload',
       };
       
-      const lockFile = path.join(testDir, 'upload_package-123.lock');
-      await fs.writeFile(lockFile, JSON.stringify(expiredLock));
+      const lockFileName = 'upload_package-123.lock';
+      mockLockFiles[lockFileName] = expiredLock;
       
       const locked = await service.isLocked('upload', 'package-123');
       
       expect(locked).toBe(false);
       
       // Expired lock should be cleaned up
-      await expect(fs.access(lockFile)).rejects.toThrow();
+      expect(mockLockFiles[lockFileName]).toBeUndefined();
     });
   });
 
@@ -260,8 +308,8 @@ describe('OperationLockService', () => {
         operation: 'upload',
       };
       
-      const lockFile = path.join(testDir, 'upload_package-123.lock');
-      await fs.writeFile(lockFile, JSON.stringify(lockInfo));
+      const lockFileName = 'upload_package-123.lock';
+      mockLockFiles[lockFileName] = lockInfo;
       
       const callback = vi.fn().mockResolvedValue('result');
       
@@ -291,19 +339,19 @@ describe('OperationLockService', () => {
         operation: 'download',
       };
       
-      const expiredFile = path.join(testDir, 'upload_package-123.lock');
-      const activeFile = path.join(testDir, 'download_package-456.lock');
+      const expiredFileName = 'upload_package-123.lock';
+      const activeFileName = 'download_package-456.lock';
       
-      await fs.writeFile(expiredFile, JSON.stringify(expiredLock));
-      await fs.writeFile(activeFile, JSON.stringify(activeLock));
+      mockLockFiles[expiredFileName] = expiredLock;
+      mockLockFiles[activeFileName] = activeLock;
       
       await service.cleanupExpiredLocks();
       
       // Expired lock should be removed
-      await expect(fs.access(expiredFile)).rejects.toThrow();
+      expect(mockLockFiles[expiredFileName]).toBeUndefined();
       
       // Active lock should remain
-      await expect(fs.access(activeFile)).resolves.not.toThrow();
+      expect(mockLockFiles[activeFileName]).toBeDefined();
     });
   });
 
@@ -327,8 +375,8 @@ describe('OperationLockService', () => {
         operation: 'upload',
       };
       
-      const lockFile = path.join(testDir, 'upload_package-123.lock');
-      await fs.writeFile(lockFile, JSON.stringify(expiredLock));
+      const expiredFileName = 'upload_package-123.lock';
+      mockLockFiles[expiredFileName] = expiredLock;
       
       await service.acquireLock('download', 'package-456');
       
@@ -348,12 +396,12 @@ describe('OperationLockService', () => {
         operation: 'upload',
       };
       
-      const lockFile = path.join(testDir, 'upload_package-123.lock');
-      await fs.writeFile(lockFile, JSON.stringify(lockInfo));
+      const lockFileName = 'upload_package-123.lock';
+      mockLockFiles[lockFileName] = lockInfo;
       
       await service.forceReleaseLock('upload', 'package-123');
       
-      await expect(fs.access(lockFile)).rejects.toThrow();
+      expect(mockLockFiles[lockFileName]).toBeUndefined();
     });
   });
 });

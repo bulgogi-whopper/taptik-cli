@@ -1,20 +1,36 @@
-import { Test, TestingModule } from '@nestjs/testing';
-
 import chalk from 'chalk';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-import { AuthService } from '../../auth/auth.service';
 import { PackageMetadata } from '../interfaces';
-import { AnalyticsService } from '../services/analytics.service';
-import { PackageRegistryService } from '../services/package-registry.service';
 
 import { StatsCommand } from './stats.command';
 
+vi.mock('chalk', () => ({
+  default: {
+    red: vi.fn((text: string) => text),
+    green: vi.fn((text: string) => text),
+    yellow: vi.fn((text: string) => text),
+    cyan: vi.fn((text: string) => text),
+    blue: vi.fn((text: string) => text),
+    gray: vi.fn((text: string) => text),
+    white: vi.fn((text: string) => text),
+    bold: vi.fn((text: string) => text),
+  },
+  red: vi.fn((text: string) => text),
+  green: vi.fn((text: string) => text),
+  yellow: vi.fn((text: string) => text),
+  cyan: vi.fn((text: string) => text),
+  blue: vi.fn((text: string) => text),
+  gray: vi.fn((text: string) => text),
+  white: vi.fn((text: string) => text),
+  bold: vi.fn((text: string) => text),
+}));
+
 describe('StatsCommand', () => {
   let command: StatsCommand;
-  let authService: AuthService;
-  let packageRegistry: PackageRegistryService;
-  let analyticsService: AnalyticsService;
+  let mockAuthService: { getSession: any };
+  let mockPackageRegistry: { getPackageByConfigId: any; getPackageStats: any };
+  let mockAnalyticsService: { getAnalyticsSummary: any };
 
   const mockSession = {
     user: {
@@ -77,27 +93,22 @@ describe('StatsCommand', () => {
   };
 
   beforeEach(async () => {
-    authService = {
+    // Reset all mocks
+    vi.clearAllMocks();
+
+    mockAuthService = {
       getSession: vi.fn(),
-    } as any;
-    packageRegistry = {
+    };
+    mockPackageRegistry = {
       getPackageByConfigId: vi.fn(),
       getPackageStats: vi.fn(),
-    } as any;
-    analyticsService = {
+    };
+    mockAnalyticsService = {
       getPackageAnalytics: vi.fn(),
-    } as any;
+    };
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        StatsCommand,
-        { provide: AuthService, useValue: authService },
-        { provide: PackageRegistryService, useValue: packageRegistry },
-        { provide: AnalyticsService, useValue: analyticsService },
-      ],
-    }).compile();
-
-    command = module.get<StatsCommand>(StatsCommand);
+    // Directly instantiate the command with mocked services
+    command = new StatsCommand(mockAuthService as any, mockPackageRegistry as any, mockAnalyticsService as any);
     
     // Mock process.exit
     vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
@@ -109,42 +120,42 @@ describe('StatsCommand', () => {
 
   describe('run', () => {
     it('should display package statistics in table format', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
-      packageRegistry.getPackageStats.mockResolvedValue(mockStats);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
+      mockPackageRegistry.getPackageStats.mockResolvedValue(mockStats);
 
       await command.run(['config-1'], {});
 
-      expect(packageRegistry.getPackageStats).toHaveBeenCalledWith('config-1');
+      expect(mockPackageRegistry.getPackageStats).toHaveBeenCalledWith('config-1');
       expect(console.log).toHaveBeenCalledWith(
-        chalk.cyan('\\n📦 Package Information')
+        chalk.cyan('\n📦 Package Information')
       );
       expect(console.log).toHaveBeenCalledWith(
-        chalk.cyan('\\n📊 Statistics')
+        chalk.cyan('\n📊 Statistics')
       );
     });
 
     it('should display detailed analytics when --detailed flag is used', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
-      packageRegistry.getPackageStats.mockResolvedValue(mockStats);
-      analyticsService.getPackageAnalytics.mockResolvedValue(mockAnalytics);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
+      mockPackageRegistry.getPackageStats.mockResolvedValue(mockStats);
+      mockAnalyticsService.getPackageAnalytics.mockResolvedValue(mockAnalytics);
 
       await command.run(['config-1'], { detailed: true });
 
-      expect(analyticsService.getPackageAnalytics).toHaveBeenCalledWith('config-1');
+      expect(mockAnalyticsService.getPackageAnalytics).toHaveBeenCalledWith('config-1');
       expect(console.log).toHaveBeenCalledWith(
-        chalk.cyan('\\n📈 Analytics (Last 30 Days)')
+        chalk.cyan('\n📈 Analytics (Last 30 Days)')
       );
       expect(console.log).toHaveBeenCalledWith(
-        chalk.cyan('\\n🌍 Geographic Distribution')
+        chalk.cyan('\n🌍 Geographic Distribution')
       );
     });
 
     it('should output JSON format when specified', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
-      packageRegistry.getPackageStats.mockResolvedValue(mockStats);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
+      mockPackageRegistry.getPackageStats.mockResolvedValue(mockStats);
 
       await command.run(['config-1'], { format: 'json' });
 
@@ -154,9 +165,9 @@ describe('StatsCommand', () => {
     });
 
     it('should output simple format when specified', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
-      packageRegistry.getPackageStats.mockResolvedValue(mockStats);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
+      mockPackageRegistry.getPackageStats.mockResolvedValue(mockStats);
 
       await command.run(['config-1'], { format: 'simple' });
 
@@ -164,34 +175,34 @@ describe('StatsCommand', () => {
     });
 
     it('should display insights based on statistics', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
-      packageRegistry.getPackageStats.mockResolvedValue(mockStats);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
+      mockPackageRegistry.getPackageStats.mockResolvedValue(mockStats);
 
       await command.run(['config-1'], {});
 
       expect(console.log).toHaveBeenCalledWith(
-        chalk.cyan('\\n💡 Insights')
+        chalk.cyan('\n💡 Insights')
       );
     });
 
     it('should allow viewing stats for public packages by other users', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue({
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue({
         ...mockPackage,
         userId: 'other-user-id',
         isPublic: true,
       });
-      packageRegistry.getPackageStats.mockResolvedValue(mockStats);
+      mockPackageRegistry.getPackageStats.mockResolvedValue(mockStats);
 
       await command.run(['config-1'], {});
 
-      expect(packageRegistry.getPackageStats).toHaveBeenCalled();
+      expect(mockPackageRegistry.getPackageStats).toHaveBeenCalled();
     });
 
     it('should deny viewing stats for private packages by other users', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue({
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue({
         ...mockPackage,
         userId: 'other-user-id',
         isPublic: false,
@@ -203,8 +214,8 @@ describe('StatsCommand', () => {
     });
 
     it('should fail when package not found', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(null);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(null);
 
       await command.run(['config-1'], {});
 
@@ -212,7 +223,7 @@ describe('StatsCommand', () => {
     });
 
     it('should fail when not authenticated', async () => {
-      authService.getSession.mockResolvedValue(null);
+      mockAuthService.getSession.mockResolvedValue(null);
 
       await command.run(['config-1'], {});
 
@@ -220,7 +231,7 @@ describe('StatsCommand', () => {
     });
 
     it('should fail when no config ID provided', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
 
       await command.run([], {});
 
@@ -228,8 +239,8 @@ describe('StatsCommand', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockRejectedValue(
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockRejectedValue(
         new Error('Network error')
       );
 

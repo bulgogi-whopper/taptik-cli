@@ -1,12 +1,8 @@
-import { Test, TestingModule } from '@nestjs/testing';
-
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-import { AuthService } from '../../auth/auth.service';
 import { PackageMetadata } from '../interfaces';
-import { PackageRegistryService } from '../services/package-registry.service';
 
 import { UpdateCommand } from './update.command';
 
@@ -16,10 +12,31 @@ vi.mock('inquirer', () => ({
   },
 }));
 
+vi.mock('chalk', () => ({
+  default: {
+    red: vi.fn((text: string) => text),
+    green: vi.fn((text: string) => text),
+    yellow: vi.fn((text: string) => text),
+    cyan: vi.fn((text: string) => text),
+    blue: vi.fn((text: string) => text),
+    gray: vi.fn((text: string) => text),
+    white: vi.fn((text: string) => text),
+    bold: vi.fn((text: string) => text),
+  },
+  red: vi.fn((text: string) => text),
+  green: vi.fn((text: string) => text),
+  yellow: vi.fn((text: string) => text),
+  cyan: vi.fn((text: string) => text),
+  blue: vi.fn((text: string) => text),
+  gray: vi.fn((text: string) => text),
+  white: vi.fn((text: string) => text),
+  bold: vi.fn((text: string) => text),
+}));
+
 describe('UpdateCommand', () => {
   let command: UpdateCommand;
-  let authService: AuthService;
-  let packageRegistry: PackageRegistryService;
+  let mockAuthService: { getSession: any };
+  let mockPackageRegistry: { getPackageByConfigId: any; updatePackage: any };
 
   const mockSession = {
     user: {
@@ -55,23 +72,19 @@ describe('UpdateCommand', () => {
   };
 
   beforeEach(async () => {
-    authService = {
+    // Reset all mocks
+    vi.clearAllMocks();
+
+    mockAuthService = {
       getSession: vi.fn(),
-    } as any;
-    packageRegistry = {
+    };
+    mockPackageRegistry = {
       getPackageByConfigId: vi.fn(),
       updatePackage: vi.fn(),
-    } as any;
+    };
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        UpdateCommand,
-        { provide: AuthService, useValue: authService },
-        { provide: PackageRegistryService, useValue: packageRegistry },
-      ],
-    }).compile();
-
-    command = module.get<UpdateCommand>(UpdateCommand);
+    // Directly instantiate the command with mocked services
+    command = new UpdateCommand(mockAuthService as any, mockPackageRegistry as any);
     
     // Mock process.exit
     vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
@@ -86,9 +99,9 @@ describe('UpdateCommand', () => {
 
   describe('run', () => {
     it('should update package title when specified', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
-      packageRegistry.updatePackage.mockResolvedValue({
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
+      mockPackageRegistry.updatePackage.mockResolvedValue({
         ...mockPackage,
         title: 'New Title',
       });
@@ -96,7 +109,7 @@ describe('UpdateCommand', () => {
 
       await command.run(['config-1'], { title: 'New Title' });
 
-      expect(packageRegistry.updatePackage).toHaveBeenCalledWith(
+      expect(mockPackageRegistry.updatePackage).toHaveBeenCalledWith(
         'config-1',
         { title: 'New Title' }
       );
@@ -106,9 +119,9 @@ describe('UpdateCommand', () => {
     });
 
     it('should update package description when specified', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
-      packageRegistry.updatePackage.mockResolvedValue({
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
+      mockPackageRegistry.updatePackage.mockResolvedValue({
         ...mockPackage,
         description: 'New description',
       });
@@ -116,16 +129,16 @@ describe('UpdateCommand', () => {
 
       await command.run(['config-1'], { description: 'New description' });
 
-      expect(packageRegistry.updatePackage).toHaveBeenCalledWith(
+      expect(mockPackageRegistry.updatePackage).toHaveBeenCalledWith(
         'config-1',
         { description: 'New description' }
       );
     });
 
     it('should update package tags when specified', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
-      packageRegistry.updatePackage.mockResolvedValue({
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
+      mockPackageRegistry.updatePackage.mockResolvedValue({
         ...mockPackage,
         userTags: ['new', 'tags'],
       });
@@ -133,16 +146,16 @@ describe('UpdateCommand', () => {
 
       await command.run(['config-1'], { tags: 'new, tags' });
 
-      expect(packageRegistry.updatePackage).toHaveBeenCalledWith(
+      expect(mockPackageRegistry.updatePackage).toHaveBeenCalledWith(
         'config-1',
         { userTags: ['new', 'tags'] }
       );
     });
 
     it('should prompt for updates when no options provided', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
-      packageRegistry.updatePackage.mockResolvedValue({
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
+      mockPackageRegistry.updatePackage.mockResolvedValue({
         ...mockPackage,
         title: 'Interactive Title',
       });
@@ -158,16 +171,16 @@ describe('UpdateCommand', () => {
       await command.run(['config-1'], {});
 
       expect(inquirer.prompt).toHaveBeenCalledTimes(2);
-      expect(packageRegistry.updatePackage).toHaveBeenCalledWith(
+      expect(mockPackageRegistry.updatePackage).toHaveBeenCalledWith(
         'config-1',
         { title: 'Interactive Title' }
       );
     });
 
     it('should skip confirmation when --yes flag is provided', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
-      packageRegistry.updatePackage.mockResolvedValue({
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
+      mockPackageRegistry.updatePackage.mockResolvedValue({
         ...mockPackage,
         title: 'New Title',
       });
@@ -175,37 +188,37 @@ describe('UpdateCommand', () => {
       await command.run(['config-1'], { title: 'New Title', yes: true });
 
       expect(inquirer.prompt).not.toHaveBeenCalled();
-      expect(packageRegistry.updatePackage).toHaveBeenCalled();
+      expect(mockPackageRegistry.updatePackage).toHaveBeenCalled();
     });
 
     it('should cancel update when user declines confirmation', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
       vi.mocked(inquirer.prompt).mockResolvedValue({ confirm: false });
 
       await command.run(['config-1'], { title: 'New Title' });
 
-      expect(packageRegistry.updatePackage).not.toHaveBeenCalled();
+      expect(mockPackageRegistry.updatePackage).not.toHaveBeenCalled();
       expect(console.log).toHaveBeenCalledWith(
         chalk.gray('Update cancelled')
       );
     });
 
     it('should show no changes message when nothing to update', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
 
       await command.run(['config-1'], { title: mockPackage.title });
 
       expect(console.log).toHaveBeenCalledWith(
-        chalk.yellow('No changes to apply')
+        'No changes to apply'
       );
-      expect(packageRegistry.updatePackage).not.toHaveBeenCalled();
+      expect(mockPackageRegistry.updatePackage).not.toHaveBeenCalled();
     });
 
     it('should fail when package not found', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(null);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(null);
 
       await command.run(['config-1'], { title: 'New Title' });
 
@@ -213,8 +226,8 @@ describe('UpdateCommand', () => {
     });
 
     it('should fail when user does not own the package', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue({
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue({
         ...mockPackage,
         userId: 'other-user-id',
       });
@@ -225,7 +238,7 @@ describe('UpdateCommand', () => {
     });
 
     it('should fail when not authenticated', async () => {
-      authService.getSession.mockResolvedValue(null);
+      mockAuthService.getSession.mockResolvedValue(null);
 
       await command.run(['config-1'], { title: 'New Title' });
 
@@ -233,7 +246,7 @@ describe('UpdateCommand', () => {
     });
 
     it('should fail when no config ID provided', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
 
       await command.run([], { title: 'New Title' });
 
@@ -241,8 +254,8 @@ describe('UpdateCommand', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockRejectedValue(
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockRejectedValue(
         new Error('Network error')
       );
 

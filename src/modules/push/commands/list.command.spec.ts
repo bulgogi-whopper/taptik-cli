@@ -1,18 +1,35 @@
-import { Test, TestingModule } from '@nestjs/testing';
-
 import chalk from 'chalk';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-import { AuthService } from '../../auth/auth.service';
 import { PackageMetadata } from '../interfaces';
-import { PackageRegistryService } from '../services/package-registry.service';
 
 import { ListCommand } from './list.command';
 
+vi.mock('chalk', () => ({
+  default: {
+    red: vi.fn((text: string) => text),
+    green: vi.fn((text: string) => text),
+    yellow: vi.fn((text: string) => text),
+    cyan: vi.fn((text: string) => text),
+    blue: vi.fn((text: string) => text),
+    gray: vi.fn((text: string) => text),
+    white: vi.fn((text: string) => text),
+    bold: vi.fn((text: string) => text),
+  },
+  red: vi.fn((text: string) => text),
+  green: vi.fn((text: string) => text),
+  yellow: vi.fn((text: string) => text),
+  cyan: vi.fn((text: string) => text),
+  blue: vi.fn((text: string) => text),
+  gray: vi.fn((text: string) => text),
+  white: vi.fn((text: string) => text),
+  bold: vi.fn((text: string) => text),
+}));
+
 describe('ListCommand', () => {
   let command: ListCommand;
-  let authService: AuthService;
-  let packageRegistry: PackageRegistryService;
+  let mockAuthService: { getSession: any };
+  let mockPackageRegistry: { listUserPackages: any };
 
   const mockSession = {
     user: {
@@ -70,22 +87,18 @@ describe('ListCommand', () => {
   ];
 
   beforeEach(async () => {
-    authService = {
+    // Reset all mocks
+    vi.clearAllMocks();
+
+    mockAuthService = {
       getSession: vi.fn(),
-    } as any;
-    packageRegistry = {
+    };
+    mockPackageRegistry = {
       listUserPackages: vi.fn(),
-    } as any;
+    };
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        ListCommand,
-        { provide: AuthService, useValue: authService },
-        { provide: PackageRegistryService, useValue: packageRegistry },
-      ],
-    }).compile();
-
-    command = module.get<ListCommand>(ListCommand);
+    // Directly instantiate the command with mocked services
+    command = new ListCommand(mockAuthService as any, mockPackageRegistry as any);
     
     // Mock process.exit
     vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
@@ -97,13 +110,13 @@ describe('ListCommand', () => {
 
   describe('run', () => {
     it('should list packages in table format by default', async () => {
-      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
-      vi.mocked(packageRegistry.listUserPackages).mockResolvedValue(mockPackages);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.listUserPackages.mockResolvedValue(mockPackages);
 
       await command.run([], {});
 
-      expect(authService.getSession).toHaveBeenCalled();
-      expect(packageRegistry.listUserPackages).toHaveBeenCalledWith(
+      expect(mockAuthService.getSession).toHaveBeenCalled();
+      expect(mockPackageRegistry.listUserPackages).toHaveBeenCalledWith(
         'test-user-id',
         {}
       );
@@ -111,32 +124,32 @@ describe('ListCommand', () => {
     });
 
     it('should filter by platform when specified', async () => {
-      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
-      vi.mocked(packageRegistry.listUserPackages).mockResolvedValue([mockPackages[0]]);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.listUserPackages.mockResolvedValue([mockPackages[0]]);
 
       await command.run([], { platform: 'claude-code' });
 
-      expect(packageRegistry.listUserPackages).toHaveBeenCalledWith(
+      expect(mockPackageRegistry.listUserPackages).toHaveBeenCalledWith(
         'test-user-id',
         { platform: 'claude-code' }
       );
     });
 
     it('should filter by visibility when specified', async () => {
-      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
-      vi.mocked(packageRegistry.listUserPackages).mockResolvedValue([mockPackages[0]]);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.listUserPackages.mockResolvedValue([mockPackages[0]]);
 
       await command.run([], { visibility: 'public' });
 
-      expect(packageRegistry.listUserPackages).toHaveBeenCalledWith(
+      expect(mockPackageRegistry.listUserPackages).toHaveBeenCalledWith(
         'test-user-id',
         { isPublic: true }
       );
     });
 
     it('should output JSON format when specified', async () => {
-      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
-      vi.mocked(packageRegistry.listUserPackages).mockResolvedValue(mockPackages);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.listUserPackages.mockResolvedValue(mockPackages);
 
       await command.run([], { format: 'json' });
 
@@ -146,8 +159,8 @@ describe('ListCommand', () => {
     });
 
     it('should output simple format when specified', async () => {
-      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
-      vi.mocked(packageRegistry.listUserPackages).mockResolvedValue(mockPackages);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.listUserPackages.mockResolvedValue(mockPackages);
 
       await command.run([], { format: 'simple' });
 
@@ -155,8 +168,8 @@ describe('ListCommand', () => {
     });
 
     it('should sort packages by created date by default', async () => {
-      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
-      vi.mocked(packageRegistry.listUserPackages).mockResolvedValue(mockPackages);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.listUserPackages.mockResolvedValue(mockPackages);
 
       await command.run([], { sortBy: 'created' });
 
@@ -164,8 +177,8 @@ describe('ListCommand', () => {
     });
 
     it('should sort packages by name when specified', async () => {
-      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
-      vi.mocked(packageRegistry.listUserPackages).mockResolvedValue(mockPackages);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.listUserPackages.mockResolvedValue(mockPackages);
 
       await command.run([], { sortBy: 'name' });
 
@@ -173,8 +186,8 @@ describe('ListCommand', () => {
     });
 
     it('should limit results when specified', async () => {
-      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
-      vi.mocked(packageRegistry.listUserPackages).mockResolvedValue(mockPackages);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.listUserPackages.mockResolvedValue(mockPackages);
 
       await command.run([], { limit: 1 });
 
@@ -182,8 +195,8 @@ describe('ListCommand', () => {
     });
 
     it('should show message when no packages found', async () => {
-      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
-      vi.mocked(packageRegistry.listUserPackages).mockResolvedValue([]);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.listUserPackages.mockResolvedValue([]);
 
       await command.run([], {});
 
@@ -193,7 +206,7 @@ describe('ListCommand', () => {
     });
 
     it('should fail when not authenticated', async () => {
-      vi.mocked(authService.getSession).mockResolvedValue(null);
+      mockAuthService.getSession.mockResolvedValue(null);
 
       await command.run([], {});
 
@@ -201,8 +214,8 @@ describe('ListCommand', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
-      vi.mocked(packageRegistry.listUserPackages).mockRejectedValue(
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.listUserPackages.mockRejectedValue(
         new Error('Network error')
       );
 

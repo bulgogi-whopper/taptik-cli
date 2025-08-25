@@ -1,6 +1,7 @@
 import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
+import * as crypto from 'crypto';
 
 import { Test, TestingModule } from '@nestjs/testing';
 
@@ -8,11 +9,90 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { SecureStorageService } from './secure-storage.service';
 
+// Mock fs module
+vi.mock('fs/promises', () => ({
+  mkdir: vi.fn(),
+  chmod: vi.fn(),
+  readFile: vi.fn(),
+  writeFile: vi.fn(),
+  unlink: vi.fn(),
+  access: vi.fn(),
+  rm: vi.fn(),
+  readdir: vi.fn(),
+  stat: vi.fn(),
+}));
+
 describe('SecureStorageService', () => {
   let service: SecureStorageService;
   let testDir: string;
+  let mockCredentials: Record<string, any>;
 
   beforeEach(async () => {
+    // Reset mocks
+    vi.clearAllMocks();
+
+    // Set up mock implementations
+    const mockFs = vi.mocked(fs);
+    mockCredentials = {};
+
+    // Mock mkdir to succeed
+    mockFs.mkdir.mockResolvedValue(undefined);
+    mockFs.chmod.mockResolvedValue(undefined);
+    
+    // Mock file operations
+    mockFs.readFile.mockImplementation(async (filePath: any, encoding?: any) => {
+      const pathStr = filePath.toString();
+      
+      // Mock encryption key
+      if (pathStr.endsWith('.key')) {
+        return Buffer.from('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef', 'hex');
+      }
+      
+      // Mock credential files
+      if (pathStr.endsWith('.json')) {
+        const namespace = path.basename(pathStr, '.json');
+        if (mockCredentials[namespace]) {
+          return JSON.stringify(mockCredentials[namespace]);
+        }
+        throw new Error('ENOENT: no such file or directory');
+      }
+      
+      throw new Error('ENOENT: no such file or directory');
+    });
+
+    mockFs.writeFile.mockImplementation(async (filePath: any, data: any) => {
+      const pathStr = filePath.toString();
+      
+      if (pathStr.endsWith('.json')) {
+        const namespace = path.basename(pathStr, '.json');
+        mockCredentials[namespace] = JSON.parse(data.toString());
+      }
+      
+      return undefined;
+    });
+
+    mockFs.unlink.mockImplementation(async (filePath: any) => {
+      const pathStr = filePath.toString();
+      const namespace = path.basename(pathStr, '.json');
+      delete mockCredentials[namespace];
+      return undefined;
+    });
+
+    mockFs.access.mockImplementation(async (filePath: any) => {
+      const pathStr = filePath.toString();
+      const namespace = path.basename(pathStr, '.json');
+      if (!mockCredentials[namespace]) {
+        throw new Error('ENOENT: no such file or directory');
+      }
+      return undefined;
+    });
+
+    mockFs.readdir.mockResolvedValue(['test-namespace.json'] as any);
+
+    mockFs.stat.mockResolvedValue({
+      mode: 0o100600, // Regular file with 600 permissions
+    } as any);
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [SecureStorageService],
     }).compile();
@@ -22,24 +102,15 @@ describe('SecureStorageService', () => {
     // Use test directory
     testDir = path.join(os.tmpdir(), 'taptik-test', 'secure');
     (service as any).storageDir = testDir;
-    
-    // Clean up test directory
-    try {
-      await fs.rm(testDir, { recursive: true, force: true });
-    } catch {
-      // Directory may not exist
-    }
-    
-    await fs.mkdir(testDir, { recursive: true });
+
+    // Mock the getEncryptionKey method to return a valid 32-byte key
+    const mockKey = Buffer.from('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef', 'hex');
+    vi.spyOn(service as any, 'getEncryptionKey').mockResolvedValue(mockKey);
   });
 
-  afterEach(async () => {
-    // Clean up test directory
-    try {
-      await fs.rm(testDir, { recursive: true, force: true });
-    } catch {
-      // Directory may not exist
-    }
+  afterEach(() => {
+    vi.clearAllMocks();
+    mockCredentials = {};
   });
 
   describe('storeCredential', () => {

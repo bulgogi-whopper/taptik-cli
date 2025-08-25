@@ -49,7 +49,7 @@ export class ErrorRecoveryService {
         
         const pushError = this.wrapError(error, operationName, attempt);
         
-        if (!pushError.isRetryable || attempt === retryOptions.maxAttempts) {
+        if (!pushError.retryable || attempt === retryOptions.maxAttempts) {
           this.logger.error(`Operation ${operationName} failed after ${attempt} attempts`, pushError);
           throw pushError;
         }
@@ -202,7 +202,7 @@ export class ErrorRecoveryService {
       return false;
     }
     
-    if (!state.lastError.isRetryable) {
+    if (!state.lastError.retryable) {
       return false;
     }
     
@@ -253,7 +253,7 @@ export class ErrorRecoveryService {
       code: error.code,
       message: error.userMessage,
       context: sanitizedContext,
-      isRetryable: error.isRetryable,
+      isRetryable: error.retryable,
       remediation: error.remediation,
       ...(includeStack && { stack: error.stack }),
     });

@@ -1,12 +1,8 @@
-import { Test, TestingModule } from '@nestjs/testing';
-
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-import { AuthService } from '../../auth/auth.service';
 import { PackageMetadata } from '../interfaces';
-import { PackageRegistryService } from '../services/package-registry.service';
 
 import { DeleteCommand } from './delete.command';
 
@@ -16,10 +12,31 @@ vi.mock('inquirer', () => ({
   },
 }));
 
+vi.mock('chalk', () => ({
+  default: {
+    red: vi.fn((text: string) => text),
+    green: vi.fn((text: string) => text),
+    yellow: vi.fn((text: string) => text),
+    cyan: vi.fn((text: string) => text),
+    blue: vi.fn((text: string) => text),
+    gray: vi.fn((text: string) => text),
+    white: vi.fn((text: string) => text),
+    bold: vi.fn((text: string) => text),
+  },
+  red: vi.fn((text: string) => text),
+  green: vi.fn((text: string) => text),
+  yellow: vi.fn((text: string) => text),
+  cyan: vi.fn((text: string) => text),
+  blue: vi.fn((text: string) => text),
+  gray: vi.fn((text: string) => text),
+  white: vi.fn((text: string) => text),
+  bold: vi.fn((text: string) => text),
+}));
+
 describe('DeleteCommand', () => {
   let command: DeleteCommand;
-  let authService: AuthService;
-  let packageRegistry: PackageRegistryService;
+  let mockAuthService: { getSession: any };
+  let mockPackageRegistry: { getPackageByConfigId: any; deletePackage: any };
 
   const mockSession = {
     user: {
@@ -55,23 +72,19 @@ describe('DeleteCommand', () => {
   };
 
   beforeEach(async () => {
-    authService = {
+    // Reset all mocks
+    vi.clearAllMocks();
+
+    mockAuthService = {
       getSession: vi.fn(),
-    } as any;
-    packageRegistry = {
+    };
+    mockPackageRegistry = {
       getPackageByConfigId: vi.fn(),
       deletePackage: vi.fn(),
-    } as any;
+    };
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        DeleteCommand,
-        { provide: AuthService, useValue: authService },
-        { provide: PackageRegistryService, useValue: packageRegistry },
-      ],
-    }).compile();
-
-    command = module.get<DeleteCommand>(DeleteCommand);
+    // Directly instantiate the command with mocked services
+    command = new DeleteCommand(mockAuthService as any, mockPackageRegistry as any);
     
     // Mock process.exit
     vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
@@ -86,23 +99,23 @@ describe('DeleteCommand', () => {
 
   describe('run', () => {
     it('should delete package with confirmation', async () => {
-      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
-      vi.mocked(packageRegistry.getPackageByConfigId).mockResolvedValue(mockPackage);
-      vi.mocked(packageRegistry.deletePackage).mockResolvedValue(undefined);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
+      mockPackageRegistry.deletePackage.mockResolvedValue(undefined);
       vi.mocked(inquirer.prompt).mockResolvedValue({ confirmText: 'DELETE' });
 
       await command.run(['config-1'], {});
 
-      expect(packageRegistry.deletePackage).toHaveBeenCalledWith('config-1');
+      expect(mockPackageRegistry.deletePackage).toHaveBeenCalledWith('config-1');
       expect(console.log).toHaveBeenCalledWith(
         chalk.green('✅ Package deleted successfully!')
       );
     });
 
     it('should delete package with --yes flag', async () => {
-      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
-      vi.mocked(packageRegistry.getPackageByConfigId).mockResolvedValue(mockPackage);
-      vi.mocked(packageRegistry.deletePackage).mockResolvedValue(undefined);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
+      mockPackageRegistry.deletePackage.mockResolvedValue(undefined);
       vi.mocked(inquirer.prompt).mockResolvedValue({ confirm: true });
 
       await command.run(['config-1'], { yes: true });
@@ -114,23 +127,23 @@ describe('DeleteCommand', () => {
           message: 'Are you sure you want to delete this package?',
         }),
       ]);
-      expect(packageRegistry.deletePackage).toHaveBeenCalled();
+      expect(mockPackageRegistry.deletePackage).toHaveBeenCalled();
     });
 
     it('should delete package with --force flag without prompts', async () => {
-      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
-      vi.mocked(packageRegistry.getPackageByConfigId).mockResolvedValue(mockPackage);
-      vi.mocked(packageRegistry.deletePackage).mockResolvedValue(undefined);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
+      mockPackageRegistry.deletePackage.mockResolvedValue(undefined);
 
       await command.run(['config-1'], { force: true });
 
       expect(inquirer.prompt).not.toHaveBeenCalled();
-      expect(packageRegistry.deletePackage).toHaveBeenCalledWith('config-1');
+      expect(mockPackageRegistry.deletePackage).toHaveBeenCalledWith('config-1');
     });
 
     it('should show warning for public packages', async () => {
-      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
-      vi.mocked(packageRegistry.getPackageByConfigId).mockResolvedValue({
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue({
         ...mockPackage,
         isPublic: true,
       });
@@ -139,39 +152,39 @@ describe('DeleteCommand', () => {
       await command.run(['config-1'], {});
 
       expect(console.log).toHaveBeenCalledWith(
-        chalk.yellow('\\n⚠️  This is a public package that may be used by others')
+        chalk.yellow('\n⚠️  This is a public package that may be used by others')
       );
     });
 
     it('should cancel deletion when confirmation text is wrong', async () => {
-      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
-      vi.mocked(packageRegistry.getPackageByConfigId).mockResolvedValue(mockPackage);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
       vi.mocked(inquirer.prompt).mockResolvedValue({ confirmText: 'wrong' });
 
       await command.run(['config-1'], {});
 
-      expect(packageRegistry.deletePackage).not.toHaveBeenCalled();
+      expect(mockPackageRegistry.deletePackage).not.toHaveBeenCalled();
       expect(console.log).toHaveBeenCalledWith(
         chalk.gray('Deletion cancelled')
       );
     });
 
     it('should cancel deletion when user declines with --yes flag', async () => {
-      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
-      vi.mocked(packageRegistry.getPackageByConfigId).mockResolvedValue(mockPackage);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(mockPackage);
       vi.mocked(inquirer.prompt).mockResolvedValue({ confirm: false });
 
       await command.run(['config-1'], { yes: true });
 
-      expect(packageRegistry.deletePackage).not.toHaveBeenCalled();
+      expect(mockPackageRegistry.deletePackage).not.toHaveBeenCalled();
       expect(console.log).toHaveBeenCalledWith(
         chalk.gray('Deletion cancelled')
       );
     });
 
     it('should fail when package not found', async () => {
-      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
-      vi.mocked(packageRegistry.getPackageByConfigId).mockResolvedValue(null);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(null);
 
       await command.run(['config-1'], {});
 
@@ -179,8 +192,8 @@ describe('DeleteCommand', () => {
     });
 
     it('should fail when user does not own the package', async () => {
-      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
-      vi.mocked(packageRegistry.getPackageByConfigId).mockResolvedValue({
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue({
         ...mockPackage,
         userId: 'other-user-id',
       });
@@ -191,7 +204,7 @@ describe('DeleteCommand', () => {
     });
 
     it('should fail when not authenticated', async () => {
-      vi.mocked(authService.getSession).mockResolvedValue(null);
+      mockAuthService.getSession.mockResolvedValue(null);
 
       await command.run(['config-1'], {});
 
@@ -199,7 +212,7 @@ describe('DeleteCommand', () => {
     });
 
     it('should fail when no config ID provided', async () => {
-      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
 
       await command.run([], {});
 
@@ -207,8 +220,8 @@ describe('DeleteCommand', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      vi.mocked(authService.getSession).mockResolvedValue(mockSession);
-      vi.mocked(packageRegistry.getPackageByConfigId).mockRejectedValue(
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockRejectedValue(
         new Error('Network error')
       );
 

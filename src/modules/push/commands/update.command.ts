@@ -99,6 +99,9 @@ export class UpdateCommand extends CommandRunner {
       const updates: { title?: string; description?: string; userTags?: string[]; } = {};
       let hasUpdates = false;
 
+      // Check if any CLI options were provided
+      const hasCliOptions = options.title !== undefined || options.description !== undefined || options.tags !== undefined;
+
       if (options.title && options.title !== existingPackage.title) {
         updates.title = options.title;
         hasUpdates = true;
@@ -117,7 +120,7 @@ export class UpdateCommand extends CommandRunner {
         }
       }
 
-      if (!hasUpdates) {
+      if (!hasUpdates && !hasCliOptions) {
         // Interactive mode if no options provided
         const answers = await this.promptForUpdates(existingPackage);
         

@@ -178,18 +178,40 @@ describe('ErrorRecoveryService', () => {
 
     it('should return custom suggestion for specific errors', () => {
       const error = new PushError(PushErrorCode.NET_CONNECTION_FAILED, 'Connection failed');
-      error.remediation = undefined; // Clear default remediation
+      // Create a new error without remediation to test custom suggestions
+      const errorWithoutRemediation = new PushError(
+        PushErrorCode.NET_CONNECTION_FAILED, 
+        'Connection failed',
+        {},
+        undefined
+      );
+      // Override the remediation getter to return undefined
+      Object.defineProperty(errorWithoutRemediation, 'remediation', {
+        get: () => undefined,
+        configurable: true
+      });
       
-      const suggestion = service.generateRecoverySuggestion(error);
+      const suggestion = service.generateRecoverySuggestion(errorWithoutRemediation);
       
       expect(suggestion).toContain('internet connection');
     });
 
     it('should return default suggestion for unknown errors', () => {
       const error = new PushError(PushErrorCode.SYS_UNKNOWN_ERROR, 'Unknown error');
-      error.remediation = undefined;
+      // Create a new error without remediation to test default suggestions
+      const errorWithoutRemediation = new PushError(
+        PushErrorCode.SYS_UNKNOWN_ERROR, 
+        'Unknown error',
+        {},
+        undefined
+      );
+      // Override the remediation getter to return undefined
+      Object.defineProperty(errorWithoutRemediation, 'remediation', {
+        get: () => undefined,
+        configurable: true
+      });
       
-      const suggestion = service.generateRecoverySuggestion(error);
+      const suggestion = service.generateRecoverySuggestion(errorWithoutRemediation);
       
       expect(suggestion).toContain('try again later');
     });

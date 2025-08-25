@@ -1,12 +1,8 @@
-import { Test, TestingModule } from '@nestjs/testing';
-
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-import { AuthService } from '../../auth/auth.service';
 import { PackageMetadata } from '../interfaces';
-import { PackageRegistryService } from '../services/package-registry.service';
 
 import { VisibilityCommand } from './visibility.command';
 
@@ -16,10 +12,31 @@ vi.mock('inquirer', () => ({
   },
 }));
 
+vi.mock('chalk', () => ({
+  default: {
+    red: vi.fn((text: string) => text),
+    green: vi.fn((text: string) => text),
+    yellow: vi.fn((text: string) => text),
+    cyan: vi.fn((text: string) => text),
+    blue: vi.fn((text: string) => text),
+    gray: vi.fn((text: string) => text),
+    white: vi.fn((text: string) => text),
+    bold: vi.fn((text: string) => text),
+  },
+  red: vi.fn((text: string) => text),
+  green: vi.fn((text: string) => text),
+  yellow: vi.fn((text: string) => text),
+  cyan: vi.fn((text: string) => text),
+  blue: vi.fn((text: string) => text),
+  gray: vi.fn((text: string) => text),
+  white: vi.fn((text: string) => text),
+  bold: vi.fn((text: string) => text),
+}));
+
 describe('VisibilityCommand', () => {
   let command: VisibilityCommand;
-  let authService: AuthService;
-  let packageRegistry: PackageRegistryService;
+  let mockAuthService: { getSession: any };
+  let mockPackageRegistry: { getPackageByConfigId: any; updatePackageVisibility: any };
 
   const mockSession = {
     user: {
@@ -60,23 +77,19 @@ describe('VisibilityCommand', () => {
   };
 
   beforeEach(async () => {
-    authService = {
+    // Reset all mocks
+    vi.clearAllMocks();
+
+    mockAuthService = {
       getSession: vi.fn(),
-    } as any;
-    packageRegistry = {
+    };
+    mockPackageRegistry = {
       getPackageByConfigId: vi.fn(),
       updatePackageVisibility: vi.fn(),
-    } as any;
+    };
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        VisibilityCommand,
-        { provide: AuthService, useValue: authService },
-        { provide: PackageRegistryService, useValue: packageRegistry },
-      ],
-    }).compile();
-
-    command = module.get<VisibilityCommand>(VisibilityCommand);
+    // Directly instantiate the command with mocked services
+    command = new VisibilityCommand(mockAuthService as any, mockPackageRegistry as any);
     
     // Mock process.exit
     vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
@@ -91,14 +104,14 @@ describe('VisibilityCommand', () => {
 
   describe('run', () => {
     it('should make package public when --public flag is used', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(mockPrivatePackage);
-      packageRegistry.updatePackageVisibility.mockResolvedValue(mockPublicPackage);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(mockPrivatePackage);
+      mockPackageRegistry.updatePackageVisibility.mockResolvedValue(mockPublicPackage);
       vi.mocked(inquirer.prompt).mockResolvedValue({ confirm: true });
 
       await command.run(['config-1'], { public: true });
 
-      expect(packageRegistry.updatePackageVisibility).toHaveBeenCalledWith(
+      expect(mockPackageRegistry.updatePackageVisibility).toHaveBeenCalledWith(
         'config-1',
         true
       );
@@ -108,14 +121,14 @@ describe('VisibilityCommand', () => {
     });
 
     it('should make package private when --private flag is used', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(mockPublicPackage);
-      packageRegistry.updatePackageVisibility.mockResolvedValue(mockPrivatePackage);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(mockPublicPackage);
+      mockPackageRegistry.updatePackageVisibility.mockResolvedValue(mockPrivatePackage);
       vi.mocked(inquirer.prompt).mockResolvedValue({ confirm: true });
 
       await command.run(['config-1'], { private: true });
 
-      expect(packageRegistry.updatePackageVisibility).toHaveBeenCalledWith(
+      expect(mockPackageRegistry.updatePackageVisibility).toHaveBeenCalledWith(
         'config-1',
         false
       );
@@ -125,69 +138,69 @@ describe('VisibilityCommand', () => {
     });
 
     it('should show warning when making package public', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(mockPrivatePackage);
-      packageRegistry.updatePackageVisibility.mockResolvedValue(mockPublicPackage);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(mockPrivatePackage);
+      mockPackageRegistry.updatePackageVisibility.mockResolvedValue(mockPublicPackage);
       vi.mocked(inquirer.prompt).mockResolvedValue({ confirm: true });
 
       await command.run(['config-1'], { public: true });
 
       expect(console.log).toHaveBeenCalledWith(
-        chalk.yellow('\\n⚠️  Making this package public will:')
+        '\n⚠️  Making this package public will:'
       );
     });
 
     it('should show warning when making package private', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(mockPublicPackage);
-      packageRegistry.updatePackageVisibility.mockResolvedValue(mockPrivatePackage);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(mockPublicPackage);
+      mockPackageRegistry.updatePackageVisibility.mockResolvedValue(mockPrivatePackage);
       vi.mocked(inquirer.prompt).mockResolvedValue({ confirm: true });
 
       await command.run(['config-1'], { private: true });
 
       expect(console.log).toHaveBeenCalledWith(
-        chalk.yellow('\\n⚠️  Making this package private will:')
+        '\n⚠️  Making this package private will:'
       );
     });
 
     it('should skip confirmation with --yes flag', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(mockPrivatePackage);
-      packageRegistry.updatePackageVisibility.mockResolvedValue(mockPublicPackage);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(mockPrivatePackage);
+      mockPackageRegistry.updatePackageVisibility.mockResolvedValue(mockPublicPackage);
 
       await command.run(['config-1'], { public: true, yes: true });
 
       expect(inquirer.prompt).not.toHaveBeenCalled();
-      expect(packageRegistry.updatePackageVisibility).toHaveBeenCalled();
+      expect(mockPackageRegistry.updatePackageVisibility).toHaveBeenCalled();
     });
 
     it('should cancel when user declines confirmation', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(mockPrivatePackage);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(mockPrivatePackage);
       vi.mocked(inquirer.prompt).mockResolvedValue({ confirm: false });
 
       await command.run(['config-1'], { public: true });
 
-      expect(packageRegistry.updatePackageVisibility).not.toHaveBeenCalled();
+      expect(mockPackageRegistry.updatePackageVisibility).not.toHaveBeenCalled();
       expect(console.log).toHaveBeenCalledWith(
         chalk.gray('Visibility change cancelled')
       );
     });
 
     it('should show message when package already has desired visibility', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(mockPublicPackage);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(mockPublicPackage);
 
       await command.run(['config-1'], { public: true });
 
       expect(console.log).toHaveBeenCalledWith(
         chalk.yellow('Package is already public')
       );
-      expect(packageRegistry.updatePackageVisibility).not.toHaveBeenCalled();
+      expect(mockPackageRegistry.updatePackageVisibility).not.toHaveBeenCalled();
     });
 
     it('should fail when both --public and --private are specified', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
 
       await command.run(['config-1'], { public: true, private: true });
 
@@ -195,7 +208,7 @@ describe('VisibilityCommand', () => {
     });
 
     it('should fail when neither --public nor --private are specified', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
 
       await command.run(['config-1'], {});
 
@@ -203,8 +216,8 @@ describe('VisibilityCommand', () => {
     });
 
     it('should fail when package not found', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue(null);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue(null);
 
       await command.run(['config-1'], { public: true });
 
@@ -212,8 +225,8 @@ describe('VisibilityCommand', () => {
     });
 
     it('should fail when user does not own the package', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockResolvedValue({
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockResolvedValue({
         ...mockPrivatePackage,
         userId: 'other-user-id',
       });
@@ -224,7 +237,7 @@ describe('VisibilityCommand', () => {
     });
 
     it('should fail when not authenticated', async () => {
-      authService.getSession.mockResolvedValue(null);
+      mockAuthService.getSession.mockResolvedValue(null);
 
       await command.run(['config-1'], { public: true });
 
@@ -232,7 +245,7 @@ describe('VisibilityCommand', () => {
     });
 
     it('should fail when no config ID provided', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
+      mockAuthService.getSession.mockResolvedValue(mockSession);
 
       await command.run([], { public: true });
 
@@ -240,8 +253,8 @@ describe('VisibilityCommand', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      authService.getSession.mockResolvedValue(mockSession);
-      packageRegistry.getPackageByConfigId.mockRejectedValue(
+      mockAuthService.getSession.mockResolvedValue(mockSession);
+      mockPackageRegistry.getPackageByConfigId.mockRejectedValue(
         new Error('Network error')
       );
 
