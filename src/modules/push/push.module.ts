@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module';
 import { DeployCoreModule } from '../deploy/core/deploy-core.module';
+import { ErrorHandlerService } from '../deploy/services/error-handler.service';
 import { SupabaseModule } from '../supabase/supabase.module';
 
 import { PushCommand } from './commands/push.command';
@@ -28,6 +29,7 @@ import { SignedUrlService } from './services/signed-url.service';
     SignedUrlService,
     PackageValidatorService,
     LocalQueueService,
+    ErrorHandlerService,
   ],
   exports: [PushService, PackageRegistryService],
 })

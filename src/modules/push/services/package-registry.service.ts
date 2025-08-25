@@ -14,6 +14,7 @@ export interface PackageFilters {
   isPublic?: boolean;
   tags?: string[];
   teamId?: string;
+  configId?: string;
 }
 
 export interface PackageStats {
@@ -282,6 +283,10 @@ export class PackageRegistryService {
 
       if (filters?.teamId) {
         query = query.eq('team_id', filters.teamId);
+      }
+
+      if (filters?.configId) {
+        query = query.eq('config_id', filters.configId);
       }
 
       if (filters?.tags && filters.tags.length > 0) {

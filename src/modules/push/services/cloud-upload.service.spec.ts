@@ -174,7 +174,7 @@ describe('CloudUploadService', () => {
 
       expect(result).toBe(existingUrl);
       expect(progressHistory).toHaveLength(1);
-      expect(progressHistory[0].phase).toBe('complete');
+      expect(progressHistory[0].stage).toBe('complete');
       expect(progressHistory[0].message).toContain('already exists');
     });
 
@@ -212,8 +212,8 @@ describe('CloudUploadService', () => {
 
       // Check progress updates
       expect(progressHistory.length).toBeGreaterThan(0);
-      expect(progressHistory[0].phase).toBe('uploading');
-      expect(progressHistory[progressHistory.length - 1].phase).toBe(
+      expect(progressHistory[0].stage).toBe('uploading');
+      expect(progressHistory[progressHistory.length - 1].stage).toBe(
         'complete',
       );
     });
@@ -256,7 +256,7 @@ describe('CloudUploadService', () => {
 
       // Should have multiple progress updates for chunks
       const uploadingProgressUpdates = progressHistory.filter(
-        (p) => p.phase === 'uploading',
+        (p) => p.stage === 'uploading',
       );
       expect(uploadingProgressUpdates.length).toBeGreaterThan(1);
     });
@@ -543,7 +543,7 @@ describe('CloudUploadService', () => {
       await service.uploadPackage(mockBuffer, mockMetadata, progressCallback);
 
       // Should have at least uploading and complete phases
-      const phases = progressUpdates.map((p) => p.phase);
+      const phases = progressUpdates.map((p) => p.stage);
       expect(phases).toContain('uploading');
       expect(phases).toContain('complete');
 

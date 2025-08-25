@@ -313,6 +313,7 @@ describe('BuildCommand', () => {
       outputService,
       progressService,
       errorHandler,
+      {} as any, // pushService - not needed for these tests
     );
 
     // Setup default mock implementations
@@ -632,6 +633,7 @@ describe('BuildCommand', () => {
         outputService,
         progressService,
         errorHandler,
+        {} as any, // pushService
       );
 
       const command2 = new BuildCommand(
@@ -645,6 +647,7 @@ describe('BuildCommand', () => {
         outputService,
         progressService,
         errorHandler,
+        {} as any, // pushService
       );
 
       // Mock the private method by accessing it through the prototype

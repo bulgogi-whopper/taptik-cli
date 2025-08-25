@@ -1,0 +1,38 @@
+export const ErrorCodes = {
+  // Authentication errors
+  AUTH_NOT_AUTHENTICATED: 'AUTH_001',
+  AUTH_SESSION_EXPIRED: 'AUTH_002',
+  AUTH_INSUFFICIENT_PERMISSIONS: 'AUTH_003',
+
+  // Validation errors
+  VAL_INVALID_PACKAGE: 'VAL_001',
+  VAL_INVALID_VERSION: 'VAL_002',
+  VAL_FILE_TOO_LARGE: 'VAL_003',
+  VAL_UNSUPPORTED_PLATFORM: 'VAL_004',
+
+  // Security errors
+  SEC_SENSITIVE_DATA: 'SEC_001',
+  SEC_SANITIZATION_FAILED: 'SEC_002',
+  SEC_MALICIOUS_CONTENT: 'SEC_003',
+
+  // Network/Storage errors
+  NET_UPLOAD_FAILED: 'NET_001',
+  NET_STORAGE_QUOTA_EXCEEDED: 'NET_002',
+  NET_NETWORK_TIMEOUT: 'NET_003',
+
+  // Rate limiting errors
+  RATE_LIMIT_EXCEEDED: 'RATE_001',
+  RATE_DAILY_QUOTA_EXCEEDED: 'RATE_002',
+
+  // System errors
+  SYS_DATABASE_ERROR: 'SYS_001',
+  SYS_INTERNAL_ERROR: 'SYS_002',
+  SYS_UNEXPECTED: 'SYS_003',
+
+  // Queue errors
+  QUEUE_FULL: 'QUEUE_001',
+  QUEUE_ITEM_NOT_FOUND: 'QUEUE_002',
+  QUEUE_FILE_NOT_FOUND: 'QUEUE_003',
+} as const;
+
+export type ErrorCode = typeof ErrorCodes[keyof typeof ErrorCodes];

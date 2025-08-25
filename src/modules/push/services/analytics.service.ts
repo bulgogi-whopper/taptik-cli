@@ -43,6 +43,28 @@ export class AnalyticsService {
     private readonly configService: ConfigService,
   ) {}
 
+  /**
+   * Track an upload event
+   */
+  async trackUpload(uploadData: {
+    packageId: string;
+    userId: string;
+    packageSize: number;
+    platform: string;
+    isPublic: boolean;
+  }): Promise<void> {
+    return this.trackEvent({
+      eventType: AnalyticsEventType.UPLOAD,
+      packageId: uploadData.packageId,
+      userId: uploadData.userId,
+      metadata: {
+        packageSize: uploadData.packageSize,
+        platform: uploadData.platform,
+        isPublic: uploadData.isPublic,
+      },
+    });
+  }
+
   async trackEvent(event: AnalyticsEvent): Promise<void> {
     // Check if analytics is enabled
     const analyticsEnabled = this.configService.get<boolean>(

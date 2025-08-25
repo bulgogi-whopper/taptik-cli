@@ -15,6 +15,9 @@ import { MetadataGeneratorService } from '../../context/services/metadata-genera
 import { PackageService } from '../../context/services/package.service';
 import { SanitizationService } from '../../context/services/sanitization.service';
 import { ValidationService } from '../../context/services/validation.service';
+import { PackageVisibility, PushOptions } from '../../push/interfaces/push-options.interface';
+import { UploadProgress } from '../../push/interfaces/upload-progress.interface';
+import { PushService } from '../../push/services/push.service';
 import {
   BuildConfig,
   BuildPlatform,
@@ -52,6 +55,7 @@ export class BuildCommand extends CommandRunner {
     private readonly outputService: OutputService,
     private readonly progressService: ProgressService,
     private readonly errorHandler: ErrorHandlerService,
+    private readonly pushService: PushService,
   ) {
     super();
   }
@@ -112,6 +116,46 @@ export class BuildCommand extends CommandRunner {
     return true;
   }
 
+  @Option({
+    flags: '--push',
+    description: 'Automatically push the built package to the cloud after successful build',
+  })
+  parsePush(): boolean {
+    return true;
+  }
+
+  @Option({
+    flags: '--push-public',
+    description: 'Make the pushed package publicly accessible (use with --push)',
+  })
+  parsePushPublic(): boolean {
+    return true;
+  }
+
+  @Option({
+    flags: '--push-title <title>',
+    description: 'Title for the pushed package (use with --push)',
+  })
+  parsePushTitle(value: string): string {
+    return value;
+  }
+
+  @Option({
+    flags: '--push-tags <tags>',
+    description: 'Comma-separated tags for the pushed package (use with --push)',
+  })
+  parsePushTags(value: string): string {
+    return value;
+  }
+
+  @Option({
+    flags: '--push-team <team-id>',
+    description: 'Team ID to share the pushed package with (use with --push)',
+  })
+  parsePushTeam(value: string): string {
+    return value;
+  }
+
   async run(
     _passedParameters: string[],
     options?: Record<string, unknown>,
@@ -123,6 +167,13 @@ export class BuildCommand extends CommandRunner {
     const isQuiet = options?.quiet as boolean;
     const presetPlatform = options?.platform as BuildPlatform;
     const presetCategories = options?.categories as string[];
+    
+    // Push-related options
+    const shouldPush = options?.push as boolean;
+    const pushPublic = options?.pushPublic as boolean;
+    const pushTitle = options?.pushTitle as string;
+    const pushTags = options?.pushTags as string;
+    const pushTeam = options?.pushTeam as string;
 
     try {
       // Configure logging based on options
@@ -451,13 +502,29 @@ export class BuildCommand extends CommandRunner {
       }
       this.progressService.completeStep('Output generation');
 
-      // Cloud upload prompting for Claude Code
+      // Cloud upload handling
       if (
         buildConfig.platform === BuildPlatform.CLAUDE_CODE &&
         cloudPackage &&
         validationResult?.cloudCompatible
       ) {
-        await this.promptForCloudUpload(cloudPackage, validationResult);
+        // If --push flag is set, automatically upload
+        if (shouldPush && !isDryRun) {
+          await this.pushPackageToCloud(
+            outputPath,
+            cloudPackage,
+            {
+              pushPublic,
+              pushTitle,
+              pushTags,
+              pushTeam,
+            },
+            isVerbose,
+          );
+        } else if (!shouldPush) {
+          // Otherwise, prompt for manual upload as before
+          await this.promptForCloudUpload(cloudPackage, validationResult);
+        }
       }
 
       // Step 9 (or 5): Build completion
@@ -1457,6 +1524,129 @@ export class BuildCommand extends CommandRunner {
           | ((metadata: unknown) => Promise<void>)
           | undefined
       )?.(cloudPackage.metadata);
+    }
+  }
+
+  /**
+   * Push the built package to the cloud using PushService
+   */
+  private async pushPackageToCloud(
+    outputPath: string,
+    cloudPackage: TaptikPackage,
+    pushOptions: {
+      pushPublic?: boolean;
+      pushTitle?: string;
+      pushTags?: string;
+      pushTeam?: string;
+    },
+    isVerbose: boolean,
+  ): Promise<void> {
+    try {
+      this.logger.log('📤 Pushing package to cloud...');
+      
+      // Find the package file
+      const packageFilePath = path.join(outputPath, 'taptik.package');
+      
+      // Read the package file
+      const fs = await import('fs/promises');
+      let fileBuffer: Buffer;
+      let fileStats: any;
+      
+      try {
+        fileBuffer = await fs.readFile(packageFilePath);
+        fileStats = await fs.stat(packageFilePath);
+      } catch (error) {
+        this.logger.error(`Failed to read package file: ${error.message}`);
+        this.errorHandler.addWarning({
+          type: 'push',
+          message: 'Failed to push package to cloud',
+          details: `Could not read package file at ${packageFilePath}`,
+        });
+        return;
+      }
+
+      // Parse tags if provided
+      const tags = pushOptions.pushTags 
+        ? pushOptions.pushTags.split(',').map(t => t.trim())
+        : ['claude-code', 'auto-generated'];
+
+      // Generate title from metadata if not provided
+      const title = pushOptions.pushTitle || 
+        cloudPackage.metadata?.title || 
+        'Claude Code Configuration';
+
+      // Build push options
+      const pushOpts: PushOptions = {
+        file: {
+          buffer: fileBuffer,
+          name: path.basename(packageFilePath),
+          size: fileStats.size,
+          path: packageFilePath,
+        },
+        visibility: pushOptions.pushPublic 
+          ? PackageVisibility.Public 
+          : PackageVisibility.Private,
+        title,
+        description: cloudPackage.metadata?.description || 
+          'Configuration package built with taptik build command',
+        tags,
+        teamId: pushOptions.pushTeam,
+        version: cloudPackage.metadata?.version || '1.0.0',
+        force: true, // Skip confirmation since build already confirmed
+        dryRun: false,
+      };
+
+      // Track progress
+      let lastProgress: UploadProgress | null = null;
+      
+      // Execute push with progress tracking
+      await this.pushService.push(pushOpts, (progress) => {
+        lastProgress = progress;
+        if (isVerbose) {
+          this.logger.log(
+            `  ${progress.stage}: ${progress.percentage}%${
+              progress.message ? ` - ${progress.message}` : ''
+            }`,
+          );
+        }
+      });
+
+      // Success message
+      if (lastProgress?.configId) {
+        this.logger.log('✅ Package pushed successfully!');
+        this.logger.log(`   Configuration ID: ${lastProgress.configId}`);
+        
+        if (lastProgress.shareUrl) {
+          this.logger.log(`   Share URL: ${lastProgress.shareUrl}`);
+        }
+        
+        if (pushOptions.pushPublic) {
+          this.logger.log('   📢 Your configuration is now publicly available');
+        } else {
+          this.logger.log('   🔒 Your configuration is private');
+        }
+      }
+    } catch (error) {
+      this.logger.error(`Push failed: ${error.message}`);
+      
+      // Check if it's an authentication error
+      if (error.code === 'AUTH_001' || error.message.includes('auth')) {
+        this.logger.log('💡 Run "taptik auth login" to authenticate first');
+        this.errorHandler.addWarning({
+          type: 'push',
+          message: 'Authentication required for push',
+          details: 'Please run "taptik auth login" before using --push',
+        });
+      } else {
+        this.errorHandler.addWarning({
+          type: 'push', 
+          message: 'Failed to push package to cloud',
+          details: error.message,
+        });
+      }
+      
+      // Don't fail the entire build if push fails
+      this.logger.log('⚠️  Build completed but push failed. Package saved locally.');
     }
   }
 }

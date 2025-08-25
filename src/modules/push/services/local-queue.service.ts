@@ -158,6 +158,26 @@ export class LocalQueueService implements OnModuleInit, OnModuleDestroy {
     this.debounceSave();
   }
 
+  async updateStatus(id: string, status: QueuedUpload['status']): Promise<void> {
+    const item = this.queue.get(id);
+    if (item) {
+      item.status = status;
+      item.lastAttempt = new Date();
+      this.queue.set(id, item);
+      await this.debounceSave();
+    }
+  }
+
+  async incrementAttempts(id: string): Promise<void> {
+    const item = this.queue.get(id);
+    if (item) {
+      item.attempts = (item.attempts || 0) + 1;
+      item.lastAttempt = new Date();
+      this.queue.set(id, item);
+      await this.debounceSave();
+    }
+  }
+
   async updateQueueStatus(
     id: string,
     status: QueuedUpload['status'],

@@ -52,6 +52,35 @@ export class RateLimiterService {
   ) {}
 
   /**
+   * Check if a user can perform an upload (combined upload and bandwidth limits)
+   */
+  async checkLimit(
+    userId: string,
+    packageSize: number,
+  ): Promise<RateLimitStatus> {
+    // Check upload limit
+    const uploadLimit = await this.checkUploadLimit(userId);
+    if (!uploadLimit.allowed) {
+      return uploadLimit;
+    }
+
+    // Check bandwidth limit
+    const bandwidthLimit = await this.checkBandwidthLimit(userId, packageSize);
+    if (!bandwidthLimit.allowed) {
+      return {
+        allowed: false,
+        remaining: 0,
+        resetAt: bandwidthLimit.resetAt,
+        limit: uploadLimit.limit,
+        used: uploadLimit.used,
+        userTier: uploadLimit.userTier,
+      };
+    }
+
+    return uploadLimit;
+  }
+
+  /**
    * Check if a user can perform an upload based on rate limits
    */
   async checkUploadLimit(userId: string): Promise<RateLimitStatus> {

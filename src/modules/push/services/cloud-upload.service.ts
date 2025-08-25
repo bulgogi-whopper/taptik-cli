@@ -87,7 +87,7 @@ export class CloudUploadService {
       const duplicateCheck = await this.checkDuplicate(metadata.checksum);
       if (duplicateCheck.exists && duplicateCheck.existingUrl) {
         onProgress?.({
-          phase: 'complete',
+          stage: 'complete',
           percentage: 100,
           bytesUploaded: packageBuffer.length,
           totalBytes: packageBuffer.length,
@@ -108,7 +108,7 @@ export class CloudUploadService {
         packageBuffer.length > this.BUCKET_CONFIG.CHUNKED_UPLOAD_THRESHOLD;
 
       onProgress?.({
-        phase: 'uploading',
+        stage: 'uploading',
         percentage: 0,
         bytesUploaded: 0,
         totalBytes: packageBuffer.length,
@@ -133,7 +133,7 @@ export class CloudUploadService {
       }
 
       onProgress?.({
-        phase: 'complete',
+        stage: 'complete',
         percentage: 100,
         bytesUploaded: packageBuffer.length,
         totalBytes: packageBuffer.length,
@@ -176,7 +176,7 @@ export class CloudUploadService {
       const totalBytes = packageBuffer.length;
 
       onProgress?.({
-        phase: 'uploading',
+        stage: 'uploading',
         percentage: (uploadedBytes / totalBytes) * 100,
         bytesUploaded: uploadedBytes,
         totalBytes,
@@ -279,7 +279,7 @@ export class CloudUploadService {
     const client = this.supabaseService.getClient();
 
     onProgress?.({
-      phase: 'uploading',
+      stage: 'uploading',
       percentage: 50,
       bytesUploaded: 0,
       totalBytes: packageBuffer.length,
@@ -406,7 +406,7 @@ export class CloudUploadService {
       );
 
       onProgress?.({
-        phase: 'uploading',
+        stage: 'uploading',
         percentage,
         bytesUploaded: uploadedBytes,
         totalBytes: packageBuffer.length,

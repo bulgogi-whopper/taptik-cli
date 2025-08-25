@@ -24,7 +24,8 @@ export interface Warning {
     | 'validation_warning'
     | 'package'
     | 'security'
-    | 'validation';
+    | 'validation'
+    | 'push';
   message: string;
   details?: string;
 }

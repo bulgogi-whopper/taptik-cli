@@ -130,6 +130,7 @@ describe('BuildCommand Error Handling', () => {
       outputService,
       progressService,
       errorHandler,
+      {} as any, // pushService
     );
 
     // Clear all mocks
