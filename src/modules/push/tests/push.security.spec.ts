@@ -2,6 +2,7 @@ import * as crypto from 'crypto';
 import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
+
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 import { PackageValidatorService } from '../services/package-validator.service';
@@ -294,7 +295,7 @@ describe('Push Module Security Tests', () => {
     });
 
     it('should reject deeply nested objects', () => {
-      let deepObject: any = { level: 0 };
+      const deepObject: any = { level: 0 };
       let current = deepObject;
       
       // Create object with depth > 10

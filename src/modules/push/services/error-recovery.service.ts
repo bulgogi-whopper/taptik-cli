@@ -267,7 +267,7 @@ export class ErrorRecoveryService {
     
     // Remove or mask sensitive fields
     if (sanitized.userId) {
-      sanitized.userId = sanitized.userId.substring(0, 8) + '...';
+      sanitized.userId = `${sanitized.userId.substring(0, 8)  }...`;
     }
     
     if (sanitized.details) {

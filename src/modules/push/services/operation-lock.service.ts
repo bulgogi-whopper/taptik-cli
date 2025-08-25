@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
+
+import { Injectable, Logger } from '@nestjs/common';
 
 export interface LockInfo {
   pid: number;
@@ -285,7 +286,7 @@ export class OperationLockService {
    * Get lock file path
    */
   private getLockPath(operation: string, resourceId: string): string {
-    const lockName = `${operation}_${resourceId}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const lockName = `${operation}_${resourceId}`.replace(/[^\w-]/g, '_');
     return path.join(this.lockDir, `${lockName}.lock`);
   }
 

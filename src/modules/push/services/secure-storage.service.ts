@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
+
+import { Injectable, Logger } from '@nestjs/common';
 
 export interface SecureCredential {
   key: string;
@@ -202,7 +203,7 @@ export class SecureStorageService {
     const authTag = cipher.getAuthTag();
     
     // Combine iv, authTag, and encrypted data
-    return iv.toString('hex') + ':' + authTag.toString('hex') + ':' + encrypted;
+    return `${iv.toString('hex')  }:${  authTag.toString('hex')  }:${  encrypted}`;
   }
 
   /**

@@ -1,7 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
+
+import { Test, TestingModule } from '@nestjs/testing';
+
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { AuthModule } from '../../auth/auth.module';

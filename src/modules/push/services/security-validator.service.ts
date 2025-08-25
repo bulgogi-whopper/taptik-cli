@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 import * as path from 'path';
+
+import { Injectable, Logger } from '@nestjs/common';
 
 import { PushError, PushErrorCode } from '../constants/push.constants';
 
@@ -35,10 +36,10 @@ export class SecurityValidatorService {
   // Patterns that might indicate injection attempts
   private readonly INJECTION_PATTERNS = [
     /(\.\.(\/|\\))+/g, // Path traversal
-    /<script[\s\S]*?<\/script>/gi, // Script tags
+    /<script[\S\s]*?<\/script>/gi, // Script tags
     /javascript:/gi, // JavaScript protocol
     /on\w+\s*=/gi, // Event handlers
-    /\$\{.*\}/g, // Template literals
+    /\${.*}/g, // Template literals
     /\beval\s*\(/gi, // eval() calls
     /\bexec\s*\(/gi, // exec() calls
     /\brequire\s*\(/gi, // require() calls
