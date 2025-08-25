@@ -50,7 +50,7 @@
   - Test signed URL generation and validation with various scenarios
   - _Requirements: 1.1, 1.4, 6.5_
 
-- [ ] 7. Implement CloudUploadService with chunked and resumable uploads
+- [x] 7. Implement CloudUploadService with chunked and resumable uploads
   - Create basic upload functionality with progress tracking and error handling
   - Implement checksum-based deduplication to avoid duplicate uploads
   - Add chunked upload support for files larger than 10MB with 5MB chunks
