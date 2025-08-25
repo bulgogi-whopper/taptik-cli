@@ -8,6 +8,7 @@ import { BuildModule } from './modules/build/build.module';
 import { ContextModule } from './modules/context/context.module';
 import { DeployModule } from './modules/deploy/deploy.module';
 import { InfoModule } from './modules/info/info.module';
+import { PushModule } from './modules/push/push.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { InfoModule } from './modules/info/info.module';
     ContextModule,
     DeployModule,
     BuildModule,
+    PushModule,
   ],
   providers: [HealthCommand],
 })
