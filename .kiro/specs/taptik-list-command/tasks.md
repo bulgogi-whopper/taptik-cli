@@ -36,7 +36,7 @@
   - Add proper exit codes for different error types
   - _Requirements: 3.3, 4.3, 4.4, 4.5, 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [ ] 6. Implement table formatting and display logic
+- [x] 6. Implement table formatting and display logic
   - Create table formatter with columns: ID, Title, Created, Size, Access
   - Implement empty state messages for different scenarios
   - Add proper date formatting and size display

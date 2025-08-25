@@ -1,6 +1,6 @@
 import { Command, CommandRunner, Option } from 'nest-commander';
 
-import { DisplayConfiguration } from '../../../models/config-bundle.model';
+import { DisplayConfiguration, ConfigurationListResult } from '../../../models/config-bundle.model';
 import { AuthService } from '../../auth/auth.service';
 import { ListService } from '../services/list.service';
 
@@ -73,11 +73,7 @@ export class ListCommand extends CommandRunner {
 
     // Display results
     if (result.configurations.length === 0) {
-      if (processedOptions.filter) {
-        console.log('No configurations found matching your filter');
-      } else {
-        console.log('No configurations are available');
-      }
+      console.log(this.getEmptyStateMessage(processedOptions.filter));
       return;
     }
 
@@ -85,12 +81,7 @@ export class ListCommand extends CommandRunner {
     this.displayConfigurationTable(result.configurations);
 
     // Display pagination info if needed
-    if (result.hasMore) {
-      console.log(
-        `\n💡 Showing ${result.configurations.length} of ${result.totalCount} configurations`,
-      );
-      console.log('💡 Use --limit to see more results (max: 100)');
-    }
+    this.displayPaginationInfo(result, 'configurations');
   }
 
   /**
@@ -103,9 +94,7 @@ export class ListCommand extends CommandRunner {
     // Check authentication
     const user = await this.authService.getCurrentUser();
     if (!user) {
-      console.error(
-        "❌ Authentication failed. Please run 'taptik login' first.",
-      );
+      console.error(`❌ ${this.getAuthenticationRequiredMessage()}`);
       process.exit(1);
     }
 
@@ -120,7 +109,7 @@ export class ListCommand extends CommandRunner {
 
     // Display results
     if (result.configurations.length === 0) {
-      console.log("You haven't liked any configurations yet");
+      console.log(this.getNoLikedConfigurationsMessage());
       return;
     }
 
@@ -128,12 +117,7 @@ export class ListCommand extends CommandRunner {
     this.displayConfigurationTable(result.configurations);
 
     // Display pagination info if needed
-    if (result.hasMore) {
-      console.log(
-        `\n💡 Showing ${result.configurations.length} of ${result.totalCount} liked configurations`,
-      );
-      console.log('💡 Use --limit to see more results (max: 100)');
-    }
+    this.displayPaginationInfo(result, 'liked configurations');
   }
 
   /**
@@ -191,49 +175,181 @@ export class ListCommand extends CommandRunner {
       return;
     }
 
-    // Table header
-    console.log(
-      'ID       Title                    Created      Size     Access',
-    );
-    console.log('─'.repeat(70));
-
-    // Table rows
-    configurations.forEach((config) => {
-      const id = config.id.substring(0, 8);
-      const title = this.truncateString(config.title, 24);
-      const created = this.formatDate(config.createdAt);
-      const size = this.padString(config.size, 8);
-      const access = config.accessLevel;
-
-      console.log(`${id} ${title} ${created} ${size} ${access}`);
-    });
+    // Display table with proper formatting
+    const tableOutput = this.formatConfigurationTable(configurations);
+    console.log(tableOutput);
   }
 
   /**
-   * Format date for table display
+   * Format configurations into a table string
+   * Creates a properly formatted table with headers and aligned columns
+   */
+  private formatConfigurationTable(
+    configurations: DisplayConfiguration[],
+  ): string {
+    if (configurations.length === 0) {
+      return this.getEmptyStateMessage();
+    }
+
+    const header = this.getTableHeader();
+    const separator = this.getTableSeparator();
+    const rows = configurations.map((config) => this.formatTableRow(config));
+
+    return [header, separator, ...rows].join('\n');
+  }
+
+  /**
+   * Get table header with proper column alignment
+   */
+  private getTableHeader(): string {
+    return 'ID       Title                    Created      Size     Access';
+  }
+
+  /**
+   * Get table separator line
+   */
+  private getTableSeparator(): string {
+    return '─'.repeat(70);
+  }
+
+  /**
+   * Format a single configuration row for table display
+   */
+  private formatTableRow(config: DisplayConfiguration): string {
+    const id = this.formatId(config.id);
+    const title = this.formatTitle(config.title);
+    const created = this.formatDate(config.createdAt);
+    const size = this.formatSize(config.size);
+    const access = this.formatAccessLevel(config.accessLevel);
+
+    return `${id} ${title} ${created} ${size} ${access}`;
+  }
+
+  /**
+   * Format ID column (8 characters)
+   */
+  private formatId(id: string): string {
+    return id.substring(0, 8).padEnd(8);
+  }
+
+  /**
+   * Format title column (24 characters with truncation)
+   */
+  private formatTitle(title: string): string {
+    return this.truncateString(title, 24);
+  }
+
+  /**
+   * Format size column (8 characters, right-aligned)
+   */
+  private formatSize(size: string): string {
+    return size.padStart(8);
+  }
+
+  /**
+   * Format access level column
+   */
+  private formatAccessLevel(accessLevel: string): string {
+    return accessLevel;
+  }
+
+  /**
+   * Get empty state message for different scenarios
+   * Implements Requirements: 1.3, 2.3
+   */
+  private getEmptyStateMessage(filter?: string): string {
+    if (filter && filter.trim()) {
+      return 'No configurations found matching your filter';
+    }
+    return 'No configurations are available';
+  }
+
+  /**
+   * Get message for no liked configurations
+   * Implements Requirement: 5.3
+   */
+  private getNoLikedConfigurationsMessage(): string {
+    return "You haven't liked any configurations yet";
+  }
+
+  /**
+   * Get authentication required message
+   * Implements Requirement: 6.2
+   */
+  private getAuthenticationRequiredMessage(): string {
+    return "Authentication failed. Please run 'taptik login' first.";
+  }
+
+  /**
+   * Get network error message
+   * Implements Requirement: 6.1
+   */
+  private getNetworkErrorMessage(): string {
+    return 'Unable to connect to Taptik cloud. Please check your internet connection.';
+  }
+
+  /**
+   * Get server error message
+   * Implements Requirement: 6.3
+   */
+  private getServerErrorMessage(): string {
+    return 'Taptik cloud is temporarily unavailable. Please try again later.';
+  }
+
+  /**
+   * Display pagination information
+   * Implements Requirement: 4.5
+   */
+  private displayPaginationInfo(
+    result: ConfigurationListResult,
+    itemType: string,
+  ): void {
+    if (result.hasMore) {
+      console.log(
+        `\n💡 Showing ${result.configurations.length} of ${result.totalCount} ${itemType}`,
+      );
+      console.log('💡 Use --limit to see more results (max: 100)');
+    } else if (result.configurations.length > 0 && result.totalCount > result.configurations.length) {
+      console.log(
+        `\n💡 Showing all ${result.configurations.length} ${itemType}`,
+      );
+    }
+  }
+
+  /**
+   * Format date for table display (12 characters, consistent width)
    */
   private formatDate(date: Date): string {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
+    let dateStr: string;
+
     if (diffDays === 0) {
-      return 'Today    ';
+      dateStr = 'Today';
     } else if (diffDays === 1) {
-      return 'Yesterday';
+      dateStr = 'Yesterday';
     } else if (diffDays < 7) {
-      return `${diffDays} days ago`;
+      dateStr = `${diffDays} days ago`;
     } else if (diffDays < 30) {
       const weeks = Math.floor(diffDays / 7);
-      return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
+      dateStr = `${weeks} week${weeks > 1 ? 's' : ''} ago`;
+    } else if (diffDays < 365) {
+      dateStr = date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+      });
     } else {
-      return date
-        .toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-        })
-        .padEnd(12);
+      dateStr = date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: '2-digit',
+      });
     }
+
+    // Ensure consistent width of 12 characters
+    return dateStr.padEnd(12);
   }
 
   /**
@@ -264,23 +380,17 @@ export class ListCommand extends CommandRunner {
         error.message.includes('network') ||
         error.message.includes('connect')
       ) {
-        console.error(
-          '❌ Unable to connect to Taptik cloud. Please check your internet connection.',
-        );
+        console.error(`❌ ${this.getNetworkErrorMessage()}`);
       } else if (
         error.message.includes('authentication') ||
         error.message.includes('unauthorized')
       ) {
-        console.error(
-          "❌ Authentication failed. Please run 'taptik login' first.",
-        );
+        console.error(`❌ ${this.getAuthenticationRequiredMessage()}`);
       } else if (
         error.message.includes('server') ||
         error.message.includes('500')
       ) {
-        console.error(
-          '❌ Taptik cloud is temporarily unavailable. Please try again later.',
-        );
+        console.error(`❌ ${this.getServerErrorMessage()}`);
       } else if (error.message.includes('Invalid')) {
         // Validation errors
         console.error(`❌ ${error.message}`);
