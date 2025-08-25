@@ -120,7 +120,7 @@
   - Write integration tests for combined build-push workflow including failure scenarios
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
 
-- [ ] 14. Implement package management CLI commands
+- [x] 14. Implement package management CLI commands
   - Create `taptik list --cloud` command for displaying user's uploaded packages
   - Implement `taptik update <config-id>` command for metadata updates
   - Add `taptik delete <config-id>` command with confirmation prompts

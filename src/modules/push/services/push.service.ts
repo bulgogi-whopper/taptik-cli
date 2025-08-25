@@ -13,8 +13,11 @@ import {
   AnalyticsEventType 
 } from '../interfaces';
 
+import { PushError, PushErrorCode, PushErrorContext } from '../constants/push.constants';
+
 import { AnalyticsService } from './analytics.service';
 import { CloudUploadService } from './cloud-upload.service';
+import { ErrorRecoveryService } from './error-recovery.service';
 import { LocalQueueService } from './local-queue.service';
 import { PackageRegistryService } from './package-registry.service';
 import { PackageValidatorService } from './package-validator.service';
@@ -34,6 +37,7 @@ export class PushService {
     private readonly packageValidatorService: PackageValidatorService,
     private readonly localQueueService: LocalQueueService,
     private readonly rateLimiterService: RateLimiterService,
+    private readonly errorRecoveryService: ErrorRecoveryService,
   ) {}
 
   async push(

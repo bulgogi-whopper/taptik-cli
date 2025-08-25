@@ -100,14 +100,124 @@ export const PLATFORM_CONFIGS = {
   },
 };
 
+export interface PushErrorContext {
+  operation?: string;
+  packageId?: string;
+  fileName?: string;
+  userId?: string;
+  attemptNumber?: number;
+  details?: Record<string, unknown>;
+}
+
 export class PushError extends Error {
+  public readonly userMessage: string;
+  public readonly remediation?: string;
+  public readonly originalError?: Error;
+  public readonly context: PushErrorContext;
+
   constructor(
     public code: PushErrorCode,
     message: string,
-    public details?: unknown,
-    public retryable: boolean = false,
+    context: PushErrorContext = {},
+    originalError?: Error,
   ) {
     super(message);
     this.name = 'PushError';
+    this.context = context;
+    this.originalError = originalError;
+    this.userMessage = this.generateUserMessage();
+    this.remediation = this.generateRemediation();
+    
+    // Maintain proper stack trace
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, PushError);
+    }
+  }
+
+  get retryable(): boolean {
+    return this.isRetryable();
+  }
+
+  get details(): unknown {
+    return this.context.details;
+  }
+
+  private isRetryable(): boolean {
+    const retryableCodes = [
+      PushErrorCode.NETWORK_TIMEOUT,
+      PushErrorCode.UPLOAD_FAILED,
+      PushErrorCode.AUTH_EXPIRED,
+      PushErrorCode.STORAGE_QUOTA_EXCEEDED,
+    ];
+    
+    return retryableCodes.includes(this.code);
+  }
+
+  private generateUserMessage(): string {
+    const messages: Record<PushErrorCode, string> = {
+      [PushErrorCode.AUTH_REQUIRED]: 'You need to be logged in to perform this action',
+      [PushErrorCode.AUTH_EXPIRED]: 'Your session has expired. Please log in again',
+      [PushErrorCode.INSUFFICIENT_PERMISSIONS]: 'You do not have permission to perform this action',
+      
+      [PushErrorCode.INVALID_PACKAGE]: 'The selected package is invalid or corrupted',
+      [PushErrorCode.INVALID_VERSION]: 'The package version is invalid',
+      [PushErrorCode.PACKAGE_TOO_LARGE]: 'The package size exceeds the maximum allowed limit',
+      [PushErrorCode.UNSUPPORTED_PLATFORM]: 'The platform is not supported',
+      
+      [PushErrorCode.SENSITIVE_DATA_DETECTED]: 'Sensitive data was detected in the package',
+      [PushErrorCode.SANITIZATION_FAILED]: 'Failed to sanitize the package',
+      [PushErrorCode.MALICIOUS_CONTENT]: 'Potentially malicious content was detected',
+      
+      [PushErrorCode.UPLOAD_FAILED]: 'Failed to upload the package to the cloud',
+      [PushErrorCode.STORAGE_QUOTA_EXCEEDED]: 'Your storage quota has been exceeded',
+      [PushErrorCode.NETWORK_TIMEOUT]: 'The request timed out',
+      
+      [PushErrorCode.RATE_LIMIT_EXCEEDED]: 'Rate limit exceeded. Please wait and try again',
+      [PushErrorCode.DAILY_QUOTA_EXCEEDED]: 'Daily upload quota exceeded',
+      
+      [PushErrorCode.DATABASE_ERROR]: 'Database operation failed',
+      [PushErrorCode.INTERNAL_ERROR]: 'An internal error occurred',
+      [PushErrorCode.SYSTEM_ERROR]: 'A system error occurred',
+      
+      [PushErrorCode.QUEUE_FULL]: 'The upload queue is full',
+      [PushErrorCode.QUEUE_ITEM_NOT_FOUND]: 'Queue item not found',
+      [PushErrorCode.FILE_NOT_FOUND]: 'File not found',
+    };
+    
+    return messages[this.code] || this.message;
+  }
+
+  private generateRemediation(): string | undefined {
+    const remediations: Partial<Record<PushErrorCode, string>> = {
+      [PushErrorCode.AUTH_REQUIRED]: 'Run "taptik auth login" to authenticate',
+      [PushErrorCode.AUTH_EXPIRED]: 'Run "taptik auth login" to renew your session',
+      [PushErrorCode.INSUFFICIENT_PERMISSIONS]: 'Contact your administrator for access',
+      
+      [PushErrorCode.PACKAGE_TOO_LARGE]: 'Try reducing the package size or contact support',
+      [PushErrorCode.INVALID_PACKAGE]: 'Ensure the file is a valid .taptik package',
+      
+      [PushErrorCode.NETWORK_TIMEOUT]: 'Check your internet connection and try again',
+      [PushErrorCode.RATE_LIMIT_EXCEEDED]: 'Wait a few minutes before trying again',
+      
+      [PushErrorCode.STORAGE_QUOTA_EXCEEDED]: 'Delete unused packages or upgrade your plan',
+      [PushErrorCode.UPLOAD_FAILED]: 'Try uploading again or contact support',
+      
+      [PushErrorCode.SENSITIVE_DATA_DETECTED]: 'Review and remove sensitive information',
+    };
+    
+    return remediations[this.code];
+  }
+
+  public toJSON(): Record<string, unknown> {
+    return {
+      name: this.name,
+      code: this.code,
+      message: this.message,
+      userMessage: this.userMessage,
+      remediation: this.remediation,
+      retryable: this.retryable,
+      context: this.context,
+      stack: this.stack,
+    };
   }
 }

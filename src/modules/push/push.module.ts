@@ -13,6 +13,7 @@ import { UpdateCommand } from './commands/update.command';
 import { VisibilityCommand } from './commands/visibility.command';
 import { AnalyticsService } from './services/analytics.service';
 import { CloudUploadService } from './services/cloud-upload.service';
+import { ErrorRecoveryService } from './services/error-recovery.service';
 import { LocalQueueService } from './services/local-queue.service';
 import { PackageRegistryService } from './services/package-registry.service';
 import { PackageValidatorService } from './services/package-validator.service';
@@ -40,6 +41,7 @@ import { SignedUrlService } from './services/signed-url.service';
     PackageValidatorService,
     LocalQueueService,
     ErrorHandlerService,
+    ErrorRecoveryService,
   ],
   exports: [PushService, PackageRegistryService],
 })
