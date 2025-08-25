@@ -286,7 +286,9 @@ export class ErrorRecoveryService {
         }
       } else {
         // This shouldn't happen since we handle errors inside the promise
-        this.logger.error(`Unexpected error in component recovery: ${result.reason}`);
+        this.logger.error(
+          `Unexpected error in component recovery: ${result.reason}`,
+        );
       }
     }
 

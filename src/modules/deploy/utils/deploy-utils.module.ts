@@ -9,8 +9,8 @@ import { SchemaMigrationService } from '../services/schema-migration.service';
 import { SecretManagementService } from '../services/secret-management.service';
 import { SecurityScannerService } from '../services/security-scanner.service';
 
-import { PathResolver } from "./path-resolver.utility";
-import { PerformanceOptimizer } from "./performance-optimizer.utility";
+import { PathResolver } from './path-resolver.utility';
+import { PerformanceOptimizer } from './performance-optimizer.utility';
 
 @Module({
   providers: [

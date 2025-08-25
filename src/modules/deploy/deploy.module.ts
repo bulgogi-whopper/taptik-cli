@@ -6,18 +6,8 @@ import { DeployKiroModule } from './kiro/deploy-kiro.module';
 import { DeployUtilsModule } from './utils/deploy-utils.module';
 
 @Module({
-  imports: [
-    DeployCoreModule,
-    DeployKiroModule,
-    DeployUtilsModule,
-  ],
-  providers: [
-    DeployCommand,
-  ],
-  exports: [
-    DeployCoreModule,
-    DeployKiroModule,
-    DeployUtilsModule,
-  ],
+  imports: [DeployCoreModule, DeployKiroModule, DeployUtilsModule],
+  providers: [DeployCommand],
+  exports: [DeployCoreModule, DeployKiroModule, DeployUtilsModule],
 })
 export class DeployModule {}

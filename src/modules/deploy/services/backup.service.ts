@@ -341,8 +341,10 @@ export class BackupService {
     if (component.dependencies) {
       const dependencyPromises = component.dependencies
         .filter((dep) => !rolledBack.has(dep))
-        .map((dep) => this.rollbackComponentRecursive(manifest, dep, rolledBack));
-      
+        .map((dep) =>
+          this.rollbackComponentRecursive(manifest, dep, rolledBack),
+        );
+
       await Promise.all(dependencyPromises);
     }
 

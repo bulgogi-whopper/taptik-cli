@@ -58,11 +58,17 @@ class ConsoleLogger {
   }
 
   static warn(prefix: string, message: string, context?: unknown): void {
-    this.logger.warn(`${prefix} ${message}`, context ? JSON.stringify(context) : '');
+    this.logger.warn(
+      `${prefix} ${message}`,
+      context ? JSON.stringify(context) : '',
+    );
   }
 
   static log(prefix: string, message: string, context?: unknown): void {
-    this.logger.log(`${prefix} ${message}`, context ? JSON.stringify(context) : '');
+    this.logger.log(
+      `${prefix} ${message}`,
+      context ? JSON.stringify(context) : '',
+    );
   }
 }
 
