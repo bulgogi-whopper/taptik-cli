@@ -19,7 +19,7 @@ export class SignedUrlService {
     const expires = new Date(
       Date.now() + UPLOAD_CONFIG.SIGNED_URL_EXPIRATION * 1000,
     );
-    
+
     return {
       url: '',
       expires,

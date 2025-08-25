@@ -87,9 +87,7 @@ export class CollectionService {
    * @param projectPath - The project path to scan
    * @returns Promise resolving to collected Claude Code local settings data
    */
-  async collectClaudeCodeLocalSettings(
-    projectPath?: string,
-  ): Promise<
+  async collectClaudeCodeLocalSettings(projectPath?: string): Promise<
     ClaudeCodeLocalSettingsData & {
       errors?: ClaudeCodeError[];
       recoveryStrategy?: ErrorRecoveryStrategy;
@@ -408,9 +406,7 @@ export class CollectionService {
    * @param directory - Directory containing the files
    * @returns Promise resolving to parsed agents
    */
-  async parseClaudeAgents(
-    directory: string,
-  ): Promise<
+  async parseClaudeAgents(directory: string): Promise<
     Array<{
       filename: string;
       content: string;
@@ -483,9 +479,7 @@ export class CollectionService {
    * @param directory - Directory containing the files
    * @returns Promise resolving to parsed commands
    */
-  async parseClaudeCommands(
-    directory: string,
-  ): Promise<
+  async parseClaudeCommands(directory: string): Promise<
     Array<{
       filename: string;
       content: string;

@@ -145,8 +145,9 @@ export class LargeFileStreamerService implements OnModuleDestroy {
             options.enableGarbageCollection &&
             currentMemory > memoryThreshold
           ) {
-            await this.optimizeMemoryUsage({ // eslint-disable-line no-await-in-loop
-               
+            await this.optimizeMemoryUsage({
+              // eslint-disable-line no-await-in-loop
+
               memoryThreshold,
               enableGarbageCollection: true,
               clearCaches: true,

@@ -33,10 +33,11 @@ export class PackageValidatorService {
 
   async validateSize(size: number, userTier: UserTier): Promise<boolean> {
     // Check size limits based on user tier
-    const maxSize = userTier === 'pro' 
-      ? UPLOAD_CONFIG.MAX_FILE_SIZE * 10 // Pro users get 10x limit
-      : UPLOAD_CONFIG.MAX_FILE_SIZE;
-    
+    const maxSize =
+      userTier === 'pro'
+        ? UPLOAD_CONFIG.MAX_FILE_SIZE * 10 // Pro users get 10x limit
+        : UPLOAD_CONFIG.MAX_FILE_SIZE;
+
     return size <= maxSize;
   }
 

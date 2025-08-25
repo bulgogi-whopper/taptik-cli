@@ -300,47 +300,95 @@ export class KiroTransformerService {
     };
   }
 
-  private transformAgent(agent: Record<string, unknown>): KiroAgentConfiguration {
-     
-    const agentName = typeof agent.name === 'string' ? agent.name : 'Unnamed Agent';
-    const agentDescription = typeof agent.description === 'string' ? agent.description : 
-      (typeof agent.content === 'string' ? agent.content.substring(0, 100) : 'No description');
-    const agentMetadata = agent.metadata && typeof agent.metadata === 'object' && agent.metadata !== null ? agent.metadata as Record<string, unknown> : {};
+  private transformAgent(
+    agent: Record<string, unknown>,
+  ): KiroAgentConfiguration {
+    const agentName =
+      typeof agent.name === 'string' ? agent.name : 'Unnamed Agent';
+    const agentDescription =
+      typeof agent.description === 'string'
+        ? agent.description
+        : typeof agent.content === 'string'
+          ? agent.content.substring(0, 100)
+          : 'No description';
+    const agentMetadata =
+      agent.metadata &&
+      typeof agent.metadata === 'object' &&
+      agent.metadata !== null
+        ? (agent.metadata as Record<string, unknown>)
+        : {};
     const agentContent = typeof agent.content === 'string' ? agent.content : '';
-    const agentCapabilities = Array.isArray(agent.capabilities) ? agent.capabilities as string[] : [];
-    const agentConstraints = Array.isArray(agent.constraints) ? agent.constraints as string[] : [];
+    const agentCapabilities = Array.isArray(agent.capabilities)
+      ? (agent.capabilities as string[])
+      : [];
+    const agentConstraints = Array.isArray(agent.constraints)
+      ? (agent.constraints as string[])
+      : [];
     const agentExamples = Array.isArray(agent.examples) ? agent.examples : [];
-    
+
     return {
       name: agentName,
       description: agentDescription,
-      category: typeof agentMetadata.category === 'string' ? agentMetadata.category : 'general',
+      category:
+        typeof agentMetadata.category === 'string'
+          ? agentMetadata.category
+          : 'general',
       prompt: agentContent,
       capabilities: agentCapabilities,
       constraints: agentConstraints,
       examples: agentExamples,
       metadata: {
-        author: typeof agentMetadata.author === 'string' ? agentMetadata.author : undefined,
-        version: typeof agentMetadata.version === 'string' ? agentMetadata.version : '1.0.0',
-        created_at: typeof agentMetadata.created_at === 'string' ? agentMetadata.created_at : new Date().toISOString(),
-        updated_at: typeof agentMetadata.updated_at === 'string' ? agentMetadata.updated_at : undefined,
+        author:
+          typeof agentMetadata.author === 'string'
+            ? agentMetadata.author
+            : undefined,
+        version:
+          typeof agentMetadata.version === 'string'
+            ? agentMetadata.version
+            : '1.0.0',
+        created_at:
+          typeof agentMetadata.created_at === 'string'
+            ? agentMetadata.created_at
+            : new Date().toISOString(),
+        updated_at:
+          typeof agentMetadata.updated_at === 'string'
+            ? agentMetadata.updated_at
+            : undefined,
       },
     };
   }
 
-  private transformTemplate(template: Record<string, unknown>): KiroTemplateConfiguration {
-     
-    const templateContent = typeof template.template === 'string' ? template.template : 
-      (typeof template.content === 'string' ? template.content : '');
-    const templateName = typeof template.name === 'string' ? template.name : 'Unnamed Template';
-    const templateId = typeof template.id === 'string' ? template.id : `template-${Date.now()}`;
-    const templateDescription = typeof template.description === 'string' ? template.description : `Template: ${templateName}`;
-    const templateCategory = typeof template.category === 'string' ? template.category : 'general';
-    const templateTags = Array.isArray(template.tags) ? template.tags as string[] : [];
-    const templateVersion = typeof template.version === 'string' ? template.version : '1.0.0';
-    const templateCreatedAt = typeof template.created_at === 'string' ? template.created_at : new Date().toISOString();
-    const templateUpdatedAt = typeof template.updated_at === 'string' ? template.updated_at : undefined;
-    
+  private transformTemplate(
+    template: Record<string, unknown>,
+  ): KiroTemplateConfiguration {
+    const templateContent =
+      typeof template.template === 'string'
+        ? template.template
+        : typeof template.content === 'string'
+          ? template.content
+          : '';
+    const templateName =
+      typeof template.name === 'string' ? template.name : 'Unnamed Template';
+    const templateId =
+      typeof template.id === 'string' ? template.id : `template-${Date.now()}`;
+    const templateDescription =
+      typeof template.description === 'string'
+        ? template.description
+        : `Template: ${templateName}`;
+    const templateCategory =
+      typeof template.category === 'string' ? template.category : 'general';
+    const templateTags = Array.isArray(template.tags)
+      ? (template.tags as string[])
+      : [];
+    const templateVersion =
+      typeof template.version === 'string' ? template.version : '1.0.0';
+    const templateCreatedAt =
+      typeof template.created_at === 'string'
+        ? template.created_at
+        : new Date().toISOString();
+    const templateUpdatedAt =
+      typeof template.updated_at === 'string' ? template.updated_at : undefined;
+
     // Extract variables from template content
     const variables = this.extractVariables(templateContent);
 
@@ -413,7 +461,6 @@ export class KiroTransformerService {
     ideContext: Record<string, unknown>,
     createdAt: string,
   ): KiroSpecDocument[] {
-     
     const specs: KiroSpecDocument[] = [];
 
     // Transform specs from IDE context if available
@@ -454,10 +501,21 @@ export class KiroTransformerService {
     return hooks;
   }
 
-  private extractVariables(content: string): Array<{ name: string; type: 'string' | 'number' | 'boolean' | 'array' | 'object'; description: string; required: boolean }> {
-     
+  private extractVariables(
+    content: string,
+  ): Array<{
+    name: string;
+    type: 'string' | 'number' | 'boolean' | 'array' | 'object';
+    description: string;
+    required: boolean;
+  }> {
     const variableRegex = /{{(\w+)}}/g;
-    const variables: Array<{ name: string; type: 'string' | 'number' | 'boolean' | 'array' | 'object'; description: string; required: boolean }> = [];
+    const variables: Array<{
+      name: string;
+      type: 'string' | 'number' | 'boolean' | 'array' | 'object';
+      description: string;
+      required: boolean;
+    }> = [];
     let match;
 
     while ((match = variableRegex.exec(content)) !== null) {

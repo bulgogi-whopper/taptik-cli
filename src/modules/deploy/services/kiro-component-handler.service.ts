@@ -379,7 +379,10 @@ export class KiroComponentHandlerService {
 
           if (existingHook && options.conflictStrategy !== 'overwrite') {
             if (options.conflictStrategy === 'merge-intelligent') {
-              hookToWrite = { ...(existingHook as KiroHookConfiguration), ...hook };
+              hookToWrite = {
+                ...(existingHook as KiroHookConfiguration),
+                ...hook,
+              };
               warnings.push({
                 message: `Merged existing hook: ${fileName}`,
                 code: 'KIRO_HOOK_MERGED',
@@ -454,7 +457,10 @@ export class KiroComponentHandlerService {
 
           if (existingAgent && options.conflictStrategy !== 'overwrite') {
             if (options.conflictStrategy === 'merge-intelligent') {
-              agentToWrite = { ...(existingAgent as KiroAgentConfiguration), ...agent };
+              agentToWrite = {
+                ...(existingAgent as KiroAgentConfiguration),
+                ...agent,
+              };
               warnings.push({
                 message: `Merged existing agent: ${fileName}`,
                 code: 'KIRO_AGENT_MERGED',
@@ -532,7 +538,10 @@ export class KiroComponentHandlerService {
 
           if (existingTemplate && options.conflictStrategy !== 'overwrite') {
             if (options.conflictStrategy === 'merge-intelligent') {
-              templateToWrite = { ...(existingTemplate as KiroTemplateConfiguration), ...template };
+              templateToWrite = {
+                ...(existingTemplate as KiroTemplateConfiguration),
+                ...template,
+              };
               warnings.push({
                 message: `Merged existing template: ${fileName}`,
                 code: 'KIRO_TEMPLATE_MERGED',
@@ -587,7 +596,6 @@ export class KiroComponentHandlerService {
   }
 
   private async writeJsonFile(filePath: string, data: unknown): Promise<void> {
-     
     const jsonContent = JSON.stringify(data, null, 2);
     await fs.writeFile(filePath, jsonContent, 'utf8');
   }
@@ -599,8 +607,9 @@ export class KiroComponentHandlerService {
     await fs.writeFile(filePath, content, 'utf8');
   }
 
-  private async loadExistingSettings(filePath: string): Promise<unknown | null> {
-     
+  private async loadExistingSettings(
+    filePath: string,
+  ): Promise<unknown | null> {
     try {
       const content = await fs.readFile(filePath, 'utf8');
       return JSON.parse(content);
@@ -617,8 +626,9 @@ export class KiroComponentHandlerService {
     }
   }
 
-  private async loadExistingJsonFile(filePath: string): Promise<unknown | null> {
-     
+  private async loadExistingJsonFile(
+    filePath: string,
+  ): Promise<unknown | null> {
     try {
       const content = await fs.readFile(filePath, 'utf8');
       return JSON.parse(content);
@@ -632,17 +642,24 @@ export class KiroComponentHandlerService {
     incoming: unknown,
     strategy: KiroMergeStrategy,
   ): unknown {
-     
     if (strategy === 'deep-merge') {
-      return this.deepMerge(existing as Record<string, unknown>, incoming as Record<string, unknown>);
+      return this.deepMerge(
+        existing as Record<string, unknown>,
+        incoming as Record<string, unknown>,
+      );
     } else if (strategy === 'array-append') {
-      return this.arrayAppendMerge(existing as Record<string, unknown>, incoming as Record<string, unknown>);
+      return this.arrayAppendMerge(
+        existing as Record<string, unknown>,
+        incoming as Record<string, unknown>,
+      );
     }
     return incoming; // Default to overwrite
   }
 
-  private deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
-     
+  private deepMerge(
+    target: Record<string, unknown>,
+    source: Record<string, unknown>,
+  ): Record<string, unknown> {
     const result = { ...target };
 
     for (const key in source) {
@@ -654,7 +671,7 @@ export class KiroComponentHandlerService {
         ) {
           result[key] = this.deepMerge(
             (result[key] as Record<string, unknown>) || {},
-            source[key] as Record<string, unknown>
+            source[key] as Record<string, unknown>,
           );
         } else {
           result[key] = source[key];
@@ -665,8 +682,10 @@ export class KiroComponentHandlerService {
     return result;
   }
 
-  private arrayAppendMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
-     
+  private arrayAppendMerge(
+    target: Record<string, unknown>,
+    source: Record<string, unknown>,
+  ): Record<string, unknown> {
     const result = { ...target };
 
     for (const key in source) {
@@ -716,8 +735,10 @@ export class KiroComponentHandlerService {
     return tasks;
   }
 
-  private addMarkdownMetadata(content: string, metadata: Record<string, unknown>): string {
-     
+  private addMarkdownMetadata(
+    content: string,
+    metadata: Record<string, unknown>,
+  ): string {
     const frontMatter = Object.entries(metadata)
       .filter(([, value]) => value !== undefined && value !== null)
       .map(([key, value]) => {

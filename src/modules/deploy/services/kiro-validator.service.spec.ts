@@ -394,10 +394,14 @@ describe('KiroValidatorService', () => {
       expect(result.isValid).toBe(true);
       expect(result.warnings.length).toBeGreaterThan(0);
       expect(
-        result.warnings.some((w) => w.message.includes('User name is recommended')),
+        result.warnings.some((w) =>
+          w.message.includes('User name is recommended'),
+        ),
       ).toBe(true);
       expect(
-        result.warnings.some((w) => w.message.includes('Project name is recommended')),
+        result.warnings.some((w) =>
+          w.message.includes('Project name is recommended'),
+        ),
       ).toBe(true);
     });
   });
@@ -540,9 +544,13 @@ describe('KiroValidatorService', () => {
       );
 
       expect(result.isValid).toBe(true);
-      expect(result.warnings.some((w) => w.message.includes('Environment variable may contain sensitive information'))).toBe(
-        true,
-      );
+      expect(
+        result.warnings.some((w) =>
+          w.message.includes(
+            'Environment variable may contain sensitive information',
+          ),
+        ),
+      ).toBe(true);
     });
 
     it('should warn about dangerous agent capabilities', async () => {
@@ -674,7 +682,12 @@ describe('KiroValidatorService', () => {
       };
 
       const context: TaptikContext = {
-        metadata: { version: '1.0.0', exportedAt: '2024-01-01T00:00:00Z', sourceIde: 'taptik-cli', targetIdes: ['kiro-ide'] },
+        metadata: {
+          version: '1.0.0',
+          exportedAt: '2024-01-01T00:00:00Z',
+          sourceIde: 'taptik-cli',
+          targetIdes: ['kiro-ide'],
+        },
         content: {},
         security: {
           hasApiKeys: false,
@@ -705,7 +718,12 @@ describe('KiroValidatorService', () => {
       };
 
       const context: TaptikContext = {
-        metadata: { version: '1.0.0', exportedAt: '2024-01-01T00:00:00Z', sourceIde: 'taptik-cli', targetIdes: ['kiro-ide'] },
+        metadata: {
+          version: '1.0.0',
+          exportedAt: '2024-01-01T00:00:00Z',
+          sourceIde: 'taptik-cli',
+          targetIdes: ['kiro-ide'],
+        },
         content: {},
         security: {
           hasApiKeys: false,
@@ -721,9 +739,7 @@ describe('KiroValidatorService', () => {
 
       expect(result.isValid).toBe(true);
       expect(
-        result.warnings.some(
-          (w) => w.message.includes('Large file streaming'),
-        ),
+        result.warnings.some((w) => w.message.includes('Large file streaming')),
       ).toBe(true);
     });
   });

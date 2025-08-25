@@ -190,8 +190,9 @@ export class DeploymentService {
             context.content.project &&
             Object.keys(context.content.project).length > 0
           ) {
-            await this.deployProjectSettings( // eslint-disable-line no-await-in-loop
-               
+            await this.deployProjectSettings(
+              // eslint-disable-line no-await-in-loop
+
               context.content.project as Record<string, unknown>,
             );
             (result.deployedComponents as string[]).push('project');
@@ -1030,9 +1031,10 @@ export class DeploymentService {
             context.content.project &&
             Object.keys(context.content.project).length > 0
           ) {
-            await this.deployProjectSettings( // eslint-disable-line no-await-in-loop
+            await this.deployProjectSettings(
+              // eslint-disable-line no-await-in-loop
               context.content.project as Record<string, unknown>,
-            );  
+            );
             (result.deployedComponents as string[]).push('project');
             result.summary.filesDeployed++;
           }
@@ -1044,8 +1046,9 @@ export class DeploymentService {
           );
 
           // Trigger memory optimization after each component
-          await this.largeFileStreamer.optimizeMemoryUsage({ // eslint-disable-line no-await-in-loop
-             
+          await this.largeFileStreamer.optimizeMemoryUsage({
+            // eslint-disable-line no-await-in-loop
+
             memoryThreshold: 100 * 1024 * 1024,
             enableGarbageCollection: true,
             clearCaches: true,

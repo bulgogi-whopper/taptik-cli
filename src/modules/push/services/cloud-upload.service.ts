@@ -6,7 +6,6 @@ import { PackageMetadata, UploadProgress } from '../interfaces';
 
 import { SignedUrlService } from './signed-url.service';
 
-
 @Injectable()
 export class CloudUploadService {
   private readonly BUCKET_CONFIG = UPLOAD_CONFIG;

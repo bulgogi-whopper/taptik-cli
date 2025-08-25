@@ -326,9 +326,7 @@ export class AdvancedMockFileSystem extends MockFileSystem {
   /**
    * Enhanced stat with various file system edge cases
    */
-  async stat(
-    filePath: string,
-  ): Promise<{
+  async stat(filePath: string): Promise<{
     isDirectory(): boolean;
     isFile(): boolean;
     size: number;

@@ -5,7 +5,11 @@ import {
   ValidationError,
   ValidationWarning,
 } from '../../context/dto/validation-result.dto';
-import { TaptikContext, PersonalContext, ProjectContext } from '../../context/interfaces/taptik-context.interface';
+import {
+  TaptikContext,
+  PersonalContext,
+  ProjectContext,
+} from '../../context/interfaces/taptik-context.interface';
 import {
   KiroGlobalSettings,
   KiroProjectSettings,
@@ -143,42 +147,54 @@ export class KiroValidatorService {
 
     switch (componentType) {
       case 'settings': {
-        const settingsResult = this.validateSettings(component as KiroGlobalSettings | KiroProjectSettings);
+        const settingsResult = this.validateSettings(
+          component as KiroGlobalSettings | KiroProjectSettings,
+        );
         errors.push(...settingsResult.errors);
         warnings.push(...(settingsResult.warnings || []));
         break;
       }
 
       case 'steering': {
-        const steeringResult = this.validateSteeringDocument(component as KiroSteeringDocument);
+        const steeringResult = this.validateSteeringDocument(
+          component as KiroSteeringDocument,
+        );
         errors.push(...steeringResult.errors);
         warnings.push(...(steeringResult.warnings || []));
         break;
       }
 
       case 'specs': {
-        const specsResult = this.validateSpecDocument(component as KiroSpecDocument);
+        const specsResult = this.validateSpecDocument(
+          component as KiroSpecDocument,
+        );
         errors.push(...specsResult.errors);
         warnings.push(...(specsResult.warnings || []));
         break;
       }
 
       case 'hooks': {
-        const hooksResult = this.validateHookConfiguration(component as KiroHookConfiguration);
+        const hooksResult = this.validateHookConfiguration(
+          component as KiroHookConfiguration,
+        );
         errors.push(...hooksResult.errors);
         warnings.push(...(hooksResult.warnings || []));
         break;
       }
 
       case 'agents': {
-        const agentsResult = this.validateAgentConfiguration(component as KiroAgentConfiguration);
+        const agentsResult = this.validateAgentConfiguration(
+          component as KiroAgentConfiguration,
+        );
         errors.push(...agentsResult.errors);
         warnings.push(...(agentsResult.warnings || []));
         break;
       }
 
       case 'templates': {
-        const templatesResult = this.validateTemplateConfiguration(component as KiroTemplateConfiguration);
+        const templatesResult = this.validateTemplateConfiguration(
+          component as KiroTemplateConfiguration,
+        );
         errors.push(...templatesResult.errors);
         warnings.push(...(templatesResult.warnings || []));
         break;
@@ -203,12 +219,15 @@ export class KiroValidatorService {
   }
 
   private validatePersonalContext(personal: PersonalContext): ValidationResult {
-     
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
     // Check for security risks in personal context
-    if ('secrets' in personal || 'tokens' in personal || 'apiKeys' in personal) {
+    if (
+      'secrets' in personal ||
+      'tokens' in personal ||
+      'apiKeys' in personal
+    ) {
       errors.push({
         field: 'personal.secrets',
         message:
@@ -231,7 +250,6 @@ export class KiroValidatorService {
   }
 
   private validateProjectContext(project: ProjectContext): ValidationResult {
-     
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
@@ -256,7 +274,11 @@ export class KiroValidatorService {
     }
 
     // Check for security violations in project context
-    if ('secrets' in project || 'credentials' in project || 'tokens' in project) {
+    if (
+      'secrets' in project ||
+      'credentials' in project ||
+      'tokens' in project
+    ) {
       errors.push({
         field: 'project.secrets',
         message: 'Project context should not contain secrets or credentials',
@@ -269,7 +291,6 @@ export class KiroValidatorService {
   }
 
   private validateComponents(components: unknown): ValidationResult {
-     
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
@@ -452,7 +473,6 @@ export class KiroValidatorService {
   }
 
   private validateTask(task: KiroTask, index: number): ValidationResult {
-     
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
@@ -832,7 +852,10 @@ export class KiroValidatorService {
       });
     } else {
       template.variables.forEach((variable, index) => {
-        const variableResult = this.validateTemplateVariable(variable as KiroTemplateVariable, index);
+        const variableResult = this.validateTemplateVariable(
+          variable as KiroTemplateVariable,
+          index,
+        );
         errors.push(...variableResult.errors);
         warnings.push(...(variableResult.warnings || []));
       });
@@ -845,7 +868,6 @@ export class KiroValidatorService {
     variable: KiroTemplateVariable,
     index: number,
   ): ValidationResult {
-     
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
@@ -1032,8 +1054,9 @@ export class KiroValidatorService {
     return { isValid: errors.length === 0, errors, warnings };
   }
 
-  async validateLimits(components: Array<{ type: string; [key: string]: unknown }>): Promise<ValidationResult> {
-     
+  async validateLimits(
+    components: Array<{ type: string; [key: string]: unknown }>,
+  ): Promise<ValidationResult> {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 

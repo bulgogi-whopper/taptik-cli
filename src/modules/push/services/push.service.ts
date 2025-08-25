@@ -11,7 +11,6 @@ import { PackageValidatorService } from './package-validator.service';
 import { RateLimiterService } from './rate-limiter.service';
 import { SanitizationService } from './sanitization.service';
 
-
 @Injectable()
 export class PushService {
   constructor(

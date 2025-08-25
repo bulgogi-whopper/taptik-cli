@@ -963,7 +963,7 @@ export class PackageService {
     // Use cached size from package or manifest to avoid expensive serialization
     let originalSize: number;
     let compressedSize: number;
-    
+
     // Check if we have metrics with originalSize from package creation
     const packageWithMetrics = taptikPackage as TaptikPackage & {
       metrics?: { originalSize: number };
@@ -975,9 +975,7 @@ export class PackageService {
       // For accurate compression ratio calculation, we need the actual JSON serialized size
       // Manifest totalSize is for component sizes, not the full package serialization size
       const { sanitizedConfig: fallbackConfig } = taptikPackage;
-      originalSize = Buffer.from(
-        JSON.stringify(fallbackConfig),
-      ).length;
+      originalSize = Buffer.from(JSON.stringify(fallbackConfig)).length;
     }
 
     // Calculate compressed size - we always need to compress to get accurate metrics

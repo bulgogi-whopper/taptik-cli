@@ -838,19 +838,31 @@ describe('PackageService', () => {
             local: {
               agents: Array(10)
                 .fill(null)
-                .map((_, i) => ({ 
+                .map((_, i) => ({
                   id: `agent${i}`,
                   name: `Agent ${i}`,
-                  prompt: `Test prompt for agent ${i}`
+                  prompt: `Test prompt for agent ${i}`,
                 })),
               commands: Array(10)
                 .fill(null)
                 .map((_, i) => ({ name: `cmd${i}`, command: `run cmd${i}` })),
               mcpServers: {
                 servers: [
-                  { name: 'server1', protocol: 'stdio', command: 'run server1' },
-                  { name: 'server2', protocol: 'stdio', command: 'run server2' },
-                  { name: 'server3', protocol: 'stdio', command: 'run server3' }
+                  {
+                    name: 'server1',
+                    protocol: 'stdio',
+                    command: 'run server1',
+                  },
+                  {
+                    name: 'server2',
+                    protocol: 'stdio',
+                    command: 'run server2',
+                  },
+                  {
+                    name: 'server3',
+                    protocol: 'stdio',
+                    command: 'run server3',
+                  },
                 ],
               },
             },

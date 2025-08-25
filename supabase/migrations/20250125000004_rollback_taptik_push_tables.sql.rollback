@@ -1,0 +1,109 @@
+-- Rollback Migration: Remove Taptik Push Feature Tables
+-- Description: Rollback script to remove all push feature database objects
+-- NOTE: This file has .rollback extension to prevent automatic execution
+-- To use: Rename to .sql and run manually if rollback is needed
+
+-- Drop triggers first
+DROP TRIGGER IF EXISTS create_user_tier_on_signup ON auth.users;
+DROP TRIGGER IF EXISTS validate_package_upload_trigger ON taptik_packages;
+DROP TRIGGER IF EXISTS update_taptik_packages_updated_at ON taptik_packages;
+DROP TRIGGER IF EXISTS update_teams_updated_at ON teams;
+
+-- Drop all policies on storage.objects for taptik-packages bucket
+DROP POLICY IF EXISTS "Users can upload packages" ON storage.objects;
+DROP POLICY IF EXISTS "Users can view own packages" ON storage.objects;
+DROP POLICY IF EXISTS "Users can update own packages" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete own packages" ON storage.objects;
+
+-- Drop RLS policies
+-- Package policies
+DROP POLICY IF EXISTS "Public packages are viewable by everyone" ON taptik_packages;
+DROP POLICY IF EXISTS "Users can view their own packages" ON taptik_packages;
+DROP POLICY IF EXISTS "Team members can view team packages" ON taptik_packages;
+DROP POLICY IF EXISTS "Users can manage their own packages" ON taptik_packages;
+DROP POLICY IF EXISTS "Team admins can manage team packages" ON taptik_packages;
+
+-- Queue policies
+DROP POLICY IF EXISTS "Users can manage their own queue" ON upload_queue;
+
+-- Analytics policies
+DROP POLICY IF EXISTS "Package owners can view analytics" ON package_analytics;
+DROP POLICY IF EXISTS "Team members can view team package analytics" ON package_analytics;
+DROP POLICY IF EXISTS "System can insert analytics" ON package_analytics;
+
+-- Download policies
+DROP POLICY IF EXISTS "Anyone can insert download records" ON package_downloads;
+DROP POLICY IF EXISTS "Package owners can view downloads" ON package_downloads;
+
+-- Version policies
+DROP POLICY IF EXISTS "View versions for public packages" ON package_versions;
+DROP POLICY IF EXISTS "Users can view own package versions" ON package_versions;
+DROP POLICY IF EXISTS "Users can manage own package versions" ON package_versions;
+
+-- Audit policies
+DROP POLICY IF EXISTS "Users can view own audit logs" ON audit_logs;
+DROP POLICY IF EXISTS "System can insert audit logs" ON audit_logs;
+
+-- Team policies
+DROP POLICY IF EXISTS "Public team information is viewable" ON teams;
+DROP POLICY IF EXISTS "Team owners can manage teams" ON teams;
+DROP POLICY IF EXISTS "Team members can view membership" ON team_members;
+DROP POLICY IF EXISTS "Team admins can manage membership" ON team_members;
+DROP POLICY IF EXISTS "Users can leave teams" ON team_members;
+
+-- User tier policies
+DROP POLICY IF EXISTS "Users can view own tier" ON user_tiers;
+DROP POLICY IF EXISTS "System can manage user tiers" ON user_tiers;
+
+-- Rate limit policies
+DROP POLICY IF EXISTS "Users can view own rate limits" ON rate_limits;
+DROP POLICY IF EXISTS "System can manage rate limits" ON rate_limits;
+
+-- Drop functions
+DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
+DROP FUNCTION IF EXISTS generate_storage_path(UUID, TEXT, TEXT);
+DROP FUNCTION IF EXISTS validate_package_upload() CASCADE;
+DROP FUNCTION IF EXISTS generate_config_id();
+DROP FUNCTION IF EXISTS reset_daily_limits();
+DROP FUNCTION IF EXISTS reset_monthly_limits();
+DROP FUNCTION IF EXISTS check_rate_limit(UUID, TEXT, BIGINT);
+DROP FUNCTION IF EXISTS get_user_quota(UUID);
+DROP FUNCTION IF EXISTS create_default_user_tier() CASCADE;
+
+-- Drop indexes
+DROP INDEX IF EXISTS idx_packages_public;
+DROP INDEX IF EXISTS idx_packages_checksum;
+DROP INDEX IF EXISTS idx_packages_user;
+DROP INDEX IF EXISTS idx_packages_team;
+DROP INDEX IF EXISTS idx_packages_platform;
+DROP INDEX IF EXISTS idx_packages_tags;
+DROP INDEX IF EXISTS idx_queue_status;
+DROP INDEX IF EXISTS idx_analytics_package;
+DROP INDEX IF EXISTS idx_downloads_package;
+DROP INDEX IF EXISTS idx_downloads_user;
+DROP INDEX IF EXISTS idx_audit_user;
+DROP INDEX IF EXISTS idx_audit_resource;
+DROP INDEX IF EXISTS idx_user_tiers_user;
+DROP INDEX IF EXISTS idx_rate_limits_user;
+DROP INDEX IF EXISTS idx_rate_limits_reset;
+
+-- Drop tables (in correct order due to foreign key constraints)
+DROP TABLE IF EXISTS audit_logs CASCADE;
+DROP TABLE IF EXISTS package_analytics CASCADE;
+DROP TABLE IF EXISTS package_downloads CASCADE;
+DROP TABLE IF EXISTS package_versions CASCADE;
+DROP TABLE IF EXISTS upload_queue CASCADE;
+DROP TABLE IF EXISTS taptik_packages CASCADE;
+DROP TABLE IF EXISTS team_members CASCADE;
+DROP TABLE IF EXISTS teams CASCADE;
+DROP TABLE IF EXISTS rate_limits CASCADE;
+DROP TABLE IF EXISTS user_tiers CASCADE;
+
+-- Remove storage bucket
+DELETE FROM storage.buckets WHERE id = 'taptik-packages';
+
+-- Log completion
+DO $$
+BEGIN
+    RAISE NOTICE 'Taptik Push Feature rollback completed successfully';
+END $$;

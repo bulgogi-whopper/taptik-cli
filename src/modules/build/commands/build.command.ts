@@ -1158,7 +1158,6 @@ export class BuildCommand extends CommandRunner {
               typeof cloudTransformService.transformClaudeCodePersonalContext ===
               'function'
             ) {
-               
               transformedData.personalContext =
                 await cloudTransformService.transformClaudeCodePersonalContext(
                   settingsData.localSettings,
@@ -1206,7 +1205,6 @@ export class BuildCommand extends CommandRunner {
               typeof cloudTransformService.transformClaudeCodeProjectContext ===
               'function'
             ) {
-               
               transformedData.projectContext =
                 await cloudTransformService.transformClaudeCodeProjectContext(
                   settingsData.localSettings,
@@ -1252,7 +1250,6 @@ export class BuildCommand extends CommandRunner {
               typeof cloudTransformService.transformClaudeCodePromptTemplates ===
               'function'
             ) {
-               
               transformedData.promptTemplates =
                 await cloudTransformService.transformClaudeCodePromptTemplates(
                   settingsData.localSettings,

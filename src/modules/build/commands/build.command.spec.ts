@@ -233,13 +233,11 @@ describe('BuildCommand', () => {
       addCriticalError: vi.fn(),
       hasWarnings: vi.fn().mockReturnValue(false),
       hasCriticalErrors: vi.fn().mockReturnValue(false),
-      getErrorSummary: vi
-        .fn()
-        .mockReturnValue({
-          warnings: [],
-          criticalErrors: [],
-          partialFiles: [],
-        }),
+      getErrorSummary: vi.fn().mockReturnValue({
+        warnings: [],
+        criticalErrors: [],
+        partialFiles: [],
+      }),
       displayErrorSummary: vi.fn(),
       exitWithAppropriateCode: vi.fn().mockImplementation(() => undefined),
       handleCriticalErrorAndExit: vi.fn().mockImplementation(() => undefined),

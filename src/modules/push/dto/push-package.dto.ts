@@ -40,7 +40,8 @@ export class PushPackageDto {
   @IsOptional()
   @IsString()
   @Matches(/^\d+\.\d+\.\d+(-[\w.]+)?(\+[\w.]+)?$/, {
-    message: 'Version must follow semantic versioning (e.g., 1.0.0, 1.0.0-beta.1)',
+    message:
+      'Version must follow semantic versioning (e.g., 1.0.0, 1.0.0-beta.1)',
   })
   version?: string;
 

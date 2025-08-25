@@ -21,9 +21,7 @@ export interface PackageStats {
 export class PackageRegistryService {
   constructor(private readonly supabaseService: SupabaseService) {}
 
-  async registerPackage(
-    _metadata: PackageMetadata,
-  ): Promise<PackageMetadata> {
+  async registerPackage(_metadata: PackageMetadata): Promise<PackageMetadata> {
     // TODO: Insert package metadata into taptik_packages table
     throw new Error('Method not implemented.');
   }

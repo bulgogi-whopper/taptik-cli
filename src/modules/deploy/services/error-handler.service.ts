@@ -95,7 +95,6 @@ export class ErrorHandlerService {
 
         // Log retry attempt
         this.logger.log(
-           
           `⏳ Retry attempt ${attempt}/${config.maxAttempts} after ${delay}ms...`,
         );
 

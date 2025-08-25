@@ -8,7 +8,6 @@ import { Command, CommandRunner, Option } from 'nest-commander';
 import { PushOptions } from '../interfaces';
 import { PushService } from '../services/push.service';
 
-
 interface PushCommandOptions extends PushOptions {
   output?: string;
 }
@@ -52,11 +51,13 @@ export class PushCommand extends CommandRunner {
 
     try {
       const metadata = await this.pushService.upload(fullPath, options);
-      
+
       console.log('✅ Upload successful!');
       console.log(`📦 Config ID: ${metadata.configId}`);
-      console.log(`🔗 Share URL: https://taptik.dev/config/${metadata.configId}`);
-      
+      console.log(
+        `🔗 Share URL: https://taptik.dev/config/${metadata.configId}`,
+      );
+
       if (metadata.isPublic) {
         console.log('👁️  Visibility: Public');
       } else {
@@ -109,7 +110,10 @@ export class PushCommand extends CommandRunner {
     description: 'Comma-separated tags for the configuration',
   })
   parseTags(value: string): string[] {
-    return value.split(',').map(tag => tag.trim()).filter(Boolean);
+    return value
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter(Boolean);
   }
 
   @Option({

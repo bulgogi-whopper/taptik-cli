@@ -18,10 +18,7 @@ export class RateLimiterService {
 
   constructor(private readonly supabaseService: SupabaseService) {}
 
-  async checkLimit(
-    userId: string,
-    _size: number,
-  ): Promise<RateLimitStatus> {
+  async checkLimit(userId: string, _size: number): Promise<RateLimitStatus> {
     // TODO: Implementation using Supabase or Redis
     // Check upload count and bandwidth usage
     const tier = await this.getUserTier(userId);
@@ -35,10 +32,7 @@ export class RateLimiterService {
     };
   }
 
-  async incrementUsage(
-    _userId: string,
-    _size: number,
-  ): Promise<void> {
+  async incrementUsage(_userId: string, _size: number): Promise<void> {
     // TODO: Increment upload count and bandwidth usage
     throw new Error('Method not implemented.');
   }

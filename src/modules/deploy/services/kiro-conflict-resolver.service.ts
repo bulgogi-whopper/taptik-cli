@@ -417,8 +417,10 @@ export class KiroConflictResolverService {
     return mergedLines.join('\n');
   }
 
-  private deepMergeObjects(existing: Record<string, unknown>, newData: Record<string, unknown>): Record<string, unknown> {
-     
+  private deepMergeObjects(
+    existing: Record<string, unknown>,
+    newData: Record<string, unknown>,
+  ): Record<string, unknown> {
     if (typeof existing !== 'object' || existing === null) {
       return newData;
     }
@@ -438,7 +440,7 @@ export class KiroConflictResolverService {
         ) {
           result[key] = this.deepMergeObjects(
             existing[key] as Record<string, unknown>,
-            newData[key] as Record<string, unknown>
+            newData[key] as Record<string, unknown>,
           );
         } else {
           result[key] = newData[key];
@@ -449,13 +451,18 @@ export class KiroConflictResolverService {
     return result;
   }
 
-  private mergeWithArrayAppend(existing: Record<string, unknown>, newData: Record<string, unknown>): Record<string, unknown> {
-     
+  private mergeWithArrayAppend(
+    existing: Record<string, unknown>,
+    newData: Record<string, unknown>,
+  ): Record<string, unknown> {
     const result = this.deepMergeObjects(existing, newData);
 
     // 배열 필드들을 찾아서 병합
-    const mergeArrays = (obj1: Record<string, unknown>, obj2: Record<string, unknown>, target: Record<string, unknown>): void => {
-       
+    const mergeArrays = (
+      obj1: Record<string, unknown>,
+      obj2: Record<string, unknown>,
+      target: Record<string, unknown>,
+    ): void => {
       for (const key in obj2) {
         if (Object.prototype.hasOwnProperty.call(obj2, key)) {
           if (Array.isArray(obj1[key]) && Array.isArray(obj2[key])) {
@@ -465,7 +472,7 @@ export class KiroConflictResolverService {
             mergeArrays(
               (obj1[key] as Record<string, unknown>) || {},
               obj2[key] as Record<string, unknown>,
-              (target[key] as Record<string, unknown>) || {}
+              (target[key] as Record<string, unknown>) || {},
             );
           }
         }
@@ -803,7 +810,8 @@ export class KiroConflictResolverService {
     const results: ConflictResolutionResult[] = [];
 
     for (const conflict of conflicts) {
-      const result = await this.resolveConflict( // eslint-disable-line no-await-in-loop
+      const result = await this.resolveConflict(
+        // eslint-disable-line no-await-in-loop
         conflict.filePath,
         conflict.newContent,
         conflict.componentType,

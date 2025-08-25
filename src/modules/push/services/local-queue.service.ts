@@ -10,10 +10,7 @@ export class LocalQueueService {
   private readonly queueConfig = QUEUE_CONFIG;
   private queue: Map<string, QueuedUpload> = new Map();
 
-  async addToQueue(
-    packagePath: string,
-    options: PushOptions,
-  ): Promise<string> {
+  async addToQueue(packagePath: string, options: PushOptions): Promise<string> {
     // TODO: Add upload to local queue (eventually use SQLite)
     const id = randomUUID();
     const queuedUpload: QueuedUpload = {
@@ -23,7 +20,7 @@ export class LocalQueueService {
       attempts: 0,
       status: 'pending',
     };
-    
+
     this.queue.set(id, queuedUpload);
     return id;
   }

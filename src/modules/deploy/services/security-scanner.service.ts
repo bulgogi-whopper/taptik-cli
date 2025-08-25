@@ -347,7 +347,10 @@ export class SecurityScannerService {
   private async validateCommands(
     context: TaptikContext,
   ): Promise<CommandValidationResult> {
-    const ide = context.content.ide as Record<string, unknown> | null | undefined;
+    const ide = context.content.ide as
+      | Record<string, unknown>
+      | null
+      | undefined;
     const commands = Array.isArray(ide?.commands) ? ide.commands : [];
 
     if (commands.length === 0) {
@@ -936,7 +939,6 @@ export class SecurityScannerService {
     settings: unknown,
     componentName: string,
   ): Promise<KiroSecurityViolation[]> {
-     
     const violations: KiroSecurityViolation[] = [];
 
     // Convert settings to string for pattern matching
@@ -967,12 +969,13 @@ export class SecurityScannerService {
 
     // 2. Check for dangerous configuration values
     const settingsObj = settings as Record<string, unknown>;
-    if (settingsObj.permissions && typeof settingsObj.permissions === 'object' && settingsObj.permissions !== null) {
+    if (
+      settingsObj.permissions &&
+      typeof settingsObj.permissions === 'object' &&
+      settingsObj.permissions !== null
+    ) {
       const permissions = settingsObj.permissions as Record<string, unknown>;
-      if (
-        permissions.defaultMode === 'acceptEdits' &&
-        !permissions.allow
-      ) {
+      if (permissions.defaultMode === 'acceptEdits' && !permissions.allow) {
         violations.push({
           componentType: 'settings',
           component: componentName,
@@ -993,7 +996,6 @@ export class SecurityScannerService {
     steering: unknown,
     componentName: string,
   ): Promise<KiroSecurityViolation[]> {
-     
     const violations: KiroSecurityViolation[] = [];
 
     // Convert to string for pattern matching
@@ -1029,7 +1031,6 @@ export class SecurityScannerService {
     specs: unknown,
     componentName: string,
   ): Promise<KiroSecurityViolation[]> {
-     
     const violations: KiroSecurityViolation[] = [];
 
     // Convert to string for pattern matching
