@@ -1,16 +1,7 @@
-import * as path from 'path';
-
 import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 
 import { TaptikPackage } from '../../context/interfaces/cloud.interface';
-import { ErrorHandlerService } from '../../deploy/services/error-handler.service';
 import { PushOptions, PackageVisibility, UploadProgress } from '../../push/interfaces';
-import { PushService } from '../../push/services/push.service';
-import { CollectionService } from '../services/collection/collection.service';
-import { InteractiveService } from '../services/interactive/interactive.service';
-import { OutputService } from '../services/output/output.service';
-import { ProgressService } from '../services/progress/progress.service';
-import { TransformationService } from '../services/transformation/transformation.service';
 
 import { BuildCommand } from './build.command';
 

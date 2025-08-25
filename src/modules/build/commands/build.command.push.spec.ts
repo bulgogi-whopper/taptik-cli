@@ -1,10 +1,7 @@
-import * as path from 'path';
-
 import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 
 import { TaptikPackage } from '../../context/interfaces/cloud.interface';
 import { PushOptions, PackageVisibility, UploadProgress } from '../../push/interfaces';
-import { PushService } from '../../push/services/push.service';
 
 import { BuildCommand } from './build.command';
 
