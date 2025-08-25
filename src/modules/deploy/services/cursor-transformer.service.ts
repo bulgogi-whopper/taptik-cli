@@ -106,7 +106,7 @@ export class CursorTransformerService {
       }
 
       if (context.content.prompts) {
-        result.aiConfig = this.transformAIContent(context);
+        result.aiConfig = await this.transformAIContent(context);
         result.statistics.transformedComponents++;
       }
 
@@ -237,10 +237,11 @@ export class CursorTransformerService {
   }
 
   /**
-   * Transform AI content to Cursor AI configuration
+   * Transform AI content to Cursor AI configuration (enhanced version)
    */
-  transformAIContent(context: TaptikContext): CursorAIConfig {
+  async transformAIContent(context: TaptikContext): Promise<CursorAIConfig> {
     const prompts = context.content.prompts || {};
+    const result = this.initializeTransformationResult();
 
     const aiConfig: CursorAIConfig = {
       rules: [],
@@ -248,43 +249,332 @@ export class CursorTransformerService {
       prompts: [],
     };
 
-    // Transform system prompts to rules
+    // Transform AI rules with security scanning
+    const transformedRules = await this.transformAIRules(context, result);
+    aiConfig.rules = transformedRules;
+
+    // Transform AI context files with validation
+    const transformedContext = await this.transformAIContext(context, result);
+    aiConfig.contextFiles = transformedContext;
+
+    // Transform prompt templates with optimization
+    const transformedPrompts = await this.transformPromptTemplates(context, result);
+    aiConfig.prompts = transformedPrompts;
+
+    // Perform security scan on AI content
+    await this.scanAIContentForSecurity(aiConfig, result);
+
+    return aiConfig;
+  }
+
+  /**
+   * Transform AI rules to Cursor format with security validation
+   */
+  async transformAIRules(context: TaptikContext, result: CursorTransformationResult): Promise<CursorAIRule[]> {
+    this.addLogEntry(result, 'info', 'ai-rules', 'Starting AI rules transformation');
+    
+    const prompts = context.content.prompts || {};
+    const rules: CursorAIRule[] = [];
+
+    // Transform system prompts to AI rules
     if (prompts.system_prompts && Array.isArray(prompts.system_prompts)) {
-      prompts.system_prompts.forEach(prompt => {
-        aiConfig.rules.push({
-          name: prompt.name,
-          content: prompt.content,
-          enabled: true,
-          priority: 'medium',
-          category: prompt.category || 'general',
-          tags: prompt.tags || [],
-        });
-      });
+      for (const prompt of prompts.system_prompts) {
+        try {
+          // Create temporary rule for security validation
+          const tempRule: CursorAIRule = {
+            id: 'temp',
+            name: prompt.name,
+            content: prompt.content,
+            enabled: true,
+            priority: 5,
+            scope: 'workspace'
+          };
+
+          // Security scan for malicious content
+          const securityResult = this.contentValidator 
+            ? await this.contentValidator.validateAIContent({
+                rules: [tempRule],
+                contextFiles: [],
+                prompts: []
+              })
+            : { valid: true, errors: [], warnings: [] };
+
+          if (!securityResult.valid) {
+            this.addWarning(result, 'security',
+              `AI rule "${prompt.name}" failed security validation`,
+              'ai-rules-transform',
+              'Review and sanitize AI rule content',
+              'high'
+            );
+            continue;
+          }
+
+          const rule = this.createAIRule(prompt, result);
+          if (rule) {
+            rules.push(rule);
+            result.statistics.mappingsApplied++;
+          }
+
+        } catch (error) {
+          this.addWarning(result, 'validation',
+            `Error processing AI rule "${prompt.name}": ${(error as Error).message}`,
+            'ai-rules-transform',
+            'Check rule format and content',
+            'medium'
+          );
+        }
+      }
     }
+
+    // Transform agents to AI rules if available
+    if (context.content.tools?.agents && Array.isArray(context.content.tools.agents)) {
+      for (const agent of context.content.tools.agents) {
+        try {
+          const rule = this.createAIRuleFromAgent(agent, result);
+          if (rule) {
+            const securityResult = this.contentValidator 
+              ? await this.contentValidator.validateAIContent({
+                  rules: [rule],
+                  contextFiles: [],
+                  prompts: []
+                })
+              : { valid: true, errors: [], warnings: [] };
+
+            if (securityResult.valid) {
+              rules.push(rule);
+              result.statistics.mappingsApplied++;
+            } else {
+              this.addWarning(result, 'security',
+                `Agent-based AI rule "${agent.name}" failed security validation`,
+                'ai-rules-transform',
+                'Review agent content for security issues',
+                'high'
+              );
+            }
+          }
+        } catch (error) {
+          this.addWarning(result, 'validation',
+            `Error processing agent "${agent.name}": ${(error as Error).message}`,
+            'ai-rules-transform',
+            'Check agent format and content',
+            'medium'
+          );
+        }
+      }
+    }
+
+    this.addLogEntry(result, 'info', 'ai-rules', `Transformed ${rules.length} AI rules`);
+    return rules;
+  }
+
+  /**
+   * Transform AI context files with validation and optimization
+   */
+  async transformAIContext(context: TaptikContext, result: CursorTransformationResult): Promise<CursorAIContext[]> {
+    this.addLogEntry(result, 'info', 'ai-context', 'Starting AI context transformation');
+    
+    const prompts = context.content.prompts || {};
+    const project = context.content.project || {};
+    const contextFiles: CursorAIContext[] = [];
 
     // Transform templates to context files
     if (prompts.templates && Array.isArray(prompts.templates)) {
-      prompts.templates.forEach(template => {
-        aiConfig.contextFiles.push({
-          path: `templates/${template.name}.md`,
-          content: template.template || template.content || '',
-          description: template.description || `Template: ${template.name}`,
-        });
-      });
+      for (const template of prompts.templates) {
+        try {
+          const contextFile = this.createAIContextFile(template, 'template', result);
+          if (contextFile) {
+            // Validate content size and format
+            if (await this.validateContextFileSize(contextFile, result)) {
+              contextFiles.push(contextFile);
+              result.statistics.mappingsApplied++;
+            }
+          }
+        } catch (error) {
+          this.addWarning(result, 'validation',
+            `Error processing template "${template.name}": ${(error as Error).message}`,
+            'ai-context-transform',
+            'Check template format and content',
+            'medium'
+          );
+        }
+      }
     }
 
-    // Transform examples to prompts
+    // Transform project documentation to context files
+    if (project.claudeMd) {
+      try {
+        const contextFile: CursorAIContext = {
+          id: this.generateAIContextId('project-context'),
+          name: 'Project Context',
+          content: project.claudeMd,
+          description: 'Project-specific AI context from CLAUDE.md',
+          type: 'documentation',
+          enabled: true,
+          priority: 8,
+          scope: 'workspace',
+        };
+
+        if (await this.validateContextFileSize(contextFile, result)) {
+          contextFiles.push(contextFile);
+          result.statistics.mappingsApplied++;
+        }
+      } catch (error) {
+        this.addWarning(result, 'validation',
+          `Error processing project context: ${(error as Error).message}`,
+          'ai-context-transform',
+          'Check CLAUDE.md content format',
+          'medium'
+        );
+      }
+    }
+
+    // Transform custom settings to context files
+    if (project.customSettings && typeof project.customSettings === 'object') {
+      for (const [key, value] of Object.entries(project.customSettings)) {
+        if (typeof value === 'string' && value.length > 0) {
+          try {
+            const contextFile: CursorAIContext = {
+              id: this.generateAIContextId(`custom-${key}`),
+              name: `Custom ${key}`,
+              content: value,
+              description: `Custom setting: ${key}`,
+              type: 'custom',
+              enabled: true,
+              priority: 4,
+              scope: 'workspace',
+            };
+
+            if (await this.validateContextFileSize(contextFile, result)) {
+              contextFiles.push(contextFile);
+              result.statistics.mappingsApplied++;
+            }
+          } catch (error) {
+            this.addWarning(result, 'validation',
+              `Error processing custom setting "${key}": ${(error as Error).message}`,
+              'ai-context-transform',
+              'Check custom setting content',
+              'low'
+            );
+          }
+        }
+      }
+    }
+
+    this.addLogEntry(result, 'info', 'ai-context', `Transformed ${contextFiles.length} context files`);
+    return contextFiles;
+  }
+
+  /**
+   * Transform prompt templates with variable optimization
+   */
+  async transformPromptTemplates(context: TaptikContext, result: CursorTransformationResult): Promise<CursorAIPrompt[]> {
+    this.addLogEntry(result, 'info', 'ai-prompts', 'Starting prompt templates transformation');
+    
+    const prompts = context.content.prompts || {};
+    const aiPrompts: CursorAIPrompt[] = [];
+
+    // Transform examples to optimized prompts
     if (prompts.examples && Array.isArray(prompts.examples)) {
-      prompts.examples.forEach(example => {
-        aiConfig.prompts.push({
-          name: example.name,
-          content: example.prompt,
-          description: example.use_case || `Example: ${example.name}`,
-        });
-      });
+      for (const example of prompts.examples) {
+        try {
+          const optimizedPrompt = this.optimizePromptForCursor(example, result);
+          if (optimizedPrompt) {
+            // Security scan for prompt injection
+            if (await this.validatePromptSecurity(optimizedPrompt, result)) {
+              aiPrompts.push(optimizedPrompt);
+              result.statistics.mappingsApplied++;
+            }
+          }
+        } catch (error) {
+          this.addWarning(result, 'validation',
+            `Error processing prompt example "${example.name}": ${(error as Error).message}`,
+            'ai-prompts-transform',
+            'Check prompt example format',
+            'medium'
+          );
+        }
+      }
     }
 
-    return aiConfig;
+    // Transform system prompts to interactive prompts
+    if (prompts.system_prompts && Array.isArray(prompts.system_prompts)) {
+      for (const systemPrompt of prompts.system_prompts) {
+        if (systemPrompt.category === 'interactive' || systemPrompt.tags?.includes('interactive')) {
+          try {
+            const interactivePrompt: CursorAIPrompt = {
+              id: this.generateAIPromptId(systemPrompt.name),
+              name: systemPrompt.name,
+              content: systemPrompt.content,
+              description: `Interactive system prompt: ${systemPrompt.name}`,
+              enabled: true,
+              priority: 7,
+              scope: 'workspace',
+            };
+
+            if (await this.validatePromptSecurity(interactivePrompt, result)) {
+              aiPrompts.push(interactivePrompt);
+              result.statistics.mappingsApplied++;
+            }
+          } catch (error) {
+            this.addWarning(result, 'validation',
+              `Error processing interactive prompt "${systemPrompt.name}": ${(error as Error).message}`,
+              'ai-prompts-transform',
+              'Check system prompt content',
+              'medium'
+            );
+          }
+        }
+      }
+    }
+
+    this.addLogEntry(result, 'info', 'ai-prompts', `Transformed ${aiPrompts.length} AI prompts`);
+    return aiPrompts;
+  }
+
+  /**
+   * Perform comprehensive security scan on AI content
+   */
+  async scanAIContentForSecurity(aiConfig: CursorAIConfig, result: CursorTransformationResult): Promise<void> {
+    this.addLogEntry(result, 'info', 'ai-security', 'Starting AI content security scan');
+
+    if (this.contentValidator) {
+      try {
+        const validationResult = await this.contentValidator.validateAIContent(aiConfig);
+        
+        if (!validationResult.valid) {
+          for (const error of validationResult.errors) {
+            this.addWarning(result, 'security',
+              `AI content security issue: ${error}`,
+              'ai-security-scan',
+              'Review and sanitize AI content',
+              'high'
+            );
+          }
+        }
+
+        for (const warning of validationResult.warnings) {
+          this.addWarning(result, 'security',
+            `AI content security warning: ${warning}`,
+            'ai-security-scan',
+            'Consider reviewing AI content',
+            'medium'
+          );
+        }
+
+        this.addLogEntry(result, 'info', 'ai-security', 
+          `Security scan completed: ${validationResult.errors.length} errors, ${validationResult.warnings.length} warnings`);
+        
+      } catch (error) {
+        this.addWarning(result, 'validation',
+          `AI security scan failed: ${(error as Error).message}`,
+          'ai-security-scan',
+          'Manual security review recommended',
+          'high'
+        );
+      }
+    } else {
+      this.addLogEntry(result, 'info', 'ai-security', 'Security scan skipped - validator not available');
+    }
   }
 
   /**
@@ -400,6 +690,272 @@ export class CursorTransformerService {
       },
       transformationLog: [],
     };
+  }
+
+  // AI-specific helper methods
+  private createAIRule(prompt: any, result: CursorTransformationResult): CursorAIRule | null {
+    if (!prompt.name || !prompt.content) {
+      this.addWarning(result, 'mapping',
+        'AI rule missing required fields (name/content)',
+        'ai-rule-creation',
+        'Ensure AI rules have name and content fields',
+        'medium'
+      );
+      return null;
+    }
+
+    return {
+      id: this.generateAIRuleId(prompt.name),
+      name: prompt.name,
+      content: this.optimizeAIRuleContent(prompt.content),
+      enabled: true,
+      priority: this.determineAIRulePriorityNumber(prompt),
+      category: prompt.category || 'general',
+      tags: prompt.tags || [],
+      scope: 'workspace',
+    };
+  }
+
+  private createAIRuleFromAgent(agent: any, result: CursorTransformationResult): CursorAIRule | null {
+    if (!agent.name || !agent.content) {
+      this.addWarning(result, 'mapping',
+        'Agent missing required fields (name/content)',
+        'agent-to-rule',
+        'Ensure agents have name and content fields',
+        'medium'
+      );
+      return null;
+    }
+
+    return {
+      id: this.generateAIRuleId(`agent-${agent.name}`),
+      name: `Agent: ${agent.name}`,
+      content: this.optimizeAgentContentForAI(agent.content, agent.capabilities),
+      enabled: true,
+      priority: 8, // High priority for agents
+      category: agent.metadata?.category || 'agent',
+      tags: ['agent', ...(agent.metadata?.tags || [])],
+      scope: 'workspace',
+    };
+  }
+
+  private createAIContextFile(template: any, type: string, result: CursorTransformationResult): CursorAIContext | null {
+    if (!template.name) {
+      this.addWarning(result, 'mapping',
+        'Template missing name field',
+        'context-file-creation',
+        'Ensure templates have name field',
+        'medium'
+      );
+      return null;
+    }
+
+    const content = template.template || template.content || '';
+    if (content.length === 0) {
+      this.addWarning(result, 'mapping',
+        `Template "${template.name}" has empty content`,
+        'context-file-creation',
+        'Templates should have meaningful content',
+        'low'
+      );
+      return null;
+    }
+
+    return {
+      id: this.generateAIContextId(template.name),
+      name: template.name,
+      content: this.optimizeContextFileContent(content, template.variables),
+      description: template.description || `${type}: ${template.name}`,
+      type: type as any,
+      enabled: true,
+      priority: 5,
+      scope: 'workspace',
+    };
+  }
+
+  private optimizePromptForCursor(example: any, result: CursorTransformationResult): CursorAIPrompt | null {
+    if (!example.name || !example.prompt) {
+      this.addWarning(result, 'mapping',
+        'Prompt example missing required fields (name/prompt)',
+        'prompt-optimization',
+        'Ensure prompt examples have name and prompt fields',
+        'medium'
+      );
+      return null;
+    }
+
+    return {
+      id: this.generateAIPromptId(example.name),
+      name: example.name,
+      content: this.enhancePromptForCursor(example.prompt, example.expected_response),
+      description: example.use_case || `Example: ${example.name}`,
+      enabled: true,
+      priority: 5,
+      scope: 'workspace',
+    };
+  }
+
+  private optimizeAIRuleContent(content: string): string {
+    // Remove excessive whitespace and normalize formatting
+    let optimized = content.trim().replace(/\n\s*\n\s*\n/g, '\n\n');
+    
+    // Add Cursor-specific formatting hints
+    if (!optimized.startsWith('---')) {
+      optimized = `---\nrule_type: ai_instruction\ncontext: cursor_ide\n---\n\n${optimized}`;
+    }
+
+    return optimized;
+  }
+
+  private optimizeAgentContentForAI(content: string, capabilities?: string[]): string {
+    let optimized = content.trim();
+
+    // Add agent capabilities context
+    if (capabilities && capabilities.length > 0) {
+      optimized += `\n\n**Agent Capabilities:**\n${capabilities.map(cap => `- ${cap}`).join('\n')}`;
+    }
+
+    // Format for Cursor AI consumption
+    optimized = `---\nrule_type: agent_instruction\ncontext: cursor_ide\n---\n\n${optimized}`;
+
+    return optimized;
+  }
+
+  private optimizeContextFileContent(content: string, variables?: string[]): string {
+    let optimized = content.trim();
+
+    // Add variable documentation if present
+    if (variables && variables.length > 0) {
+      optimized = `${optimized}\n\n<!-- Template Variables: ${variables.join(', ')} -->`;
+    }
+
+    // Ensure proper markdown formatting
+    if (!optimized.startsWith('#')) {
+      optimized = `# Context File\n\n${optimized}`;
+    }
+
+    return optimized;
+  }
+
+  private enhancePromptForCursor(prompt: string, expectedResponse?: string): string {
+    let enhanced = prompt.trim();
+
+    // Add expected response as context if available
+    if (expectedResponse) {
+      enhanced += `\n\n**Expected Response Style:**\n${expectedResponse}`;
+    }
+
+    // Add Cursor-specific prompt enhancement
+    enhanced += '\n\n*This prompt is optimized for Cursor AI assistant.*';
+
+    return enhanced;
+  }
+
+  private determineAIRulePriorityNumber(prompt: any): number {
+    if (typeof prompt.priority === 'number') {
+      return Math.max(0, Math.min(10, prompt.priority));
+    }
+
+    // Determine priority based on content and tags
+    const content = prompt.content?.toLowerCase() || '';
+    const category = prompt.category?.toLowerCase() || '';
+    const tags = prompt.tags || [];
+
+    if (category === 'security' || tags.includes('security') || content.includes('security')) {
+      return 9; // High priority
+    }
+
+    if (category === 'style' || tags.includes('style') || content.includes('format')) {
+      return 6; // Medium-high priority
+    }
+
+    if (category === 'review' || tags.includes('review')) {
+      return 7; // High-medium priority
+    }
+
+    return 5; // Medium priority
+  }
+
+  private generateAIRuleId(name: string): string {
+    return `ai-rule-${this.sanitizeFileName(name)}-${Date.now()}`;
+  }
+
+  private generateAIContextId(name: string): string {
+    return `ai-context-${this.sanitizeFileName(name)}-${Date.now()}`;
+  }
+
+  private generateAIPromptId(name: string): string {
+    return `ai-prompt-${this.sanitizeFileName(name)}-${Date.now()}`;
+  }
+
+  private sanitizeFileName(name: string): string {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+  }
+
+  private async validateContextFileSize(contextFile: CursorAIContext, result: CursorTransformationResult): Promise<boolean> {
+    const maxSize = 1024 * 1024; // 1MB limit
+    const contentSize = Buffer.byteLength(contextFile.content, 'utf8');
+
+    if (contentSize > maxSize) {
+      this.addWarning(result, 'validation',
+        `Context file "${contextFile.name}" exceeds size limit (${contentSize} > ${maxSize} bytes)`,
+        'context-file-validation',
+        'Consider splitting large context files into smaller ones',
+        'high'
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  private async validatePromptSecurity(prompt: CursorAIPrompt, result: CursorTransformationResult): Promise<boolean> {
+    // Check for prompt injection patterns
+    const dangerousPatterns = [
+      /ignore\s+previous\s+instructions/i,
+      /forget\s+everything/i,
+      /system\s*:\s*you\s+are/i,
+      /\[INST\]/i,
+      /<\|im_start\|>/i,
+    ];
+
+    for (const pattern of dangerousPatterns) {
+      if (pattern.test(prompt.content)) {
+        this.addWarning(result, 'security',
+          `Prompt "${prompt.name}" contains potential injection pattern`,
+          'prompt-security-validation',
+          'Review prompt content for security issues',
+          'high'
+        );
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private addWarning(
+    result: CursorTransformationResult,
+    type: CursorTransformationWarning['type'],
+    message: string,
+    source: string,
+    suggestion: string,
+    impact: 'low' | 'medium' | 'high'
+  ): void {
+    result.warnings.push({
+      type,
+      message,
+      source,
+      suggestion,
+      impact,
+    });
+
+    this.addLogEntry(result, 'warn', 'warning', message, { type, source, impact });
   }
 
   private mapToolToExtension(tool: any): string | null {
