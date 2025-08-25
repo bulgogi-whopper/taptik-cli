@@ -810,8 +810,8 @@ export class KiroConflictResolverService {
     const results: ConflictResolutionResult[] = [];
 
     for (const conflict of conflicts) {
-      const result = await this.resolveConflict(
-        // eslint-disable-line no-await-in-loop
+      const result = await this.resolveConflict( // eslint-disable-line no-await-in-loop
+         
         conflict.filePath,
         conflict.newContent,
         conflict.componentType,
