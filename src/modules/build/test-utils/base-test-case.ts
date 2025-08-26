@@ -4,11 +4,12 @@
  */
 
 /* eslint-disable import-x/no-extraneous-dependencies */
+import { Logger } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 /* eslint-enable import-x/no-extraneous-dependencies */
 
-import { Test, TestingModule } from '@nestjs/testing';
-import { Logger } from '@nestjs/common';
 
 import { MockCursorFileSystem } from './cursor-test-helpers';
 
@@ -199,12 +200,14 @@ export abstract class BaseTestCase {
   ): Promise<void> {
     const startTime = Date.now();
 
+    /* eslint-disable no-await-in-loop */
     while (!condition()) {
       if (Date.now() - startTime > timeout) {
         throw new Error('Timeout waiting for condition');
       }
       await new Promise((resolve) => setTimeout(resolve, interval));
     }
+    /* eslint-enable no-await-in-loop */
   }
 
   /**
