@@ -916,7 +916,9 @@ describe('BuildCommand Cloud Pipeline Integration Tests', () => {
       );
       expect(progressService.failStep).toHaveBeenCalledWith(
         'Metadata generation',
-        expect.stringContaining('Failed to generate metadata'),
+        expect.objectContaining({
+          message: expect.stringContaining('Failed to generate metadata'),
+        }),
       );
 
       // Verify error handling
