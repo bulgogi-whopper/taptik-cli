@@ -82,21 +82,21 @@
   - Write unit tests for directory discovery with various installation scenarios
   - _Requirements: 1.4, 2.1, 3.1, 9.1_
 
-- [ ] 3.2 Implement settings.json collection and parsing
+- [x] 3.2 Implement settings.json collection and parsing
   - Create parseSettingsJson method with VS Code compatibility validation
   - Implement settings merging logic for global and project-specific configurations
   - Add error handling for malformed JSON and invalid settings
   - Write unit tests for settings collection with various configuration formats
   - _Requirements: 2.2, 3.2, 4.1, 9.2_
 
-- [ ] 3.3 Implement AI configuration collection
+- [x] 3.3 Implement AI configuration collection
   - Create parseCursorAiConfig method for ai-rules.json and copilot-settings.json
   - Implement AI configuration validation and security filtering during collection
   - Add support for custom prompt template extraction
   - Write unit tests for AI configuration collection with security filtering
   - _Requirements: 2.3, 3.3, 5.1, 5.2_
 
-- [ ] 3.4 Implement extension and snippet collection
+- [x] 3.4 Implement extension and snippet collection
   - Create collectCursorExtensions method with metadata extraction
   - Implement collectCursorSnippets method with language-specific organization
   - Add extension compatibility checking during collection
