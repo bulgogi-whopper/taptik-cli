@@ -112,16 +112,15 @@ export class CursorTransformerService {
 
       if (context.content.tools) {
         result.extensionsConfig = this.transformExtensions(context);
-        const { debug, tasks } = this.transformDebugTasks(context);
-        result.debugConfig = debug;
-        result.tasksConfig = tasks;
+        result.debugConfig = this.transformDebugConfigurations(context);
+        result.tasksConfig = this.transformBuildTasks(context);
         result.statistics.transformedComponents += 2;
       }
 
-      const { snippets, workspace } = this.transformSnippetsWorkspace(context);
-      result.snippetsConfig = snippets;
-      result.workspaceConfig = workspace;
-      result.statistics.transformedComponents++;
+      // Transform workspace and snippets using new individual methods
+      result.workspaceConfig = this.transformWorkspaceSettings(context);
+      result.snippetsConfig = this.transformCodeSnippets(context);
+      result.statistics.transformedComponents += 2;
 
       this.finalizeStatistics(result, startTime);
       this.addLogEntry(result, 'info', 'transform', 'Context transformation completed');
@@ -639,35 +638,319 @@ export class CursorTransformerService {
   }
 
   /**
-   * Transform snippets and workspace configuration
+   * Transform workspace settings configuration
    */
-  transformSnippetsWorkspace(context: TaptikContext): { snippets: CursorSnippetsConfig; workspace: CursorWorkspaceConfig } {
-    const prompts = context.content.prompts || {};
+  transformWorkspaceSettings(context: TaptikContext): CursorWorkspaceConfig {
     const project = context.content.project || {};
-
-    const snippets: CursorSnippetsConfig = {
-      typescript: {},
-      javascript: {},
-    };
+    const personal = context.content.personal || {};
 
     const workspace: CursorWorkspaceConfig = {
       name: project.name || 'Untitled Project',
       folders: [],
-      settings: {},
+      settings: {
+        // Editor settings from personal preferences
+        'editor.fontSize': personal.preferences?.fontSize || 14,
+        'editor.theme': personal.preferences?.theme || 'dark',
+        'editor.tabSize': 2,
+        'editor.insertSpaces': true,
+        'editor.autoSave': 'afterDelay',
+        'editor.formatOnSave': true,
+        
+        // Project-specific settings
+        'files.exclude': {
+          '**/.git': true,
+          '**/.DS_Store': true,
+          '**/node_modules': true,
+          '**/dist': true,
+          '**/build': true,
+        },
+        
+        'search.exclude': {
+          '**/node_modules': true,
+          '**/dist': true,
+          '**/build': true,
+        },
+
+        // Language-specific settings
+        'typescript.preferences.includePackageJsonAutoImports': 'on',
+        'typescript.suggest.autoImports': true,
+        'javascript.preferences.quoteStyle': 'single',
+        'typescript.preferences.quoteStyle': 'single',
+      },
     };
 
+    // Add project folders if specified
+    if (project.structure && project.structure.srcDir) {
+      workspace.folders.push({
+        name: 'Source',
+        path: project.structure.srcDir,
+      });
+    }
+
+    if (project.structure && project.structure.testsDir) {
+      workspace.folders.push({
+        name: 'Tests',
+        path: project.structure.testsDir,
+      });
+    }
+
+    // Apply custom workspace settings if available
+    if (project.customSettings && typeof project.customSettings === 'object') {
+      Object.assign(workspace.settings, project.customSettings);
+    }
+
+    return workspace;
+  }
+
+  /**
+   * Transform debug configurations
+   */
+  transformDebugConfigurations(context: TaptikContext): CursorDebugConfig {
+    const tools = context.content.tools || {};
+    const project = context.content.project || {};
+
+    const debugConfig: CursorDebugConfig = {
+      version: '0.2.0',
+      configurations: [],
+    };
+
+    // Add Node.js debug configuration if project uses Node
+    if (project.type === 'node' || project.runtime === 'node') {
+      debugConfig.configurations.push({
+        name: 'Launch Program',
+        type: 'node',
+        request: 'launch',
+        program: '${workspaceFolder}/src/index.js',
+        skipFiles: ['<node_internals>/**'],
+        env: {
+          NODE_ENV: 'development',
+        },
+      });
+
+      debugConfig.configurations.push({
+        name: 'Attach to Process',
+        type: 'node',
+        request: 'attach',
+        port: 9229,
+        skipFiles: ['<node_internals>/**'],
+      });
+    }
+
+    // Add browser debug configuration for web projects
+    if (project.type === 'web' || project.type === 'react') {
+      debugConfig.configurations.push({
+        name: 'Launch Chrome',
+        type: 'chrome',
+        request: 'launch',
+        url: 'http://localhost:3000',
+        webRoot: '${workspaceFolder}/src',
+        sourceMaps: true,
+      });
+    }
+
+    // Transform custom debug tools from tools section
+    if (tools.debuggers && Array.isArray(tools.debuggers)) {
+      tools.debuggers.forEach(debugTool => {
+        debugConfig.configurations.push({
+          name: debugTool.name || 'Custom Debug',
+          type: debugTool.type || 'node',
+          request: debugTool.request || 'launch',
+          program: debugTool.program || '${workspaceFolder}/src/index.js',
+          args: debugTool.args || [],
+          env: debugTool.env || {},
+          cwd: debugTool.cwd || '${workspaceFolder}',
+          skipFiles: debugTool.skipFiles || ['<node_internals>/**'],
+        });
+      });
+    }
+
+    return debugConfig;
+  }
+
+  /**
+   * Transform build tasks configuration
+   */
+  transformBuildTasks(context: TaptikContext): CursorTasksConfig {
+    const tools = context.content.tools || {};
+    const project = context.content.project || {};
+
+    const tasksConfig: CursorTasksConfig = {
+      version: '2.0.0',
+      tasks: [],
+    };
+
+    // Add standard build tasks based on project type
+    if (project.type === 'node' || project.type === 'typescript') {
+      tasksConfig.tasks.push({
+        label: 'Build',
+        type: 'npm',
+        script: 'build',
+        group: {
+          kind: 'build',
+          isDefault: true,
+        },
+        presentation: {
+          echo: true,
+          reveal: 'always',
+          focus: false,
+          panel: 'shared',
+        },
+        problemMatcher: ['$tsc'],
+      });
+
+      tasksConfig.tasks.push({
+        label: 'Test',
+        type: 'npm',
+        script: 'test',
+        group: 'test',
+        presentation: {
+          echo: true,
+          reveal: 'always',
+          focus: false,
+          panel: 'shared',
+        },
+      });
+
+      tasksConfig.tasks.push({
+        label: 'Lint',
+        type: 'npm',
+        script: 'lint',
+        group: 'build',
+        presentation: {
+          echo: true,
+          reveal: 'never',
+          focus: false,
+          panel: 'shared',
+        },
+        problemMatcher: ['$eslint-stylish'],
+      });
+    }
+
+    // Transform custom tools to tasks
+    if (tools.custom_tools && Array.isArray(tools.custom_tools)) {
+      tools.custom_tools.forEach(tool => {
+        tasksConfig.tasks.push({
+          label: tool.name,
+          type: 'shell',
+          command: tool.command,
+          args: tool.args || [],
+          group: this.mapToolCategoryToTaskGroup(tool.category),
+          presentation: {
+            echo: true,
+            reveal: tool.showOutput !== false ? 'always' : 'silent',
+            focus: false,
+            panel: 'shared',
+          },
+          options: {
+            cwd: tool.workingDirectory || '${workspaceFolder}',
+            env: tool.env || {},
+          },
+        });
+      });
+    }
+
+    // Add project-specific build commands
+    if (project.scripts && typeof project.scripts === 'object') {
+      Object.entries(project.scripts).forEach(([scriptName, command]) => {
+        if (typeof command === 'string') {
+          tasksConfig.tasks.push({
+            label: `Run ${scriptName}`,
+            type: 'shell',
+            command: command,
+            group: this.mapScriptNameToTaskGroup(scriptName),
+            presentation: {
+              echo: true,
+              reveal: 'always',
+              focus: false,
+              panel: 'shared',
+            },
+          });
+        }
+      });
+    }
+
+    return tasksConfig;
+  }
+
+  /**
+   * Transform code snippets configuration
+   */
+  transformCodeSnippets(context: TaptikContext): CursorSnippetsConfig {
+    const prompts = context.content.prompts || {};
+
+    const snippets: CursorSnippetsConfig = {
+      typescript: {},
+      javascript: {},
+      json: {},
+      markdown: {},
+    };
+
+    // Transform prompt templates to code snippets
     if (prompts.templates && Array.isArray(prompts.templates)) {
       prompts.templates.forEach(template => {
         const prefix = this.generateSnippetPrefix(template.name);
-        const body = this.convertTemplateVariables(template.template || template.content || '', template.variables || []);
+        const body = this.convertTemplateVariables(
+          template.template || template.content || '', 
+          template.variables || []
+        );
 
-        snippets.typescript[template.name] = {
+        const language = this.detectSnippetLanguage(template.language || template.type || 'typescript');
+        
+        const snippetDefinition = {
           prefix,
           body: body.split('\n'),
           description: template.description || `Template: ${template.name}`,
+          scope: template.scope || language,
         };
+
+        // Add to appropriate language section
+        if (language === 'javascript' || language === 'js') {
+          snippets.javascript[template.name] = snippetDefinition;
+        } else if (language === 'json') {
+          snippets.json[template.name] = snippetDefinition;
+        } else if (language === 'markdown' || language === 'md') {
+          snippets.markdown[template.name] = snippetDefinition;
+        } else {
+          // Default to TypeScript
+          snippets.typescript[template.name] = snippetDefinition;
+        }
       });
     }
+
+    // Transform code examples to snippets
+    if (prompts.examples && Array.isArray(prompts.examples)) {
+      prompts.examples.forEach(example => {
+        if (example.code) {
+          const prefix = this.generateSnippetPrefix(`example-${example.name}`);
+          const body = example.code;
+
+          const language = this.detectSnippetLanguage(example.language || 'typescript');
+          
+          const snippetDefinition = {
+            prefix,
+            body: body.split('\n'),
+            description: `Code example: ${example.name}`,
+            scope: language,
+          };
+
+          if (language === 'javascript') {
+            snippets.javascript[`example-${example.name}`] = snippetDefinition;
+          } else {
+            snippets.typescript[`example-${example.name}`] = snippetDefinition;
+          }
+        }
+      });
+    }
+
+    return snippets;
+  }
+
+  /**
+   * Transform snippets and workspace configuration (legacy method for backward compatibility)
+   */
+  transformSnippetsWorkspace(context: TaptikContext): { snippets: CursorSnippetsConfig; workspace: CursorWorkspaceConfig } {
+    const snippets = this.transformCodeSnippets(context);
+    const workspace = this.transformWorkspaceSettings(context);
 
     return { snippets, workspace };
   }
@@ -981,6 +1264,77 @@ export class CursorTransformerService {
       result = result.replace(new RegExp(placeholder, 'g'), snippet);
     });
     return result;
+  }
+
+  private mapToolCategoryToTaskGroup(category?: string): string | { kind: string; isDefault?: boolean } {
+    if (!category) return 'build';
+    
+    switch (category.toLowerCase()) {
+      case 'test':
+      case 'testing':
+        return 'test';
+      case 'build':
+      case 'compile':
+        return { kind: 'build', isDefault: false };
+      case 'lint':
+      case 'format':
+        return 'build';
+      case 'deploy':
+      case 'publish':
+        return 'build';
+      default:
+        return 'build';
+    }
+  }
+
+  private mapScriptNameToTaskGroup(scriptName: string): string | { kind: string; isDefault?: boolean } {
+    switch (scriptName.toLowerCase()) {
+      case 'build':
+      case 'compile':
+        return { kind: 'build', isDefault: true };
+      case 'test':
+      case 'jest':
+      case 'spec':
+        return 'test';
+      case 'lint':
+      case 'eslint':
+      case 'format':
+      case 'prettier':
+        return 'build';
+      case 'dev':
+      case 'start':
+      case 'serve':
+        return 'build';
+      default:
+        return 'build';
+    }
+  }
+
+  private detectSnippetLanguage(language?: string): string {
+    if (!language) return 'typescript';
+
+    switch (language.toLowerCase()) {
+      case 'js':
+      case 'javascript':
+        return 'javascript';
+      case 'ts':
+      case 'typescript':
+        return 'typescript';
+      case 'json':
+        return 'json';
+      case 'md':
+      case 'markdown':
+        return 'markdown';
+      case 'html':
+        return 'html';
+      case 'css':
+        return 'css';
+      case 'scss':
+      case 'sass':
+        return 'scss';
+      default:
+        return 'typescript';
+    }
   }
 
   private finalizeStatistics(result: CursorTransformationResult, startTime: number): void {
