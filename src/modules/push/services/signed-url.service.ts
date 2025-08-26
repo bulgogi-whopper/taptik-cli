@@ -55,7 +55,7 @@ export class SignedUrlService {
         PushErrorCode.UPLOAD_FAILED,
         `Failed to generate upload URL: ${error?.message ?? 'Unknown error'}`,
         { path, error },
-        true,
+        error ? new Error(error.message) : undefined,
       );
     }
 
@@ -92,7 +92,7 @@ export class SignedUrlService {
         PushErrorCode.UPLOAD_FAILED,
         `Failed to generate download URL: ${error?.message ?? 'Unknown error'}`,
         { path, error },
-        true,
+        error ? new Error(error.message) : undefined,
       );
     }
 

@@ -30,7 +30,7 @@ describe('StatsCommand', () => {
   let command: StatsCommand;
   let mockAuthService: { getSession: any };
   let mockPackageRegistry: { getPackageByConfigId: any; getPackageStats: any };
-  let mockAnalyticsService: { getAnalyticsSummary: any };
+  let mockAnalyticsService: { getAnalyticsSummary: any; getPackageAnalytics: any };
 
   const mockSession = {
     user: {
@@ -104,6 +104,7 @@ describe('StatsCommand', () => {
       getPackageStats: vi.fn(),
     };
     mockAnalyticsService = {
+      getAnalyticsSummary: vi.fn(),
       getPackageAnalytics: vi.fn(),
     };
 

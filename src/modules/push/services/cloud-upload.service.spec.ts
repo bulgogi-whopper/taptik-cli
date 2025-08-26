@@ -495,7 +495,7 @@ describe('CloudUploadService', () => {
         PushErrorCode.NETWORK_TIMEOUT,
         'Custom error',
         { detail: 'test' },
-        true,
+        new Error('Network timeout'),
       );
 
       vi.spyOn(service, 'checkDuplicate').mockRejectedValue(originalError);

@@ -27,50 +27,36 @@ export default defineConfig({
     hookTimeout: 30000,
     teardownTimeout: 30000,
     isolate: true,
-    threads: true,
+    pool: 'threads',
     mockReset: true,
     clearMocks: true,
     restoreMocks: true,
 
-    // Test categorization
+    // Test categorization (ordered by execution priority)
     include: [
-      // Unit tests
-      'src/modules/push/**/*.spec.ts',
+      // Unit tests (run first)
+      'src/modules/push/services/**/*.spec.ts',
+      'src/modules/push/commands/**/*.spec.ts',
+      // Integration tests
+      'src/modules/push/tests/*.integration.spec.ts',
+      // Security tests
+      'src/modules/push/tests/*.security.spec.ts',
+      // Performance tests
+      'src/modules/push/tests/*.performance.spec.ts',
+      // E2E tests (run last)
+      'src/modules/push/tests/*.e2e.spec.ts',
+      // Additional test files
       'src/modules/push/**/*.test.ts',
     ],
 
-    // Separate test suites
+    // Test execution sequence configuration
+    // Note: Vitest doesn't have a 'suites' property in SequenceOptions
+    // Test execution order is controlled through file glob patterns in 'include'
+    // and can be further organized using describe.sequential() in test files
     sequence: {
-      suites: [
-        // Run unit tests first
-        {
-          name: 'unit',
-          files: [
-            'src/modules/push/services/**/*.spec.ts',
-            'src/modules/push/commands/**/*.spec.ts',
-          ],
-        },
-        // Then integration tests
-        {
-          name: 'integration',
-          files: ['src/modules/push/tests/*.integration.spec.ts'],
-        },
-        // Then security tests
-        {
-          name: 'security',
-          files: ['src/modules/push/tests/*.security.spec.ts'],
-        },
-        // Performance tests (optional, can be skipped in CI)
-        {
-          name: 'performance',
-          files: ['src/modules/push/tests/*.performance.spec.ts'],
-        },
-        // E2E tests last
-        {
-          name: 'e2e',
-          files: ['src/modules/push/tests/*.e2e.spec.ts'],
-        },
-      ],
+      hooks: 'stack',        // Run hooks in stack order (reverse for 'after' hooks)
+      setupFiles: 'list',    // Run setup files in defined order
+      shuffle: false,        // Don't randomize test execution
     },
 
     // Reporter configuration
@@ -81,7 +67,6 @@ export default defineConfig({
       ['html', { outputFile: 'test-report.html' }],
     ],
 
-    // Watch mode exclusions
-    watchExclude: ['**/node_modules/**', '**/dist/**', '**/.git/**'],
+    // Note: Watch mode exclusions are handled at the file system level
   },
 });

@@ -6,7 +6,7 @@ import {
 
 import { ErrorHandlerService } from '../../deploy/services/error-handler.service';
 import { SupabaseService } from '../../supabase/supabase.service';
-import { PushError, PushErrorCode } from '../constants/push.constants';
+import { PushError, PushErrorCode, postgrestErrorToContext, deployErrorToContext } from '../constants/push.constants';
 import { PackageMetadata, ComponentInfo } from '../interfaces';
 
 export interface PackageFilters {
@@ -107,7 +107,7 @@ export class PackageRegistryService {
         throw new PushError(
           PushErrorCode.DATABASE_ERROR,
           `Failed to register package: ${error.message}`,
-          error,
+          postgrestErrorToContext(error, { operation: 'registerPackage', packageId: metadata.id }),
         );
       }
 
@@ -126,7 +126,7 @@ export class PackageRegistryService {
       throw new PushError(
         PushErrorCode.INTERNAL_ERROR,
         deployError.message,
-        deployError,
+        deployErrorToContext(deployError, { operation: 'registerPackage' }),
       );
     }
   }
@@ -176,7 +176,7 @@ export class PackageRegistryService {
         throw new PushError(
           PushErrorCode.DATABASE_ERROR,
           `Failed to update package: ${error.message}`,
-          error,
+          postgrestErrorToContext(error, { operation: 'updatePackage', configId }),
         );
       }
 
@@ -198,7 +198,7 @@ export class PackageRegistryService {
       throw new PushError(
         PushErrorCode.INTERNAL_ERROR,
         deployError.message,
-        deployError,
+        deployErrorToContext(deployError, { operation: 'updatePackage', configId }),
       );
     }
   }
@@ -233,7 +233,7 @@ export class PackageRegistryService {
         throw new PushError(
           PushErrorCode.DATABASE_ERROR,
           `Failed to delete package: ${error.message}`,
-          error,
+          postgrestErrorToContext(error, { operation: 'deletePackage', configId }),
         );
       }
 
@@ -253,7 +253,7 @@ export class PackageRegistryService {
       throw new PushError(
         PushErrorCode.INTERNAL_ERROR,
         deployError.message,
-        deployError,
+        deployErrorToContext(deployError, { operation: 'deletePackage', configId }),
       );
     }
   }
@@ -302,7 +302,7 @@ export class PackageRegistryService {
         throw new PushError(
           PushErrorCode.DATABASE_ERROR,
           `Failed to list packages: ${error.message}`,
-          error,
+          postgrestErrorToContext(error, { operation: 'listUserPackages', userId }),
         );
       }
 
@@ -318,7 +318,7 @@ export class PackageRegistryService {
       throw new PushError(
         PushErrorCode.INTERNAL_ERROR,
         deployError.message,
-        deployError,
+        deployErrorToContext(deployError, { operation: 'listUserPackages' }),
       );
     }
   }
@@ -342,7 +342,7 @@ export class PackageRegistryService {
         throw new PushError(
           PushErrorCode.DATABASE_ERROR,
           `Failed to get package stats: ${packageError.message}`,
-          packageError,
+          postgrestErrorToContext(packageError, { operation: 'getPackageStats', configId }),
         );
       }
 
@@ -389,7 +389,7 @@ export class PackageRegistryService {
       throw new PushError(
         PushErrorCode.INTERNAL_ERROR,
         deployError.message,
-        deployError,
+        deployErrorToContext(deployError, { operation: 'getPackageStats', configId }),
       );
     }
   }
@@ -414,7 +414,7 @@ export class PackageRegistryService {
         throw new PushError(
           PushErrorCode.DATABASE_ERROR,
           `Failed to get package: ${error.message}`,
-          error,
+          postgrestErrorToContext(error, { operation: 'getPackageByConfigId', configId }),
         );
       }
 
@@ -430,7 +430,7 @@ export class PackageRegistryService {
       throw new PushError(
         PushErrorCode.INTERNAL_ERROR,
         deployError.message,
-        deployError,
+        deployErrorToContext(deployError, { operation: 'getPackageByConfigId', configId }),
       );
     }
   }

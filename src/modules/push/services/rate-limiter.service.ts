@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { ErrorHandlerService } from '../../deploy/services/error-handler.service';
 import { SupabaseService } from '../../supabase/supabase.service';
-import { PushError, PushErrorCode } from '../constants/push.constants';
+import { PushError, PushErrorCode, postgrestErrorToContext } from '../constants/push.constants';
 
 export type UserTier = 'free' | 'pro';
 
@@ -268,7 +268,7 @@ export class RateLimiterService {
           new PushError(
             PushErrorCode.SYSTEM_ERROR,
             'Failed to record upload count',
-            uploadError,
+            postgrestErrorToContext(uploadError, { operation: 'recordUpload', userId }),
           ),
         );
       }
@@ -289,7 +289,7 @@ export class RateLimiterService {
           new PushError(
             PushErrorCode.SYSTEM_ERROR,
             'Failed to record bandwidth usage',
-            bandwidthError,
+            postgrestErrorToContext(bandwidthError, { operation: 'recordUpload', userId, fileSize }),
           ),
         );
       }
@@ -423,7 +423,7 @@ export class RateLimiterService {
           new PushError(
             PushErrorCode.SYSTEM_ERROR,
             'Failed to clean up rate limits',
-            rateLimitError,
+            postgrestErrorToContext(rateLimitError, { operation: 'cleanupRateLimits' }),
           ),
         );
       }
@@ -444,7 +444,7 @@ export class RateLimiterService {
           new PushError(
             PushErrorCode.SYSTEM_ERROR,
             'Failed to clean up bandwidth records',
-            bandwidthError,
+            postgrestErrorToContext(bandwidthError, { operation: 'cleanupRateLimits' }),
           ),
         );
       }

@@ -137,6 +137,100 @@ export interface PushErrorContext {
   [key: string]: unknown; // Allow additional properties
 }
 
+/**
+ * Utility functions to convert various error types to PushErrorContext
+ */
+
+// PostgrestError type from Supabase (for type safety)
+// Make it flexible to handle different versions of PostgrestError
+interface _PostgrestError {
+  message: string;
+  details?: string | unknown;
+  hint?: string;
+  code?: string;
+}
+
+// DeployError type (imported from deploy module)  
+// Make it flexible to handle DeployError without strict index signature
+interface _DeployErrorLike {
+  message: string;
+  code?: unknown;
+  severity?: string;
+  context?: Record<string, unknown>;
+}
+
+/**
+ * Converts a PostgrestError to PushErrorContext
+ */
+export function postgrestErrorToContext(error: unknown, additionalContext?: Partial<PushErrorContext>): PushErrorContext {
+  const errorObj = error as Record<string, unknown>;
+  return {
+    ...additionalContext,
+    details: { 
+      postgrestDetails: errorObj.details,
+      hint: errorObj.hint,
+      code: errorObj.code,
+      message: errorObj.message,
+    },
+    originalError: error,
+  };
+}
+
+/**
+ * Converts a DeployError to PushErrorContext
+ */
+export function deployErrorToContext(error: unknown, additionalContext?: Partial<PushErrorContext>): PushErrorContext {
+  const errorObj = error as Record<string, unknown>;
+  return {
+    ...additionalContext,
+    details: {
+      deployCode: errorObj.code,
+      severity: errorObj.severity,
+      deployContext: errorObj.context,
+      message: errorObj.message,
+    },
+    originalError: error,
+  };
+}
+
+/**
+ * Generic error to context converter for unknown error types
+ */
+export function errorToContext(error: unknown, additionalContext?: Partial<PushErrorContext>): PushErrorContext {
+  const baseContext: PushErrorContext = {
+    ...additionalContext,
+    originalError: error,
+  };
+
+  if (error && typeof error === 'object') {
+    const errorObj = error as Record<string, unknown>;
+    
+    // Check if it's a PostgrestError-like object
+    if ('details' in errorObj && typeof errorObj.details === 'string') {
+      return postgrestErrorToContext(error, additionalContext);
+    }
+    
+    // Check if it's a DeployError-like object
+    if ('code' in errorObj && 'severity' in errorObj) {
+      return deployErrorToContext(error, additionalContext);
+    }
+
+    // For other error objects, try to extract useful information
+    const errorInstance = error as Error;
+    baseContext.details = {
+      errorType: errorInstance.constructor?.name || 'Unknown',
+      message: errorInstance.message,
+      ...errorObj,
+    };
+  } else {
+    baseContext.details = {
+      error: String(error),
+    };
+  }
+
+  return baseContext;
+}
+
 export class PushError extends Error {
   public readonly userMessage: string;
   public readonly remediation?: string;

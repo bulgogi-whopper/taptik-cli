@@ -516,7 +516,7 @@ export class PushService {
                   PushErrorCode.UPLOAD_FAILED,
                   'Failed to process queued upload',
                   { originalError: error },
-                  true,
+                  error instanceof Error ? error : undefined,
                 );
 
           // Check if retryable and under max attempts
