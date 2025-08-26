@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { ContextModule } from '../context/context.module';
+import { PushModule } from '../push/push.module';
 
 import { BuildCommand } from './commands/build.command';
 import { CollectionService } from './services/collection/collection.service';
@@ -11,7 +12,7 @@ import { ProgressService } from './services/progress/progress.service';
 import { TransformationService } from './services/transformation/transformation.service';
 
 @Module({
-  imports: [ContextModule],
+  imports: [ContextModule, PushModule],
   providers: [
     BuildCommand,
     InteractiveService,
