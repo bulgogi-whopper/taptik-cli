@@ -40,11 +40,15 @@ export class CloudUploadService {
   async checkDuplicate(checksum: string): Promise<DuplicateCheckResult> {
     try {
       const client = this.supabaseService.getClient();
+      // Only select the fields we need and filter by the current user
+      const { data: user } = await client.auth.getUser();
       const { data, error } = await client
         .from('taptik_packages')
         .select('id, config_id, storage_url')
         .eq('checksum', checksum)
+        .eq('user_id', user?.user?.id || '')
         .is('archived_at', null)
+        .is('team_id', null)  // Exclude team packages to avoid RLS recursion
         .single();
 
       if (error) {

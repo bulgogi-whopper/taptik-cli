@@ -51,26 +51,13 @@ export class AuthService {
    */
   async getCurrentUser(): Promise<User | null> {
     try {
-      // First check if we have a stored session
-      const storedSession = await this.sessionService.loadSession();
-      if (storedSession) {
-        return storedSession.userSession.user;
+      // Use getSession which now handles both local and Supabase sessions
+      const session = await this.getSession();
+      if (session) {
+        return session.user;
       }
 
-      // If no stored session, check Supabase
-      const {
-        data: { user },
-        error,
-      } = await this.supabase.auth.getUser();
-      if (error) {
-        return null;
-      }
-
-      if (!user) {
-        return null;
-      }
-
-      return fromSupabaseUser(user);
+      return null;
     } catch (error) {
       if (error instanceof Error) {
         throw error;
@@ -84,6 +71,30 @@ export class AuthService {
    */
   async getSession(): Promise<UserSession | null> {
     try {
+      // First check if we have a stored session
+      const storedSession = await this.sessionService.loadSession();
+      if (storedSession && storedSession.userSession) {
+        // Try to restore the session to Supabase client
+        try {
+          const { data, error } = await this.supabase.auth.setSession({
+            access_token: storedSession.userSession.accessToken,
+            refresh_token: storedSession.userSession.refreshToken || '',
+          });
+
+          if (!error && data.session) {
+            // Successfully restored session to Supabase
+            return this.createUserSession(data.session.user, data.session);
+          }
+        } catch {
+          // If restoration fails, still return the stored session
+          // as it might be valid for API calls
+        }
+
+        // Return the stored session even if Supabase restoration failed
+        return storedSession.userSession;
+      }
+
+      // If no stored session, check Supabase directly
       const {
         data: { session },
         error,

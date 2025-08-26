@@ -61,11 +61,26 @@ export class PackageValidatorService {
     }
 
     try {
+      // First try to parse as gzipped JSON (build command format)
+      try {
+        const zlib = await import('zlib');
+        const decompressed = zlib.gunzipSync(buffer);
+        const packageData = JSON.parse(decompressed.toString());
+        
+        // Validate that it's a valid Taptik package
+        if (packageData && packageData.metadata && packageData.sanitizedConfig) {
+          // This is a valid Taptik package from build command
+          return true;
+        }
+      } catch {
+        // Not gzipped JSON, try tar.gz format
+      }
+
+      // Try to parse as tar.gz package (alternative format)
       let hasMetadata = false;
       let hasValidPaths = true;
       const entries: string[] = [];
 
-      // Parse tar.gz package
       const stream = Readable.from(buffer);
 
       await new Promise<void>((resolve, reject) => {
@@ -152,7 +167,17 @@ export class PackageValidatorService {
       return true;
     }
 
-    const content = buffer.toString('utf-8');
+    let content: string;
+    
+    try {
+      // Try to decompress if it's gzipped
+      const zlib = await import('zlib');
+      const decompressed = zlib.gunzipSync(buffer);
+      content = decompressed.toString('utf-8');
+    } catch {
+      // Not gzipped, use raw buffer
+      content = buffer.toString('utf-8');
+    }
 
     // Check against malware patterns
     for (const pattern of this.MALWARE_PATTERNS) {

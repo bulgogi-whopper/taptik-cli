@@ -98,18 +98,33 @@ export class RateLimiterService {
       const { data, error } = await this.supabaseService
         .getClient()
         .from(this.RATE_LIMIT_TABLE)
-        .select('upload_count')
+        .select('daily_uploads, daily_reset_at')
         .eq('user_id', userId)
-        .gte('created_at', today.toISOString())
-        .lt('created_at', tomorrow.toISOString())
         .single();
+
+      // Check if we need to reset the daily counter
+      if (data && data.daily_reset_at) {
+        const resetTime = new Date(data.daily_reset_at);
+        if (new Date() >= resetTime) {
+          // Reset counter for new day
+          await this.supabaseService
+            .getClient()
+            .from(this.RATE_LIMIT_TABLE)
+            .update({ 
+              daily_uploads: 0,
+              daily_reset_at: tomorrow.toISOString()
+            })
+            .eq('user_id', userId);
+          data.daily_uploads = 0;
+        }
+      }
 
       if (error && error.code !== 'PGRST116') {
         // PGRST116 = no rows found
         throw error;
       }
 
-      const used = data?.upload_count || 0;
+      const used = data?.daily_uploads || 0;
       const remaining = Math.max(0, limit - used);
       const allowed = remaining > 0;
 
@@ -253,34 +268,58 @@ export class RateLimiterService {
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
-      // Update or insert upload count
-      const { error: uploadError } = await this.supabaseService
+      // First check if user has rate limit record
+      const { data: existingRecord } = await this.supabaseService
         .getClient()
-        .rpc('increment_upload_count', {
-          p_user_id: userId,
-          p_date_start: today.toISOString(),
-          p_date_end: tomorrow.toISOString(),
-        });
+        .from(this.RATE_LIMIT_TABLE)
+        .select('id, daily_uploads, monthly_uploads, daily_bandwidth_bytes, monthly_bandwidth_bytes')
+        .eq('user_id', userId)
+        .single();
 
-      if (uploadError) {
-        // Log error but don't throw - we don't want to block uploads
-        this.errorHandlerService.handleError(
-          new PushError(
-            PushErrorCode.SYSTEM_ERROR,
-            'Failed to record upload count',
-            postgrestErrorToContext(uploadError, { operation: 'recordUpload', userId }),
-          ),
-        );
+      if (existingRecord) {
+        // Update existing record
+        const { error: uploadError } = await this.supabaseService
+          .getClient()
+          .from(this.RATE_LIMIT_TABLE)
+          .update({
+            daily_uploads: existingRecord.daily_uploads + 1,
+            monthly_uploads: existingRecord.monthly_uploads + 1,
+            daily_bandwidth_bytes: existingRecord.daily_bandwidth_bytes + fileSize,
+            monthly_bandwidth_bytes: existingRecord.monthly_bandwidth_bytes + fileSize,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', userId);
+
+        if (uploadError) {
+          throw uploadError;
+        }
+      } else {
+        // Insert new record
+        const { error: insertError } = await this.supabaseService
+          .getClient()
+          .from(this.RATE_LIMIT_TABLE)
+          .insert({
+            user_id: userId,
+            daily_uploads: 1,
+            monthly_uploads: 1,
+            daily_bandwidth_bytes: fileSize,
+            monthly_bandwidth_bytes: fileSize,
+            daily_reset_at: tomorrow.toISOString(),
+            monthly_reset_at: new Date(today.getFullYear(), today.getMonth() + 1, 1).toISOString(),
+          });
+
+        if (insertError) {
+          throw insertError;
+        }
       }
 
       // Record bandwidth usage
       const { error: bandwidthError } = await this.supabaseService
         .getClient()
-        .from(this.BANDWIDTH_TABLE)
+        .from('bandwidth_usage')
         .insert({
           user_id: userId,
           bytes_used: fileSize,
-          created_at: new Date().toISOString(),
         });
 
       if (bandwidthError) {
