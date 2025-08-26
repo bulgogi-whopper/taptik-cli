@@ -7,14 +7,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   CursorLocalSettingsData,
   CursorGlobalSettingsData,
-  VSCodeSettings,
   CursorAiConfiguration,
 } from '../interfaces/cursor-ide.interfaces';
-import { 
-  TaptikPersonalContext,
-  TaptikProjectContext,
-  TaptikPromptTemplates,
-} from '../interfaces/taptik-format.interface';
 import { CURSOR_TEST_FIXTURES } from '../test-fixtures/cursor-ide-fixtures';
 
 import { CursorTransformationService } from './cursor-transformation.service';
@@ -25,14 +19,15 @@ describe('CursorTransformationService', () => {
   let validationService: CursorValidationService;
 
   beforeEach(() => {
-    // Create mock validation service
+    // Create mock validation service with all methods
     validationService = {
       sanitizeAiConfiguration: vi.fn((config) => config),
-      checkExtensionCompatibility: vi.fn((extensions) => ({
-        compatibleExtensions: extensions.filter((e: any) => !e.id.includes('cursor')),
-        incompatibleExtensions: extensions.filter((e: any) => e.id.includes('cursor')),
-        warnings: [],
-        alternatives: undefined,
+      checkExtensionCompatibility: vi.fn((extensionIds) => Promise.resolve({
+        vsCodeCompatible: true,
+        incompatibleSettings: [],
+        incompatibleExtensions: extensionIds.filter((id: string) => id.includes('cursor')),
+        alternativeExtensions: {},
+        migrationSuggestions: [],
       })),
       validateVSCodeSchema: vi.fn(() => ({ isValid: true, errors: [] })),
       generateSecurityReport: vi.fn(() => ({ 
@@ -52,7 +47,12 @@ describe('CursorTransformationService', () => {
     it('should transform global settings to personal context', async () => {
       const globalSettings: CursorGlobalSettingsData = {
         userHome: '/Users/test',
-        settings: CURSOR_TEST_FIXTURES.settings.valid,
+        settings: {
+          'editor.fontSize': 14,
+          'editor.tabSize': 2,
+          'editor.wordWrap': 'on' as any,
+          'workbench.colorTheme': 'One Dark Pro',
+        },
         keybindings: CURSOR_TEST_FIXTURES.keybindings.valid,
         snippets: CURSOR_TEST_FIXTURES.snippets,
         globalExtensions: [
@@ -69,40 +69,42 @@ describe('CursorTransformationService', () => {
         isGlobal: true,
       };
 
-
       const result = await service.transformCursorPersonalContext(globalSettings);
 
       expect(result).toBeDefined();
       expect(result.user_id).toBeDefined();
       expect(result.preferences).toBeDefined();
-      expect(result.preferences.theme).toBe('One Dark Pro');
-      expect(result.preferences.editor_settings.fontSize).toBe(14);
-      expect(result.preferences.editor_settings.tabSize).toBe(2);
-      expect(result.metadata).toBeDefined();
-      expect(result.metadata.source).toBe('cursor-ide');
+      expect(result.preferences.preferred_languages).toContain('javascript');
+      expect(result.preferences.coding_style.indentation).toBe('2 spaces');
+      expect(result.preferences.coding_style.naming_convention).toBe('camelCase');
+      expect(result.preferences.tools_and_frameworks).toContain('eslint');
+      expect(result.metadata.source_platform).toBe('cursor-ide');
     });
 
-    it('should handle AI configuration in personal context', async () => {
+    it('should detect languages from settings and extensions', async () => {
       const globalSettings: CursorGlobalSettingsData = {
         userHome: '/Users/test',
         globalAiRules: CURSOR_TEST_FIXTURES.aiRules.valid,
         settings: {
-          'cursor.aiProvider': 'openai',
-          'cursor.aiModel': 'gpt-4',
-          'cursor.temperature': 0.7,
+          'typescript.tsdk': './node_modules/typescript/lib',
+          'python.defaultInterpreterPath': '/usr/bin/python3',
         },
+        globalExtensions: [
+          {
+            id: 'ms-python.python',
+            name: 'Python',
+            enabled: true,
+          },
+        ],
         sourcePath: '/Users/test/.cursor',
         collectedAt: new Date().toISOString(),
         isGlobal: true,
       };
 
-
       const result = await service.transformCursorPersonalContext(globalSettings);
 
-      expect(result.preferences.ai_settings).toBeDefined();
-      expect(result.preferences.ai_settings?.provider).toBe('openai');
-      expect(result.preferences.ai_settings?.model).toBe('gpt-4');
-      expect(result.preferences.ai_settings?.temperature).toBe(0.7);
+      expect(result.preferences.preferred_languages).toContain('typescript');
+      expect(result.preferences.preferred_languages).toContain('python');
     });
 
     it('should handle missing global settings gracefully', async () => {
@@ -117,8 +119,8 @@ describe('CursorTransformationService', () => {
 
       expect(result).toBeDefined();
       expect(result.user_id).toBeDefined();
-      expect(result.preferences).toBeDefined();
-      expect(result.metadata.source).toBe('cursor-ide');
+      expect(result.preferences.preferred_languages).toContain('javascript');
+      expect(result.metadata.source_platform).toBe('cursor-ide');
     });
   });
 
@@ -145,48 +147,48 @@ describe('CursorTransformationService', () => {
       expect(result).toBeDefined();
       expect(result.project_id).toBeDefined();
       expect(result.project_info.name).toBe('project');
-      expect(result.project_info.type).toBe('single-root');
-      expect(result.technical_stack.extensions).toContain('dbaeumer.vscode-eslint');
-      expect(result.development_guidelines.code_style).toBeDefined();
-      expect(result.metadata.source).toBe('cursor-ide');
+      expect(result.project_info.description).toContain('Cursor IDE project');
+      expect(result.technical_stack.primary_language).toBe('typescript');
+      expect(result.technical_stack.frameworks).toBeDefined();
+      expect(result.development_guidelines.coding_standards).toContain('Format on save enabled');
+      expect(result.metadata.source_platform).toBe('cursor-ide');
+      expect(result.metadata.source_path).toBe('/test/project');
     });
 
-    it('should handle multi-root workspace', async () => {
-      const localSettings: CursorLocalSettingsData = {
-        projectPath: '/test/workspace',
-        workspaceType: 'multi-root',
-        workspace: {
-          settings: {
-            'editor.formatOnSave': true,
-          },
-        },
-        sourcePath: '/test/workspace/.vscode',
-        collectedAt: new Date().toISOString(),
-        isGlobal: false,
-      };
-
-      const result = await service.transformCursorProjectContext(localSettings);
-
-      expect(result.project_info.type).toBe('multi-root');
-      expect(result.workspace_config).toBeDefined();
-    });
-
-    it('should handle AI rules in project context', async () => {
+    it('should detect frameworks from extensions', async () => {
       const localSettings: CursorLocalSettingsData = {
         projectPath: '/test/project',
         workspaceType: 'single',
-        projectAiRules: CURSOR_TEST_FIXTURES.aiRules.valid,
-        sourcePath: '/test/project/.cursor',
+        extensions: {
+          recommendations: ['angular.ng-template', 'vuejs.volar', 'fivethree.vscode-nestjs-snippets'],
+        },
+        sourcePath: '/test/project/.vscode',
         collectedAt: new Date().toISOString(),
         isGlobal: false,
       };
 
+      const result = await service.transformCursorProjectContext(localSettings);
+
+      expect(result.technical_stack.frameworks).toContain('angular');
+      expect(result.technical_stack.frameworks).toContain('vue');
+      expect(result.technical_stack.frameworks).toContain('nestjs');
+    });
+
+    it('should handle empty local settings gracefully', async () => {
+      const localSettings: CursorLocalSettingsData = {
+        projectPath: '/test/empty-project',
+        workspaceType: 'none',
+        sourcePath: '/test/empty-project/.cursor',
+        collectedAt: new Date().toISOString(),
+        isGlobal: false,
+      };
 
       const result = await service.transformCursorProjectContext(localSettings);
 
-      expect(result.ai_context).toBeDefined();
-      expect(result.ai_context?.rules).toHaveLength(3);
-      expect(result.ai_context?.rules?.[0].name).toBe('Documentation');
+      expect(result).toBeDefined();
+      expect(result.project_info.name).toBe('empty-project');
+      expect(result.technical_stack.primary_language).toBe('javascript');
+      expect(result.development_guidelines.coding_standards).toContain('ESLint enforced');
     });
   });
 
@@ -203,6 +205,7 @@ describe('CursorTransformationService', () => {
       // Check the first rule (Documentation)
       const docTemplate = result.templates.find(t => t.name === 'Documentation');
       expect(docTemplate).toBeDefined();
+      expect(docTemplate?.description).toContain('AI rule for');
       expect(docTemplate?.content).toBe('Generate JSDoc documentation for this code');
       expect(docTemplate?.category).toBe('documentation');
       expect(docTemplate?.tags).toContain('cursor-ide');
@@ -210,13 +213,16 @@ describe('CursorTransformationService', () => {
       // Check a global prompt
       const reviewTemplate = result.templates.find(t => t.name === 'codeReview');
       expect(reviewTemplate).toBeDefined();
+      expect(reviewTemplate?.description).toContain('Global prompt');
       expect(reviewTemplate?.content).toBe('Review this code for best practices');
       
-      expect(result.metadata.source).toBe('cursor-ide');
+      expect(result.metadata.source_platform).toBe('cursor-ide');
+      expect(result.metadata.total_templates).toBe(4);
     });
 
     it('should categorize templates based on content', async () => {
       const aiConfig: CursorAiConfiguration = {
+        version: '1.0.0',
         rules: [
           { name: 'Test Generation', pattern: '*.spec.ts', prompt: 'Generate unit tests' },
           { name: 'Code Review', pattern: '*.ts', prompt: 'Review for best practices' },
@@ -233,6 +239,7 @@ describe('CursorTransformationService', () => {
 
     it('should handle global prompts', async () => {
       const aiConfig: CursorAiConfiguration = {
+        version: '1.0.0',
         globalPrompts: {
           codeReview: 'Review this code for best practices',
           testing: 'Generate unit tests for this function',
@@ -251,7 +258,8 @@ describe('CursorTransformationService', () => {
 
       expect(result).toBeDefined();
       expect(result.templates).toHaveLength(0);
-      expect(result.metadata.source).toBe('cursor-ide');
+      expect(result.metadata.source_platform).toBe('cursor-ide');
+      expect(result.metadata.total_templates).toBe(0);
     });
   });
 
@@ -274,11 +282,13 @@ describe('CursorTransformationService', () => {
         },
       ];
 
-      // Mock validation service
-      vi.mocked(validationService.checkExtensionCompatibility).mockImplementation((exts) => ({
-        compatibleExtensions: exts.filter(e => !e.id.includes('cursor')),
-        incompatibleExtensions: exts.filter(e => e.id.includes('cursor')),
-        warnings: ['cursor.cursor-ai is Cursor-specific and has no VS Code equivalent'],
+      // Update mock for this test
+      vi.mocked(validationService.checkExtensionCompatibility).mockReturnValue(Promise.resolve({
+        vsCodeCompatible: true,
+        incompatibleSettings: [],
+        incompatibleExtensions: ['cursor.cursor-ai'],
+        alternativeExtensions: {},
+        migrationSuggestions: ['cursor.cursor-ai is Cursor-specific and has no VS Code equivalent'],
       }));
 
       const result = await service.mapCursorExtensions(extensions);
@@ -310,14 +320,15 @@ describe('CursorTransformationService', () => {
         },
       ];
 
-      vi.mocked(validationService.checkExtensionCompatibility).mockReturnValue({
-        compatibleExtensions: [],
-        incompatibleExtensions: extensions,
-        warnings: ['cursor.cursor-ai has no VS Code equivalent, consider GitHub Copilot'],
-        alternatives: {
+      vi.mocked(validationService.checkExtensionCompatibility).mockReturnValue(Promise.resolve({
+        vsCodeCompatible: false,
+        incompatibleSettings: [],
+        incompatibleExtensions: ['cursor.cursor-ai'],
+        alternativeExtensions: {
           'cursor.cursor-ai': 'github.copilot',
         },
-      });
+        migrationSuggestions: ['cursor.cursor-ai has no VS Code equivalent, consider GitHub Copilot'],
+      }));
 
       const result = await service.mapCursorExtensions(extensions);
 

@@ -14,8 +14,6 @@ import {
   CursorAiConfiguration,
   VSCodeSettings,
   CursorExtension,
-  CursorSnippet,
-  CursorKeybinding,
 } from '../interfaces/cursor-ide.interfaces';
 import {
   TaptikPersonalContext,
@@ -31,8 +29,8 @@ import {
   DevelopmentGuidelines,
   ProjectMetadata,
   PromptTemplateEntry,
-  PromptMetadata,
 } from '../interfaces/taptik-format.interface';
+
 import { CursorValidationService } from './cursor-validation.service';
 
 /**
@@ -124,19 +122,6 @@ export class CursorTransformationService {
         metadata,
       };
 
-      // Add workspace configuration if multi-root
-      if (localSettings.workspaceType === 'multi-root') {
-        projectContext.workspace_config = localSettings.workspace;
-      }
-
-      // Add AI context if available
-      if (localSettings.projectAiRules) {
-        const sanitizedAiConfig = this.validationService.sanitizeAiConfiguration(
-          localSettings.projectAiRules,
-        );
-        projectContext.ai_context = sanitizedAiConfig;
-      }
-
       this.logger.log('Project context transformation completed');
       return projectContext;
     } catch (error) {
@@ -164,15 +149,11 @@ export class CursorTransformationService {
             templates.push({
               id: randomUUID(),
               name: rule.name,
-              content: rule.prompt,
+              description: `AI rule for ${rule.pattern} files`,
               category: this.categorizePrompt(rule.prompt, rule.name),
-              tags: ['cursor-ide', 'ai-rule', rule.pattern].filter(Boolean),
+              content: rule.prompt,
               variables: this.extractTemplateVariables(rule.prompt),
-              metadata: {
-                source: 'cursor-ide',
-                pattern: rule.pattern,
-                created_at: new Date().toISOString(),
-              },
+              tags: ['cursor-ide', 'ai-rule', rule.pattern].filter(Boolean),
             });
           }
         }
@@ -184,14 +165,11 @@ export class CursorTransformationService {
           templates.push({
             id: randomUUID(),
             name: key,
-            content: prompt,
+            description: `Global prompt: ${key}`,
             category: this.categorizePrompt(prompt, key),
-            tags: ['cursor-ide', 'global-prompt'],
+            content: prompt,
             variables: this.extractTemplateVariables(prompt),
-            metadata: {
-              source: 'cursor-ide',
-              created_at: new Date().toISOString(),
-            },
+            tags: ['cursor-ide', 'global-prompt'],
           });
         }
       }
@@ -200,10 +178,10 @@ export class CursorTransformationService {
     return {
       templates,
       metadata: {
-        source: 'cursor-ide',
-        total_count: templates.length,
+        source_platform: 'cursor-ide',
         created_at: new Date().toISOString(),
         version: '1.0.0',
+        total_templates: templates.length,
       },
     };
   }
@@ -232,7 +210,8 @@ export class CursorTransformationService {
     }
 
     // Check compatibility with VS Code
-    const compatibilityResult = this.validationService.checkExtensionCompatibility(extensions);
+    const extensionIds = extensions.map(e => e.id);
+    const compatibilityResult = await this.validationService.checkExtensionCompatibility(extensionIds);
     
     const mappedExtensions = extensions.map(ext => ({
       id: ext.id,
@@ -240,30 +219,32 @@ export class CursorTransformationService {
       publisher: ext.publisher,
       version: ext.version,
       enabled: ext.enabled,
-      platform_specific: compatibilityResult.incompatibleExtensions.some(
-        incomp => incomp.id === ext.id
-      ),
+      platform_specific: compatibilityResult.incompatibleExtensions.includes(ext.id),
     }));
+
+    const compatibleExtensions = extensions.filter(
+      ext => !compatibilityResult.incompatibleExtensions.includes(ext.id)
+    );
 
     const result: ExtensionMappingResult = {
       extensions: mappedExtensions,
       compatibility: {
-        vscode: compatibilityResult.compatibleExtensions.map(e => e.id),
-        cursor_specific: compatibilityResult.incompatibleExtensions.map(e => e.id),
-        universal: compatibilityResult.compatibleExtensions
+        vscode: compatibleExtensions.map(e => e.id),
+        cursor_specific: compatibilityResult.incompatibleExtensions,
+        universal: compatibleExtensions
           .filter(e => this.isUniversalExtension(e.id))
           .map(e => e.id),
       },
       metadata: {
         total_count: extensions.length,
-        compatible_count: compatibilityResult.compatibleExtensions.length,
-        warnings: compatibilityResult.warnings,
+        compatible_count: compatibleExtensions.length,
+        warnings: compatibilityResult.migrationSuggestions,
       },
     };
 
     // Add alternatives if available
-    if (compatibilityResult.alternatives) {
-      result.alternatives = compatibilityResult.alternatives;
+    if (Object.keys(compatibilityResult.alternativeExtensions).length > 0) {
+      result.alternatives = compatibilityResult.alternativeExtensions;
     }
 
     return result;
@@ -277,34 +258,24 @@ export class CursorTransformationService {
   ): Promise<UserPreferences> {
     const settings = globalSettings.settings || {};
     
-    const preferences: UserPreferences = {
-      theme: this.extractTheme(settings),
-      editor_settings: this.extractEditorSettings(settings),
-      extensions: globalSettings.globalExtensions?.map(e => e.id) || [],
-      keybindings: this.extractKeybindingSummary(globalSettings.keybindings),
+    // Extract preferred languages based on installed extensions and settings
+    const preferredLanguages = this.detectPreferredLanguages(globalSettings);
+    
+    // Extract coding style from editor settings
+    const codingStyle = this.extractCodingStyle(settings);
+    
+    // Extract tools and frameworks from extensions
+    const toolsAndFrameworks = this.extractToolsAndFrameworks(globalSettings);
+    
+    // Extract development environment preferences
+    const developmentEnvironment = this.extractDevelopmentEnvironment(settings);
+
+    return {
+      preferred_languages: preferredLanguages,
+      coding_style: codingStyle,
+      tools_and_frameworks: toolsAndFrameworks,
+      development_environment: developmentEnvironment,
     };
-
-    // Add AI settings if available
-    if (settings['cursor.aiProvider'] || settings['cursor.aiModel'] || globalSettings.globalAiRules) {
-      preferences.ai_settings = {
-        provider: settings['cursor.aiProvider'] as string || 'default',
-        model: settings['cursor.aiModel'] as string,
-        temperature: settings['cursor.temperature'] as number,
-        maxTokens: settings['cursor.maxTokens'] as number,
-      };
-    }
-
-    // Add sanitized AI rules if available
-    if (globalSettings.globalAiRules) {
-      const sanitizedRules = this.validationService.sanitizeAiConfiguration(
-        globalSettings.globalAiRules,
-      );
-      if (sanitizedRules.rules?.length) {
-        preferences.ai_rules = sanitizedRules.rules;
-      }
-    }
-
-    return preferences;
   }
 
   /**
@@ -315,14 +286,23 @@ export class CursorTransformationService {
   ): Promise<WorkStyle> {
     const settings = globalSettings.settings || {};
 
+    // Infer workflow preferences
+    const preferredWorkflow = this.inferWorkflow(settings, globalSettings);
+    
+    // Determine problem-solving approach
+    const problemSolvingApproach = this.inferProblemSolving(settings);
+    
+    // Determine documentation level
+    const documentationLevel = this.inferDocumentationLevel(settings);
+    
+    // Determine testing approach
+    const testingApproach = this.inferTestingApproach(settings, globalSettings);
+
     return {
-      workflow_preferences: {
-        auto_save: settings['files.autoSave'] !== 'off',
-        format_on_save: Boolean(settings['editor.formatOnSave']),
-        auto_close_brackets: settings['editor.autoClosingBrackets'] !== 'never',
-      },
-      collaboration_tools: this.extractCollaborationTools(settings),
-      productivity_features: this.extractProductivityFeatures(settings),
+      preferred_workflow: preferredWorkflow,
+      problem_solving_approach: problemSolvingApproach,
+      documentation_level: documentationLevel,
+      testing_approach: testingApproach,
     };
   }
 
@@ -335,9 +315,9 @@ export class CursorTransformationService {
     const settings = globalSettings.settings || {};
 
     return {
-      code_comments: settings['editor.quickSuggestions'] ? 'detailed' : 'minimal',
-      documentation_style: 'standard',
-      language_preferences: ['en'],
+      preferred_explanation_style: this.inferExplanationStyle(settings),
+      technical_depth: 'intermediate', // Default, could be inferred from extensions
+      feedback_style: 'direct',
     };
   }
 
@@ -352,9 +332,8 @@ export class CursorTransformationService {
     return {
       name: projectName,
       description: `Cursor IDE project: ${projectName}`,
-      type: localSettings.workspaceType === 'multi-root' ? 'multi-root' : 'single-root',
-      repository_url: '',
-      primary_language: await this.detectPrimaryLanguage(localSettings),
+      version: '1.0.0', // Default version
+      repository: '', // Would need to detect from .git
     };
   }
 
@@ -365,10 +344,11 @@ export class CursorTransformationService {
     localSettings: CursorLocalSettingsData,
   ): Promise<TechnicalStack> {
     return {
-      languages: await this.detectLanguages(localSettings),
+      primary_language: await this.detectPrimaryLanguage(localSettings),
       frameworks: await this.detectFrameworks(localSettings),
+      databases: [], // Would need to detect from config files
       tools: await this.detectTools(localSettings),
-      extensions: localSettings.extensions?.recommendations || [],
+      deployment: [], // Would need to detect from config files
     };
   }
 
@@ -379,73 +359,231 @@ export class CursorTransformationService {
     localSettings: CursorLocalSettingsData,
   ): Promise<DevelopmentGuidelines> {
     const settings = localSettings.settings || {};
+    
+    const codingStandards: string[] = [];
+    const testingRequirements: string[] = [];
+    const documentationStandards: string[] = [];
+    const reviewProcess: string[] = [];
+
+    // Infer coding standards from settings
+    if (settings['editor.formatOnSave']) {
+      codingStandards.push('Format on save enabled');
+    }
+    if (settings['eslint.enable'] !== false) {
+      codingStandards.push('ESLint enforced');
+    }
+    if (settings['prettier.enable'] !== false) {
+      codingStandards.push('Prettier formatting');
+    }
+
+    // Infer testing requirements
+    if (settings['jest.autoRun']) {
+      testingRequirements.push('Jest auto-run enabled');
+    }
+    if (settings['vitest.enable']) {
+      testingRequirements.push('Vitest testing framework');
+    }
+
+    // Add default standards if none detected
+    if (codingStandards.length === 0) {
+      codingStandards.push('Standard code formatting');
+    }
+    if (testingRequirements.length === 0) {
+      testingRequirements.push('Unit testing recommended');
+    }
+    if (documentationStandards.length === 0) {
+      documentationStandards.push('Inline documentation');
+    }
+    if (reviewProcess.length === 0) {
+      reviewProcess.push('Peer review recommended');
+    }
 
     return {
-      code_style: {
-        indentation: settings['editor.tabSize'] as number || 2,
-        quotes: settings['prettier.singleQuote'] ? 'single' : 'double',
-        semicolons: !settings['prettier.semi'] === false,
-      },
-      conventions: {
-        naming: 'camelCase',
-        file_structure: 'standard',
-      },
-      best_practices: [],
+      coding_standards: codingStandards,
+      testing_requirements: testingRequirements,
+      documentation_standards: documentationStandards,
+      review_process: reviewProcess,
     };
   }
 
   /**
-   * Extract theme from settings
+   * Detect preferred languages from settings and extensions
    */
-  private extractTheme(settings: VSCodeSettings): string {
-    return (settings['workbench.colorTheme'] as string) || 'Default Dark+';
+  private detectPreferredLanguages(globalSettings: CursorGlobalSettingsData): string[] {
+    const languages: Set<string> = new Set();
+    const settings = globalSettings.settings || {};
+    
+    // Check language-specific settings
+    if (settings['typescript.tsdk']) languages.add('typescript');
+    if (settings['python.defaultInterpreterPath']) languages.add('python');
+    if (settings['java.home']) languages.add('java');
+    if (settings['go.gopath']) languages.add('go');
+    if (settings['rust-analyzer.server.path']) languages.add('rust');
+    
+    // Check extensions for language support
+    if (globalSettings.globalExtensions) {
+      for (const ext of globalSettings.globalExtensions) {
+        const id = ext.id.toLowerCase();
+        if (id.includes('python')) languages.add('python');
+        if (id.includes('typescript')) languages.add('typescript');
+        if (id.includes('javascript')) languages.add('javascript');
+        if (id.includes('rust')) languages.add('rust');
+        if (id.includes('golang') || id.includes('go')) languages.add('go');
+        if (id.includes('java')) languages.add('java');
+        if (id.includes('csharp')) languages.add('csharp');
+      }
+    }
+    
+    // Default to JavaScript if no languages detected
+    if (languages.size === 0) {
+      languages.add('javascript');
+    }
+    
+    return Array.from(languages);
   }
 
   /**
-   * Extract editor settings
+   * Extract coding style from settings
    */
-  private extractEditorSettings(settings: VSCodeSettings): CodingStyle {
+  private extractCodingStyle(settings: VSCodeSettings): CodingStyle {
+    const tabSize = (settings['editor.tabSize'] as number) || 2;
+    const insertSpaces = settings['editor.insertSpaces'] !== false;
+    const indentation = insertSpaces ? `${tabSize} spaces` : 'tabs';
+    
+    // Infer naming convention from settings or default
+    let namingConvention = 'camelCase';
+    if (settings['python.linting.enabled']) {
+      namingConvention = 'snake_case';
+    }
+    
+    // Infer comment style
+    let commentStyle = 'standard';
+    if (settings['editor.quickSuggestions']) {
+      commentStyle = 'detailed';
+    }
+    
     return {
-      tabSize: (settings['editor.tabSize'] as number) || 2,
-      insertSpaces: settings['editor.insertSpaces'] !== false,
-      wordWrap: (settings['editor.wordWrap'] as string) || 'off',
-      fontSize: (settings['editor.fontSize'] as number) || 14,
-      fontFamily: (settings['editor.fontFamily'] as string) || 'Consolas, Courier New, monospace',
+      indentation,
+      naming_convention: namingConvention,
+      comment_style: commentStyle,
+      code_organization: 'feature-based',
     };
   }
 
   /**
-   * Extract keybinding summary
+   * Extract tools and frameworks from extensions
    */
-  private extractKeybindingSummary(keybindings?: CursorKeybinding[]): string[] {
-    if (!keybindings) return [];
-    return keybindings.slice(0, 10).map(kb => `${kb.key}: ${kb.command}`);
+  private extractToolsAndFrameworks(globalSettings: CursorGlobalSettingsData): string[] {
+    const tools: Set<string> = new Set();
+    
+    if (globalSettings.globalExtensions) {
+      for (const ext of globalSettings.globalExtensions) {
+        const id = ext.id.toLowerCase();
+        // Frameworks
+        if (id.includes('angular')) tools.add('angular');
+        if (id.includes('react')) tools.add('react');
+        if (id.includes('vue')) tools.add('vue');
+        if (id.includes('svelte')) tools.add('svelte');
+        // Tools
+        if (id.includes('eslint')) tools.add('eslint');
+        if (id.includes('prettier')) tools.add('prettier');
+        if (id.includes('docker')) tools.add('docker');
+        if (id.includes('git')) tools.add('git');
+      }
+    }
+    
+    return Array.from(tools);
   }
 
   /**
-   * Extract collaboration tools from settings
+   * Extract development environment preferences
    */
-  private extractCollaborationTools(settings: VSCodeSettings): string[] {
-    const tools: string[] = [];
+  private extractDevelopmentEnvironment(settings: VSCodeSettings): string[] {
+    const env: string[] = [];
     
-    if (settings['liveshare.presence']) tools.push('live-share');
-    if (settings['gitlens.enabled'] !== false) tools.push('gitlens');
-    if (settings['git.enabled'] !== false) tools.push('git');
+    const theme = (settings['workbench.colorTheme'] as string) || 'Default Dark+';
+    env.push(`Theme: ${theme}`);
     
-    return tools;
+    const fontSize = (settings['editor.fontSize'] as number) || 14;
+    env.push(`Font size: ${fontSize}`);
+    
+    if (settings['editor.minimap.enabled'] !== false) {
+      env.push('Minimap enabled');
+    }
+    
+    if (settings['editor.wordWrap'] === 'on') {
+      env.push('Word wrap enabled');
+    }
+    
+    return env;
   }
 
   /**
-   * Extract productivity features
+   * Infer workflow from settings
    */
-  private extractProductivityFeatures(settings: VSCodeSettings): string[] {
-    const features: string[] = [];
+  private inferWorkflow(settings: VSCodeSettings, globalSettings: CursorGlobalSettingsData): string {
+    // Check for TDD indicators
+    if (settings['jest.autoRun'] || settings['vitest.enable']) {
+      return 'TDD';
+    }
     
-    if (settings['editor.snippetSuggestions']) features.push('snippets');
-    if (settings['editor.suggestOnTriggerCharacters']) features.push('intellisense');
-    if (settings['editor.wordBasedSuggestions']) features.push('word-suggestions');
+    // Check for agile/scrum indicators in extensions
+    if (globalSettings.globalExtensions?.some(e => 
+      e.id.toLowerCase().includes('jira') || 
+      e.id.toLowerCase().includes('azure-devops')
+    )) {
+      return 'agile';
+    }
     
-    return features;
+    return 'iterative';
+  }
+
+  /**
+   * Infer problem-solving approach
+   */
+  private inferProblemSolving(settings: VSCodeSettings): string {
+    if (settings['editor.quickSuggestions']) {
+      return 'incremental';
+    }
+    return 'holistic';
+  }
+
+  /**
+   * Infer documentation level
+   */
+  private inferDocumentationLevel(settings: VSCodeSettings): string {
+    if (settings['editor.quickSuggestions'] && settings['editor.suggestOnTriggerCharacters']) {
+      return 'comprehensive';
+    }
+    return 'standard';
+  }
+
+  /**
+   * Infer testing approach
+   */
+  private inferTestingApproach(settings: VSCodeSettings, globalSettings: CursorGlobalSettingsData): string {
+    if (settings['jest.autoRun'] || settings['vitest.enable']) {
+      return 'unit-first';
+    }
+    
+    if (globalSettings.globalExtensions?.some(e => 
+      e.id.toLowerCase().includes('cypress') || 
+      e.id.toLowerCase().includes('playwright')
+    )) {
+      return 'e2e-focused';
+    }
+    
+    return 'balanced';
+  }
+
+  /**
+   * Infer explanation style
+   */
+  private inferExplanationStyle(settings: VSCodeSettings): string {
+    if (settings['editor.quickSuggestions']) {
+      return 'detailed';
+    }
+    return 'concise';
   }
 
   /**
@@ -461,32 +599,6 @@ export class CursorTransformationService {
     if (settings['rust-analyzer.server.path']) return 'rust';
     
     return 'javascript';
-  }
-
-  /**
-   * Detect languages used in project
-   */
-  private async detectLanguages(localSettings: CursorLocalSettingsData): Promise<string[]> {
-    const languages: Set<string> = new Set();
-    const settings = localSettings.settings || {};
-    
-    if (settings['typescript.tsdk']) languages.add('typescript');
-    if (settings['javascript.validate.enable']) languages.add('javascript');
-    if (settings['python.linting.enabled']) languages.add('python');
-    if (settings['java.configuration.runtimes']) languages.add('java');
-    if (settings['csharp.enabled']) languages.add('csharp');
-    if (settings['go.buildOnSave']) languages.add('go');
-    if (settings['rust-analyzer.checkOnSave']) languages.add('rust');
-    
-    // Add based on extensions
-    if (localSettings.extensions?.recommendations) {
-      const recs = localSettings.extensions.recommendations;
-      if (recs.some(e => e.includes('python'))) languages.add('python');
-      if (recs.some(e => e.includes('typescript'))) languages.add('typescript');
-      if (recs.some(e => e.includes('rust'))) languages.add('rust');
-    }
-    
-    return Array.from(languages);
   }
 
   /**
@@ -507,6 +619,7 @@ export class CursorTransformationService {
       if (recs.some(e => e.includes('vue'))) frameworks.add('vue');
       if (recs.some(e => e.includes('react'))) frameworks.add('react');
       if (recs.some(e => e.includes('svelte'))) frameworks.add('svelte');
+      if (recs.some(e => e.includes('nestjs'))) frameworks.add('nestjs');
     }
     
     return Array.from(frameworks);
@@ -550,7 +663,7 @@ export class CursorTransformationService {
    * Extract template variables from prompt
    */
   private extractTemplateVariables(prompt: string): string[] {
-    const variablePattern = /\{\{(\w+)\}\}|\$\{(\w+)\}|\$(\w+)/g;
+    const variablePattern = /{{(\w+)}}|\${(\w+)}|\$(\w+)/g;
     const variables: Set<string> = new Set();
     
     let match;
@@ -573,29 +686,25 @@ export class CursorTransformationService {
   /**
    * Generate user ID from global settings
    */
-  private generateUserId(globalSettings: CursorGlobalSettingsData): string {
-    const base = `${globalSettings.userHome}_cursor`;
+  private generateUserId(_globalSettings: CursorGlobalSettingsData): string {
     return randomUUID();
   }
 
   /**
    * Generate project ID from local settings
    */
-  private generateProjectId(localSettings: CursorLocalSettingsData): string {
-    const base = `${localSettings.projectPath}_cursor`;
+  private generateProjectId(_localSettings: CursorLocalSettingsData): string {
     return randomUUID();
   }
 
   /**
    * Generate personal metadata
    */
-  private generatePersonalMetadata(globalSettings: CursorGlobalSettingsData): PersonalMetadata {
+  private generatePersonalMetadata(_globalSettings: CursorGlobalSettingsData): PersonalMetadata {
     return {
-      source: 'cursor-ide',
-      version: '1.0.0',
+      source_platform: 'cursor-ide',
       created_at: new Date().toISOString(),
-      platform: process.platform,
-      home_directory: globalSettings.userHome,
+      version: '1.0.0',
     };
   }
 
@@ -604,12 +713,10 @@ export class CursorTransformationService {
    */
   private generateProjectMetadata(localSettings: CursorLocalSettingsData): ProjectMetadata {
     return {
-      source: 'cursor-ide',
-      version: '1.0.0',
+      source_platform: 'cursor-ide',
+      source_path: localSettings.projectPath,
       created_at: new Date().toISOString(),
-      platform: process.platform,
-      project_path: localSettings.projectPath,
-      workspace_type: localSettings.workspaceType,
+      version: '1.0.0',
     };
   }
 
@@ -622,30 +729,26 @@ export class CursorTransformationService {
     return {
       user_id: this.generateUserId(globalSettings),
       preferences: {
-        theme: 'Default',
-        editor_settings: {
-          tabSize: 2,
-          insertSpaces: true,
-          wordWrap: 'off',
-          fontSize: 14,
-          fontFamily: 'monospace',
+        preferred_languages: ['javascript'],
+        coding_style: {
+          indentation: '2 spaces',
+          naming_convention: 'camelCase',
+          comment_style: 'standard',
+          code_organization: 'feature-based',
         },
-        extensions: [],
-        keybindings: [],
+        tools_and_frameworks: [],
+        development_environment: ['Default settings'],
       },
       work_style: {
-        workflow_preferences: {
-          auto_save: false,
-          format_on_save: false,
-          auto_close_brackets: true,
-        },
-        collaboration_tools: [],
-        productivity_features: [],
+        preferred_workflow: 'iterative',
+        problem_solving_approach: 'incremental',
+        documentation_level: 'standard',
+        testing_approach: 'balanced',
       },
       communication: {
-        code_comments: 'standard',
-        documentation_style: 'standard',
-        language_preferences: ['en'],
+        preferred_explanation_style: 'concise',
+        technical_depth: 'intermediate',
+        feedback_style: 'direct',
       },
       metadata: this.generatePersonalMetadata(globalSettings),
     };
@@ -664,27 +767,21 @@ export class CursorTransformationService {
       project_info: {
         name: projectName,
         description: `Cursor IDE project: ${projectName}`,
-        type: localSettings.workspaceType === 'multi-root' ? 'multi-root' : 'single-root',
-        repository_url: '',
-        primary_language: 'unknown',
+        version: '1.0.0',
+        repository: '',
       },
       technical_stack: {
-        languages: [],
+        primary_language: 'javascript',
         frameworks: [],
+        databases: [],
         tools: [],
-        extensions: [],
+        deployment: [],
       },
       development_guidelines: {
-        code_style: {
-          indentation: 2,
-          quotes: 'single',
-          semicolons: true,
-        },
-        conventions: {
-          naming: 'camelCase',
-          file_structure: 'standard',
-        },
-        best_practices: [],
+        coding_standards: ['Standard code formatting'],
+        testing_requirements: ['Unit testing recommended'],
+        documentation_standards: ['Inline documentation'],
+        review_process: ['Peer review recommended'],
       },
       metadata: this.generateProjectMetadata(localSettings),
     };

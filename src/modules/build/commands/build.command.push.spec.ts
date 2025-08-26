@@ -76,6 +76,8 @@ describe('BuildCommand - Push Feature', () => {
     buildCommand = new BuildCommand(
       {} as any, // interactiveService
       {} as any, // collectionService
+      {} as any, // cursorCollectionService
+      {} as any, // cursorTransformationService
       {} as any, // transformationService
       {} as any, // sanitizationService
       {} as any, // metadataGeneratorService
