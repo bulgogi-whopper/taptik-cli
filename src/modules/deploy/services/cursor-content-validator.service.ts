@@ -162,6 +162,58 @@ export class CursorContentValidatorService {
     }
   ];
 
+  // Prompt injection patterns
+  private readonly PROMPT_INJECTION_PATTERNS = [
+    {
+      name: 'Ignore Previous Instructions',
+      pattern: /(?:ignore|disregard|forget)\s+(?:all\s+)?(?:previous|earlier|above)\s+(?:instructions?|prompts?|rules?|commands?)/gi,
+      severity: 'high' as const,
+      mitigation: 'Remove prompt injection attempts'
+    },
+    {
+      name: 'System Override',
+      pattern: /(?:system\s*:|assistant\s*:|user\s*:)\s*(?:you\s+(?:are|must|should|will)|now\s+(?:act|behave|respond)\s+as)/gi,
+      severity: 'high' as const,
+      mitigation: 'Remove system role override attempts'
+    },
+    {
+      name: 'Role Manipulation',
+      pattern: /(?:pretend|act|behave|roleplay)\s+(?:as|like|to\s+be)\s+(?:a\s+|an\s+)?(?:admin|administrator|root|sudo|system|developer)/gi,
+      severity: 'high' as const,
+      mitigation: 'Remove role manipulation attempts'
+    },
+    {
+      name: 'Instruction Termination',
+      pattern: /(?:---|\*\*\*|###|\[END\]|\[STOP\])\s*(?:ignore|new\s+instructions?|system\s+prompt)/gi,
+      severity: 'medium' as const,
+      mitigation: 'Remove instruction termination patterns'
+    },
+    {
+      name: 'Jailbreak Attempt',
+      pattern: /(?:DAN|jailbreak|break\s+(?:out|free)|bypass|circumvent)\s*(?:all\s*)?(?:restrictions?|limitations?|rules?|guidelines?)/gi,
+      severity: 'high' as const,
+      mitigation: 'Remove jailbreak attempts'
+    },
+    {
+      name: 'Token Manipulation',
+      pattern: /(?:<\|.*?\|>|\[INST\]|\[\/INST\]|<s>|<\/s>|<system>|<\/system>)/gi,
+      severity: 'medium' as const,
+      mitigation: 'Remove special token manipulation'
+    },
+    {
+      name: 'Code Execution Request',
+      pattern: /(?:execute|run|eval)\s+(?:this\s+)?(?:code|script|command|function)/gi,
+      severity: 'high' as const,
+      mitigation: 'Remove code execution requests'
+    },
+    {
+      name: 'Information Extraction',
+      pattern: /(?:tell\s+me|show\s+me|reveal|disclose)\s+(?:your|the)\s+(?:system\s+prompt|instructions?|rules?|guidelines?)/gi,
+      severity: 'medium' as const,
+      mitigation: 'Remove information extraction attempts'
+    }
+  ];
+
   // Content size limits
   private readonly SIZE_LIMITS = {
     MAX_AI_RULE_SIZE: 10000, // 10KB per rule
@@ -426,6 +478,23 @@ export class CursorContentValidatorService {
       }
     }
 
+    // Check for prompt injection patterns
+    for (const pattern of this.PROMPT_INJECTION_PATTERNS) {
+      const matches = Array.from(content.matchAll(pattern.pattern));
+      for (const match of matches) {
+        result.securityIssues.push({
+          type: 'injection',
+          severity: pattern.severity,
+          message: `Prompt injection pattern detected: ${pattern.name}`,
+          content: this.maskSensitiveContent(match[0]),
+          location,
+          pattern: pattern.name,
+          mitigation: pattern.mitigation,
+        });
+        result.statistics.securityPatternsFound++;
+      }
+    }
+
     // Check for encoding issues
     try {
       // Test if content is valid UTF-8
@@ -660,6 +729,347 @@ export class CursorContentValidatorService {
 
   getSecurityPatterns() {
     return this.SENSITIVE_PATTERNS.map(p => ({
+      name: p.name,
+      severity: p.severity,
+      mitigation: p.mitigation,
+    }));
+  }
+
+  /**
+   * Task 4.2: Validate AI configuration specifically for Cursor IDE
+   */
+  async validateAIConfiguration(aiConfig: CursorAIConfig): Promise<CursorContentValidationResult> {
+    this.logger.log('Validating AI configuration for Cursor IDE compatibility...');
+    
+    const result = await this.validateAIContent(aiConfig);
+    
+    // Additional Cursor-specific validations
+    await this.validateCursorAICompatibility(aiConfig, result);
+    
+    return result;
+  }
+
+  /**
+   * Task 4.2: Scan AI content specifically for security issues
+   */
+  async scanAIContentForSecurity(aiConfig: CursorAIConfig): Promise<{
+    securityIssues: CursorSecurityIssue[];
+    riskLevel: 'low' | 'medium' | 'high' | 'critical';
+    recommendations: string[];
+  }> {
+    this.logger.log('Scanning AI content for security vulnerabilities...');
+
+    const result = await this.validateAIContent(aiConfig);
+    
+    // Determine risk level based on security issues
+    let riskLevel: 'low' | 'medium' | 'high' | 'critical' = 'low';
+    const recommendations: string[] = [];
+
+    if (result.securityIssues.length === 0) {
+      riskLevel = 'low';
+      recommendations.push('AI content passed all security checks');
+    } else {
+      const criticalIssues = result.securityIssues.filter(issue => issue.severity === 'critical');
+      const highIssues = result.securityIssues.filter(issue => issue.severity === 'high');
+      const mediumIssues = result.securityIssues.filter(issue => issue.severity === 'medium');
+
+      if (criticalIssues.length > 0) {
+        riskLevel = 'critical';
+        recommendations.push(`Address ${criticalIssues.length} critical security issues immediately`);
+        recommendations.push('Consider removing all sensitive data and malicious patterns');
+      } else if (highIssues.length > 0) {
+        riskLevel = 'high';
+        recommendations.push(`Address ${highIssues.length} high-severity security issues`);
+        recommendations.push('Review and sanitize AI content before deployment');
+      } else if (mediumIssues.length > 0) {
+        riskLevel = 'medium';
+        recommendations.push(`Consider addressing ${mediumIssues.length} medium-severity security issues`);
+      }
+
+      // Add specific recommendations based on issue types
+      const injectionIssues = result.securityIssues.filter(issue => issue.type === 'injection');
+      if (injectionIssues.length > 0) {
+        recommendations.push('Remove prompt injection patterns to prevent AI manipulation');
+      }
+
+      const sensitiveDataIssues = result.securityIssues.filter(issue => issue.type === 'sensitive_data');
+      if (sensitiveDataIssues.length > 0) {
+        recommendations.push('Remove sensitive data like API keys, passwords, and personal information');
+      }
+
+      const maliciousContentIssues = result.securityIssues.filter(issue => issue.type === 'malicious_content');
+      if (maliciousContentIssues.length > 0) {
+        recommendations.push('Remove potentially malicious code patterns and commands');
+      }
+    }
+
+    return {
+      securityIssues: result.securityIssues,
+      riskLevel,
+      recommendations,
+    };
+  }
+
+  /**
+   * Task 4.2: Validate AI content size and format constraints
+   */
+  async validateAIContentSizeAndFormat(aiConfig: CursorAIConfig): Promise<{
+    sizeValid: boolean;
+    formatValid: boolean;
+    issues: Array<{
+      type: 'size' | 'format';
+      severity: 'low' | 'medium' | 'high';
+      message: string;
+      location: string;
+      suggestion: string;
+    }>;
+    statistics: {
+      totalSize: number;
+      componentsCount: number;
+      averageSize: number;
+      largestComponent: { type: string; size: number; location: string };
+    };
+  }> {
+    this.logger.log('Validating AI content size and format constraints...');
+
+    const result = await this.validateAIContent(aiConfig);
+    const issues: Array<{
+      type: 'size' | 'format';
+      severity: 'low' | 'medium' | 'high';
+      message: string;
+      location: string;
+      suggestion: string;
+    }> = [];
+
+    // Convert size issues
+    result.sizeIssues.forEach(sizeIssue => {
+      issues.push({
+        type: 'size',
+        severity: sizeIssue.severity === 'high' ? 'high' : sizeIssue.severity === 'medium' ? 'medium' : 'low',
+        message: sizeIssue.message,
+        location: sizeIssue.location || 'unknown',
+        suggestion: sizeIssue.suggestion,
+      });
+    });
+
+    // Convert format errors
+    result.errors.filter(error => error.type === 'format').forEach(formatError => {
+      issues.push({
+        type: 'format',
+        severity: formatError.severity === 'critical' ? 'high' : 
+                 formatError.severity === 'high' ? 'high' : 
+                 formatError.severity === 'medium' ? 'medium' : 'low',
+        message: formatError.message,
+        location: formatError.location || 'unknown',
+        suggestion: formatError.suggestion || 'Fix format issues',
+      });
+    });
+
+    // Find largest component
+    let largestComponent = { type: 'unknown', size: 0, location: 'unknown' };
+    
+    if (aiConfig.rules) {
+      aiConfig.rules.forEach((rule, index) => {
+        if (rule.content) {
+          const size = Buffer.byteLength(rule.content, 'utf8');
+          if (size > largestComponent.size) {
+            largestComponent = { type: 'rule', size, location: `rules[${index}]` };
+          }
+        }
+      });
+    }
+
+    if (aiConfig.context) {
+      aiConfig.context.forEach((context, index) => {
+        if (context.content) {
+          const size = Buffer.byteLength(context.content, 'utf8');
+          if (size > largestComponent.size) {
+            largestComponent = { type: 'context', size, location: `context[${index}]` };
+          }
+        }
+      });
+    }
+
+    if (aiConfig.prompts) {
+      aiConfig.prompts.forEach((prompt, index) => {
+        if (prompt.content) {
+          const size = Buffer.byteLength(prompt.content, 'utf8');
+          if (size > largestComponent.size) {
+            largestComponent = { type: 'prompt', size, location: `prompts[${index}]` };
+          }
+        }
+      });
+    }
+
+    const totalComponents = (aiConfig.rules?.length || 0) + 
+                           (aiConfig.context?.length || 0) + 
+                           (aiConfig.prompts?.length || 0);
+
+    return {
+      sizeValid: result.sizeIssues.length === 0,
+      formatValid: result.errors.filter(e => e.type === 'format').length === 0,
+      issues,
+      statistics: {
+        totalSize: result.statistics.totalSize,
+        componentsCount: totalComponents,
+        averageSize: result.statistics.averageContentLength,
+        largestComponent,
+      },
+    };
+  }
+
+  /**
+   * Task 4.2: Prevent prompt injection attacks
+   */
+  async validatePromptInjectionPrevention(content: string, location: string = 'content'): Promise<{
+    safe: boolean;
+    injectionAttempts: Array<{
+      type: string;
+      severity: 'low' | 'medium' | 'high';
+      pattern: string;
+      match: string;
+      location: string;
+      mitigation: string;
+    }>;
+    riskScore: number; // 0-100, higher is more risky
+  }> {
+    this.logger.log('Checking content for prompt injection attempts...');
+
+    const injectionAttempts: Array<{
+      type: string;
+      severity: 'low' | 'medium' | 'high';
+      pattern: string;
+      match: string;
+      location: string;
+      mitigation: string;
+    }> = [];
+
+    let riskScore = 0;
+
+    // Check each prompt injection pattern
+    for (const pattern of this.PROMPT_INJECTION_PATTERNS) {
+      const matches = Array.from(content.matchAll(pattern.pattern));
+      
+      for (const match of matches) {
+        const severity = pattern.severity === 'critical' ? 'high' : 
+                        pattern.severity === 'high' ? 'high' : 
+                        pattern.severity === 'medium' ? 'medium' : 'low';
+
+        injectionAttempts.push({
+          type: pattern.name,
+          severity,
+          pattern: pattern.name,
+          match: this.maskSensitiveContent(match[0]),
+          location,
+          mitigation: pattern.mitigation,
+        });
+
+        // Calculate risk score
+        switch (severity) {
+          case 'high':
+            riskScore += 25;
+            break;
+          case 'medium':
+            riskScore += 10;
+            break;
+          case 'low':
+            riskScore += 5;
+            break;
+        }
+      }
+    }
+
+    // Cap risk score at 100
+    riskScore = Math.min(100, riskScore);
+
+    return {
+      safe: injectionAttempts.length === 0,
+      injectionAttempts,
+      riskScore,
+    };
+  }
+
+  /**
+   * Cursor-specific AI compatibility validation
+   */
+  private async validateCursorAICompatibility(
+    aiConfig: CursorAIConfig, 
+    result: CursorContentValidationResult
+  ): Promise<void> {
+    // Check for Cursor-specific AI rule requirements
+    if (aiConfig.rules) {
+      aiConfig.rules.forEach((rule, index) => {
+        const location = `rules[${index}]`;
+
+        // Cursor requires rule IDs to be unique and follow naming convention
+        if (rule.id && !/^[a-zA-Z0-9_-]+$/.test(rule.id)) {
+          result.warnings.push({
+            type: 'compatibility',
+            message: 'Rule ID contains invalid characters for Cursor compatibility',
+            location: `${location}.id`,
+            recommendation: 'Use only alphanumeric characters, underscores, and hyphens in rule IDs',
+          });
+        }
+
+        // Check for Cursor-specific metadata
+        if (!rule.scope) {
+          result.warnings.push({
+            type: 'compatibility',
+            message: 'Rule missing scope field (recommended for Cursor)',
+            location: `${location}.scope`,
+            recommendation: 'Add scope field: "global", "workspace", or "file"',
+          });
+        }
+
+        // Validate priority range for Cursor
+        if (rule.priority !== undefined && (rule.priority < 1 || rule.priority > 10)) {
+          result.warnings.push({
+            type: 'compatibility',
+            message: 'Rule priority outside Cursor recommended range (1-10)',
+            location: `${location}.priority`,
+            recommendation: 'Use priority values between 1 and 10 for optimal Cursor compatibility',
+          });
+        }
+      });
+    }
+
+    // Check for Cursor-specific context file requirements
+    if (aiConfig.context) {
+      aiConfig.context.forEach((context, index) => {
+        const location = `context[${index}]`;
+
+        // Cursor prefers specific context types
+        const validTypes = ['documentation', 'example', 'template', 'custom', 'style_guide', 'api_reference'];
+        if (context.type && !validTypes.includes(context.type)) {
+          result.warnings.push({
+            type: 'compatibility',
+            message: `Context type "${context.type}" may not be optimally handled by Cursor`,
+            location: `${location}.type`,
+            recommendation: `Use one of: ${validTypes.join(', ')}`,
+          });
+        }
+      });
+    }
+
+    // Validate overall configuration structure for Cursor
+    const totalRules = aiConfig.rules?.length || 0;
+    const totalContext = aiConfig.context?.length || 0;
+    const totalPrompts = aiConfig.prompts?.length || 0;
+
+    if (totalRules + totalContext + totalPrompts > 50) {
+      result.warnings.push({
+        type: 'performance',
+        message: 'Large number of AI components may impact Cursor performance',
+        recommendation: 'Consider consolidating similar rules/contexts or using more specific scoping',
+      });
+    }
+  }
+
+  /**
+   * Get prompt injection patterns for reference
+   */
+  getPromptInjectionPatterns() {
+    return this.PROMPT_INJECTION_PATTERNS.map(p => ({
       name: p.name,
       severity: p.severity,
       mitigation: p.mitigation,
