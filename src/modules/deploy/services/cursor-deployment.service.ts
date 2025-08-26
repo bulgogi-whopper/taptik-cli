@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Readable } from 'stream';
 import { 
   CursorDeploymentOptions, 
   CursorDeploymentResult, 
@@ -18,10 +19,16 @@ import { ALL_CURSOR_COMPONENT_TYPES } from '../constants/cursor.constants';
 
 /**
  * Task 6.1: Main Cursor deployment service orchestration
+ * Task 6.3: Performance optimization features implementation
  */
 @Injectable()
 export class CursorDeploymentService implements ICursorDeploymentService {
   private readonly logger = new Logger(CursorDeploymentService.name);
+  
+  // Task 6.3: Performance optimization properties
+  private readonly MAX_PARALLEL_DEPLOYMENTS = 3;
+  private readonly MEMORY_THRESHOLD_MB = 100;
+  private readonly CHUNK_SIZE = 1024 * 1024; // 1MB chunks for streaming
 
   constructor(
     private readonly transformerService: CursorTransformerService,
@@ -110,67 +117,37 @@ export class CursorDeploymentService implements ICursorDeploymentService {
         });
       }
 
-      // Step 5: Process each component type with conflict resolution
-      this.logger.log('Step 5: Processing components with conflict resolution...');
+      // Step 5: Process components with performance optimization
+      this.logger.log('Step 5: Processing components with parallel deployment optimization...');
       
-      for (const componentType of componentTypes) {
-        try {
-          this.logger.log(`Processing component: ${componentType}`);
-          
-          if (this.shouldSkipComponent(componentType, options)) {
-            skippedComponents.push(componentType);
-            this.logger.log(`Skipping component: ${componentType}`);
-            continue;
-          }
-
-          // Update state: component started
-          await this.stateManager.updateDeploymentProgress(
-            this.generateDeploymentId(),
-            componentType,
-            'started'
-          );
-
-          const componentResult = await this.deployComponentWithConflictResolution(
-            componentType, 
-            deploymentOptionsWithPath
-          );
-          
-          if (componentResult.success) {
-            deployedComponents.push(componentType);
-            this.updateConfigurationFiles(configurationFiles, componentType, componentResult);
-            this.logger.log(`Successfully deployed component: ${componentType}`);
-            
-            // Update state: component completed
-            await this.stateManager.updateDeploymentProgress(
-              this.generateDeploymentId(),
-              componentType,
-              'completed'
-            );
-          } else {
-            errors.push(...componentResult.errors);
-            this.logger.warn(`Failed to deploy component: ${componentType}`);
-            
-            // Update state: component failed
-            await this.stateManager.updateDeploymentProgress(
-              this.generateDeploymentId(),
-              componentType,
-              'failed',
-              componentResult.errors[0]
-            );
-          }
-          
-          warnings.push(...componentResult.warnings);
-
-        } catch (componentError) {
-          this.logger.error(`Error deploying component ${componentType}:`, componentError);
-          errors.push({
-            component: componentType,
-            type: 'deployment',
-            severity: 'high',
-            message: `Failed to deploy ${componentType}: ${(componentError as Error).message}`,
-            suggestion: `Check ${componentType} configuration and retry`,
-          });
-        }
+      // Task 6.3: Implement parallel component deployment where safe
+      const { parallelComponents, sequentialComponents } = this.categorizeComponentsForDeployment(componentTypes);
+      
+      // Deploy parallel-safe components first
+      if (parallelComponents.length > 0) {
+        this.logger.log(`Deploying ${parallelComponents.length} components in parallel...`);
+        const parallelResults = await this.deployComponentsInParallel(
+          parallelComponents, 
+          deploymentOptionsWithPath,
+          options
+        );
+        
+        this.processParallelResults(parallelResults, deployedComponents, skippedComponents, errors, warnings, configurationFiles);
+      }
+      
+      // Deploy sequential components one by one
+      if (sequentialComponents.length > 0) {
+        this.logger.log(`Deploying ${sequentialComponents.length} components sequentially...`);
+        await this.deployComponentsSequentially(
+          sequentialComponents,
+          deploymentOptionsWithPath,
+          options,
+          deployedComponents,
+          skippedComponents,
+          errors,
+          warnings,
+          configurationFiles
+        );
       }
 
       // Step 4: Build and return result
@@ -911,6 +888,416 @@ export class CursorDeploymentService implements ICursorDeploymentService {
       },
       promptTemplates: [],
     };
+  }
+
+  // Task 6.3: Performance optimization methods
+
+  /**
+   * Categorize components for parallel vs sequential deployment
+   */
+  private categorizeComponentsForDeployment(componentTypes: CursorComponentType[]): {
+    parallelComponents: CursorComponentType[];
+    sequentialComponents: CursorComponentType[];
+  } {
+    // Components that can be deployed in parallel (no interdependencies)
+    const parallelSafeTypes: CursorComponentType[] = [
+      'extensions-config',
+      'snippets-config',
+      'global-settings',
+    ];
+
+    // Components that must be deployed sequentially (potential conflicts or dependencies)
+    const sequentialTypes: CursorComponentType[] = [
+      'project-settings',
+      'ai-config',
+      'debug-config',
+      'tasks-config',
+      'workspace-config',
+    ];
+
+    const parallelComponents = componentTypes.filter(type => parallelSafeTypes.includes(type));
+    const sequentialComponents = componentTypes.filter(type => sequentialTypes.includes(type));
+
+    return { parallelComponents, sequentialComponents };
+  }
+
+  /**
+   * Deploy components in parallel with controlled concurrency
+   */
+  private async deployComponentsInParallel(
+    components: CursorComponentType[],
+    options: CursorDeploymentOptions,
+    deploymentOptions: CursorDeploymentOptions
+  ): Promise<Array<{
+    componentType: CursorComponentType;
+    success: boolean;
+    errors: DeploymentError[];
+    warnings: DeploymentWarning[];
+    filePath?: string;
+    bytesWritten?: number;
+    skipped?: boolean;
+  }>> {
+    const semaphore = new Array(this.MAX_PARALLEL_DEPLOYMENTS).fill(null);
+    const results: Array<any> = [];
+    
+    // Create batches to control concurrency
+    const batches = this.createBatches(components, this.MAX_PARALLEL_DEPLOYMENTS);
+    
+    for (const batch of batches) {
+      this.logger.log(`Processing batch of ${batch.length} components...`);
+      
+      // Create progress tracking for batch
+      const batchPromises = batch.map(async (componentType, index) => {
+        const startTime = Date.now();
+        
+        try {
+          if (this.shouldSkipComponent(componentType, deploymentOptions)) {
+            this.logger.log(`Skipping component: ${componentType}`);
+            return {
+              componentType,
+              success: true,
+              errors: [],
+              warnings: [],
+              skipped: true,
+            };
+          }
+
+          // Memory management: check available memory before processing
+          await this.checkMemoryUsage();
+          
+          // Update state: component started
+          await this.stateManager.updateDeploymentProgress(
+            this.generateDeploymentId(),
+            componentType,
+            'started'
+          );
+
+          const componentResult = await this.deployComponentWithConflictResolution(
+            componentType,
+            options
+          );
+
+          const processingTime = Date.now() - startTime;
+          this.logger.log(`Component ${componentType} processed in ${processingTime}ms`);
+          
+          // Update state based on result
+          if (componentResult.success) {
+            await this.stateManager.updateDeploymentProgress(
+              this.generateDeploymentId(),
+              componentType,
+              'completed'
+            );
+          } else {
+            await this.stateManager.updateDeploymentProgress(
+              this.generateDeploymentId(),
+              componentType,
+              'failed',
+              componentResult.errors[0]
+            );
+          }
+
+          return {
+            componentType,
+            ...componentResult,
+          };
+
+        } catch (error) {
+          this.logger.error(`Error in parallel deployment of ${componentType}:`, error);
+          return {
+            componentType,
+            success: false,
+            errors: [{
+              component: componentType,
+              type: 'deployment',
+              severity: 'high',
+              message: `Parallel deployment failed: ${(error as Error).message}`,
+              suggestion: `Check ${componentType} configuration and retry`,
+            }] as DeploymentError[],
+            warnings: [],
+          };
+        }
+      });
+
+      const batchResults = await Promise.all(batchPromises);
+      results.push(...batchResults);
+      
+      // Memory cleanup between batches
+      if (global.gc) {
+        global.gc();
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Deploy components sequentially with progress reporting
+   */
+  private async deployComponentsSequentially(
+    components: CursorComponentType[],
+    options: CursorDeploymentOptions,
+    deploymentOptions: CursorDeploymentOptions,
+    deployedComponents: CursorComponentType[],
+    skippedComponents: CursorComponentType[],
+    errors: DeploymentError[],
+    warnings: DeploymentWarning[],
+    configurationFiles: CursorDeploymentResult['configurationFiles']
+  ): Promise<void> {
+    for (let i = 0; i < components.length; i++) {
+      const componentType = components[i];
+      const progressPercent = Math.round(((i + 1) / components.length) * 100);
+      
+      try {
+        this.logger.log(`Processing component ${i + 1}/${components.length} (${progressPercent}%): ${componentType}`);
+        
+        if (this.shouldSkipComponent(componentType, deploymentOptions)) {
+          skippedComponents.push(componentType);
+          this.logger.log(`Skipping component: ${componentType}`);
+          continue;
+        }
+
+        // Memory management before each component
+        await this.checkMemoryUsage();
+
+        // Update state: component started
+        await this.stateManager.updateDeploymentProgress(
+          this.generateDeploymentId(),
+          componentType,
+          'started'
+        );
+
+        const componentResult = await this.deployComponentWithConflictResolution(
+          componentType,
+          options
+        );
+        
+        if (componentResult.success) {
+          deployedComponents.push(componentType);
+          this.updateConfigurationFiles(configurationFiles, componentType, componentResult);
+          this.logger.log(`Successfully deployed component: ${componentType}`);
+          
+          // Update state: component completed
+          await this.stateManager.updateDeploymentProgress(
+            this.generateDeploymentId(),
+            componentType,
+            'completed'
+          );
+        } else {
+          errors.push(...componentResult.errors);
+          this.logger.warn(`Failed to deploy component: ${componentType}`);
+          
+          // Update state: component failed
+          await this.stateManager.updateDeploymentProgress(
+            this.generateDeploymentId(),
+            componentType,
+            'failed',
+            componentResult.errors[0]
+          );
+        }
+        
+        warnings.push(...componentResult.warnings);
+
+      } catch (componentError) {
+        this.logger.error(`Error deploying component ${componentType}:`, componentError);
+        errors.push({
+          component: componentType,
+          type: 'deployment',
+          severity: 'high',
+          message: `Failed to deploy ${componentType}: ${(componentError as Error).message}`,
+          suggestion: `Check ${componentType} configuration and retry`,
+        });
+      }
+    }
+  }
+
+  /**
+   * Process results from parallel deployment
+   */
+  private processParallelResults(
+    results: Array<{
+      componentType: CursorComponentType;
+      success: boolean;
+      errors: DeploymentError[];
+      warnings: DeploymentWarning[];
+      filePath?: string;
+      bytesWritten?: number;
+      skipped?: boolean;
+    }>,
+    deployedComponents: CursorComponentType[],
+    skippedComponents: CursorComponentType[],
+    errors: DeploymentError[],
+    warnings: DeploymentWarning[],
+    configurationFiles: CursorDeploymentResult['configurationFiles']
+  ): void {
+    for (const result of results) {
+      if (result.skipped) {
+        skippedComponents.push(result.componentType);
+      } else if (result.success) {
+        deployedComponents.push(result.componentType);
+        this.updateConfigurationFiles(configurationFiles, result.componentType, result);
+        this.logger.log(`Successfully deployed component in parallel: ${result.componentType}`);
+      } else {
+        errors.push(...result.errors);
+        this.logger.warn(`Failed to deploy component in parallel: ${result.componentType}`);
+      }
+      
+      warnings.push(...result.warnings);
+    }
+  }
+
+  /**
+   * Create batches for parallel processing
+   */
+  private createBatches<T>(items: T[], batchSize: number): T[][] {
+    const batches: T[][] = [];
+    for (let i = 0; i < items.length; i += batchSize) {
+      batches.push(items.slice(i, i + batchSize));
+    }
+    return batches;
+  }
+
+  /**
+   * Check memory usage and perform cleanup if needed
+   */
+  private async checkMemoryUsage(): Promise<void> {
+    const memUsage = process.memoryUsage();
+    const memUsageMB = memUsage.heapUsed / (1024 * 1024);
+    
+    if (memUsageMB > this.MEMORY_THRESHOLD_MB) {
+      this.logger.warn(`Memory usage is high: ${memUsageMB.toFixed(2)}MB. Performing cleanup...`);
+      
+      // Force garbage collection if available
+      if (global.gc) {
+        global.gc();
+        this.logger.log('Garbage collection completed');
+      }
+      
+      // Small delay to allow memory to be freed
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  }
+
+  /**
+   * Stream large configuration content for memory efficiency
+   */
+  private async streamLargeContent(content: string, targetPath: string): Promise<void> {
+    if (content.length < this.CHUNK_SIZE) {
+      // Content is small enough to write directly
+      return;
+    }
+
+    this.logger.log(`Streaming large content (${(content.length / 1024 / 1024).toFixed(2)}MB) to ${targetPath}...`);
+    
+    const fs = await import('fs');
+    const stream = fs.createWriteStream(targetPath);
+    
+    return new Promise((resolve, reject) => {
+      let offset = 0;
+      
+      const writeChunk = () => {
+        if (offset >= content.length) {
+          stream.end();
+          resolve();
+          return;
+        }
+        
+        const chunk = content.slice(offset, offset + this.CHUNK_SIZE);
+        offset += this.CHUNK_SIZE;
+        
+        stream.write(chunk, (error) => {
+          if (error) {
+            reject(error);
+          } else {
+            // Continue with next chunk after small delay to prevent memory spike
+            setImmediate(writeChunk);
+          }
+        });
+      };
+      
+      stream.on('error', reject);
+      writeChunk();
+    });
+  }
+
+  /**
+   * Create readable stream for large AI content
+   */
+  private createAIContentStream(aiContent: string[]): Readable {
+    let index = 0;
+    
+    return new Readable({
+      read() {
+        if (index >= aiContent.length) {
+          this.push(null); // End of stream
+          return;
+        }
+        
+        const content = aiContent[index];
+        index++;
+        
+        // Add separator between content items
+        const chunk = index === 1 ? content : `\n\n${content}`;
+        this.push(chunk);
+      }
+    });
+  }
+
+  /**
+   * Enhanced deployment with progress reporting
+   */
+  async deployWithProgress(
+    options: CursorDeploymentOptions,
+    progressCallback?: (progress: {
+      stage: string;
+      component?: CursorComponentType;
+      progress: number;
+      message: string;
+    }) => void
+  ): Promise<CursorDeploymentResult> {
+    const startTime = Date.now();
+    
+    try {
+      // Report initialization progress
+      progressCallback?.({
+        stage: 'initialization',
+        progress: 0,
+        message: 'Initializing deployment...'
+      });
+
+      const result = await this.deploy(options);
+      
+      const deploymentTime = Date.now() - startTime;
+      this.logger.log(`Total deployment time: ${deploymentTime}ms`);
+      
+      // Report completion
+      progressCallback?.({
+        stage: 'completion',
+        progress: 100,
+        message: `Deployment ${result.success ? 'completed' : 'failed'} in ${deploymentTime}ms`
+      });
+
+      // Add performance metrics to result
+      (result as any).performanceMetrics = {
+        totalTimeMs: deploymentTime,
+        componentsDeployed: result.deployedComponents.length,
+        averageTimePerComponent: result.deployedComponents.length > 0 
+          ? deploymentTime / result.deployedComponents.length 
+          : 0,
+      };
+
+      return result;
+
+    } catch (error) {
+      const deploymentTime = Date.now() - startTime;
+      
+      progressCallback?.({
+        stage: 'error',
+        progress: 0,
+        message: `Deployment failed after ${deploymentTime}ms: ${(error as Error).message}`
+      });
+      
+      throw error;
+    }
   }
 }
 
