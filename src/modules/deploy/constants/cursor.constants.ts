@@ -16,14 +16,17 @@ export const CURSOR_CONSTANTS = {
 } as const;
 
 export const CURSOR_COMPONENT_TYPES = {
-  GLOBAL_SETTINGS: 'global_settings',
-  PROJECT_SETTINGS: 'project_settings',
-  AI_CONFIG: 'ai_config',
-  EXTENSIONS_CONFIG: 'extensions_config',
-  DEBUG_CONFIG: 'debug_config',
-  TASKS_CONFIG: 'tasks_config',
-  SNIPPETS_CONFIG: 'snippets_config',
-  WORKSPACE_CONFIG: 'workspace_config',
+  GLOBAL_SETTINGS: 'global-settings',
+  PROJECT_SETTINGS: 'project-settings',
+  AI_CONFIG: 'ai-config',
+  EXTENSIONS_CONFIG: 'extensions-config',
+  DEBUG_CONFIG: 'debug-config',
+  TASKS_CONFIG: 'tasks-config',
+  SNIPPETS_CONFIG: 'snippets-config',
+  WORKSPACE_CONFIG: 'workspace-config',
 } as const;
 
 export type CursorComponentType = typeof CURSOR_COMPONENT_TYPES[keyof typeof CURSOR_COMPONENT_TYPES];
+
+// Array of all component types for iteration
+export const ALL_CURSOR_COMPONENT_TYPES: CursorComponentType[] = Object.values(CURSOR_COMPONENT_TYPES);
