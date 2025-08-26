@@ -12,6 +12,7 @@ import { DeploymentService } from '../services/deployment.service';
 import { ImportService } from '../services/import.service';
 import { HelpDocumentationService } from '../services/help-documentation.service';
 import { ErrorMessageHelperService } from '../services/error-message-helper.service';
+import { DeploymentReporterService } from '../services/deployment-reporter.service';
 
 interface DeployCommandOptions {
   platform?: SupportedPlatform;
@@ -35,6 +36,12 @@ interface DeployCommandOptions {
   helpPlatform?: string;
   helpComponent?: string;
   listComponents?: boolean;
+  // Task 12.2: Reporting options
+  generateReport?: boolean;
+  reportFormat?: 'console' | 'json' | 'html' | 'markdown';
+  reportVerbose?: boolean;
+  saveReport?: boolean;
+  reportPath?: string;
 }
 
 @Command({
@@ -48,6 +55,7 @@ export class DeployCommand extends CommandRunner {
     private readonly deploymentService: DeploymentService,
     private readonly helpService: HelpDocumentationService,
     private readonly errorHelper: ErrorMessageHelperService,
+    private readonly reporterService: DeploymentReporterService,
   ) {
     super();
   }
@@ -228,40 +236,91 @@ export class DeployCommand extends CommandRunner {
         process.exit(5); // Platform Error exit code
       }
 
-      // Step 4: Display results
-      if (result.success) {
-        console.log('\n✅ Deployment successful!');
-        console.log(
-          `📦 Components deployed: ${result.deployedComponents.join(', ')}`,
-        );
-        console.log(`📊 Summary:`);
-        console.log(`   - Files deployed: ${result.summary.filesDeployed}`);
-        console.log(`   - Files skipped: ${result.summary.filesSkipped}`);
-        console.log(
-          `   - Conflicts resolved: ${result.summary.conflictsResolved}`,
+      // Step 4: Generate and display results
+      // Task 12.2: Enhanced reporting with detailed analysis
+      if (options.generateReport || options.reportFormat || options.saveReport) {
+        const reportOptions = {
+          includePerformance: true,
+          includeAnalysis: true,
+          includeArtifacts: options.saveReport || false,
+          exportFormat: options.reportFormat || 'console' as const,
+          saveToFile: options.saveReport || false,
+          outputPath: options.reportPath,
+          verboseLevel: options.reportVerbose ? 'detailed' as const : 'standard' as const,
+        };
+
+        const deploymentReport = await this.reporterService.generateDeploymentReport(
+          result,
+          platform,
+          context,
+          options.contextId || 'latest',
+          reportOptions,
         );
 
-        if (result.summary.backupCreated) {
-          console.log(`   - Backup created: ✅`);
+        if (options.reportFormat === 'console' || !options.reportFormat) {
+          console.log(this.reporterService.formatReportForConsole(deploymentReport, reportOptions.verboseLevel));
+        } else {
+          const exportPath = await this.reporterService.exportReport(
+            deploymentReport,
+            options.reportFormat,
+            options.reportPath,
+          );
+          console.log(`📄 Report exported to: ${exportPath}`);
         }
 
-        // Task 7.2: Platform-specific result display
-        if (platform === 'cursor-ide') {
-          console.log('\n🎯 Cursor IDE specific information:');
-          console.log(`   - AI configuration applied: ${!options.skipAiConfig ? '✅' : '❌'}`);
-          console.log(`   - Extensions processed: ${!options.skipExtensions ? '✅' : '❌'}`);
-          console.log(`   - Debug config applied: ${!options.skipDebugConfig ? '✅' : '❌'}`);
-          console.log(`   - Tasks configured: ${!options.skipTasks ? '✅' : '❌'}`);
-          console.log(`   - Snippets deployed: ${!options.skipSnippets ? '✅' : '❌'}`);
-        }
-
-        if (result.warnings.length > 0) {
-          console.log('\n⚠️  Warnings:');
-          result.warnings.forEach((warning) => {
-            console.log(`   - ${warning.message}`);
-          });
+        // Display failure analysis if deployment failed
+        if (!result.success) {
+          const failureAnalysis = await this.reporterService.generateFailureAnalysis(
+            result,
+            platform,
+            { workspacePath: options.workspacePath, contextId: options.contextId },
+          );
+          console.log(this.reporterService.formatFailureAnalysisForConsole(failureAnalysis));
         }
       } else {
+        // Standard result display
+        if (result.success) {
+          console.log('\n✅ Deployment successful!');
+          console.log(
+            `📦 Components deployed: ${result.deployedComponents.join(', ')}`,
+          );
+          console.log(`📊 Summary:`);
+          console.log(`   - Files deployed: ${result.summary.filesDeployed}`);
+          console.log(`   - Files skipped: ${result.summary.filesSkipped}`);
+          console.log(
+            `   - Conflicts resolved: ${result.summary.conflictsResolved}`,
+          );
+
+          if (result.summary.backupCreated) {
+            console.log(`   - Backup created: ✅`);
+          }
+
+          // Task 7.2: Platform-specific result display
+          if (platform === 'cursor-ide') {
+            console.log('\n🎯 Cursor IDE specific information:');
+            console.log(`   - AI configuration applied: ${!options.skipAiConfig ? '✅' : '❌'}`);
+            console.log(`   - Extensions processed: ${!options.skipExtensions ? '✅' : '❌'}`);
+            console.log(`   - Debug config applied: ${!options.skipDebugConfig ? '✅' : '❌'}`);
+            console.log(`   - Tasks configured: ${!options.skipTasks ? '✅' : '❌'}`);
+            console.log(`   - Snippets deployed: ${!options.skipSnippets ? '✅' : '❌'}`);
+          }
+
+          if (result.warnings.length > 0) {
+            console.log('\n⚠️  Warnings:');
+            result.warnings.forEach((warning) => {
+              console.log(`   - ${warning.message}`);
+            });
+          }
+
+          // Task 12.2: Suggest generating detailed report
+          if (result.warnings.length > 0 || platform === 'cursor-ide') {
+            console.log('\n💡 For detailed analysis and recommendations, use:');
+            console.log(`   taptik deploy --generate-report --report-verbose`);
+          }
+        }
+      }
+
+      if (!result.success) {
         console.error('\n❌ Deployment failed!');
 
         if (result.errors.length > 0) {
@@ -473,5 +532,50 @@ export class DeployCommand extends CommandRunner {
   })
   parseListComponents(): boolean {
     return true;
+  }
+
+  // Task 12.2: Reporting and feedback options
+  @Option({
+    flags: '--generate-report',
+    description: 'Generate comprehensive deployment report',
+  })
+  parseGenerateReport(): boolean {
+    return true;
+  }
+
+  @Option({
+    flags: '--report-format <format>',
+    description: 'Report format: console, json, html, markdown',
+  })
+  parseReportFormat(value: string): 'console' | 'json' | 'html' | 'markdown' {
+    const validFormats = ['console', 'json', 'html', 'markdown'];
+    if (!validFormats.includes(value)) {
+      throw new Error(`Invalid report format: ${value}. Valid formats: ${validFormats.join(', ')}`);
+    }
+    return value as 'console' | 'json' | 'html' | 'markdown';
+  }
+
+  @Option({
+    flags: '--report-verbose',
+    description: 'Generate detailed verbose report with performance metrics',
+  })
+  parseReportVerbose(): boolean {
+    return true;
+  }
+
+  @Option({
+    flags: '--save-report',
+    description: 'Save report to file (automatically enabled for non-console formats)',
+  })
+  parseSaveReport(): boolean {
+    return true;
+  }
+
+  @Option({
+    flags: '--report-path <path>',
+    description: 'Custom path for saving reports',
+  })
+  parseReportPath(value: string): string {
+    return value;
   }
 }

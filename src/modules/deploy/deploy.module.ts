@@ -15,11 +15,12 @@ import { CursorExtensionValidatorService } from './services/cursor-extension-val
 import { CursorFileWriterService } from './services/cursor-file-writer.service';
 import { CursorInstallationDetectorService } from './services/cursor-installation-detector.service';
 import { CursorSchemaValidatorService } from './services/cursor-schema-validator.service';
-import { CursorSecurityEnforcer  } from './services/cursor-security-enforcer.service';
+import { CursorSecurityEnforcer } from './services/cursor-security-enforcer.service';
 import { CursorSecurityReporter } from './services/cursor-security-reporter.service';
 import { CursorTransformerService } from './services/cursor-transformer.service';
 import { CursorValidatorService } from './services/cursor-validator.service';
 import { DeploymentLoggerService } from './services/deployment-logger.service';
+import { DeploymentReporterService } from './services/deployment-reporter.service';
 import { DeploymentService } from './services/deployment.service';
 import { DiffService } from './services/diff.service';
 import { ErrorHandlerService } from './services/error-handler.service';
@@ -88,6 +89,8 @@ import { PerformanceOptimizer } from './utils/performance-optimizer.utility';
     // Task 12.1: Help and documentation services
     HelpDocumentationService,
     ErrorMessageHelperService,
+    // Task 12.2: Reporting services
+    DeploymentReporterService,
 
     // Utilities
     PathResolver,
@@ -112,6 +115,8 @@ import { PerformanceOptimizer } from './utils/performance-optimizer.utility';
     // Task 12.1: Help and documentation services
     HelpDocumentationService,
     ErrorMessageHelperService,
+    // Task 12.2: Reporting services
+    DeploymentReporterService,
   ],
 })
 export class DeployModule {}
