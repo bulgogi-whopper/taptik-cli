@@ -8,6 +8,7 @@ import {
   CursorGlobalSettings,
   CursorProjectSettings,
   CursorDeploymentOptions,
+  CursorAIConfig,
 } from '../interfaces/cursor-deployment.interface';
 import { CursorExtensionsConfig } from '../interfaces/cursor-config.interface';
 
@@ -486,6 +487,574 @@ export class CursorFileWriterService {
   private getSnippetsPath(options: CursorDeploymentOptions): string {
     const globalPath = this.getGlobalConfigPath(options);
     return path.join(globalPath, 'snippets');
+  }
+
+  /**
+   * Task 5.2: Write AI configuration files (.cursorrules, context, prompts)
+   */
+  async writeAIConfig(
+    aiConfig: CursorAIConfig,
+    options: CursorDeploymentOptions
+  ): Promise<{
+    rulesWritten: boolean;
+    contextWritten: boolean;
+    promptsWritten: boolean;
+    errors: DeploymentError[];
+    warnings: DeploymentWarning[];
+    files: {
+      rules?: string;
+      context?: string[];
+      prompts?: string[];
+    };
+  }> {
+    this.logger.log('Writing Cursor AI configuration files...');
+
+    const errors: DeploymentError[] = [];
+    const warnings: DeploymentWarning[] = [];
+    let rulesWritten = false;
+    let contextWritten = false;
+    let promptsWritten = false;
+    const files: { rules?: string; context?: string[]; prompts?: string[] } = {};
+
+    try {
+      const directories = await this.ensureCursorDirectories(options);
+
+      // Write .cursorrules file
+      if (aiConfig.rules && aiConfig.rules.length > 0) {
+        const rulesResult = await this.writeCursorRules(
+          aiConfig.rules,
+          directories.aiConfigDir,
+          options
+        );
+        
+        if (rulesResult.success) {
+          rulesWritten = true;
+          files.rules = rulesResult.filePath;
+          this.logger.log(`Cursor rules written to: ${rulesResult.filePath}`);
+        } else {
+          errors.push(...rulesResult.errors);
+          warnings.push(...rulesResult.warnings);
+        }
+      }
+
+      // Write AI context files
+      if (aiConfig.context && aiConfig.context.length > 0) {
+        const contextResult = await this.writeAIContextFiles(
+          aiConfig.context,
+          directories.aiConfigDir,
+          options
+        );
+        
+        if (contextResult.success) {
+          contextWritten = true;
+          files.context = contextResult.filePaths;
+          this.logger.log(`AI context files written: ${contextResult.filePaths?.length} files`);
+        } else {
+          errors.push(...contextResult.errors);
+          warnings.push(...contextResult.warnings);
+        }
+      }
+
+      // Write prompt template files
+      if (aiConfig.prompts && aiConfig.prompts.length > 0) {
+        const promptsResult = await this.writePromptTemplates(
+          aiConfig.prompts,
+          directories.aiConfigDir,
+          options
+        );
+        
+        if (promptsResult.success) {
+          promptsWritten = true;
+          files.prompts = promptsResult.filePaths;
+          this.logger.log(`Prompt templates written: ${promptsResult.filePaths?.length} files`);
+        } else {
+          errors.push(...promptsResult.errors);
+          warnings.push(...promptsResult.warnings);
+        }
+      }
+
+      // Validate AI content size
+      await this.validateAIContentSize(aiConfig, warnings);
+
+      return {
+        rulesWritten,
+        contextWritten,
+        promptsWritten,
+        errors,
+        warnings,
+        files,
+      };
+
+    } catch (error) {
+      this.logger.error('Failed to write AI configuration:', error);
+      errors.push({
+        component: 'ai-config',
+        type: 'file_operation',
+        severity: 'high',
+        message: `Failed to write AI configuration: ${(error as Error).message}`,
+        path: options.workspacePath || 'unknown',
+        suggestion: 'Check workspace permissions and AI configuration format',
+      });
+
+      return {
+        rulesWritten: false,
+        contextWritten: false,
+        promptsWritten: false,
+        errors,
+        warnings,
+        files,
+      };
+    }
+  }
+
+  /**
+   * Task 5.2: Write .cursorrules file with AI rules
+   */
+  private async writeCursorRules(
+    rules: string[],
+    aiConfigDir: string,
+    options: CursorDeploymentOptions
+  ): Promise<CursorFileWriteResult> {
+    const rulesPath = path.join(aiConfigDir, '.cursorrules');
+    const errors: DeploymentError[] = [];
+    const warnings: DeploymentWarning[] = [];
+
+    try {
+      // Combine all rules into a single formatted file
+      const rulesContent = this.formatCursorRules(rules);
+      
+      // Validate rules content
+      const validationResult = this.validateRulesContent(rulesContent);
+      warnings.push(...validationResult.warnings);
+
+      if (validationResult.errors.length > 0) {
+        errors.push(...validationResult.errors);
+        return { success: false, errors, warnings };
+      }
+
+      // Write .cursorrules file
+      await fs.writeFile(rulesPath, rulesContent, 'utf8');
+      const stats = await fs.stat(rulesPath);
+
+      this.logger.debug(`Wrote .cursorrules file: ${rulesPath} (${stats.size} bytes)`);
+
+      return {
+        success: true,
+        filePath: rulesPath,
+        errors,
+        warnings,
+        bytesWritten: stats.size,
+      };
+
+    } catch (error) {
+      errors.push({
+        component: 'cursor-rules',
+        type: 'file_operation',
+        severity: 'high',
+        message: `Failed to write .cursorrules: ${(error as Error).message}`,
+        path: rulesPath,
+        suggestion: 'Check workspace permissions and rules content',
+      });
+
+      return { success: false, errors, warnings };
+    }
+  }
+
+  /**
+   * Task 5.2: Write AI context files
+   */
+  private async writeAIContextFiles(
+    contextItems: string[],
+    aiConfigDir: string,
+    options: CursorDeploymentOptions
+  ): Promise<{
+    success: boolean;
+    filePaths?: string[];
+    errors: DeploymentError[];
+    warnings: DeploymentWarning[];
+  }> {
+    const errors: DeploymentError[] = [];
+    const warnings: DeploymentWarning[] = [];
+    const filePaths: string[] = [];
+
+    try {
+      const contextDir = path.join(aiConfigDir, 'context');
+      await fs.mkdir(contextDir, { recursive: true });
+
+      for (let i = 0; i < contextItems.length; i++) {
+        const contextItem = contextItems[i];
+        const fileName = `context_${i + 1}.md`;
+        const filePath = path.join(contextDir, fileName);
+
+        // Validate and format context content
+        const formattedContent = this.formatContextContent(contextItem, i + 1);
+        
+        await fs.writeFile(filePath, formattedContent, 'utf8');
+        filePaths.push(filePath);
+
+        this.logger.debug(`Wrote AI context file: ${filePath}`);
+      }
+
+      // Create context index file
+      const indexPath = await this.createContextIndex(filePaths, contextDir);
+      if (indexPath) {
+        filePaths.push(indexPath);
+      }
+
+      return {
+        success: true,
+        filePaths,
+        errors,
+        warnings,
+      };
+
+    } catch (error) {
+      errors.push({
+        component: 'ai-context',
+        type: 'file_operation',
+        severity: 'high',
+        message: `Failed to write AI context files: ${(error as Error).message}`,
+        path: aiConfigDir,
+        suggestion: 'Check directory permissions and context content format',
+      });
+
+      return {
+        success: false,
+        errors,
+        warnings,
+      };
+    }
+  }
+
+  /**
+   * Task 5.2: Write prompt template files
+   */
+  private async writePromptTemplates(
+    prompts: Array<{ name: string; content: string; category?: string }>,
+    aiConfigDir: string,
+    options: CursorDeploymentOptions
+  ): Promise<{
+    success: boolean;
+    filePaths?: string[];
+    errors: DeploymentError[];
+    warnings: DeploymentWarning[];
+  }> {
+    const errors: DeploymentError[] = [];
+    const warnings: DeploymentWarning[] = [];
+    const filePaths: string[] = [];
+
+    try {
+      const promptsDir = path.join(aiConfigDir, 'prompts');
+      await fs.mkdir(promptsDir, { recursive: true });
+
+      // Group prompts by category
+      const promptsByCategory = this.groupPromptsByCategory(prompts);
+
+      for (const [category, categoryPrompts] of Object.entries(promptsByCategory)) {
+        const categoryDir = category !== 'general' 
+          ? path.join(promptsDir, category)
+          : promptsDir;
+        
+        if (category !== 'general') {
+          await fs.mkdir(categoryDir, { recursive: true });
+        }
+
+        for (const prompt of categoryPrompts) {
+          const fileName = this.sanitizeFileName(prompt.name) + '.md';
+          const filePath = path.join(categoryDir, fileName);
+
+          // Format prompt content
+          const formattedContent = this.formatPromptContent(prompt);
+          
+          // Validate prompt content
+          const validationResult = this.validatePromptContent(prompt);
+          if (validationResult.warnings.length > 0) {
+            warnings.push(...validationResult.warnings);
+          }
+
+          await fs.writeFile(filePath, formattedContent, 'utf8');
+          filePaths.push(filePath);
+
+          this.logger.debug(`Wrote prompt template: ${filePath}`);
+        }
+      }
+
+      // Create prompts index file
+      const indexPath = await this.createPromptsIndex(prompts, promptsDir);
+      if (indexPath) {
+        filePaths.push(indexPath);
+      }
+
+      return {
+        success: true,
+        filePaths,
+        errors,
+        warnings,
+      };
+
+    } catch (error) {
+      errors.push({
+        component: 'ai-prompts',
+        type: 'file_operation',
+        severity: 'high',
+        message: `Failed to write prompt templates: ${(error as Error).message}`,
+        path: aiConfigDir,
+        suggestion: 'Check directory permissions and prompt content format',
+      });
+
+      return {
+        success: false,
+        errors,
+        warnings,
+      };
+    }
+  }
+
+  /**
+   * Format .cursorrules content with proper structure
+   */
+  private formatCursorRules(rules: string[]): string {
+    const header = `# Cursor AI Rules
+# Generated by Taptik CLI - ${new Date().toISOString()}
+# 
+# These rules guide Cursor's AI behavior for this project.
+# Edit these rules to customize how the AI assistant responds.
+
+`;
+
+    const formattedRules = rules
+      .map((rule, index) => {
+        // Clean and format each rule
+        const cleanRule = rule.trim();
+        if (!cleanRule) return '';
+        
+        // Add rule numbering if not already present
+        if (!cleanRule.match(/^\d+\./)) {
+          return `${index + 1}. ${cleanRule}`;
+        }
+        return cleanRule;
+      })
+      .filter(rule => rule.length > 0)
+      .join('\n\n');
+
+    return header + formattedRules + '\n';
+  }
+
+  /**
+   * Format AI context content as markdown
+   */
+  private formatContextContent(content: string, index: number): string {
+    const header = `# AI Context ${index}
+
+*Generated by Taptik CLI - ${new Date().toISOString()}*
+
+---
+
+`;
+    
+    return header + content.trim() + '\n';
+  }
+
+  /**
+   * Format prompt content as markdown
+   */
+  private formatPromptContent(prompt: { name: string; content: string; category?: string }): string {
+    const header = `# ${prompt.name}
+
+**Category**: ${prompt.category || 'General'}  
+**Generated**: ${new Date().toISOString()}
+
+---
+
+`;
+    
+    return header + prompt.content.trim() + '\n';
+  }
+
+  /**
+   * Group prompts by category for organized file structure
+   */
+  private groupPromptsByCategory(prompts: Array<{ name: string; content: string; category?: string }>): Record<string, typeof prompts> {
+    return prompts.reduce((groups, prompt) => {
+      const category = prompt.category || 'general';
+      if (!groups[category]) {
+        groups[category] = [];
+      }
+      groups[category].push(prompt);
+      return groups;
+    }, {} as Record<string, typeof prompts>);
+  }
+
+  /**
+   * Sanitize filename for cross-platform compatibility
+   */
+  private sanitizeFileName(name: string): string {
+    return name
+      .replace(/[<>:"/\\|?*]/g, '_')
+      .replace(/\s+/g, '_')
+      .toLowerCase()
+      .substring(0, 50); // Limit length
+  }
+
+  /**
+   * Create context index file for easy navigation
+   */
+  private async createContextIndex(filePaths: string[], contextDir: string): Promise<string | null> {
+    try {
+      const indexPath = path.join(contextDir, 'README.md');
+      const indexContent = this.generateContextIndexContent(filePaths);
+      await fs.writeFile(indexPath, indexContent, 'utf8');
+      return indexPath;
+    } catch (error) {
+      this.logger.warn('Failed to create context index:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Create prompts index file for easy navigation
+   */
+  private async createPromptsIndex(prompts: Array<{ name: string; content: string; category?: string }>, promptsDir: string): Promise<string | null> {
+    try {
+      const indexPath = path.join(promptsDir, 'README.md');
+      const indexContent = this.generatePromptsIndexContent(prompts);
+      await fs.writeFile(indexPath, indexContent, 'utf8');
+      return indexPath;
+    } catch (error) {
+      this.logger.warn('Failed to create prompts index:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Generate context index markdown content
+   */
+  private generateContextIndexContent(filePaths: string[]): string {
+    const header = `# AI Context Files
+
+*Generated by Taptik CLI - ${new Date().toISOString()}*
+
+This directory contains AI context files that provide background information to Cursor's AI assistant.
+
+## Context Files
+
+`;
+
+    const fileList = filePaths
+      .filter(filePath => path.basename(filePath) !== 'README.md')
+      .map((filePath, index) => {
+        const fileName = path.basename(filePath);
+        return `- [${fileName}](./${fileName}) - Context ${index + 1}`;
+      })
+      .join('\n');
+
+    return header + fileList + '\n';
+  }
+
+  /**
+   * Generate prompts index markdown content
+   */
+  private generatePromptsIndexContent(prompts: Array<{ name: string; content: string; category?: string }>): string {
+    const header = `# AI Prompt Templates
+
+*Generated by Taptik CLI - ${new Date().toISOString()}*
+
+This directory contains reusable AI prompt templates organized by category.
+
+## Available Prompts
+
+`;
+
+    const promptsByCategory = this.groupPromptsByCategory(prompts);
+    const categoryList = Object.entries(promptsByCategory)
+      .map(([category, categoryPrompts]) => {
+        const categoryHeader = `### ${category.charAt(0).toUpperCase() + category.slice(1)}`;
+        const promptList = categoryPrompts.map(prompt => {
+          const fileName = this.sanitizeFileName(prompt.name) + '.md';
+          const filePath = category !== 'general' ? `${category}/${fileName}` : fileName;
+          return `- [${prompt.name}](./${filePath})`;
+        }).join('\n');
+        
+        return categoryHeader + '\n\n' + promptList;
+      })
+      .join('\n\n');
+
+    return header + categoryList + '\n';
+  }
+
+  /**
+   * Validate cursor rules content
+   */
+  private validateRulesContent(content: string): { errors: DeploymentError[]; warnings: DeploymentWarning[] } {
+    const errors: DeploymentError[] = [];
+    const warnings: DeploymentWarning[] = [];
+
+    if (content.length > 50000) { // 50KB limit
+      warnings.push({
+        component: 'cursor-rules',
+        type: 'performance',
+        message: `Large .cursorrules file (${Math.round(content.length / 1024)}KB)`,
+        suggestion: 'Consider splitting into smaller, focused rule sets',
+      });
+    }
+
+    if (content.includes('API_KEY') || content.includes('SECRET') || content.includes('PASSWORD')) {
+      errors.push({
+        component: 'cursor-rules',
+        type: 'security',
+        severity: 'high',
+        message: 'Potential sensitive information detected in rules',
+        suggestion: 'Remove any API keys, secrets, or passwords from AI rules',
+      });
+    }
+
+    return { errors, warnings };
+  }
+
+  /**
+   * Validate prompt content
+   */
+  private validatePromptContent(prompt: { name: string; content: string }): { warnings: DeploymentWarning[] } {
+    const warnings: DeploymentWarning[] = [];
+
+    if (prompt.content.length > 10000) {
+      warnings.push({
+        component: 'ai-prompts',
+        type: 'performance',
+        message: `Large prompt template "${prompt.name}" (${Math.round(prompt.content.length / 1024)}KB)`,
+        suggestion: 'Consider breaking down large prompts into smaller, focused templates',
+      });
+    }
+
+    return { warnings };
+  }
+
+  /**
+   * Validate total AI content size
+   */
+  private async validateAIContentSize(aiConfig: CursorAIConfig, warnings: DeploymentWarning[]): Promise<void> {
+    let totalSize = 0;
+
+    if (aiConfig.rules) {
+      totalSize += aiConfig.rules.join('\n').length;
+    }
+
+    if (aiConfig.context) {
+      totalSize += aiConfig.context.join('\n').length;
+    }
+
+    if (aiConfig.prompts) {
+      totalSize += aiConfig.prompts.reduce((sum, prompt) => sum + prompt.content.length, 0);
+    }
+
+    if (totalSize > 200000) { // 200KB total limit
+      warnings.push({
+        component: 'ai-config',
+        type: 'performance',
+        message: `Large total AI content size (${Math.round(totalSize / 1024)}KB)`,
+        suggestion: 'Consider optimizing AI content to improve Cursor performance',
+      });
+    }
   }
 
   /**

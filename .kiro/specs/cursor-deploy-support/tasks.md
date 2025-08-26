@@ -79,7 +79,7 @@ The implementation follows the existing deployment architecture patterns and ext
     - _Requirements: 15, 19_
 
 - [ ] 5. Create Cursor file writer service for configuration deployment
-  - [x] 5.1 Implement basic file writing operations
+  - [ ] 5.1 Implement basic file writing operations
     - Create CursorFileWriterService class with core file operations
     - Implement writeSettings for global and project settings
     - Add writeExtensions for extension configuration deployment
@@ -87,7 +87,7 @@ The implementation follows the existing deployment architecture patterns and ext
     - Write unit tests for basic file operations
     - _Requirements: 2, 11_
 
-  - [ ] 5.2 Implement AI configuration file writing
+  - [x] 5.2 Implement AI configuration file writing
     - Add writeAIConfig for AI rules, context, and prompts deployment
     - Implement AI content file creation with proper formatting
     - Create .cursorrules file writing functionality
