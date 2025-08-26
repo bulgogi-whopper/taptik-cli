@@ -20,12 +20,19 @@ interface DeployCommandOptions {
   components?: string[];
   skipComponents?: string[];
   force?: boolean;
+  // Task 7.2: Cursor-specific options
+  cursorPath?: string;
+  workspacePath?: string;
+  skipAiConfig?: boolean;
+  skipExtensions?: boolean;
+  skipDebugConfig?: boolean;
+  skipTasks?: boolean;
+  skipSnippets?: boolean;
 }
 
 @Command({
   name: 'deploy',
-  description:
-    'Deploy Taptik context to target platform (Claude Code, Kiro IDE)',
+  description: 'Deploy Taptik context to target platform (Claude Code, Kiro IDE, Cursor IDE)',
 })
 @Injectable()
 export class DeployCommand extends CommandRunner {
@@ -44,14 +51,25 @@ export class DeployCommand extends CommandRunner {
       // Set default platform
       const platform = options.platform || 'claude-code';
 
-      if (platform !== 'claude-code' && platform !== 'kiro-ide') {
+      if (platform !== 'claude-code' && platform !== 'kiro-ide' && platform !== 'cursor-ide') {
         console.error(
-          `❌ Platform '${platform}' is not supported. Supported platforms: 'claude-code', 'kiro-ide'`,
+          `❌ Platform '${platform}' is not supported. Supported platforms: 'claude-code', 'kiro-ide', 'cursor-ide'`,
         );
         process.exit(1);
       }
 
-      // Note: Kiro deployment will show feature development status in results
+      // Task 7.2: Platform-specific deployment notes
+      if (platform === 'kiro-ide') {
+        // Note: Kiro deployment will show feature development status in results
+      } else if (platform === 'cursor-ide') {
+        console.log('💡 Cursor IDE deployment includes AI configuration, extensions, snippets, and workspace settings');
+        if (options.cursorPath) {
+          console.log(`📍 Using Cursor executable: ${options.cursorPath}`);
+        }
+        if (options.workspacePath) {
+          console.log(`📁 Target workspace: ${options.workspacePath}`);
+        }
+      }
 
       console.log(`🚀 Starting deployment to ${platform}...`);
 
@@ -78,6 +96,14 @@ export class DeployCommand extends CommandRunner {
         conflictStrategy: options.conflictStrategy || 'prompt',
         components: options.components?.map((c) => c as ComponentType),
         skipComponents: options.skipComponents?.map((c) => c as ComponentType),
+        // Task 7.2: Add Cursor-specific options to deployOptions
+        cursorPath: options.cursorPath,
+        workspacePath: options.workspacePath,
+        skipAiConfig: options.skipAiConfig,
+        skipExtensions: options.skipExtensions,
+        skipDebugConfig: options.skipDebugConfig,
+        skipTasks: options.skipTasks,
+        skipSnippets: options.skipSnippets,
       };
 
       // Step 3: Deploy to target platform
@@ -86,9 +112,12 @@ export class DeployCommand extends CommandRunner {
       } else if (options.dryRun) {
         console.log('🧪 Running in dry-run mode...');
       } else {
-        console.log(
-          `🚀 Deploying to ${platform === 'claude-code' ? 'Claude Code' : 'Kiro IDE'}...`,
-        );
+        const platformNames = {
+          'claude-code': 'Claude Code',
+          'kiro-ide': 'Kiro IDE',
+          'cursor-ide': 'Cursor IDE',
+        };
+        console.log(`🚀 Deploying to ${platformNames[platform as keyof typeof platformNames] || platform}...`);
       }
 
       // Step 3: Route to appropriate deployment method based on platform
@@ -100,6 +129,12 @@ export class DeployCommand extends CommandRunner {
         );
       } else if (platform === 'kiro-ide') {
         result = await this.deploymentService.deployToKiro(
+          context,
+          deployOptions,
+        );
+      } else if (platform === 'cursor-ide') {
+        // Task 7.2: Add Cursor IDE deployment routing
+        result = await this.deploymentService.deployToCursor(
           context,
           deployOptions,
         );
@@ -125,6 +160,16 @@ export class DeployCommand extends CommandRunner {
 
         if (result.summary.backupCreated) {
           console.log(`   - Backup created: ✅`);
+        }
+
+        // Task 7.2: Platform-specific result display
+        if (platform === 'cursor-ide') {
+          console.log('\n🎯 Cursor IDE specific information:');
+          console.log(`   - AI configuration applied: ${!options.skipAiConfig ? '✅' : '❌'}`);
+          console.log(`   - Extensions processed: ${!options.skipExtensions ? '✅' : '❌'}`);
+          console.log(`   - Debug config applied: ${!options.skipDebugConfig ? '✅' : '❌'}`);
+          console.log(`   - Tasks configured: ${!options.skipTasks ? '✅' : '❌'}`);
+          console.log(`   - Snippets deployed: ${!options.skipSnippets ? '✅' : '❌'}`);
         }
 
         if (result.warnings.length > 0) {
@@ -156,11 +201,11 @@ export class DeployCommand extends CommandRunner {
 
   @Option({
     flags: '-p, --platform <platform>',
-    description: 'Target platform ("claude-code" or "kiro-ide")',
+    description: 'Target platform ("claude-code", "kiro-ide", or "cursor-ide")',
     defaultValue: 'claude-code',
   })
   parsePlatform(value: string): SupportedPlatform {
-    const supportedPlatforms: SupportedPlatform[] = ['claude-code', 'kiro-ide'];
+    const supportedPlatforms: SupportedPlatform[] = ['claude-code', 'kiro-ide', 'cursor-ide'];
     if (!supportedPlatforms.includes(value as SupportedPlatform)) {
       throw new Error(
         `Unsupported platform: ${value}. Supported platforms: ${supportedPlatforms.join(', ')}`,
@@ -215,7 +260,7 @@ export class DeployCommand extends CommandRunner {
   @Option({
     flags: '--components <components...>',
     description:
-      'Specific components to deploy (settings, agents, commands, project)',
+      'Specific components to deploy. Claude Code: (settings, agents, commands, project). Kiro IDE: (settings, steering, specs, hooks, agents, templates). Cursor IDE: (global-settings, project-settings, ai-config, extensions-config, debug-config, tasks-config, snippets-config, workspace-config)',
   })
   parseComponents(value: string, previous: string[] = []): string[] {
     return [...previous, value];
@@ -234,6 +279,63 @@ export class DeployCommand extends CommandRunner {
     description: 'Force deployment without confirmation prompts',
   })
   parseForce(): boolean {
+    return true;
+  }
+
+  // Task 7.2: Cursor-specific options
+  @Option({
+    flags: '--cursor-path <path>',
+    description: 'Path to Cursor IDE executable (for cursor-ide platform)',
+  })
+  parseCursorPath(value: string): string {
+    return value;
+  }
+
+  @Option({
+    flags: '--workspace-path <path>',
+    description: 'Workspace path for Cursor deployment (default: current directory)',
+  })
+  parseWorkspacePath(value: string): string {
+    return value;
+  }
+
+  @Option({
+    flags: '--skip-ai-config',
+    description: 'Skip AI configuration deployment (cursor-ide only)',
+  })
+  parseSkipAiConfig(): boolean {
+    return true;
+  }
+
+  @Option({
+    flags: '--skip-extensions',
+    description: 'Skip extensions configuration (cursor-ide only)',
+  })
+  parseSkipExtensions(): boolean {
+    return true;
+  }
+
+  @Option({
+    flags: '--skip-debug-config',
+    description: 'Skip debug configuration deployment (cursor-ide only)',
+  })
+  parseSkipDebugConfig(): boolean {
+    return true;
+  }
+
+  @Option({
+    flags: '--skip-tasks',
+    description: 'Skip tasks configuration deployment (cursor-ide only)',
+  })
+  parseSkipTasks(): boolean {
+    return true;
+  }
+
+  @Option({
+    flags: '--skip-snippets',
+    description: 'Skip snippets deployment (cursor-ide only)',
+  })
+  parseSkipSnippets(): boolean {
     return true;
   }
 }

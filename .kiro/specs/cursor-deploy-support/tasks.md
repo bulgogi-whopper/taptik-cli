@@ -137,7 +137,7 @@ The implementation follows the existing deployment architecture patterns and ext
     - Write unit tests for extended platform detection
     - _Requirements: 1, 15_
 
-  - [ ] 7.2 Update deploy command to support Cursor platform
+  - [x] 7.2 Update deploy command to support Cursor platform
     - Modify deploy command to accept --platform cursor option
     - Add Cursor-specific command line options and flags
     - Implement Cursor component selection (--components, --skip-components)
