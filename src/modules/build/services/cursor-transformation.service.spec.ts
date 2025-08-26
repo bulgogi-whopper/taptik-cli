@@ -37,8 +37,13 @@ describe('CursorTransformationService', () => {
       })),
     } as any;
 
-    // Create service with mock dependency
-    service = new CursorTransformationService(validationService);
+    // Create mock security service
+    const securityService = {
+      filterSensitiveData: vi.fn().mockImplementation(async (data) => data),
+    } as any;
+
+    // Create service with mock dependencies
+    service = new CursorTransformationService(securityService, validationService);
 
     vi.clearAllMocks();
   });

@@ -379,6 +379,53 @@ export interface CompatibilityReport {
   migrationSuggestions: string[];
 }
 
+/**
+ * Platform deployment guidance
+ */
+export interface DeploymentGuidance {
+  vscode: {
+    compatible: boolean;
+    steps: string[];
+    warnings: string[];
+    recommendations: string[];
+  };
+  cursorIde: {
+    compatible: boolean;
+    steps: string[];
+    warnings: string[];
+    recommendations: string[];
+  };
+  claudeCode: {
+    compatible: boolean;
+    steps: string[];
+    warnings: string[];
+    recommendations: string[];
+  };
+}
+
+/**
+ * Migration step for configuration migration
+ */
+export interface MigrationStep {
+  type: 'extension' | 'setting' | 'validation';
+  action: 'replace' | 'remove' | 'test';
+  target: string;
+  alternative?: string;
+  description: string;
+  estimatedMinutes: number;
+  priority: 'critical' | 'high' | 'medium' | 'low';
+}
+
+/**
+ * Complete migration plan
+ */
+export interface MigrationPlan {
+  steps: MigrationStep[];
+  estimatedMinutes: number;
+  automationLevel: 'full' | 'partial' | 'manual';
+  riskLevel: 'low' | 'medium' | 'high';
+}
+
 // ============================================================================
 // Error Classes
 // ============================================================================

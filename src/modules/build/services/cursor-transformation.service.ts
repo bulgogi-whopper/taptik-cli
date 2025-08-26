@@ -31,6 +31,7 @@ import {
   PromptTemplateEntry,
 } from '../interfaces/taptik-format.interface';
 
+import { CursorSecurityService } from './cursor-security.service';
 import { CursorValidationService } from './cursor-validation.service';
 
 /**
@@ -66,6 +67,7 @@ export class CursorTransformationService {
   private readonly logger = new Logger(CursorTransformationService.name);
 
   constructor(
+    private readonly securityService: CursorSecurityService,
     private readonly validationService: CursorValidationService,
   ) {}
 
@@ -74,17 +76,23 @@ export class CursorTransformationService {
    */
   async transformCursorPersonalContext(
     globalSettings: CursorGlobalSettingsData,
+    applySecurityFilter: boolean = true,
   ): Promise<TaptikPersonalContext> {
     this.logger.log('Transforming Cursor global settings to personal context');
 
     try {
-      const preferences = await this.extractUserPreferences(globalSettings);
-      const workStyle = await this.extractWorkStyle(globalSettings);
-      const communication = await this.extractCommunication(globalSettings);
-      const metadata = this.generatePersonalMetadata(globalSettings);
+      // Apply security filtering if enabled
+      const settings = applySecurityFilter
+        ? await this.securityService.filterSensitiveData(globalSettings)
+        : globalSettings;
+
+      const preferences = await this.extractUserPreferences(settings);
+      const workStyle = await this.extractWorkStyle(settings);
+      const communication = await this.extractCommunication(settings);
+      const metadata = this.generatePersonalMetadata(settings);
 
       const personalContext: TaptikPersonalContext = {
-        user_id: this.generateUserId(globalSettings),
+        user_id: this.generateUserId(settings),
         preferences,
         work_style: workStyle,
         communication,
@@ -105,17 +113,23 @@ export class CursorTransformationService {
    */
   async transformCursorProjectContext(
     localSettings: CursorLocalSettingsData,
+    applySecurityFilter: boolean = true,
   ): Promise<TaptikProjectContext> {
     this.logger.log('Transforming Cursor local settings to project context');
 
     try {
-      const projectInfo = await this.extractProjectInfo(localSettings);
-      const technicalStack = await this.extractTechnicalStack(localSettings);
-      const developmentGuidelines = await this.extractDevelopmentGuidelines(localSettings);
-      const metadata = this.generateProjectMetadata(localSettings);
+      // Apply security filtering if enabled
+      const settings = applySecurityFilter
+        ? await this.securityService.filterSensitiveData(localSettings)
+        : localSettings;
+
+      const projectInfo = await this.extractProjectInfo(settings);
+      const technicalStack = await this.extractTechnicalStack(settings);
+      const developmentGuidelines = await this.extractDevelopmentGuidelines(settings);
+      const metadata = this.generateProjectMetadata(settings);
 
       const projectContext: TaptikProjectContext = {
-        project_id: this.generateProjectId(localSettings),
+        project_id: this.generateProjectId(settings),
         project_info: projectInfo,
         technical_stack: technicalStack,
         development_guidelines: developmentGuidelines,
@@ -136,15 +150,21 @@ export class CursorTransformationService {
    */
   async transformCursorPromptTemplates(
     aiConfig?: CursorAiConfiguration,
+    applySecurityFilter: boolean = true,
   ): Promise<TaptikPromptTemplates> {
     this.logger.log('Transforming Cursor AI configuration to prompt templates');
 
     const templates: PromptTemplateEntry[] = [];
     
     if (aiConfig) {
+      // Apply security filtering if enabled
+      const config = applySecurityFilter
+        ? await this.securityService.filterSensitiveData(aiConfig)
+        : aiConfig;
+
       // Transform AI rules
-      if (aiConfig.rules) {
-        for (const rule of aiConfig.rules) {
+      if (config.rules) {
+        for (const rule of config.rules) {
           if (rule.enabled !== false) {
             templates.push({
               id: randomUUID(),
@@ -160,15 +180,16 @@ export class CursorTransformationService {
       }
 
       // Transform global prompts
-      if (aiConfig.globalPrompts) {
-        for (const [key, prompt] of Object.entries(aiConfig.globalPrompts)) {
+      if (config.globalPrompts) {
+        for (const [key, prompt] of Object.entries(config.globalPrompts)) {
+          const promptStr = String(prompt);
           templates.push({
             id: randomUUID(),
             name: key,
             description: `Global prompt: ${key}`,
-            category: this.categorizePrompt(prompt, key),
-            content: prompt,
-            variables: this.extractTemplateVariables(prompt),
+            category: this.categorizePrompt(promptStr, key),
+            content: promptStr,
+            variables: this.extractTemplateVariables(promptStr),
             tags: ['cursor-ide', 'global-prompt'],
           });
         }
