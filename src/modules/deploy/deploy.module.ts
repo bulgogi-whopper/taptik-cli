@@ -15,7 +15,7 @@ import { CursorExtensionValidatorService } from './services/cursor-extension-val
 import { CursorFileWriterService } from './services/cursor-file-writer.service';
 import { CursorInstallationDetectorService } from './services/cursor-installation-detector.service';
 import { CursorSchemaValidatorService } from './services/cursor-schema-validator.service';
-import { CursorSecurityEnforcer } from './services/cursor-security-enforcer.service';
+import { CursorSecurityEnforcer  } from './services/cursor-security-enforcer.service';
 import { CursorSecurityReporter } from './services/cursor-security-reporter.service';
 import { CursorTransformerService } from './services/cursor-transformer.service';
 import { CursorValidatorService } from './services/cursor-validator.service';
@@ -23,7 +23,9 @@ import { DeploymentLoggerService } from './services/deployment-logger.service';
 import { DeploymentService } from './services/deployment.service';
 import { DiffService } from './services/diff.service';
 import { ErrorHandlerService } from './services/error-handler.service';
+import { ErrorMessageHelperService } from './services/error-message-helper.service';
 import { ErrorRecoveryService } from './services/error-recovery.service';
+import { HelpDocumentationService } from './services/help-documentation.service';
 import { ImportService } from './services/import.service';
 import { KiroComponentHandlerService } from './services/kiro-component-handler.service';
 import { KiroConflictResolverService } from './services/kiro-conflict-resolver.service';
@@ -83,6 +85,10 @@ import { PerformanceOptimizer } from './utils/performance-optimizer.utility';
     CursorTransformerService,
     CursorValidatorService,
 
+    // Task 12.1: Help and documentation services
+    HelpDocumentationService,
+    ErrorMessageHelperService,
+
     // Utilities
     PathResolver,
     PerformanceOptimizer,
@@ -103,6 +109,9 @@ import { PerformanceOptimizer } from './utils/performance-optimizer.utility';
     CursorSecurityReporter,
     CursorTransformerService,
     CursorValidatorService,
+    // Task 12.1: Help and documentation services
+    HelpDocumentationService,
+    ErrorMessageHelperService,
   ],
 })
 export class DeployModule {}

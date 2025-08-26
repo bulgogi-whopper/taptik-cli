@@ -10,6 +10,8 @@ import {
 import { DeploymentResult } from '../interfaces/deployment-result.interface';
 import { DeploymentService } from '../services/deployment.service';
 import { ImportService } from '../services/import.service';
+import { HelpDocumentationService } from '../services/help-documentation.service';
+import { ErrorMessageHelperService } from '../services/error-message-helper.service';
 
 interface DeployCommandOptions {
   platform?: SupportedPlatform;
@@ -28,6 +30,11 @@ interface DeployCommandOptions {
   skipDebugConfig?: boolean;
   skipTasks?: boolean;
   skipSnippets?: boolean;
+  // Task 12.1: Help and documentation options
+  help?: boolean;
+  helpPlatform?: string;
+  helpComponent?: string;
+  listComponents?: boolean;
 }
 
 @Command({
@@ -39,6 +46,8 @@ export class DeployCommand extends CommandRunner {
   constructor(
     private readonly importService: ImportService,
     private readonly deploymentService: DeploymentService,
+    private readonly helpService: HelpDocumentationService,
+    private readonly errorHelper: ErrorMessageHelperService,
   ) {
     super();
   }
@@ -48,6 +57,51 @@ export class DeployCommand extends CommandRunner {
     options: DeployCommandOptions,
   ): Promise<void> {
     try {
+      // Task 12.1: Handle help and documentation requests
+      if (options.help) {
+        const helpContent = this.helpService.getDeployCommandHelp();
+        console.log(this.helpService.formatHelpForConsole(helpContent));
+        return;
+      }
+
+      if (options.helpPlatform) {
+        try {
+          const platformHelp = this.helpService.getPlatformHelp(options.helpPlatform as SupportedPlatform);
+          console.log(this.helpService.formatHelpForConsole(platformHelp));
+          return;
+        } catch (error) {
+          console.error(`❌ Unknown platform: ${options.helpPlatform}`);
+          console.log('📋 Available platforms: claude-code, kiro-ide, cursor-ide');
+          return;
+        }
+      }
+
+      if (options.helpComponent) {
+        const platform = options.platform || 'claude-code';
+        const componentHelp = this.helpService.getComponentHelp(options.helpComponent, platform);
+        if (componentHelp) {
+          console.log(this.helpService.formatComponentHelpForConsole(componentHelp));
+          return;
+        } else {
+          console.error(`❌ Component "${options.helpComponent}" not found for platform ${platform}`);
+          const suggestions = this.helpService.getComponentSuggestions(platform);
+          console.log(`📋 Available components for ${platform}: ${suggestions.join(', ')}`);
+          return;
+        }
+      }
+
+      if (options.listComponents) {
+        const platform = options.platform || 'claude-code';
+        const components = this.helpService.getComponentSuggestions(platform);
+        console.log(`📋 Available components for ${platform}:`);
+        components.forEach(component => {
+          const help = this.helpService.getComponentHelp(component, platform);
+          const description = help ? help.description : 'No description available';
+          console.log(`   • ${component}: ${description}`);
+        });
+        return;
+      }
+
       // Set default platform
       const platform = options.platform || 'claude-code';
 
@@ -87,6 +141,35 @@ export class DeployCommand extends CommandRunner {
       console.log(
         `✅ Context imported successfully: ${context.metadata?.title || 'Unnamed Context'}`,
       );
+
+      // Task 12.1: Validate component names and provide suggestions
+      if (options.components) {
+        for (const componentName of options.components) {
+          const suggestion = this.helpService.validateComponentName(componentName, platform);
+          if (suggestion.suggestions.length === 0 || suggestion.suggestions[0].confidence < 1.0) {
+            console.error(`❌ Invalid component: "${componentName}" for platform ${platform}`);
+            if (suggestion.didYouMean) {
+              console.log(`💡 Did you mean: "${suggestion.didYouMean}"?`);
+            }
+            if (suggestion.examples && suggestion.examples.length > 0) {
+              console.log(`📋 Valid components: ${suggestion.examples.join(', ')}`);
+            }
+            process.exit(1);
+          }
+        }
+      }
+
+      if (options.skipComponents) {
+        for (const componentName of options.skipComponents) {
+          const suggestion = this.helpService.validateComponentName(componentName, platform);
+          if (suggestion.suggestions.length === 0 || suggestion.suggestions[0].confidence < 1.0) {
+            console.warn(`⚠️  Warning: Invalid skip component: "${componentName}" for platform ${platform}`);
+            if (suggestion.didYouMean) {
+              console.log(`💡 Did you mean: "${suggestion.didYouMean}"?`);
+            }
+          }
+        }
+      }
 
       // Step 2: Prepare deployment options
       const deployOptions = {
@@ -184,17 +267,37 @@ export class DeployCommand extends CommandRunner {
         if (result.errors.length > 0) {
           console.error('🚨 Errors:');
           result.errors.forEach((error) => {
+            // Task 12.1: Enhanced error reporting with solutions
+            const enhancedError = this.errorHelper.enhanceError(error, platform);
             console.error(`   - [${error.severity}] ${error.message}`);
+            
+            if (enhancedError.quickFix) {
+              console.error(`     💡 Quick fix: ${enhancedError.quickFix}`);
+            }
+            
+            if (enhancedError.solutions && enhancedError.solutions.length > 0) {
+              console.error(`     🔧 Solutions available: ${enhancedError.solutions.length}`);
+              console.error(`     💬 Run with --help-error ${enhancedError.errorCode || 'UNKNOWN'} for detailed solutions`);
+            }
           });
         }
 
         process.exit(1);
       }
     } catch (error) {
-      console.error(
-        '❌ Unexpected error during deployment:',
-        (error as Error).message,
-      );
+      // Task 12.1: Enhanced error handling for unexpected errors
+      const deploymentError = {
+        component: 'deploy-command',
+        type: 'unexpected-error',
+        severity: 'high' as const,
+        message: (error as Error).message,
+        suggestion: 'Check logs and try again, or contact support if issue persists',
+      };
+
+      const enhanced = this.errorHelper.enhanceError(deploymentError, platform);
+      console.error('\n❌ Unexpected error during deployment:');
+      console.error(this.errorHelper.generateUserFriendlyMessage(deploymentError, platform, false));
+      
       process.exit(1);
     }
   }
@@ -336,6 +439,39 @@ export class DeployCommand extends CommandRunner {
     description: 'Skip snippets deployment (cursor-ide only)',
   })
   parseSkipSnippets(): boolean {
+    return true;
+  }
+
+  // Task 12.1: Help and documentation options
+  @Option({
+    flags: '-h, --help',
+    description: 'Show comprehensive help for deploy command',
+  })
+  parseHelp(): boolean {
+    return true;
+  }
+
+  @Option({
+    flags: '--help-platform <platform>',
+    description: 'Show help for specific platform (claude-code, kiro-ide, cursor-ide)',
+  })
+  parseHelpPlatform(value: string): string {
+    return value;
+  }
+
+  @Option({
+    flags: '--help-component <component>',
+    description: 'Show help for specific component',
+  })
+  parseHelpComponent(value: string): string {
+    return value;
+  }
+
+  @Option({
+    flags: '--list-components',
+    description: 'List all available components for the specified platform',
+  })
+  parseListComponents(): boolean {
     return true;
   }
 }
