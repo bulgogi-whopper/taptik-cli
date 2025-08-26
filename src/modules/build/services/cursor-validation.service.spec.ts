@@ -195,6 +195,63 @@ describe('CursorValidationService', () => {
       expect(result.report.securityLevel).toBe('safe');
       expect(result.report.filteredFields).toHaveLength(0);
     });
+
+    it('should handle complex nested AI configurations', async () => {
+      const config: CursorAiConfiguration = {
+        version: '1.0.0',
+        modelConfig: {
+          provider: 'azure',
+          model: 'gpt-4-turbo',
+          temperature: 0.5,
+          // @ts-expect-error - Testing nested structure
+          nested: {
+            apiKey: 'nested-secret-key',
+            endpoint: 'https://azure.openai.com',
+          },
+        },
+        credentials: {
+          azure: {
+            key: 'azure-key-123',
+            endpoint: 'https://api.azure.com',
+          },
+        },
+        security: {
+          allowPublicCodeSuggestions: false,
+          filterSensitiveData: true,
+        },
+      };
+
+      const result = await service.sanitizeAiConfiguration(config);
+
+      expect(result.sanitized.credentials).toBeUndefined();
+      expect(result.sanitized.security).toBeDefined();
+      expect(result.report.hasApiKeys).toBe(true);
+      expect(result.report.securityLevel).toBe('unsafe');
+      expect(result.report.filteredFields).toContain('credentials');
+    });
+
+    it('should filter environment variables containing secrets', async () => {
+      const config: CursorAiConfiguration = {
+        version: '1.0.0',
+        // @ts-expect-error - Testing environment variables
+        environment: {
+          OPENAI_API_KEY: 'sk-1234567890abcdef', // Matches the sk- pattern  
+          NODE_ENV: 'production',
+          GITHUB_TOKEN: 'ghp_12345678901234567890', // Matches ghp_ pattern
+        },
+      };
+
+      const result = await service.sanitizeAiConfiguration(config);
+
+      // The environment property should be filtered out
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((result.sanitized as any).environment).toBeUndefined();
+      // Security level should be unsafe due to API key
+      expect(result.report.securityLevel).toBe('unsafe');
+      // Should have security recommendations  
+      expect(result.report.hasApiKeys).toBe(true);
+      expect(result.report.filteredFields).toContain('environment');
+    });
   });
 
   describe('checkExtensionCompatibility', () => {

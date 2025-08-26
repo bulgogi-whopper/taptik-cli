@@ -290,6 +290,35 @@ export class CursorValidationService {
       }
     }
 
+    // Check for any other properties that might contain sensitive data
+    const additionalKeys = Object.keys(sanitized).filter(key => 
+      !['version', 'modelConfig', 'rules', 'apiKeys', 'tokens', 'credentials', 'globalPrompts', 'security', 'copilot', 'templates'].includes(key)
+    );
+    
+    for (const topKey of additionalKeys) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const topValue = (sanitized as any)[topKey];
+      
+      // Check for sensitive data in additional properties
+      if (topValue !== null && topValue !== undefined) {
+        const valueStr = JSON.stringify(topValue);
+        if (this.containsSensitiveData(valueStr)) {
+          filteredFields.push(topKey);
+          // Check if it contains API keys or tokens
+          for (const { pattern, type } of this.SECURITY_PATTERNS) {
+            pattern.lastIndex = 0;
+            if (pattern.test(valueStr)) {
+              if (type.includes('key')) hasApiKeys = true;
+              if (type.includes('token')) hasTokens = true;
+              break;
+            }
+          }
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          delete (sanitized as any)[topKey];
+        }
+      }
+    }
+
     const securityLevel = 
       hasApiKeys || hasTokens ? 'unsafe' :
       filteredFields.length > 0 ? 'warning' :
