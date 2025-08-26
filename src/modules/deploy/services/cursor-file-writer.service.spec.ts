@@ -9,6 +9,10 @@ import {
   CursorProjectSettings,
   CursorDeploymentOptions,
   CursorAIConfig,
+  CursorDebugConfig,
+  CursorTasksConfig,
+  CursorSnippetsConfig,
+  CursorWorkspaceConfig,
 } from '../interfaces/cursor-deployment.interface';
 import { CursorExtensionsConfig } from '../interfaces/cursor-config.interface';
 
@@ -721,6 +725,394 @@ describe('CursorFileWriterService', () => {
       expect(promptContent).toContain('**Category**: testing');
       expect(promptContent).toContain('**Generated**:');
       expect(promptContent).toContain('Test content here');
+    });
+  });
+
+  describe('writeDebugConfig', () => {
+    const mockOptions: CursorDeploymentOptions = {
+      platform: 'cursor' as const,
+      workspacePath: '/test/workspace',
+      components: [],
+      skipComponents: [],
+    };
+
+    const mockDebugConfig: CursorDebugConfig = {
+      version: '0.2.0',
+      configurations: [
+        {
+          name: 'Launch Node.js',
+          type: 'node',
+          request: 'launch',
+          program: '${workspaceFolder}/app.js',
+          args: ['--debug'],
+          env: {
+            NODE_ENV: 'development',
+          },
+          cwd: '${workspaceFolder}',
+        },
+        {
+          name: 'Attach to Node.js',
+          type: 'node',
+          request: 'attach',
+          port: 9229,
+          host: 'localhost',
+        },
+      ],
+    };
+
+    beforeEach(() => {
+      mockFs.mkdir = vi.fn().mockResolvedValue(undefined);
+      mockFs.writeFile = vi.fn().mockResolvedValue(undefined);
+      mockFs.stat = vi.fn().mockResolvedValue({ size: 512 });
+      mockFs.readFile = vi.fn().mockRejectedValue(new Error('File not found'));
+    });
+
+    it('should write debug configuration successfully', async () => {
+      const result = await service.writeDebugConfig(mockDebugConfig, mockOptions);
+
+      expect(result.success).toBe(true);
+      expect(result.filePath).toContain('launch.json');
+      expect(result.bytesWritten).toBe(512);
+      expect(result.errors).toHaveLength(0);
+
+      // Verify debug configuration was written with correct structure
+      expect(mockFs.writeFile).toHaveBeenCalledWith(
+        expect.stringContaining('launch.json'),
+        expect.stringContaining('"Launch Node.js"'),
+        'utf8'
+      );
+
+      const writeCall = (mockFs.writeFile as any).mock.calls[0];
+      const writtenContent = JSON.parse(writeCall[1]);
+      expect(writtenContent.version).toBe('0.2.0');
+      expect(writtenContent.configurations).toHaveLength(2);
+    });
+
+    it('should validate debug configuration', async () => {
+      const invalidConfig: CursorDebugConfig = {
+        version: '',
+        configurations: [],
+      };
+
+      const result = await service.writeDebugConfig(invalidConfig, mockOptions);
+
+      expect(result.success).toBe(false);
+      expect(result.errors.some(e => e.component === 'debug-config')).toBe(true);
+    });
+
+    it('should require workspace path', async () => {
+      const optionsWithoutWorkspace = { ...mockOptions, workspacePath: undefined };
+
+      const result = await service.writeDebugConfig(mockDebugConfig, optionsWithoutWorkspace);
+
+      expect(result.success).toBe(false);
+      expect(result.errors[0].message).toContain('Workspace path is required');
+    });
+
+    it('should merge with existing debug configuration', async () => {
+      const existingConfig = {
+        version: '0.2.0',
+        configurations: [
+          { name: 'Existing Config', type: 'node', request: 'launch' },
+        ],
+      };
+
+      mockFs.readFile = vi.fn().mockResolvedValue(JSON.stringify(existingConfig));
+      const mergeOptions = { ...mockOptions, mergeStrategy: 'merge' as const };
+
+      const result = await service.writeDebugConfig(mockDebugConfig, mergeOptions);
+
+      expect(result.success).toBe(true);
+
+      const writeCall = (mockFs.writeFile as any).mock.calls[0];
+      const writtenContent = JSON.parse(writeCall[1]);
+      expect(writtenContent.configurations.length).toBeGreaterThan(2); // Should include existing + new
+    });
+  });
+
+  describe('writeTasks', () => {
+    const mockOptions: CursorDeploymentOptions = {
+      platform: 'cursor' as const,
+      workspacePath: '/test/workspace',
+      components: [],
+      skipComponents: [],
+    };
+
+    const mockTasksConfig: CursorTasksConfig = {
+      version: '2.0.0',
+      tasks: [
+        {
+          label: 'Build Project',
+          type: 'npm',
+          command: 'run',
+          args: ['build'],
+          group: 'build',
+          presentation: {
+            echo: true,
+            reveal: 'always',
+            focus: false,
+          },
+          problemMatcher: '$tsc',
+        },
+        {
+          label: 'Run Tests',
+          type: 'shell',
+          command: 'npm test',
+          group: { kind: 'test', isDefault: true },
+          dependsOn: 'Build Project',
+        },
+      ],
+    };
+
+    beforeEach(() => {
+      mockFs.mkdir = vi.fn().mockResolvedValue(undefined);
+      mockFs.writeFile = vi.fn().mockResolvedValue(undefined);
+      mockFs.stat = vi.fn().mockResolvedValue({ size: 768 });
+      mockFs.readFile = vi.fn().mockRejectedValue(new Error('File not found'));
+    });
+
+    it('should write tasks configuration successfully', async () => {
+      const result = await service.writeTasks(mockTasksConfig, mockOptions);
+
+      expect(result.success).toBe(true);
+      expect(result.filePath).toContain('tasks.json');
+      expect(result.bytesWritten).toBe(768);
+      expect(result.errors).toHaveLength(0);
+
+      // Verify tasks configuration was written
+      expect(mockFs.writeFile).toHaveBeenCalledWith(
+        expect.stringContaining('tasks.json'),
+        expect.stringContaining('"Build Project"'),
+        'utf8'
+      );
+
+      const writeCall = (mockFs.writeFile as any).mock.calls[0];
+      const writtenContent = JSON.parse(writeCall[1]);
+      expect(writtenContent.version).toBe('2.0.0');
+      expect(writtenContent.tasks).toHaveLength(2);
+    });
+
+    it('should validate tasks configuration', async () => {
+      const invalidConfig: CursorTasksConfig = {
+        version: '',
+        tasks: [{ label: '', type: '', command: '' }] as any,
+      };
+
+      const result = await service.writeTasks(invalidConfig, mockOptions);
+
+      expect(result.success).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+    });
+
+    it('should require workspace path', async () => {
+      const optionsWithoutWorkspace = { ...mockOptions, workspacePath: undefined };
+
+      const result = await service.writeTasks(mockTasksConfig, optionsWithoutWorkspace);
+
+      expect(result.success).toBe(false);
+      expect(result.errors[0].message).toContain('Workspace path is required');
+    });
+  });
+
+  describe('writeSnippets', () => {
+    const mockOptions: CursorDeploymentOptions = {
+      platform: 'cursor' as const,
+      components: [],
+      skipComponents: [],
+    };
+
+    const mockSnippetsConfig: Record<string, CursorSnippetsConfig> = {
+      javascript: {
+        'console.log': {
+          prefix: 'log',
+          body: 'console.log($1);',
+          description: 'Console log statement',
+        },
+        'function': {
+          prefix: 'fn',
+          body: ['function ${1:name}(${2:params}) {', '\t$3', '}'],
+          description: 'Function declaration',
+          scope: 'javascript,typescript',
+        },
+      },
+      typescript: {
+        'interface': {
+          prefix: 'interface',
+          body: ['interface ${1:Name} {', '\t$2', '}'],
+          description: 'TypeScript interface',
+        },
+      },
+    };
+
+    beforeEach(() => {
+      mockFs.mkdir = vi.fn().mockResolvedValue(undefined);
+      mockFs.writeFile = vi.fn().mockResolvedValue(undefined);
+      mockFs.readFile = vi.fn().mockRejectedValue(new Error('File not found'));
+    });
+
+    it('should write snippets for multiple languages', async () => {
+      const result = await service.writeSnippets(mockSnippetsConfig, mockOptions);
+
+      expect(result.success).toBe(true);
+      expect(result.filePaths).toHaveLength(2);
+      expect(result.filePaths.some(path => path.includes('javascript.json'))).toBe(true);
+      expect(result.filePaths.some(path => path.includes('typescript.json'))).toBe(true);
+      expect(result.errors).toHaveLength(0);
+
+      // Verify both snippet files were written
+      expect(mockFs.writeFile).toHaveBeenCalledTimes(2);
+    });
+
+    it('should validate snippet structure', async () => {
+      const invalidSnippets: Record<string, CursorSnippetsConfig> = {
+        javascript: {
+          'invalid-snippet': {
+            prefix: '',
+            body: '',
+          } as any,
+        },
+      };
+
+      const result = await service.writeSnippets(invalidSnippets, mockOptions);
+
+      expect(result.success).toBe(false);
+      expect(result.errors.some(e => e.component === 'snippets')).toBe(true);
+    });
+
+    it('should handle empty snippets configuration', async () => {
+      const emptySnippets: Record<string, CursorSnippetsConfig> = {};
+
+      const result = await service.writeSnippets(emptySnippets, mockOptions);
+
+      expect(result.success).toBe(false);
+      expect(result.filePaths).toHaveLength(0);
+    });
+
+    it('should merge with existing snippets', async () => {
+      const existingSnippets = {
+        'existing-snippet': {
+          prefix: 'exist',
+          body: 'existing code',
+          description: 'Existing snippet',
+        },
+      };
+
+      mockFs.readFile = vi.fn().mockResolvedValue(JSON.stringify(existingSnippets));
+      const mergeOptions = { ...mockOptions, mergeStrategy: 'merge' as const };
+
+      const result = await service.writeSnippets(mockSnippetsConfig, mergeOptions);
+
+      expect(result.success).toBe(true);
+      
+      // Should contain both existing and new snippets
+      const jsWriteCall = (mockFs.writeFile as any).mock.calls.find(
+        (call: any[]) => call[0].includes('javascript.json')
+      );
+      const writtenContent = JSON.parse(jsWriteCall[1]);
+      expect(writtenContent['existing-snippet']).toBeDefined();
+      expect(writtenContent['console.log']).toBeDefined();
+    });
+  });
+
+  describe('writeWorkspace', () => {
+    const mockOptions: CursorDeploymentOptions = {
+      platform: 'cursor' as const,
+      workspacePath: '/test/workspace',
+      components: [],
+      skipComponents: [],
+    };
+
+    const mockWorkspaceConfig: CursorWorkspaceConfig = {
+      folders: [
+        { path: './src', name: 'Source' },
+        { path: './tests', name: 'Tests' },
+        { path: '../shared-lib', name: 'Shared Library' },
+      ],
+      settings: {
+        'editor.fontSize': 14,
+        'files.exclude': {
+          '**/.git': true,
+          '**/.DS_Store': true,
+        },
+      },
+      extensions: {
+        recommendations: ['ms-vscode.vscode-typescript-next'],
+      },
+    };
+
+    beforeEach(() => {
+      mockFs.writeFile = vi.fn().mockResolvedValue(undefined);
+      mockFs.stat = vi.fn().mockResolvedValue({ size: 1024 });
+      mockFs.readFile = vi.fn().mockRejectedValue(new Error('File not found'));
+    });
+
+    it('should write workspace configuration successfully', async () => {
+      const result = await service.writeWorkspace(mockWorkspaceConfig, mockOptions);
+
+      expect(result.success).toBe(true);
+      expect(result.filePath).toContain('.code-workspace');
+      expect(result.bytesWritten).toBe(1024);
+      expect(result.errors).toHaveLength(0);
+
+      // Verify workspace configuration was written
+      expect(mockFs.writeFile).toHaveBeenCalledWith(
+        expect.stringContaining('.code-workspace'),
+        expect.stringContaining('"Source"'),
+        'utf8'
+      );
+
+      const writeCall = (mockFs.writeFile as any).mock.calls[0];
+      const writtenContent = JSON.parse(writeCall[1]);
+      expect(writtenContent.folders).toHaveLength(3);
+      expect(writtenContent.settings).toBeDefined();
+    });
+
+    it('should validate workspace configuration', async () => {
+      // Make config actually invalid by omitting folders array completely
+      const invalidConfig: CursorWorkspaceConfig = {} as any;
+
+      const result = await service.writeWorkspace(invalidConfig, mockOptions);
+
+      expect(result.success).toBe(false);
+      expect(result.errors.some(e => e.component === 'workspace-config')).toBe(true);
+    });
+
+    it('should warn about dangerous folder paths', async () => {
+      const result = await service.writeWorkspace(mockWorkspaceConfig, mockOptions);
+
+      expect(result.success).toBe(true);
+      expect(result.warnings.some(w => 
+        w.type === 'security' && w.message.includes('parent directory')
+      )).toBe(true);
+    });
+
+    it('should require workspace path', async () => {
+      const optionsWithoutWorkspace = { ...mockOptions, workspacePath: undefined };
+
+      const result = await service.writeWorkspace(mockWorkspaceConfig, optionsWithoutWorkspace);
+
+      expect(result.success).toBe(false);
+      expect(result.errors[0].message).toContain('Workspace path is required');
+    });
+
+    it('should merge with existing workspace configuration', async () => {
+      const existingConfig = {
+        folders: [{ path: './existing', name: 'Existing' }],
+        settings: { 'editor.tabSize': 2 },
+      };
+
+      mockFs.readFile = vi.fn().mockResolvedValue(JSON.stringify(existingConfig));
+      const mergeOptions = { ...mockOptions, mergeStrategy: 'merge' as const };
+
+      const result = await service.writeWorkspace(mockWorkspaceConfig, mergeOptions);
+
+      expect(result.success).toBe(true);
+
+      const writeCall = (mockFs.writeFile as any).mock.calls[0];
+      const writtenContent = JSON.parse(writeCall[1]);
+      expect(writtenContent.folders.length).toBe(4); // 1 existing + 3 new = 4 total
+      expect(writtenContent.settings['editor.tabSize']).toBe(2); // Should preserve existing
+      expect(writtenContent.settings['editor.fontSize']).toBe(14); // Should add new
     });
   });
 });

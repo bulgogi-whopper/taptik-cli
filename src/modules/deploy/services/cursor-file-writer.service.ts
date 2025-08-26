@@ -9,6 +9,10 @@ import {
   CursorProjectSettings,
   CursorDeploymentOptions,
   CursorAIConfig,
+  CursorDebugConfig,
+  CursorTasksConfig,
+  CursorSnippetsConfig,
+  CursorWorkspaceConfig,
 } from '../interfaces/cursor-deployment.interface';
 import { CursorExtensionsConfig } from '../interfaces/cursor-config.interface';
 
@@ -1054,6 +1058,676 @@ This directory contains reusable AI prompt templates organized by category.
         message: `Large total AI content size (${Math.round(totalSize / 1024)}KB)`,
         suggestion: 'Consider optimizing AI content to improve Cursor performance',
       });
+    }
+  }
+
+  /**
+   * Task 5.3: Write debug configuration (launch.json)
+   */
+  async writeDebugConfig(
+    debugConfig: CursorDebugConfig,
+    options: CursorDeploymentOptions
+  ): Promise<CursorFileWriteResult> {
+    this.logger.log('Writing Cursor debug configuration...');
+
+    const errors: DeploymentError[] = [];
+    const warnings: DeploymentWarning[] = [];
+
+    try {
+      if (!options.workspacePath) {
+        errors.push({
+          component: 'debug-config',
+          type: 'configuration',
+          severity: 'high',
+          message: 'Workspace path is required for debug configuration',
+          suggestion: 'Provide a workspace path to write debug configuration',
+        });
+        return { success: false, errors, warnings };
+      }
+
+      const directories = await this.ensureCursorDirectories(options);
+      const debugConfigPath = path.join(directories.debugConfigDir || '', 'launch.json');
+
+      // Validate debug configuration
+      const validationResult = this.validateDebugConfig(debugConfig);
+      warnings.push(...validationResult.warnings);
+
+      if (validationResult.errors.length > 0) {
+        errors.push(...validationResult.errors);
+        return { success: false, errors, warnings };
+      }
+
+      // Handle existing debug configuration if merge is enabled
+      let finalConfig = debugConfig;
+      if (options.mergeStrategy === 'merge') {
+        finalConfig = await this.mergeDebugConfig(debugConfigPath, debugConfig);
+      }
+
+      // Write debug configuration
+      const debugJson = JSON.stringify(finalConfig, null, 2);
+      await fs.writeFile(debugConfigPath, debugJson, 'utf8');
+
+      const stats = await fs.stat(debugConfigPath);
+      this.logger.log(`Debug configuration written to: ${debugConfigPath} (${stats.size} bytes)`);
+
+      return {
+        success: true,
+        filePath: debugConfigPath,
+        errors,
+        warnings,
+        bytesWritten: stats.size,
+      };
+
+    } catch (error) {
+      this.logger.error('Failed to write debug configuration:', error);
+      errors.push({
+        component: 'debug-config',
+        type: 'file_operation',
+        severity: 'high',
+        message: `Failed to write debug configuration: ${(error as Error).message}`,
+        path: options.workspacePath || 'unknown',
+        suggestion: 'Check workspace directory permissions and debug configuration format',
+      });
+
+      return { success: false, errors, warnings };
+    }
+  }
+
+  /**
+   * Task 5.3: Write tasks configuration (tasks.json)
+   */
+  async writeTasks(
+    tasksConfig: CursorTasksConfig,
+    options: CursorDeploymentOptions
+  ): Promise<CursorFileWriteResult> {
+    this.logger.log('Writing Cursor tasks configuration...');
+
+    const errors: DeploymentError[] = [];
+    const warnings: DeploymentWarning[] = [];
+
+    try {
+      if (!options.workspacePath) {
+        errors.push({
+          component: 'tasks-config',
+          type: 'configuration',
+          severity: 'high',
+          message: 'Workspace path is required for tasks configuration',
+          suggestion: 'Provide a workspace path to write tasks configuration',
+        });
+        return { success: false, errors, warnings };
+      }
+
+      const directories = await this.ensureCursorDirectories(options);
+      const tasksConfigPath = path.join(directories.tasksConfigDir || '', 'tasks.json');
+
+      // Validate tasks configuration
+      const validationResult = this.validateTasksConfig(tasksConfig);
+      warnings.push(...validationResult.warnings);
+
+      if (validationResult.errors.length > 0) {
+        errors.push(...validationResult.errors);
+        return { success: false, errors, warnings };
+      }
+
+      // Handle existing tasks configuration if merge is enabled
+      let finalConfig = tasksConfig;
+      if (options.mergeStrategy === 'merge') {
+        finalConfig = await this.mergeTasksConfig(tasksConfigPath, tasksConfig);
+      }
+
+      // Write tasks configuration
+      const tasksJson = JSON.stringify(finalConfig, null, 2);
+      await fs.writeFile(tasksConfigPath, tasksJson, 'utf8');
+
+      const stats = await fs.stat(tasksConfigPath);
+      this.logger.log(`Tasks configuration written to: ${tasksConfigPath} (${stats.size} bytes)`);
+
+      return {
+        success: true,
+        filePath: tasksConfigPath,
+        errors,
+        warnings,
+        bytesWritten: stats.size,
+      };
+
+    } catch (error) {
+      this.logger.error('Failed to write tasks configuration:', error);
+      errors.push({
+        component: 'tasks-config',
+        type: 'file_operation',
+        severity: 'high',
+        message: `Failed to write tasks configuration: ${(error as Error).message}`,
+        path: options.workspacePath || 'unknown',
+        suggestion: 'Check workspace directory permissions and tasks configuration format',
+      });
+
+      return { success: false, errors, warnings };
+    }
+  }
+
+  /**
+   * Task 5.3: Write code snippets
+   */
+  async writeSnippets(
+    snippetsConfig: Record<string, CursorSnippetsConfig>,
+    options: CursorDeploymentOptions
+  ): Promise<{
+    success: boolean;
+    filePaths: string[];
+    errors: DeploymentError[];
+    warnings: DeploymentWarning[];
+  }> {
+    this.logger.log('Writing Cursor code snippets...');
+
+    const errors: DeploymentError[] = [];
+    const warnings: DeploymentWarning[] = [];
+    const filePaths: string[] = [];
+
+    try {
+      const directories = await this.ensureCursorDirectories(options);
+
+      for (const [language, snippets] of Object.entries(snippetsConfig)) {
+        const snippetFileName = `${language}.json`;
+        const snippetFilePath = path.join(directories.snippetsDir, snippetFileName);
+
+        // Validate snippets for this language
+        const validationResult = this.validateSnippetsConfig(language, snippets);
+        warnings.push(...validationResult.warnings);
+
+        if (validationResult.errors.length > 0) {
+          errors.push(...validationResult.errors);
+          continue;
+        }
+
+        // Handle existing snippets if merge is enabled
+        let finalSnippets = snippets;
+        if (options.mergeStrategy === 'merge') {
+          finalSnippets = await this.mergeSnippets(snippetFilePath, snippets);
+        }
+
+        // Write snippets file
+        const snippetsJson = JSON.stringify(finalSnippets, null, 2);
+        await fs.writeFile(snippetFilePath, snippetsJson, 'utf8');
+        filePaths.push(snippetFilePath);
+
+        this.logger.debug(`Wrote ${language} snippets to: ${snippetFilePath}`);
+      }
+
+      this.logger.log(`Code snippets written: ${filePaths.length} files`);
+
+      return {
+        success: filePaths.length > 0,
+        filePaths,
+        errors,
+        warnings,
+      };
+
+    } catch (error) {
+      this.logger.error('Failed to write code snippets:', error);
+      errors.push({
+        component: 'snippets',
+        type: 'file_operation',
+        severity: 'high',
+        message: `Failed to write code snippets: ${(error as Error).message}`,
+        path: options.workspacePath || 'unknown',
+        suggestion: 'Check directory permissions and snippets configuration format',
+      });
+
+      return {
+        success: false,
+        filePaths,
+        errors,
+        warnings,
+      };
+    }
+  }
+
+  /**
+   * Task 5.3: Write workspace configuration
+   */
+  async writeWorkspace(
+    workspaceConfig: CursorWorkspaceConfig,
+    options: CursorDeploymentOptions
+  ): Promise<CursorFileWriteResult> {
+    this.logger.log('Writing Cursor workspace configuration...');
+
+    const errors: DeploymentError[] = [];
+    const warnings: DeploymentWarning[] = [];
+
+    try {
+      if (!options.workspacePath) {
+        errors.push({
+          component: 'workspace-config',
+          type: 'configuration',
+          severity: 'high',
+          message: 'Workspace path is required for workspace configuration',
+          suggestion: 'Provide a workspace path to write workspace configuration',
+        });
+        return { success: false, errors, warnings };
+      }
+
+      const workspaceFileName = path.basename(options.workspacePath) + '.code-workspace';
+      const workspaceFilePath = path.join(options.workspacePath, workspaceFileName);
+
+      // Validate workspace configuration
+      const validationResult = this.validateWorkspaceConfig(workspaceConfig);
+      warnings.push(...validationResult.warnings);
+
+      if (validationResult.errors.length > 0) {
+        errors.push(...validationResult.errors);
+        return { success: false, errors, warnings };
+      }
+
+      // Handle existing workspace if merge is enabled
+      let finalConfig = workspaceConfig;
+      if (options.mergeStrategy === 'merge') {
+        finalConfig = await this.mergeWorkspaceConfig(workspaceFilePath, workspaceConfig);
+      }
+
+      // Write workspace configuration
+      const workspaceJson = JSON.stringify(finalConfig, null, 2);
+      await fs.writeFile(workspaceFilePath, workspaceJson, 'utf8');
+
+      const stats = await fs.stat(workspaceFilePath);
+      this.logger.log(`Workspace configuration written to: ${workspaceFilePath} (${stats.size} bytes)`);
+
+      return {
+        success: true,
+        filePath: workspaceFilePath,
+        errors,
+        warnings,
+        bytesWritten: stats.size,
+      };
+
+    } catch (error) {
+      this.logger.error('Failed to write workspace configuration:', error);
+      errors.push({
+        component: 'workspace-config',
+        type: 'file_operation',
+        severity: 'high',
+        message: `Failed to write workspace configuration: ${(error as Error).message}`,
+        path: options.workspacePath || 'unknown',
+        suggestion: 'Check workspace directory permissions and workspace configuration format',
+      });
+
+      return { success: false, errors, warnings };
+    }
+  }
+
+  /**
+   * Validate debug configuration
+   */
+  private validateDebugConfig(config: CursorDebugConfig): {
+    errors: DeploymentError[];
+    warnings: DeploymentWarning[];
+  } {
+    const errors: DeploymentError[] = [];
+    const warnings: DeploymentWarning[] = [];
+
+    if (!config.version) {
+      errors.push({
+        component: 'debug-config',
+        type: 'configuration',
+        severity: 'high',
+        message: 'Debug configuration version is required',
+        suggestion: 'Add a version field (e.g., "0.2.0")',
+      });
+    }
+
+    if (!config.configurations || !Array.isArray(config.configurations)) {
+      errors.push({
+        component: 'debug-config',
+        type: 'configuration',
+        severity: 'high',
+        message: 'Debug configurations array is required',
+        suggestion: 'Add configurations array with debug configurations',
+      });
+    } else {
+      config.configurations.forEach((cfg, index) => {
+        if (!cfg.name) {
+          errors.push({
+            component: 'debug-config',
+            type: 'configuration',
+            severity: 'medium',
+            message: `Debug configuration ${index} is missing name`,
+            suggestion: 'Add a descriptive name for each debug configuration',
+          });
+        }
+
+        if (!cfg.type) {
+          errors.push({
+            component: 'debug-config',
+            type: 'configuration',
+            severity: 'high',
+            message: `Debug configuration "${cfg.name || index}" is missing type`,
+            suggestion: 'Add a type (e.g., "node", "python", "chrome")',
+          });
+        }
+
+        if (!cfg.request || !['launch', 'attach'].includes(cfg.request)) {
+          errors.push({
+            component: 'debug-config',
+            type: 'configuration',
+            severity: 'high',
+            message: `Debug configuration "${cfg.name || index}" has invalid request type`,
+            suggestion: 'Use "launch" or "attach" for request type',
+          });
+        }
+      });
+
+      if (config.configurations.length > 20) {
+        warnings.push({
+          component: 'debug-config',
+          type: 'performance',
+          message: `Large number of debug configurations (${config.configurations.length})`,
+          suggestion: 'Consider organizing configurations or removing unused ones',
+        });
+      }
+    }
+
+    return { errors, warnings };
+  }
+
+  /**
+   * Validate tasks configuration
+   */
+  private validateTasksConfig(config: CursorTasksConfig): {
+    errors: DeploymentError[];
+    warnings: DeploymentWarning[];
+  } {
+    const errors: DeploymentError[] = [];
+    const warnings: DeploymentWarning[] = [];
+
+    if (!config.version) {
+      errors.push({
+        component: 'tasks-config',
+        type: 'configuration',
+        severity: 'high',
+        message: 'Tasks configuration version is required',
+        suggestion: 'Add a version field (e.g., "2.0.0")',
+      });
+    }
+
+    if (!config.tasks || !Array.isArray(config.tasks)) {
+      errors.push({
+        component: 'tasks-config',
+        type: 'configuration',
+        severity: 'high',
+        message: 'Tasks array is required',
+        suggestion: 'Add tasks array with task configurations',
+      });
+    } else {
+      config.tasks.forEach((task, index) => {
+        if (!task.label) {
+          errors.push({
+            component: 'tasks-config',
+            type: 'configuration',
+            severity: 'medium',
+            message: `Task ${index} is missing label`,
+            suggestion: 'Add a descriptive label for each task',
+          });
+        }
+
+        if (!task.type) {
+          errors.push({
+            component: 'tasks-config',
+            type: 'configuration',
+            severity: 'high',
+            message: `Task "${task.label || index}" is missing type`,
+            suggestion: 'Add a type (e.g., "shell", "process", "npm")',
+          });
+        }
+
+        if (!task.command) {
+          errors.push({
+            component: 'tasks-config',
+            type: 'configuration',
+            severity: 'high',
+            message: `Task "${task.label || index}" is missing command`,
+            suggestion: 'Add a command to execute',
+          });
+        }
+      });
+
+      if (config.tasks.length > 50) {
+        warnings.push({
+          component: 'tasks-config',
+          type: 'performance',
+          message: `Large number of tasks (${config.tasks.length})`,
+          suggestion: 'Consider organizing tasks or removing unused ones',
+        });
+      }
+    }
+
+    return { errors, warnings };
+  }
+
+  /**
+   * Validate snippets configuration
+   */
+  private validateSnippetsConfig(language: string, config: CursorSnippetsConfig): {
+    errors: DeploymentError[];
+    warnings: DeploymentWarning[];
+  } {
+    const errors: DeploymentError[] = [];
+    const warnings: DeploymentWarning[] = [];
+
+    const snippetNames = Object.keys(config);
+    
+    if (snippetNames.length === 0) {
+      warnings.push({
+        component: 'snippets',
+        type: 'configuration',
+        message: `No snippets defined for language: ${language}`,
+        suggestion: 'Add snippets or remove the language configuration',
+      });
+    } else {
+      snippetNames.forEach(snippetName => {
+        const snippet = config[snippetName];
+
+        if (!snippet.prefix) {
+          errors.push({
+            component: 'snippets',
+            type: 'configuration',
+            severity: 'high',
+            message: `Snippet "${snippetName}" in ${language} is missing prefix`,
+            suggestion: 'Add a prefix to trigger the snippet',
+          });
+        }
+
+        if (!snippet.body) {
+          errors.push({
+            component: 'snippets',
+            type: 'configuration',
+            severity: 'high',
+            message: `Snippet "${snippetName}" in ${language} is missing body`,
+            suggestion: 'Add body content for the snippet',
+          });
+        }
+      });
+
+      if (snippetNames.length > 100) {
+        warnings.push({
+          component: 'snippets',
+          type: 'performance',
+          message: `Large number of snippets for ${language} (${snippetNames.length})`,
+          suggestion: 'Consider splitting into multiple language files',
+        });
+      }
+    }
+
+    return { errors, warnings };
+  }
+
+  /**
+   * Validate workspace configuration
+   */
+  private validateWorkspaceConfig(config: CursorWorkspaceConfig): {
+    errors: DeploymentError[];
+    warnings: DeploymentWarning[];
+  } {
+    const errors: DeploymentError[] = [];
+    const warnings: DeploymentWarning[] = [];
+
+    if (!config.folders || !Array.isArray(config.folders)) {
+      errors.push({
+        component: 'workspace-config',
+        type: 'configuration',
+        severity: 'high',
+        message: 'Workspace folders array is required',
+        suggestion: 'Add folders array with workspace folder configurations',
+      });
+    } else {
+      config.folders.forEach((folder, index) => {
+        if (!folder.path) {
+          errors.push({
+            component: 'workspace-config',
+            type: 'configuration',
+            severity: 'high',
+            message: `Workspace folder ${index} is missing path`,
+            suggestion: 'Add a path for each workspace folder',
+          });
+        }
+
+        // Check for potentially dangerous paths
+        if (folder.path.includes('..')) {
+          warnings.push({
+            component: 'workspace-config',
+            type: 'security',
+            message: `Workspace folder path contains parent directory references: ${folder.path}`,
+            suggestion: 'Use absolute paths or safe relative paths',
+          });
+        }
+      });
+
+      if (config.folders.length > 20) {
+        warnings.push({
+          component: 'workspace-config',
+          type: 'performance',
+          message: `Large number of workspace folders (${config.folders.length})`,
+          suggestion: 'Consider reducing the number of workspace folders for better performance',
+        });
+      }
+    }
+
+    return { errors, warnings };
+  }
+
+  /**
+   * Merge debug configuration with existing
+   */
+  private async mergeDebugConfig(configPath: string, newConfig: CursorDebugConfig): Promise<CursorDebugConfig> {
+    try {
+      const existingContent = await fs.readFile(configPath, 'utf8');
+      const existingConfig = JSON.parse(existingContent) as CursorDebugConfig;
+
+      // Merge configurations, avoiding duplicates
+      const mergedConfigurations = [...existingConfig.configurations];
+      
+      newConfig.configurations.forEach(newCfg => {
+        const existingIndex = mergedConfigurations.findIndex(cfg => cfg.name === newCfg.name);
+        if (existingIndex >= 0) {
+          mergedConfigurations[existingIndex] = newCfg; // Replace existing
+        } else {
+          mergedConfigurations.push(newCfg); // Add new
+        }
+      });
+
+      return {
+        ...existingConfig,
+        ...newConfig,
+        configurations: mergedConfigurations,
+      };
+    } catch (error) {
+      // File doesn't exist or is invalid, return new config
+      return newConfig;
+    }
+  }
+
+  /**
+   * Merge tasks configuration with existing
+   */
+  private async mergeTasksConfig(configPath: string, newConfig: CursorTasksConfig): Promise<CursorTasksConfig> {
+    try {
+      const existingContent = await fs.readFile(configPath, 'utf8');
+      const existingConfig = JSON.parse(existingContent) as CursorTasksConfig;
+
+      // Merge tasks, avoiding duplicates
+      const mergedTasks = [...existingConfig.tasks];
+      
+      newConfig.tasks.forEach(newTask => {
+        const existingIndex = mergedTasks.findIndex(task => task.label === newTask.label);
+        if (existingIndex >= 0) {
+          mergedTasks[existingIndex] = newTask; // Replace existing
+        } else {
+          mergedTasks.push(newTask); // Add new
+        }
+      });
+
+      return {
+        ...existingConfig,
+        ...newConfig,
+        tasks: mergedTasks,
+      };
+    } catch (error) {
+      // File doesn't exist or is invalid, return new config
+      return newConfig;
+    }
+  }
+
+  /**
+   * Merge snippets with existing
+   */
+  private async mergeSnippets(configPath: string, newSnippets: CursorSnippetsConfig): Promise<CursorSnippetsConfig> {
+    try {
+      const existingContent = await fs.readFile(configPath, 'utf8');
+      const existingSnippets = JSON.parse(existingContent) as CursorSnippetsConfig;
+
+      return {
+        ...existingSnippets,
+        ...newSnippets,
+      };
+    } catch (error) {
+      // File doesn't exist or is invalid, return new snippets
+      return newSnippets;
+    }
+  }
+
+  /**
+   * Merge workspace configuration with existing
+   */
+  private async mergeWorkspaceConfig(configPath: string, newConfig: CursorWorkspaceConfig): Promise<CursorWorkspaceConfig> {
+    try {
+      const existingContent = await fs.readFile(configPath, 'utf8');
+      const existingConfig = JSON.parse(existingContent) as CursorWorkspaceConfig;
+
+      // Merge folders, avoiding duplicates
+      const mergedFolders = [...existingConfig.folders];
+      
+      newConfig.folders.forEach(newFolder => {
+        const existingIndex = mergedFolders.findIndex(folder => folder.path === newFolder.path);
+        if (existingIndex >= 0) {
+          mergedFolders[existingIndex] = newFolder; // Replace existing
+        } else {
+          mergedFolders.push(newFolder); // Add new
+        }
+      });
+
+      // Merge settings deeply
+      const mergedSettings = {
+        ...existingConfig.settings,
+        ...newConfig.settings,
+      };
+
+      return {
+        ...existingConfig,
+        ...newConfig,
+        folders: mergedFolders,
+        settings: mergedSettings,
+      };
+    } catch (error) {
+      // File doesn't exist or is invalid, return new config
+      return newConfig;
     }
   }
 
