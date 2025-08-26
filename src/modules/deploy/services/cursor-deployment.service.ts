@@ -11,6 +11,9 @@ import { CursorTransformerService } from './cursor-transformer.service';
 import { CursorValidatorService } from './cursor-validator.service';
 import { CursorFileWriterService } from './cursor-file-writer.service';
 import { CursorInstallationDetectorService } from './cursor-installation-detector.service';
+import { CursorBackupService } from './cursor-backup.service';
+import { CursorConflictResolverService } from './cursor-conflict-resolver.service';
+import { CursorDeploymentStateService } from './cursor-deployment-state.service';
 import { ALL_CURSOR_COMPONENT_TYPES } from '../constants/cursor.constants';
 
 /**
@@ -25,6 +28,9 @@ export class CursorDeploymentService implements ICursorDeploymentService {
     private readonly validatorService: CursorValidatorService,
     private readonly fileWriterService: CursorFileWriterService,
     private readonly installationDetectorService: CursorInstallationDetectorService,
+    private readonly backupService: CursorBackupService,
+    private readonly conflictResolver: CursorConflictResolverService,
+    private readonly stateManager: CursorDeploymentStateService,
   ) {}
 
   /**
@@ -72,9 +78,40 @@ export class CursorDeploymentService implements ICursorDeploymentService {
 
       const deploymentOptionsWithPath = { ...options, cursorPath };
 
-      // Step 3: Process each component type
-      this.logger.log('Step 3: Processing components...');
+      // Step 3: Initialize deployment state tracking
+      this.logger.log('Step 3: Initializing deployment state...');
       const componentTypes = this.getComponentTypesToDeploy(options);
+      
+      await this.stateManager.saveDeploymentState(this.generateDeploymentId(), deploymentOptionsWithPath, {
+        status: 'initializing',
+        startedAt: new Date().toISOString(),
+        completedComponents: [],
+        failedComponents: [],
+        inProgressComponents: [],
+        componentErrors: {},
+      });
+
+      // Step 4: Create backup before deployment
+      this.logger.log('Step 4: Creating backup...');
+      const backupResult = await this.backupService.createBackup(
+        this.generateDeploymentId(),
+        deploymentOptionsWithPath,
+        componentTypes
+      );
+      
+      if (!backupResult.success) {
+        warnings.push(...backupResult.warnings);
+        // Continue with deployment even if backup fails, but warn user
+        warnings.push({
+          component: 'backup-system',
+          type: 'backup',
+          message: 'Failed to create complete backup before deployment',
+          suggestion: 'Deployment will continue, but rollback may be limited',
+        });
+      }
+
+      // Step 5: Process each component type with conflict resolution
+      this.logger.log('Step 5: Processing components with conflict resolution...');
       
       for (const componentType of componentTypes) {
         try {
@@ -86,15 +123,40 @@ export class CursorDeploymentService implements ICursorDeploymentService {
             continue;
           }
 
-          const componentResult = await this.deployComponent(componentType, deploymentOptionsWithPath);
+          // Update state: component started
+          await this.stateManager.updateDeploymentProgress(
+            this.generateDeploymentId(),
+            componentType,
+            'started'
+          );
+
+          const componentResult = await this.deployComponentWithConflictResolution(
+            componentType, 
+            deploymentOptionsWithPath
+          );
           
           if (componentResult.success) {
             deployedComponents.push(componentType);
             this.updateConfigurationFiles(configurationFiles, componentType, componentResult);
             this.logger.log(`Successfully deployed component: ${componentType}`);
+            
+            // Update state: component completed
+            await this.stateManager.updateDeploymentProgress(
+              this.generateDeploymentId(),
+              componentType,
+              'completed'
+            );
           } else {
             errors.push(...componentResult.errors);
             this.logger.warn(`Failed to deploy component: ${componentType}`);
+            
+            // Update state: component failed
+            await this.stateManager.updateDeploymentProgress(
+              this.generateDeploymentId(),
+              componentType,
+              'failed',
+              componentResult.errors[0]
+            );
           }
           
           warnings.push(...componentResult.warnings);
@@ -276,17 +338,105 @@ export class CursorDeploymentService implements ICursorDeploymentService {
   }
 
   /**
-   * Rollback deployment (placeholder for Task 6.2)
+   * Rollback deployment using backup
    */
-  async rollback(deploymentId: string): Promise<void> {
-    this.logger.log(`Rollback requested for deployment: ${deploymentId}`);
-    throw new Error('Rollback functionality will be implemented in Task 6.2');
+  async rollback(deploymentId: string): Promise<CursorRollbackResult> {
+    this.logger.log(`Starting rollback for deployment: ${deploymentId}`);
+
+    const errors: DeploymentError[] = [];
+    const warnings: DeploymentWarning[] = [];
+    const rolledBackComponents: CursorComponentType[] = [];
+
+    try {
+      // Get backup list and find backup for this deployment
+      const backups = await this.backupService.listBackups();
+      const deploymentBackup = backups.find(backup => backup.deploymentId === deploymentId);
+
+      if (!deploymentBackup) {
+        errors.push({
+          component: 'rollback-system',
+          type: 'rollback',
+          severity: 'high',
+          message: `No backup found for deployment: ${deploymentId}`,
+          suggestion: 'Cannot rollback without backup. Check if backup was created during deployment.',
+        });
+        
+        return {
+          success: false,
+          deploymentId,
+          rolledBackComponents: [],
+          errors,
+          warnings,
+          rollbackId: this.generateRollbackId(deploymentId),
+          timestamp: new Date().toISOString(),
+        };
+      }
+
+      this.logger.log(`Found backup for rollback: ${deploymentBackup.backupId}`);
+
+      // Restore from backup
+      const restoreResult = await this.backupService.restoreFromBackup(deploymentBackup.backupId);
+      
+      if (restoreResult.success) {
+        // Determine which components were rolled back based on restored files
+        const restoredComponents = this.determineRolledBackComponents(restoreResult.restoredFiles);
+        rolledBackComponents.push(...restoredComponents);
+        
+        this.logger.log(`Rollback completed successfully: ${rolledBackComponents.length} components restored`);
+        
+        return {
+          success: true,
+          deploymentId,
+          rolledBackComponents,
+          errors: restoreResult.errors,
+          warnings: [...warnings, ...restoreResult.warnings],
+          rollbackId: this.generateRollbackId(deploymentId),
+          timestamp: new Date().toISOString(),
+          backupId: deploymentBackup.backupId,
+          restoredFiles: restoreResult.restoredFiles,
+        };
+      } else {
+        errors.push(...restoreResult.errors);
+        warnings.push(...restoreResult.warnings);
+        
+        return {
+          success: false,
+          deploymentId,
+          rolledBackComponents,
+          errors,
+          warnings,
+          rollbackId: this.generateRollbackId(deploymentId),
+          timestamp: new Date().toISOString(),
+          backupId: deploymentBackup.backupId,
+        };
+      }
+
+    } catch (error) {
+      this.logger.error('Rollback failed with critical error:', error);
+      errors.push({
+        component: 'rollback-system',
+        type: 'system',
+        severity: 'critical',
+        message: `Rollback failed: ${(error as Error).message}`,
+        suggestion: 'Check system state and try manual recovery',
+      });
+
+      return {
+        success: false,
+        deploymentId,
+        rolledBackComponents,
+        errors,
+        warnings,
+        rollbackId: this.generateRollbackId(deploymentId),
+        timestamp: new Date().toISOString(),
+      };
+    }
   }
 
   /**
-   * Deploy individual component
+   * Deploy individual component with conflict resolution
    */
-  private async deployComponent(
+  private async deployComponentWithConflictResolution(
     componentType: CursorComponentType, 
     options: CursorDeploymentOptions
   ): Promise<{ success: boolean; errors: DeploymentError[]; warnings: DeploymentWarning[]; filePath?: string; bytesWritten?: number }> {
@@ -295,50 +445,78 @@ export class CursorDeploymentService implements ICursorDeploymentService {
     const warnings: DeploymentWarning[] = [];
 
     try {
-      // Transform mock context for the component (in real implementation, this would come from TaptikContext)
-      const mockContext = this.createMockContext();
+      // Step 1: Transform component configuration
+      const transformedConfig = await this.transformComponentConfiguration(componentType, options);
+      
+      // Step 2: Resolve conflicts with existing configuration
+      const conflictResolution = await this.conflictResolver.resolveConfigurationConflicts(
+        componentType,
+        transformedConfig,
+        options
+      );
+      
+      // Add conflict warnings
+      warnings.push(...conflictResolution.warnings);
+      errors.push(...conflictResolution.errors);
+      
+      if (conflictResolution.errors.length > 0) {
+        return { success: false, errors, warnings };
+      }
+
+      // Step 3: Deploy resolved configuration
+      return await this.deployComponent(componentType, options, conflictResolution.resolvedConfig);
+
+    } catch (error) {
+      errors.push({
+        component: componentType,
+        type: 'deployment',
+        severity: 'high',
+        message: `Failed to deploy component with conflict resolution: ${(error as Error).message}`,
+        suggestion: `Check ${componentType} configuration and system permissions`,
+      });
+      
+      return { success: false, errors, warnings };
+    }
+  }
+
+  /**
+   * Deploy individual component
+   */
+  private async deployComponent(
+    componentType: CursorComponentType, 
+    options: CursorDeploymentOptions,
+    resolvedConfig?: any
+  ): Promise<{ success: boolean; errors: DeploymentError[]; warnings: DeploymentWarning[]; filePath?: string; bytesWritten?: number }> {
+    
+    const errors: DeploymentError[] = [];
+    const warnings: DeploymentWarning[] = [];
+
+    try {
+      // Use resolved config if provided, otherwise transform from context
+      const configToWrite = resolvedConfig || await this.transformComponentConfiguration(componentType, options);
       
       switch (componentType) {
         case 'global-settings':
-          const globalSettings = this.transformerService.transformPersonalContext(mockContext.personalContext);
-          return await this.fileWriterService.writeSettings(globalSettings, options);
-
         case 'project-settings':
-          const projectSettings = this.transformerService.transformProjectContext(mockContext.projectContext);
-          return await this.fileWriterService.writeSettings(projectSettings, options);
+          return await this.fileWriterService.writeSettings(configToWrite, options);
 
         case 'ai-config':
-          const aiConfig = this.transformerService.transformAIRules(['Use TypeScript best practices', 'Follow clean code principles']);
-          return await this.fileWriterService.writeAIConfig(aiConfig, options);
+          return await this.fileWriterService.writeAIConfig(configToWrite, options);
 
         case 'extensions-config':
-          const extensionsConfig = { recommendations: ['ms-vscode.vscode-typescript-next'] };
-          return await this.fileWriterService.writeExtensions(extensionsConfig, options);
+          return await this.fileWriterService.writeExtensions(configToWrite, options);
 
         case 'debug-config':
-          const debugConfig = this.transformerService.transformDebugConfigurations([
-            { name: 'Launch Program', type: 'node', request: 'launch', program: '${workspaceFolder}/dist/main.js' }
-          ]);
-          return await this.fileWriterService.writeDebugConfig(debugConfig, options);
+          return await this.fileWriterService.writeDebugConfig(configToWrite, options);
 
         case 'tasks-config':
-          const tasksConfig = this.transformerService.transformBuildTasks([
-            { name: 'build', command: 'npm run build', group: 'build' }
-          ]);
-          return await this.fileWriterService.writeTasks(tasksConfig, options);
+          return await this.fileWriterService.writeTasks(configToWrite, options);
 
         case 'snippets-config':
-          const snippetsConfig = this.transformerService.transformCodeSnippets([
-            { language: 'typescript', name: 'console.log', prefix: 'log', body: 'console.log($1);' }
-          ]);
-          return await this.fileWriterService.writeSnippets(snippetsConfig, options);
+          return await this.fileWriterService.writeSnippets(configToWrite, options);
 
         case 'workspace-config':
-          const workspaceConfig = this.transformerService.transformWorkspaceSettings({
-            folders: [{ path: '.', name: 'Root' }],
-            settings: { 'editor.tabSize': 2 }
-          });
-          return await this.fileWriterService.writeWorkspace(workspaceConfig, options);
+          return await this.fileWriterService.writeWorkspace(configToWrite, options);
 
         default:
           errors.push({
@@ -623,6 +801,83 @@ export class CursorDeploymentService implements ICursorDeploymentService {
   }
 
   /**
+   * Transform component configuration from context
+   */
+  private async transformComponentConfiguration(componentType: CursorComponentType, options: CursorDeploymentOptions): Promise<any> {
+    const mockContext = this.createMockContext();
+    
+    switch (componentType) {
+      case 'global-settings':
+        return this.transformerService.transformPersonalContext(mockContext.personalContext);
+      case 'project-settings':
+        return this.transformerService.transformProjectContext(mockContext.projectContext);
+      case 'ai-config':
+        return this.transformerService.transformAIRules(['Use TypeScript best practices', 'Follow clean code principles']);
+      case 'extensions-config':
+        return { recommendations: ['ms-vscode.vscode-typescript-next'] };
+      case 'debug-config':
+        return this.transformerService.transformDebugConfigurations([
+          { name: 'Launch Program', type: 'node', request: 'launch', program: '${workspaceFolder}/dist/main.js' }
+        ]);
+      case 'tasks-config':
+        return this.transformerService.transformBuildTasks([
+          { name: 'build', command: 'npm run build', group: 'build' }
+        ]);
+      case 'snippets-config':
+        return this.transformerService.transformCodeSnippets([
+          { language: 'typescript', name: 'console.log', prefix: 'log', body: 'console.log($1);' }
+        ]);
+      case 'workspace-config':
+        return this.transformerService.transformWorkspaceSettings({
+          folders: [{ path: '.', name: 'Root' }],
+          settings: { 'editor.tabSize': 2 }
+        });
+      default:
+        throw new Error(`Unknown component type: ${componentType}`);
+    }
+  }
+
+  /**
+   * Determine rolled back components from restored file paths
+   */
+  private determineRolledBackComponents(restoredFiles: string[]): CursorComponentType[] {
+    const components: CursorComponentType[] = [];
+    
+    for (const filePath of restoredFiles) {
+      if (filePath.includes('settings.json')) {
+        if (filePath.includes('User')) {
+          components.push('global-settings');
+        } else {
+          components.push('project-settings');
+        }
+      } else if (filePath.includes('.cursorrules')) {
+        components.push('ai-config');
+      } else if (filePath.includes('extensions.json')) {
+        components.push('extensions-config');
+      } else if (filePath.includes('launch.json')) {
+        components.push('debug-config');
+      } else if (filePath.includes('tasks.json')) {
+        components.push('tasks-config');
+      } else if (filePath.includes('snippets')) {
+        components.push('snippets-config');
+      } else if (filePath.includes('.code-workspace')) {
+        components.push('workspace-config');
+      }
+    }
+    
+    return [...new Set(components)]; // Remove duplicates
+  }
+
+  /**
+   * Generate rollback ID
+   */
+  private generateRollbackId(deploymentId: string): string {
+    const timestamp = Date.now().toString(36);
+    const deploymentSuffix = deploymentId.split('-').pop() || 'unknown';
+    return `rollback-${timestamp}-${deploymentSuffix}`;
+  }
+
+  /**
    * Generate unique deployment ID
    */
   private generateDeploymentId(): string {
@@ -657,4 +912,19 @@ export class CursorDeploymentService implements ICursorDeploymentService {
       promptTemplates: [],
     };
   }
+}
+
+/**
+ * Cursor rollback result
+ */
+export interface CursorRollbackResult {
+  success: boolean;
+  deploymentId: string;
+  rolledBackComponents: CursorComponentType[];
+  errors: DeploymentError[];
+  warnings: DeploymentWarning[];
+  rollbackId: string;
+  timestamp: string;
+  backupId?: string;
+  restoredFiles?: string[];
 }
