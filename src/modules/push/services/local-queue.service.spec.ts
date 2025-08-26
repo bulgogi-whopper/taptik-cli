@@ -16,7 +16,9 @@ describe('LocalQueueService', () => {
   let testFilePath: string;
 
   // Helper function to create mock PushOptions
-  const createMockOptions = (overrides?: Partial<PushOptions>): PushOptions => ({
+  const createMockOptions = (
+    overrides?: Partial<PushOptions>,
+  ): PushOptions => ({
     file: {
       buffer: Buffer.from('test content'),
       name: 'test-package.taptik',
@@ -114,7 +116,9 @@ describe('LocalQueueService', () => {
       const tempFile = path.join(os.tmpdir(), 'test-package.taptik');
       fs.writeFileSync(tempFile, 'test content');
 
-      const options = createMockOptions({ visibility: PackageVisibility.Public });
+      const options = createMockOptions({
+        visibility: PackageVisibility.Public,
+      });
 
       try {
         // Add two items (at the limit)
@@ -137,7 +141,10 @@ describe('LocalQueueService', () => {
       fs.writeFileSync(tempFile, 'test content');
 
       try {
-        const id = await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Public }));
+        const id = await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Public }),
+        );
 
         await service.removeFromQueue(id);
 
@@ -161,7 +168,10 @@ describe('LocalQueueService', () => {
       fs.writeFileSync(tempFile, 'test content');
 
       try {
-        const id = await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Public }));
+        const id = await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Public }),
+        );
 
         await service.updateQueueStatus(id, 'uploading');
 
@@ -182,7 +192,10 @@ describe('LocalQueueService', () => {
       fs.writeFileSync(tempFile, 'test content');
 
       try {
-        const id = await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Public }));
+        const id = await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Public }),
+        );
 
         await service.updateQueueStatus(id, 'failed', 'Network error');
 
@@ -201,7 +214,10 @@ describe('LocalQueueService', () => {
       fs.writeFileSync(tempFile, 'test content');
 
       try {
-        const id = await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Public }));
+        const id = await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Public }),
+        );
 
         const attempts = await service.incrementRetryAttempt(id);
         expect(attempts).toBe(1);
@@ -223,7 +239,10 @@ describe('LocalQueueService', () => {
       fs.writeFileSync(tempFile, 'test content');
 
       try {
-        const id = await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Public }));
+        const id = await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Public }),
+        );
 
         // First attempt
         await service.incrementRetryAttempt(id);
@@ -251,8 +270,14 @@ describe('LocalQueueService', () => {
       fs.writeFileSync(tempFile, 'test content');
 
       try {
-        const id1 = await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Public }));
-        const id2 = await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Private }));
+        const id1 = await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Public }),
+        );
+        const id2 = await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Private }),
+        );
 
         const status = await service.getQueueStatus();
 
@@ -269,10 +294,16 @@ describe('LocalQueueService', () => {
       fs.writeFileSync(tempFile, 'test content');
 
       try {
-        const id1 = await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Public }));
+        const id1 = await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Public }),
+        );
         // Small delay to ensure different timestamps
         await new Promise((resolve) => setTimeout(resolve, 10));
-        const id2 = await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Private }));
+        const id2 = await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Private }),
+        );
 
         const status = await service.getQueueStatus();
 
@@ -290,9 +321,18 @@ describe('LocalQueueService', () => {
       fs.writeFileSync(tempFile, 'test content');
 
       try {
-        const id1 = await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Public }));
-        const id2 = await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Private }));
-        const id3 = await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Private }));
+        const id1 = await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Public }),
+        );
+        const id2 = await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Private }),
+        );
+        const id3 = await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Private }),
+        );
 
         // Update some statuses
         await service.updateQueueStatus(id2, 'completed');
@@ -312,12 +352,14 @@ describe('LocalQueueService', () => {
       fs.writeFileSync(tempFile, 'test content');
 
       try {
-        const id = await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Public }));
+        const id = await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Public }),
+        );
 
         // Max out retry attempts
 
         for (let i = 0; i < 5; i++) {
-          // eslint-disable-next-line no-await-in-loop
           await service.incrementRetryAttempt(id);
         }
 
@@ -335,7 +377,10 @@ describe('LocalQueueService', () => {
       fs.writeFileSync(tempFile, 'test content');
 
       try {
-        const id = await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Public }));
+        const id = await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Public }),
+        );
 
         // Increment retry with future next_retry time
         await service.incrementRetryAttempt(id);
@@ -363,8 +408,14 @@ describe('LocalQueueService', () => {
       fs.writeFileSync(tempFile, 'test content');
 
       try {
-        const id1 = await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Public }));
-        const id2 = await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Private }));
+        const id1 = await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Public }),
+        );
+        const id2 = await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Private }),
+        );
 
         await service.updateQueueStatus(id1, 'failed');
         await service.updateQueueStatus(id2, 'failed');
@@ -395,9 +446,18 @@ describe('LocalQueueService', () => {
       fs.writeFileSync(tempFile, 'test content');
 
       try {
-        const id1 = await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Public }));
-        const id2 = await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Private }));
-        const id3 = await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Private }));
+        const id1 = await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Public }),
+        );
+        const id2 = await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Private }),
+        );
+        const id3 = await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Private }),
+        );
 
         await service.updateQueueStatus(id1, 'completed');
         await service.updateQueueStatus(id2, 'completed');
@@ -427,7 +487,10 @@ describe('LocalQueueService', () => {
       });
 
       try {
-        const id = await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Public }));
+        const id = await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Public }),
+        );
 
         service.startBackgroundSync(onProcess);
 
@@ -456,7 +519,10 @@ describe('LocalQueueService', () => {
       });
 
       try {
-        const id = await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Public }));
+        const id = await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Public }),
+        );
 
         service.startBackgroundSync(onProcess);
 
@@ -485,7 +551,10 @@ describe('LocalQueueService', () => {
       });
 
       try {
-        const id = await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Public }));
+        const id = await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Public }),
+        );
 
         // Set attempts to 4 (one away from max)
         await service.updateQueueItem(id, { attempts: 4 });
@@ -512,9 +581,18 @@ describe('LocalQueueService', () => {
       fs.writeFileSync(tempFile, 'test content');
 
       try {
-        await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Public }));
-        await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Private }));
-        await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Private }));
+        await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Public }),
+        );
+        await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Private }),
+        );
+        await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Private }),
+        );
 
         await service.clearQueue();
 
@@ -532,7 +610,10 @@ describe('LocalQueueService', () => {
       fs.writeFileSync(tempFile, 'test content');
 
       try {
-        const id = await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Public }));
+        const id = await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Public }),
+        );
 
         await service.updateQueueItem(id, {
           status: 'uploading',
@@ -554,7 +635,10 @@ describe('LocalQueueService', () => {
       fs.writeFileSync(tempFile, 'test content');
 
       try {
-        const id = await service.addToQueue(tempFile, createMockOptions({ visibility: PackageVisibility.Public }));
+        const id = await service.addToQueue(
+          tempFile,
+          createMockOptions({ visibility: PackageVisibility.Public }),
+        );
 
         const now = new Date();
         const future = new Date(Date.now() + 10000);

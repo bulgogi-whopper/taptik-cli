@@ -21,6 +21,7 @@ Main orchestrator service for package upload operations.
 Uploads a package to Supabase cloud storage.
 
 **Parameters:**
+
 - `options: PushOptions` - Upload configuration options
   - `filePath: string` - Path to the .taptik package file
   - `userId: string` - User identifier
@@ -34,6 +35,7 @@ Uploads a package to Supabase cloud storage.
   - `dryRun?: boolean` - Simulate upload without executing
 
 **Returns:**
+
 ```typescript
 interface PushResult {
   success: boolean;
@@ -46,13 +48,14 @@ interface PushResult {
 ```
 
 **Example:**
+
 ```typescript
 const result = await pushService.pushPackage({
   filePath: '/path/to/package.taptik',
   userId: 'user-123',
   isPublic: true,
   title: 'My Package',
-  tags: ['vim', 'config']
+  tags: ['vim', 'config'],
 });
 ```
 
@@ -61,6 +64,7 @@ const result = await pushService.pushPackage({
 Processes the offline upload queue, retrying failed uploads.
 
 **Example:**
+
 ```typescript
 await pushService.processQueue();
 ```
@@ -70,10 +74,12 @@ await pushService.processQueue();
 Deletes a package from cloud storage and database.
 
 **Parameters:**
+
 - `configId: string` - Package configuration identifier
 - `userId: string` - User identifier for authorization
 
 **Example:**
+
 ```typescript
 await pushService.deletePackage('config-123', 'user-123');
 ```
@@ -89,12 +95,14 @@ Handles chunked and resumable uploads to Supabase Storage.
 Uploads a package with chunked transfer and progress tracking.
 
 **Parameters:**
+
 - `buffer: Buffer` - Package data
 - `fileName: string` - Original file name
 - `userId: string` - User identifier
 - `onProgress?: ProgressCallback` - Progress callback function
 
 **Returns:**
+
 ```typescript
 interface UploadResult {
   storageUrl: string;
@@ -109,6 +117,7 @@ interface UploadResult {
 Resumes an interrupted upload from the last successful chunk.
 
 **Parameters:**
+
 - `uploadId: string` - Upload session identifier
 - `remainingChunks: Buffer[]` - Remaining data chunks
 - `startChunk: number` - Index of first chunk to upload
@@ -124,6 +133,7 @@ Database operations for package metadata management.
 Registers a new package in the database.
 
 **Parameters:**
+
 - `metadata: PackageMetadata` - Complete package metadata
 
 ##### `listUserPackages(userId: string, filters?: ListFilters): Promise<PackageMetadata[]>`
@@ -131,6 +141,7 @@ Registers a new package in the database.
 Lists packages for a specific user with optional filtering.
 
 **Parameters:**
+
 - `userId: string` - User identifier
 - `filters?: ListFilters` - Optional filtering criteria
   - `platform?: string` - Filter by platform
@@ -147,6 +158,7 @@ Lists packages for a specific user with optional filtering.
 Updates package metadata.
 
 **Parameters:**
+
 - `configId: string` - Package configuration identifier
 - `updates: Partial<PackageMetadata>` - Fields to update
 
@@ -155,9 +167,11 @@ Updates package metadata.
 Retrieves a package by its configuration ID.
 
 **Parameters:**
+
 - `configId: string` - Package configuration identifier
 
 **Returns:**
+
 - `PackageMetadata | null` - Package metadata or null if not found
 
 ### SanitizationService
@@ -171,11 +185,13 @@ Removes sensitive data from packages before upload.
 Sanitizes a package by removing sensitive data.
 
 **Parameters:**
+
 - `buffer: Buffer` - Original package data
 - `fileName: string` - Package file name
 - `platform: PlatformConfig` - Platform configuration
 
 **Returns:**
+
 ```typescript
 interface SanitizationResult {
   sanitized: Buffer;
@@ -204,10 +220,12 @@ Validates input for security threats and malicious content.
 Validates user input for injection attempts and malicious patterns.
 
 **Parameters:**
+
 - `input: unknown` - Input to validate
 - `fieldName: string` - Field name for error reporting
 
 **Returns:**
+
 ```typescript
 interface SecurityValidationResult {
   isValid: boolean;
@@ -222,6 +240,7 @@ interface SecurityValidationResult {
 Detects malicious content in binary data.
 
 **Parameters:**
+
 - `buffer: Buffer` - Binary data to scan
 
 ##### `validateFilePath(filePath: string): SecurityValidationResult`
@@ -229,6 +248,7 @@ Detects malicious content in binary data.
 Validates file paths for traversal attempts and suspicious patterns.
 
 **Parameters:**
+
 - `filePath: string` - File path to validate
 
 ### RateLimiterService
@@ -242,10 +262,12 @@ Enforces upload and bandwidth limits based on user tier.
 Checks if user has exceeded rate limits.
 
 **Parameters:**
+
 - `userId: string` - User identifier
 - `tier: UserTier` - User subscription tier
 
 **Returns:**
+
 ```typescript
 interface RateLimitResult {
   allowed: boolean;
@@ -260,6 +282,7 @@ interface RateLimitResult {
 Records an upload for rate limit tracking.
 
 **Parameters:**
+
 - `userId: string` - User identifier
 - `size: number` - Upload size in bytes
 
@@ -274,6 +297,7 @@ Manages offline upload queue for resilient operations.
 Adds a failed upload to the retry queue.
 
 **Parameters:**
+
 - `upload: QueuedUpload` - Upload metadata and configuration
 
 ##### `processQueue(): Promise<ProcessQueueResult>`
@@ -281,6 +305,7 @@ Adds a failed upload to the retry queue.
 Processes all queued uploads with retry logic.
 
 **Returns:**
+
 ```typescript
 interface ProcessQueueResult {
   processed: number;
@@ -295,6 +320,7 @@ interface ProcessQueueResult {
 Gets current queue status and statistics.
 
 **Returns:**
+
 ```typescript
 interface QueueStatus {
   count: number;
@@ -315,6 +341,7 @@ Tracks usage metrics and generates insights.
 Records an analytics event.
 
 **Parameters:**
+
 - `event: AnalyticsEvent` - Event to track
   - `type: 'upload' | 'download' | 'view' | 'like' | 'share'`
   - `packageId: string`
@@ -327,10 +354,12 @@ Records an analytics event.
 Gets statistics for a specific package.
 
 **Parameters:**
+
 - `packageId: string` - Package identifier
 - `period?: TimePeriod` - Time period for statistics
 
 **Returns:**
+
 ```typescript
 interface PackageStats {
   downloads: number;
@@ -354,6 +383,7 @@ Comprehensive audit logging for security and compliance.
 Logs a package upload operation.
 
 **Parameters:**
+
 - `userId: string` - User identifier
 - `packageMetadata: PackageMetadata` - Package metadata
 - `securityContext: SecurityContext` - Security context information
@@ -366,6 +396,7 @@ Logs a package upload operation.
 Logs a security-related event.
 
 **Parameters:**
+
 - `event: SecurityEvent` - Security event details
 
 ### SecureStorageService
@@ -379,6 +410,7 @@ Platform-specific secure credential storage.
 Stores a credential securely.
 
 **Parameters:**
+
 - `namespace: string` - Credential namespace
 - `key: string` - Credential key
 - `value: string` - Credential value
@@ -390,11 +422,13 @@ Stores a credential securely.
 Retrieves a stored credential.
 
 **Parameters:**
+
 - `namespace: string` - Credential namespace
 - `key: string` - Credential key
 - `decrypt?: boolean` - Whether to decrypt (default: true)
 
 **Returns:**
+
 - `string | null` - Credential value or null if not found
 
 ### OperationLockService
@@ -408,12 +442,14 @@ File-based locking for concurrent operation protection.
 Acquires a lock for an operation.
 
 **Parameters:**
+
 - `operation: string` - Operation type
 - `resourceId: string` - Resource identifier
 - `userId?: string` - User identifier
 - `timeout?: number` - Lock timeout in milliseconds
 
 **Returns:**
+
 - `boolean` - True if lock acquired, false otherwise
 
 ##### `releaseLock(operation: string, resourceId: string, userId?: string): Promise<void>`
@@ -421,6 +457,7 @@ Acquires a lock for an operation.
 Releases a previously acquired lock.
 
 **Parameters:**
+
 - `operation: string` - Operation type
 - `resourceId: string` - Resource identifier
 - `userId?: string` - User identifier
@@ -634,7 +671,7 @@ class PushError extends Error {
     public code: string,
     message: string,
     public context?: PushErrorContext,
-    public cause?: Error
+    public cause?: Error,
   ) {
     super(message);
     this.name = 'PushError';
@@ -652,27 +689,27 @@ class PushError extends Error {
 
 ### Error Codes
 
-| Code | Category | Description | Retryable |
-|------|----------|-------------|-----------|
-| `PUSH_AUTH_001` | Authentication | Not authenticated | No |
-| `PUSH_AUTH_002` | Authentication | Invalid credentials | No |
-| `PUSH_AUTH_003` | Authentication | Session expired | Yes |
-| `PUSH_VAL_001` | Validation | Invalid package format | No |
-| `PUSH_VAL_002` | Validation | Package too large | No |
-| `PUSH_VAL_003` | Validation | Missing required fields | No |
-| `PUSH_VAL_004` | Validation | Invalid checksum | No |
-| `PUSH_SEC_001` | Security | Malicious content detected | No |
-| `PUSH_SEC_002` | Security | Sensitive data detected | No |
-| `PUSH_SEC_003` | Security | Injection attempt detected | No |
-| `PUSH_SEC_004` | Security | Unauthorized access | No |
-| `PUSH_NET_001` | Network | Connection timeout | Yes |
-| `PUSH_NET_002` | Network | Upload failed | Yes |
-| `PUSH_NET_003` | Network | Server unavailable | Yes |
-| `PUSH_RATE_001` | RateLimit | Upload limit exceeded | Yes |
-| `PUSH_RATE_002` | RateLimit | Bandwidth limit exceeded | Yes |
-| `PUSH_SYS_001` | System | Internal server error | Yes |
-| `PUSH_SYS_002` | System | Database error | Yes |
-| `PUSH_SYS_003` | System | Storage error | Yes |
+| Code            | Category       | Description                | Retryable |
+| --------------- | -------------- | -------------------------- | --------- |
+| `PUSH_AUTH_001` | Authentication | Not authenticated          | No        |
+| `PUSH_AUTH_002` | Authentication | Invalid credentials        | No        |
+| `PUSH_AUTH_003` | Authentication | Session expired            | Yes       |
+| `PUSH_VAL_001`  | Validation     | Invalid package format     | No        |
+| `PUSH_VAL_002`  | Validation     | Package too large          | No        |
+| `PUSH_VAL_003`  | Validation     | Missing required fields    | No        |
+| `PUSH_VAL_004`  | Validation     | Invalid checksum           | No        |
+| `PUSH_SEC_001`  | Security       | Malicious content detected | No        |
+| `PUSH_SEC_002`  | Security       | Sensitive data detected    | No        |
+| `PUSH_SEC_003`  | Security       | Injection attempt detected | No        |
+| `PUSH_SEC_004`  | Security       | Unauthorized access        | No        |
+| `PUSH_NET_001`  | Network        | Connection timeout         | Yes       |
+| `PUSH_NET_002`  | Network        | Upload failed              | Yes       |
+| `PUSH_NET_003`  | Network        | Server unavailable         | Yes       |
+| `PUSH_RATE_001` | RateLimit      | Upload limit exceeded      | Yes       |
+| `PUSH_RATE_002` | RateLimit      | Bandwidth limit exceeded   | Yes       |
+| `PUSH_SYS_001`  | System         | Internal server error      | Yes       |
+| `PUSH_SYS_002`  | System         | Database error             | Yes       |
+| `PUSH_SYS_003`  | System         | Storage error              | Yes       |
 
 ## Events
 
@@ -767,18 +804,18 @@ async function uploadPackage(pushService: PushService) {
       title: 'My Vim Configuration',
       description: 'Optimized Vim setup for TypeScript development',
       tags: ['vim', 'typescript', 'productivity'],
-      version: '2.0.0'
+      version: '2.0.0',
     });
 
     if (result.success) {
       console.log(`Package uploaded: ${result.configId}`);
-      
+
       if (result.sanitizationReport) {
         console.log(`Removed ${result.sanitizationReport.removedCount} sensitive items`);
       }
     } else {
       console.error(`Upload failed: ${result.error?.message}`);
-      
+
       if (result.error?.retryable) {
         // Can retry the upload
         setTimeout(() => uploadPackage(pushService), 5000);
@@ -796,21 +833,17 @@ async function uploadPackage(pushService: PushService) {
 import { PushService } from '@modules/push/services/push.service';
 import { LocalQueueService } from '@modules/push/services/local-queue.service';
 
-async function batchUpload(
-  pushService: PushService,
-  queueService: LocalQueueService,
-  packages: string[]
-) {
+async function batchUpload(pushService: PushService, queueService: LocalQueueService, packages: string[]) {
   const results = [];
-  
+
   for (const packagePath of packages) {
     try {
       const result = await pushService.pushPackage({
         filePath: packagePath,
         userId: 'user-123',
-        isPublic: false
+        isPublic: false,
       });
-      
+
       results.push(result);
     } catch (error) {
       // Add to queue for retry
@@ -820,21 +853,21 @@ async function batchUpload(
         options: {
           filePath: packagePath,
           userId: 'user-123',
-          isPublic: false
+          isPublic: false,
         },
         retryCount: 0,
         lastError: error.message,
         createdAt: new Date(),
         nextRetryAt: new Date(Date.now() + 60000),
-        status: 'pending'
+        status: 'pending',
       });
     }
   }
-  
+
   // Process queue later
   const queueResult = await queueService.processQueue();
   console.log(`Processed ${queueResult.successful}/${queueResult.processed} queued uploads`);
-  
+
   return results;
 }
 ```
@@ -844,18 +877,15 @@ async function batchUpload(
 ```typescript
 import { SecurityValidatorService } from '@modules/push/services/security-validator.service';
 
-async function validateUserInput(
-  validator: SecurityValidatorService,
-  userInput: string
-) {
+async function validateUserInput(validator: SecurityValidatorService, userInput: string) {
   const result = validator.validateInput(userInput, 'packageTitle');
-  
+
   if (!result.isValid) {
     console.error('Security issues detected:');
-    result.issues.forEach(issue => {
+    result.issues.forEach((issue) => {
       console.error(`- ${issue.type}: ${issue.message}`);
     });
-    
+
     if (result.riskLevel === 'critical') {
       // Block the operation
       throw new Error('Critical security risk detected');
@@ -864,7 +894,7 @@ async function validateUserInput(
       return result.sanitizedValue;
     }
   }
-  
+
   return userInput;
 }
 ```
@@ -874,21 +904,14 @@ async function validateUserInput(
 ```typescript
 import { RateLimiterService } from '@modules/push/services/rate-limiter.service';
 
-async function checkUploadAllowed(
-  rateLimiter: RateLimiterService,
-  userId: string,
-  userTier: 'free' | 'pro'
-) {
+async function checkUploadAllowed(rateLimiter: RateLimiterService, userId: string, userTier: 'free' | 'pro') {
   const result = await rateLimiter.checkLimit(userId, userTier);
-  
+
   if (!result.allowed) {
     const resetTime = result.resetAt.toLocaleTimeString();
-    throw new Error(
-      `Upload limit exceeded. You have 0 uploads remaining. ` +
-      `Limit resets at ${resetTime}.`
-    );
+    throw new Error(`Upload limit exceeded. You have 0 uploads remaining. ` + `Limit resets at ${resetTime}.`);
   }
-  
+
   console.log(`You have ${result.remaining} uploads remaining today.`);
   return true;
 }
@@ -901,25 +924,21 @@ async function checkUploadAllowed(
 Always check for retryable errors and implement exponential backoff:
 
 ```typescript
-async function uploadWithRetry(
-  pushService: PushService,
-  options: PushOptions,
-  maxRetries: number = 3
-) {
+async function uploadWithRetry(pushService: PushService, options: PushOptions, maxRetries: number = 3) {
   let lastError: PushError;
-  
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       const result = await pushService.pushPackage(options);
-      
+
       if (result.success) {
         return result;
       }
-      
+
       if (result.error && !result.error.retryable) {
         throw result.error;
       }
-      
+
       lastError = result.error;
     } catch (error) {
       if (error instanceof PushError && !error.retryable) {
@@ -927,12 +946,12 @@ async function uploadWithRetry(
       }
       lastError = error;
     }
-    
+
     // Exponential backoff
     const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
-    await new Promise(resolve => setTimeout(resolve, delay));
+    await new Promise((resolve) => setTimeout(resolve, delay));
   }
-  
+
   throw lastError;
 }
 ```
@@ -944,31 +963,31 @@ Always validate and sanitize user input:
 ```typescript
 function preparePackageMetadata(userInput: any): CreatePackageDto {
   const dto = new CreatePackageDto();
-  
+
   // Validate and sanitize each field
   dto.title = sanitizeString(userInput.title, 100);
   dto.description = sanitizeString(userInput.description, 500);
-  dto.tags = userInput.tags?.map(tag => sanitizeString(tag, 20)).slice(0, 10);
+  dto.tags = userInput.tags?.map((tag) => sanitizeString(tag, 20)).slice(0, 10);
   dto.isPublic = Boolean(userInput.isPublic);
-  
+
   // Validate DTO
   const errors = validateSync(dto);
   if (errors.length > 0) {
     throw new ValidationError('Invalid package metadata', errors);
   }
-  
+
   return dto;
 }
 
 function sanitizeString(input: unknown, maxLength: number): string {
   if (typeof input !== 'string') return '';
-  
+
   // Remove control characters and trim
   const sanitized = input
     .replace(/[\x00-\x1F\x7F]/g, '')
     .trim()
     .slice(0, maxLength);
-  
+
   return sanitized;
 }
 ```
@@ -978,25 +997,17 @@ function sanitizeString(input: unknown, maxLength: number): string {
 Use chunked uploads for large files:
 
 ```typescript
-async function uploadLargeFile(
-  uploader: CloudUploadService,
-  filePath: string,
-  userId: string
-) {
+async function uploadLargeFile(uploader: CloudUploadService, filePath: string, userId: string) {
   const stats = await fs.stat(filePath);
-  
-  if (stats.size > 10 * 1024 * 1024) { // 10MB
+
+  if (stats.size > 10 * 1024 * 1024) {
+    // 10MB
     // Use chunked upload
     const buffer = await fs.readFile(filePath);
-    
-    return uploader.uploadPackage(
-      buffer,
-      path.basename(filePath),
-      userId,
-      (progress) => {
-        console.log(`Upload progress: ${progress.percentage}%`);
-      }
-    );
+
+    return uploader.uploadPackage(buffer, path.basename(filePath), userId, (progress) => {
+      console.log(`Upload progress: ${progress.percentage}%`);
+    });
   } else {
     // Small file, upload directly
     const buffer = await fs.readFile(filePath);
@@ -1010,18 +1021,13 @@ async function uploadLargeFile(
 Track all operations for debugging and analytics:
 
 ```typescript
-async function monitoredUpload(
-  pushService: PushService,
-  auditLogger: AuditLoggerService,
-  analytics: AnalyticsService,
-  options: PushOptions
-) {
+async function monitoredUpload(pushService: PushService, auditLogger: AuditLoggerService, analytics: AnalyticsService, options: PushOptions) {
   const startTime = Date.now();
   let result: PushResult;
-  
+
   try {
     result = await pushService.pushPackage(options);
-    
+
     // Track success
     await analytics.trackEvent({
       type: 'upload',
@@ -1030,24 +1036,16 @@ async function monitoredUpload(
       metadata: {
         duration: Date.now() - startTime,
         size: options.packageSize,
-        platform: options.platform
-      }
+        platform: options.platform,
+      },
     });
-    
   } catch (error) {
     // Log failure
-    await auditLogger.logPackageUpload(
-      options.userId,
-      null,
-      { ipAddress: getClientIP(), userAgent: getUserAgent() },
-      Date.now() - startTime,
-      false,
-      error
-    );
-    
+    await auditLogger.logPackageUpload(options.userId, null, { ipAddress: getClientIP(), userAgent: getUserAgent() }, Date.now() - startTime, false, error);
+
     throw error;
   }
-  
+
   return result;
 }
 ```
@@ -1074,14 +1072,16 @@ describe('PackageValidatorService', () => {
   });
 
   it('should validate package structure', async () => {
-    const validPackage = Buffer.from(JSON.stringify({
-      name: 'test-package',
-      version: '1.0.0',
-      platform: 'claude-code'
-    }));
+    const validPackage = Buffer.from(
+      JSON.stringify({
+        name: 'test-package',
+        version: '1.0.0',
+        platform: 'claude-code',
+      }),
+    );
 
     const result = await service.validatePackage(validPackage, 'test.taptik');
-    
+
     expect(result.isValid).toBe(true);
     expect(result.issues).toHaveLength(0);
   });
@@ -1090,11 +1090,9 @@ describe('PackageValidatorService', () => {
     const invalidPackage = Buffer.from('not json');
 
     const result = await service.validatePackage(invalidPackage, 'test.taptik');
-    
+
     expect(result.isValid).toBe(false);
-    expect(result.issues).toContainEqual(
-      expect.objectContaining({ type: 'INVALID_FORMAT' })
-    );
+    expect(result.issues).toContainEqual(expect.objectContaining({ type: 'INVALID_FORMAT' }));
   });
 });
 ```
@@ -1119,7 +1117,7 @@ describe('PushService Integration', () => {
 
     pushService = module.get<PushService>(PushService);
     supabaseService = module.get<SupabaseService>(SupabaseService);
-    
+
     // Mock Supabase client
     jest.spyOn(supabaseService, 'getClient').mockReturnValue(mockClient);
   });
@@ -1128,7 +1126,7 @@ describe('PushService Integration', () => {
     const result = await pushService.pushPackage({
       filePath: '/test/package.taptik',
       userId: 'test-user',
-      isPublic: false
+      isPublic: false,
     });
 
     expect(result.success).toBe(true);
@@ -1143,25 +1141,27 @@ describe('PushService Integration', () => {
 ### Migrating from Local Storage
 
 1. Export existing local packages:
+
 ```bash
 taptik list --local --format json > local-packages.json
 ```
 
 2. Upload to cloud:
+
 ```typescript
 import { readFile } from 'fs/promises';
 import { PushService } from '@modules/push/services/push.service';
 
 async function migratePackages(pushService: PushService) {
   const packages = JSON.parse(await readFile('local-packages.json', 'utf-8'));
-  
+
   for (const pkg of packages) {
     await pushService.pushPackage({
       filePath: pkg.path,
       userId: 'user-123',
       isPublic: false,
       title: pkg.name,
-      tags: pkg.tags
+      tags: pkg.tags,
     });
   }
 }
@@ -1180,16 +1180,16 @@ Version 2 introduces breaking changes:
 
 ### Environment Variables
 
-| Variable | Required | Description | Default |
-|----------|----------|-------------|---------|
-| `SUPABASE_URL` | Yes | Supabase project URL | - |
-| `SUPABASE_ANON_KEY` | Yes | Supabase anonymous key | - |
-| `PUSH_CHUNK_SIZE` | No | Upload chunk size in bytes | 5242880 (5MB) |
-| `PUSH_RATE_LIMIT_WINDOW` | No | Rate limit window in seconds | 86400 (24 hours) |
-| `PUSH_MAX_RETRIES` | No | Maximum upload retries | 3 |
-| `PUSH_QUEUE_SYNC_INTERVAL` | No | Queue sync interval in seconds | 30 |
-| `PUSH_AUDIT_LOG_BUFFER_SIZE` | No | Audit log buffer size | 100 |
-| `PUSH_SECURE_STORAGE_KEY` | No | Encryption key for secure storage | Auto-generated |
+| Variable                     | Required | Description                       | Default          |
+| ---------------------------- | -------- | --------------------------------- | ---------------- |
+| `SUPABASE_URL`               | Yes      | Supabase project URL              | -                |
+| `SUPABASE_ANON_KEY`          | Yes      | Supabase anonymous key            | -                |
+| `PUSH_CHUNK_SIZE`            | No       | Upload chunk size in bytes        | 5242880 (5MB)    |
+| `PUSH_RATE_LIMIT_WINDOW`     | No       | Rate limit window in seconds      | 86400 (24 hours) |
+| `PUSH_MAX_RETRIES`           | No       | Maximum upload retries            | 3                |
+| `PUSH_QUEUE_SYNC_INTERVAL`   | No       | Queue sync interval in seconds    | 30               |
+| `PUSH_AUDIT_LOG_BUFFER_SIZE` | No       | Audit log buffer size             | 100              |
+| `PUSH_SECURE_STORAGE_KEY`    | No       | Encryption key for secure storage | Auto-generated   |
 
 ### Database Schema
 
@@ -1302,7 +1302,7 @@ const policies = [
       ON storage.objects FOR INSERT
       TO authenticated
       WITH CHECK (bucket_id = 'taptik-packages');
-    `
+    `,
   },
   {
     name: 'Users can read own files',
@@ -1314,7 +1314,7 @@ const policies = [
         bucket_id = 'taptik-packages' AND 
         auth.uid()::text = (storage.foldername(name))[1]
       );
-    `
+    `,
   },
   {
     name: 'Public packages are readable',
@@ -1330,7 +1330,7 @@ const policies = [
           AND is_public = true
         )
       );
-    `
-  }
+    `,
+  },
 ];
 ```

@@ -68,12 +68,12 @@ interface PushOptionsV1 {
 // v2.0 API
 interface PushOptionsV2 {
   filePath: string; // Renamed from 'file'
-  userId: string;   // Renamed from 'user'
+  userId: string; // Renamed from 'user'
   isPublic?: boolean; // Renamed from 'public'
-  title?: string;   // Flattened from metadata
+  title?: string; // Flattened from metadata
   description?: string; // New field
-  tags?: string[];  // Flattened from metadata
-  teamId?: string;  // New field
+  tags?: string[]; // Flattened from metadata
+  teamId?: string; // New field
   version?: string; // New field
 }
 ```
@@ -85,18 +85,15 @@ interface PushOptionsV2 {
 import { createClient } from '@supabase/supabase-js';
 
 export async function migrateV1ToV2() {
-  const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_KEY!
-  );
+  const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 
   console.log('Starting v1 to v2 migration...');
 
   // Step 1: Backup existing data
   console.log('Creating backup...');
-  await supabase.rpc('create_backup', { 
+  await supabase.rpc('create_backup', {
     table_name: 'taptik_packages',
-    backup_name: 'pre_v2_migration'
+    backup_name: 'pre_v2_migration',
   });
 
   // Step 2: Add new columns
@@ -110,15 +107,12 @@ export async function migrateV1ToV2() {
       ADD COLUMN IF NOT EXISTS likes INTEGER DEFAULT 0,
       ADD COLUMN IF NOT EXISTS views INTEGER DEFAULT 0,
       ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
-    `
+    `,
   });
 
   // Step 3: Migrate data
   console.log('Migrating data...');
-  const { data: packages, error } = await supabase
-    .from('taptik_packages')
-    .select('*')
-    .is('description', null);
+  const { data: packages, error } = await supabase.from('taptik_packages').select('*').is('description', null);
 
   if (error) {
     throw new Error(`Failed to fetch packages: ${error.message}`);
@@ -127,7 +121,7 @@ export async function migrateV1ToV2() {
   for (const pkg of packages) {
     // Extract metadata from JSON if stored that way
     const metadata = pkg.metadata || {};
-    
+
     await supabase
       .from('taptik_packages')
       .update({
@@ -149,7 +143,7 @@ export async function migrateV1ToV2() {
       
       CREATE INDEX IF NOT EXISTS idx_packages_likes 
       ON taptik_packages(likes) WHERE likes > 0;
-    `
+    `,
   });
 
   // Step 5: Update RLS policies
@@ -157,7 +151,7 @@ export async function migrateV1ToV2() {
   await updateRLSPolicies(supabase);
 
   console.log('Migration completed successfully!');
-  
+
   return {
     success: true,
     packagesUpdated: packages.length,
@@ -170,7 +164,7 @@ async function updateRLSPolicies(supabase: any) {
     sql: `
       DROP POLICY IF EXISTS "Users can view public packages" ON taptik_packages;
       DROP POLICY IF EXISTS "Users can manage own packages" ON taptik_packages;
-    `
+    `,
   });
 
   // Create new policies
@@ -191,18 +185,18 @@ async function updateRLSPolicies(supabase: any) {
       ON taptik_packages FOR ALL
       USING (auth.uid() = user_id)
       WITH CHECK (auth.uid() = user_id);
-    `
+    `,
   });
 }
 
 // Run migration
 if (require.main === module) {
   migrateV1ToV2()
-    .then(result => {
+    .then((result) => {
       console.log('Migration result:', result);
       process.exit(0);
     })
-    .catch(error => {
+    .catch((error) => {
       console.error('Migration failed:', error);
       process.exit(1);
     });
@@ -231,25 +225,20 @@ export async function migrateV2ToV21() {
       CREATE INDEX idx_analytics_package ON package_analytics(package_id);
       CREATE INDEX idx_analytics_event ON package_analytics(event_type);
       CREATE INDEX idx_analytics_created ON package_analytics(created_at DESC);
-    `
+    `,
   });
 
   // Migrate existing download counts
-  const { data: packages } = await supabase
-    .from('taptik_packages')
-    .select('id, download_count')
-    .gt('download_count', 0);
+  const { data: packages } = await supabase.from('taptik_packages').select('id, download_count').gt('download_count', 0);
 
   for (const pkg of packages) {
     // Create historical download events
     for (let i = 0; i < pkg.download_count; i++) {
-      await supabase
-        .from('package_analytics')
-        .insert({
-          package_id: pkg.id,
-          event_type: 'download',
-          metadata: { migrated: true },
-        });
+      await supabase.from('package_analytics').insert({
+        package_id: pkg.id,
+        event_type: 'download',
+        metadata: { migrated: true },
+      });
     }
   }
 }
@@ -280,18 +269,15 @@ export async function exportLocalPackages(): Promise<LocalPackage[]> {
 
   // Scan local directory
   const files = await fs.readdir(localDir, { withFileTypes: true });
-  
+
   for (const file of files) {
     if (file.isFile() && file.name.endsWith('.taptik')) {
       const filePath = path.join(localDir, file.name);
       const stats = await fs.stat(filePath);
       const content = await fs.readFile(filePath);
-      
+
       // Calculate checksum
-      const checksum = crypto
-        .createHash('sha256')
-        .update(content)
-        .digest('hex');
+      const checksum = crypto.createHash('sha256').update(content).digest('hex');
 
       // Parse package metadata
       let metadata = {};
@@ -315,10 +301,7 @@ export async function exportLocalPackages(): Promise<LocalPackage[]> {
   }
 
   // Save manifest
-  await fs.writeFile(
-    'local-packages-manifest.json',
-    JSON.stringify(packages, null, 2)
-  );
+  await fs.writeFile('local-packages-manifest.json', JSON.stringify(packages, null, 2));
 
   console.log(`Exported ${packages.length} packages`);
   return packages;
@@ -331,10 +314,7 @@ export async function exportLocalPackages(): Promise<LocalPackage[]> {
 // scripts/upload-local-packages.ts
 import { PushService } from '../src/modules/push/services/push.service';
 
-export async function uploadLocalPackages(
-  manifest: LocalPackage[],
-  options: UploadOptions = {}
-) {
+export async function uploadLocalPackages(manifest: LocalPackage[], options: UploadOptions = {}) {
   const pushService = new PushService(/* dependencies */);
   const results = {
     successful: 0,
@@ -349,14 +329,14 @@ export async function uploadLocalPackages(
 
   for (let i = 0; i < manifest.length; i += batchSize) {
     const batch = manifest.slice(i, i + batchSize);
-    
+
     console.log(`Processing batch ${Math.floor(i / batchSize) + 1}`);
-    
+
     const uploads = batch.map(async (pkg) => {
       try {
         // Check if already uploaded
         const existing = await pushService.getPackageByChecksum(pkg.checksum);
-        
+
         if (existing && !options.force) {
           console.log(`Skipping ${pkg.name} (already uploaded)`);
           results.skipped++;
@@ -382,7 +362,7 @@ export async function uploadLocalPackages(
         if (result.success) {
           console.log(`✓ Uploaded ${pkg.name}`);
           results.successful++;
-          
+
           // Optionally remove local file
           if (options.removeLocal) {
             await fs.unlink(pkg.path);
@@ -401,10 +381,10 @@ export async function uploadLocalPackages(
     });
 
     await Promise.all(uploads);
-    
+
     // Rate limiting delay
     if (i + batchSize < manifest.length) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
 
@@ -414,22 +394,22 @@ export async function uploadLocalPackages(
 // Main migration script
 export async function migrateLocalToCloud() {
   console.log('Starting local to cloud migration...');
-  
+
   // Step 1: Export local packages
   const manifest = await exportLocalPackages();
-  
+
   // Step 2: Verify export
   console.log(`Found ${manifest.length} packages to migrate`);
   const totalSize = manifest.reduce((sum, pkg) => sum + pkg.size, 0);
   console.log(`Total size: ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
-  
+
   // Step 3: Confirm migration
   const proceed = await confirm('Proceed with migration?');
   if (!proceed) {
     console.log('Migration cancelled');
     return;
   }
-  
+
   // Step 4: Upload packages
   const results = await uploadLocalPackages(manifest, {
     userId: process.env.USER_ID!,
@@ -438,25 +418,25 @@ export async function migrateLocalToCloud() {
     removeLocal: false,
     dryRun: false,
   });
-  
+
   // Step 5: Report results
   console.log('\nMigration Results:');
   console.log(`✓ Successful: ${results.successful}`);
   console.log(`⊘ Skipped: ${results.skipped}`);
   console.log(`✗ Failed: ${results.failed}`);
-  
+
   if (results.errors.length > 0) {
     console.log('\nErrors:');
-    results.errors.forEach(err => {
+    results.errors.forEach((err) => {
       console.log(`  - ${err.package}: ${err.error}`);
     });
   }
-  
+
   // Step 6: Verification
   console.log('\nVerifying migration...');
   const cloudPackages = await pushService.listUserPackages(process.env.USER_ID!);
   console.log(`Cloud packages: ${cloudPackages.length}`);
-  
+
   return results;
 }
 ```
@@ -467,64 +447,52 @@ export async function migrateLocalToCloud() {
 
 ```typescript
 // scripts/migrate-platform.ts
-export async function migratePlatform(
-  fromPlatform: string,
-  toPlatform: string
-) {
+export async function migratePlatform(fromPlatform: string, toPlatform: string) {
   // Platform-specific transformations
   const transformers = {
     'claude-code': {
-      'cursor': transformClaudeCodeToCursor,
-      'kiro': transformClaudeCodeToKiro,
-      'vim': transformClaudeCodeToVim,
+      cursor: transformClaudeCodeToCursor,
+      kiro: transformClaudeCodeToKiro,
+      vim: transformClaudeCodeToVim,
     },
-    'cursor': {
+    cursor: {
       'claude-code': transformCursorToClaudeCode,
-      'kiro': transformCursorToKiro,
+      kiro: transformCursorToKiro,
     },
     // ... more transformers
   };
 
   const transformer = transformers[fromPlatform]?.[toPlatform];
-  
+
   if (!transformer) {
     throw new Error(`No transformer from ${fromPlatform} to ${toPlatform}`);
   }
 
   // Get packages to migrate
-  const packages = await supabase
-    .from('taptik_packages')
-    .select('*')
-    .eq('platform', fromPlatform);
+  const packages = await supabase.from('taptik_packages').select('*').eq('platform', fromPlatform);
 
   const migrated = [];
 
   for (const pkg of packages.data) {
     // Download package
-    const { data: file } = await supabase.storage
-      .from('taptik-packages')
-      .download(pkg.storage_url);
+    const { data: file } = await supabase.storage.from('taptik-packages').download(pkg.storage_url);
 
     // Transform package
     const transformed = await transformer(file);
 
     // Upload transformed package
     const newPath = pkg.storage_url.replace(fromPlatform, toPlatform);
-    await supabase.storage
-      .from('taptik-packages')
-      .upload(newPath, transformed);
+    await supabase.storage.from('taptik-packages').upload(newPath, transformed);
 
     // Create new package record
-    await supabase
-      .from('taptik_packages')
-      .insert({
-        ...pkg,
-        id: undefined,
-        platform: toPlatform,
-        storage_url: newPath,
-        name: `${pkg.name}_${toPlatform}`,
-        created_at: new Date(),
-      });
+    await supabase.from('taptik_packages').insert({
+      ...pkg,
+      id: undefined,
+      platform: toPlatform,
+      storage_url: newPath,
+      name: `${pkg.name}_${toPlatform}`,
+      created_at: new Date(),
+    });
 
     migrated.push(pkg.id);
   }
@@ -535,7 +503,7 @@ export async function migratePlatform(
 // Platform-specific transformers
 function transformClaudeCodeToCursor(data: Buffer): Buffer {
   const package = JSON.parse(data.toString());
-  
+
   // Claude Code to Cursor transformation
   const transformed = {
     ...package,
@@ -578,11 +546,11 @@ BEGIN;
       -- Add team support
       ALTER TABLE taptik_packages
       ADD COLUMN team_id UUID REFERENCES teams(id);
-      
-      CREATE INDEX idx_packages_team 
-      ON taptik_packages(team_id) 
+
+      CREATE INDEX idx_packages_team
+      ON taptik_packages(team_id)
       WHERE team_id IS NOT NULL;
-      
+
       -- Record migration
       INSERT INTO schema_migrations (version, name)
       VALUES (2, 'add_team_support');
@@ -608,18 +576,18 @@ BEGIN;
         created_at TIMESTAMPTZ DEFAULT NOW(),
         UNIQUE(package_id, version)
       );
-      
+
       -- Migrate existing packages to versions
       INSERT INTO package_versions (
         package_id, version, storage_url, checksum
       )
-      SELECT 
-        id, 
+      SELECT
+        id,
         COALESCE(version, '1.0.0'),
         storage_url,
         checksum
       FROM taptik_packages;
-      
+
       INSERT INTO schema_migrations (version, name)
       VALUES (3, 'add_versioning');
     END IF;
@@ -640,10 +608,10 @@ export async function migrateData() {
 
   for (const migration of migrations) {
     const applied = await isMigrationApplied(migration.version);
-    
+
     if (!applied) {
       console.log(`Running migration ${migration.version}...`);
-      
+
       try {
         await migration.fn();
         await recordMigration(migration.version);
@@ -663,7 +631,7 @@ async function migration001_normalizeData() {
       UPDATE taptik_packages
       SET platform = LOWER(REPLACE(platform, ' ', '-'))
       WHERE platform != LOWER(REPLACE(platform, ' ', '-'));
-    `
+    `,
   });
 
   // Normalize tags
@@ -675,7 +643,7 @@ async function migration001_normalizeData() {
         FROM unnest(user_tags) AS tag
         WHERE TRIM(tag) != ''
       );
-    `
+    `,
   });
 }
 
@@ -694,28 +662,22 @@ async function migration002_addDefaults() {
         OR version IS NULL 
         OR download_count IS NULL 
         OR is_public IS NULL;
-    `
+    `,
   });
 }
 
 async function migration003_cleanupOrphans() {
   // Remove orphaned storage files
-  const { data: packages } = await supabase
-    .from('taptik_packages')
-    .select('storage_url');
+  const { data: packages } = await supabase.from('taptik_packages').select('storage_url');
 
-  const validUrls = new Set(packages.map(p => p.storage_url));
+  const validUrls = new Set(packages.map((p) => p.storage_url));
 
-  const { data: files } = await supabase.storage
-    .from('taptik-packages')
-    .list('packages');
+  const { data: files } = await supabase.storage.from('taptik-packages').list('packages');
 
   for (const file of files) {
     if (!validUrls.has(file.name)) {
       console.log(`Removing orphaned file: ${file.name}`);
-      await supabase.storage
-        .from('taptik-packages')
-        .remove([file.name]);
+      await supabase.storage.from('taptik-packages').remove([file.name]);
     }
   }
 }
@@ -734,14 +696,14 @@ export class CompatibilityLayer {
     if (request.headers['x-api-version']) {
       return request.headers['x-api-version'];
     }
-    
+
     // Check request structure
     if ('file' in request.body) {
       return '1.0'; // Old API
     } else if ('filePath' in request.body) {
       return '2.0'; // New API
     }
-    
+
     return '2.0'; // Default to latest
   }
 
@@ -758,7 +720,7 @@ export class CompatibilityLayer {
         tags: request.metadata?.tags,
       };
     }
-    
+
     return request;
   }
 
@@ -776,7 +738,7 @@ export class CompatibilityLayer {
         },
       };
     }
-    
+
     return response;
   }
 }
@@ -784,14 +746,14 @@ export class CompatibilityLayer {
 // Middleware for backward compatibility
 export function backwardCompatibilityMiddleware() {
   const compatibility = new CompatibilityLayer();
-  
+
   return (req: Request, res: Response, next: NextFunction) => {
     const version = compatibility.detectApiVersion(req);
-    
+
     if (version !== '2.0') {
       // Transform old request to new format
       req.body = compatibility.transformRequest(req.body, version, '2.0');
-      
+
       // Wrap response to transform back
       const originalJson = res.json.bind(res);
       res.json = (data: any) => {
@@ -799,7 +761,7 @@ export function backwardCompatibilityMiddleware() {
         return originalJson(transformed);
       };
     }
-    
+
     next();
   };
 }
@@ -813,7 +775,7 @@ export function backwardCompatibilityMiddleware() {
 // scripts/rollback-database.ts
 export async function rollbackDatabase(targetVersion: number) {
   const currentVersion = await getCurrentVersion();
-  
+
   if (targetVersion >= currentVersion) {
     throw new Error('Target version must be less than current version');
   }
@@ -825,7 +787,7 @@ export async function rollbackDatabase(targetVersion: number) {
 
   for (const rollback of rollbacks) {
     console.log(`Executing rollback ${rollback.version}...`);
-    
+
     try {
       await supabase.rpc('execute_sql', { sql: rollback.sql });
       await updateVersion(rollback.version - 1);
@@ -845,7 +807,7 @@ function getRollbackScripts(from: number, to: number): RollbackScript[] {
       sql: `
         DROP TABLE IF EXISTS package_versions CASCADE;
         DELETE FROM schema_migrations WHERE version = 3;
-      `
+      `,
     },
     {
       version: 2,
@@ -853,13 +815,11 @@ function getRollbackScripts(from: number, to: number): RollbackScript[] {
         ALTER TABLE taptik_packages DROP COLUMN IF EXISTS team_id;
         DROP INDEX IF EXISTS idx_packages_team;
         DELETE FROM schema_migrations WHERE version = 2;
-      `
+      `,
     },
   ];
 
-  return scripts
-    .filter(s => s.version > to && s.version <= from)
-    .sort((a, b) => b.version - a.version);
+  return scripts.filter((s) => s.version > to && s.version <= from).sort((a, b) => b.version - a.version);
 }
 ```
 
@@ -901,19 +861,14 @@ echo "Rollback to $VERSION completed"
 ```typescript
 // scripts/verify-migration.ts
 export async function verifyMigration() {
-  const checks = [
-    checkDataIntegrity,
-    checkStorageConsistency,
-    checkIndexes,
-    checkConstraints,
-  ];
+  const checks = [checkDataIntegrity, checkStorageConsistency, checkIndexes, checkConstraints];
 
   const results = [];
 
   for (const check of checks) {
     const result = await check();
     results.push(result);
-    
+
     if (!result.success) {
       console.error(`Check failed: ${result.name}`);
       console.error(result.errors);
@@ -937,7 +892,7 @@ async function checkDataIntegrity() {
         name IS NULL OR
         checksum IS NULL OR
         storage_url IS NULL
-    `
+    `,
   });
 
   if (nullChecks[0].count > 0) {
@@ -953,7 +908,7 @@ async function checkDataIntegrity() {
         SELECT 1 FROM auth.users u 
         WHERE u.id = p.user_id
       )
-    `
+    `,
   });
 
   if (orphans[0].count > 0) {
@@ -971,15 +926,11 @@ async function checkStorageConsistency() {
   const issues = [];
 
   // Get all package URLs from database
-  const { data: packages } = await supabase
-    .from('taptik_packages')
-    .select('id, storage_url');
+  const { data: packages } = await supabase.from('taptik_packages').select('id, storage_url');
 
   // Check each file exists in storage
   for (const pkg of packages) {
-    const { data, error } = await supabase.storage
-      .from('taptik-packages')
-      .download(pkg.storage_url);
+    const { data, error } = await supabase.storage.from('taptik-packages').download(pkg.storage_url);
 
     if (error) {
       issues.push(`Missing file for package ${pkg.id}: ${pkg.storage_url}`);
@@ -1003,17 +954,17 @@ export async function optimizeAfterMigration() {
 
   // Update statistics
   await supabase.rpc('execute_sql', {
-    sql: 'ANALYZE taptik_packages;'
+    sql: 'ANALYZE taptik_packages;',
   });
 
   // Rebuild indexes
   await supabase.rpc('execute_sql', {
-    sql: 'REINDEX TABLE taptik_packages;'
+    sql: 'REINDEX TABLE taptik_packages;',
   });
 
   // Vacuum to reclaim space
   await supabase.rpc('execute_sql', {
-    sql: 'VACUUM ANALYZE taptik_packages;'
+    sql: 'VACUUM ANALYZE taptik_packages;',
   });
 
   // Clear caches
@@ -1051,9 +1002,9 @@ export async function fixFailedMigration(version: number) {
 async function resumeMigration(version: number) {
   // Get checkpoint
   const checkpoint = await getCheckpoint(version);
-  
+
   console.log(`Resuming from checkpoint: ${checkpoint}`);
-  
+
   // Continue migration from checkpoint
   const migration = getMigrationByVersion(version);
   await migration.resume(checkpoint);
@@ -1061,13 +1012,13 @@ async function resumeMigration(version: number) {
 
 async function rollbackAndRetry(version: number) {
   console.log('Rolling back corrupted migration...');
-  
+
   // Rollback
   await rollbackDatabase(version - 1);
-  
+
   // Clean up
   await cleanupCorruptedData(version);
-  
+
   // Retry
   console.log('Retrying migration...');
   await runMigration(version);

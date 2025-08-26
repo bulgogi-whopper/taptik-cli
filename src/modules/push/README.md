@@ -16,6 +16,7 @@ The Push module enables seamless cloud synchronization of Taptik packages with S
 ## Overview
 
 The Push module provides:
+
 - **Cloud Storage**: Upload and store Taptik packages in Supabase
 - **Package Management**: CRUD operations for packages
 - **Security**: Automatic sanitization and malicious content detection
@@ -54,6 +55,7 @@ The Push module provides:
 
 1. **Supabase Project**: Create a project at [supabase.com](https://supabase.com)
 2. **Environment Variables**:
+
 ```bash
 SUPABASE_URL=your_project_url
 SUPABASE_ANON_KEY=your_anon_key
@@ -159,9 +161,10 @@ taptik push package.taptik --force
 ```
 
 **Options:**
+
 - `--public`: Make package publicly accessible
 - `--title <title>`: Package title
-- `--description <desc>`: Package description  
+- `--description <desc>`: Package description
 - `--tags <tags>`: Comma-separated tags
 - `--version <version>`: Override version
 - `--force`: Overwrite existing package
@@ -189,6 +192,7 @@ taptik list --cloud --format simple
 ```
 
 **Options:**
+
 - `--cloud`: List cloud packages (required)
 - `--platform <name>`: Filter by platform
 - `--visibility <type>`: Filter by public/private
@@ -211,6 +215,7 @@ taptik update config-id --tags "new,tags,here"
 ```
 
 **Options:**
+
 - `--title <title>`: New title
 - `--description <desc>`: New description
 - `--tags <tags>`: New tags (replaces existing)
@@ -228,6 +233,7 @@ taptik delete config-id --yes
 ```
 
 **Options:**
+
 - `--yes`: Skip confirmation prompt
 
 ### Visibility Command
@@ -238,11 +244,12 @@ Change package visibility:
 # Make public
 taptik visibility config-id --public
 
-# Make private  
+# Make private
 taptik visibility config-id --private
 ```
 
 **Options:**
+
 - `--public`: Make package public
 - `--private`: Make package private
 
@@ -262,6 +269,7 @@ taptik stats config-id --format json
 ```
 
 **Options:**
+
 - `--period <time>`: Time period (week/month/year/all)
 - `--format <type>`: Output format (table/json)
 
@@ -335,9 +343,9 @@ interface SanitizationReport {
 
 class SanitizationService {
   async sanitizePackage(
-    buffer: Buffer, 
+    buffer: Buffer,
     fileName: string,
-    platform: PlatformConfig
+    platform: PlatformConfig,
   ): Promise<{
     sanitized: Buffer;
     report: SanitizationReport;
@@ -350,6 +358,7 @@ class SanitizationService {
 ### Sensitive Data Sanitization
 
 The module automatically detects and removes:
+
 - API keys (AWS, Google, GitHub, Stripe, etc.)
 - Passwords and secrets
 - Email addresses (optional)
@@ -360,6 +369,7 @@ The module automatically detects and removes:
 ### Injection Prevention
 
 Protection against:
+
 - SQL injection
 - JavaScript/XSS injection
 - Command injection
@@ -370,6 +380,7 @@ Protection against:
 ### Malicious Content Detection
 
 Detects:
+
 - Executable files (PE, ELF, Mach-O)
 - Shell scripts with dangerous commands
 - High entropy data (encryption/obfuscation)
@@ -398,10 +409,10 @@ Detects:
 ### Rate Limits
 
 | Tier | Daily Uploads | Package Size | Bandwidth |
-|------|--------------|--------------|-----------|
-| Free | 100 | 10MB | 1GB |
-| Pro | 1000 | 100MB | 10GB |
-| Team | Unlimited | 500MB | Unlimited |
+| ---- | ------------- | ------------ | --------- |
+| Free | 100           | 10MB         | 1GB       |
+| Pro  | 1000          | 100MB        | 10GB      |
+| Team | Unlimited     | 500MB        | Unlimited |
 
 ### Performance Metrics
 
@@ -416,32 +427,32 @@ Detects:
 
 #### Authentication Errors
 
-**Problem**: "Not authenticated" error
-**Solution**: 
+**Problem**: "Not authenticated" error **Solution**:
+
 ```bash
 taptik auth login
 ```
 
 #### Rate Limit Exceeded
 
-**Problem**: "Rate limit exceeded" error
-**Solution**: 
+**Problem**: "Rate limit exceeded" error **Solution**:
+
 - Wait for limit reset (daily at UTC midnight)
 - Upgrade to Pro tier for higher limits
 - Use offline queue for batch uploads
 
 #### Package Too Large
 
-**Problem**: "Package exceeds size limit"
-**Solution**:
+**Problem**: "Package exceeds size limit" **Solution**:
+
 - Reduce package size
 - Remove unnecessary files
 - Upgrade tier for larger limits
 
 #### Network Timeouts
 
-**Problem**: Upload times out
-**Solution**:
+**Problem**: Upload times out **Solution**:
+
 - Check internet connection
 - Use chunked upload for large files
 - Enable resume on failure
@@ -449,8 +460,8 @@ taptik auth login
 
 #### Sanitization Removing Too Much
 
-**Problem**: Important data being removed
-**Solution**:
+**Problem**: Important data being removed **Solution**:
+
 - Review sanitization patterns
 - Use environment variables instead of hardcoded values
 - Mark false positives in config
@@ -466,6 +477,7 @@ DEBUG=taptik:push:* taptik push package.taptik
 ### Support
 
 For issues and questions:
+
 - GitHub Issues: [taptik-cli/issues](https://github.com/taptik/taptik-cli/issues)
 - Documentation: [docs.taptik.com](https://docs.taptik.com)
 - Discord: [discord.gg/taptik](https://discord.gg/taptik)
@@ -475,11 +487,13 @@ For issues and questions:
 ### From Local to Cloud
 
 1. **Export existing packages**:
+
 ```bash
 taptik list --local --format json > packages.json
 ```
 
 2. **Upload to cloud**:
+
 ```bash
 for package in *.taptik; do
   taptik push "$package"
@@ -487,6 +501,7 @@ done
 ```
 
 3. **Verify uploads**:
+
 ```bash
 taptik list --cloud
 ```

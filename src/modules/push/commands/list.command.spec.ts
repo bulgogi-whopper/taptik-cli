@@ -98,11 +98,14 @@ describe('ListCommand', () => {
     };
 
     // Directly instantiate the command with mocked services
-    command = new ListCommand(mockAuthService as any, mockPackageRegistry as any);
-    
+    command = new ListCommand(
+      mockAuthService as any,
+      mockPackageRegistry as any,
+    );
+
     // Mock process.exit
     vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
-    
+
     // Mock console methods
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -118,7 +121,7 @@ describe('ListCommand', () => {
       expect(mockAuthService.getSession).toHaveBeenCalled();
       expect(mockPackageRegistry.listUserPackages).toHaveBeenCalledWith(
         'test-user-id',
-        {}
+        {},
       );
       expect(console.log).toHaveBeenCalled();
     });
@@ -131,7 +134,7 @@ describe('ListCommand', () => {
 
       expect(mockPackageRegistry.listUserPackages).toHaveBeenCalledWith(
         'test-user-id',
-        { platform: 'claude-code' }
+        { platform: 'claude-code' },
       );
     });
 
@@ -143,7 +146,7 @@ describe('ListCommand', () => {
 
       expect(mockPackageRegistry.listUserPackages).toHaveBeenCalledWith(
         'test-user-id',
-        { isPublic: true }
+        { isPublic: true },
       );
     });
 
@@ -153,8 +156,9 @@ describe('ListCommand', () => {
 
       await command.run([], { format: 'json' });
 
-      const output = (console.log as any).mock.calls
-        .find((call: any[]) => call[0].includes('{'));
+      const output = (console.log as any).mock.calls.find((call: any[]) =>
+        call[0].includes('{'),
+      );
       expect(output).toBeDefined();
     });
 
@@ -201,7 +205,7 @@ describe('ListCommand', () => {
       await command.run([], {});
 
       expect(console.log).toHaveBeenCalledWith(
-        chalk.yellow('No packages found.')
+        chalk.yellow('No packages found.'),
       );
     });
 
@@ -216,7 +220,7 @@ describe('ListCommand', () => {
     it('should handle errors gracefully', async () => {
       mockAuthService.getSession.mockResolvedValue(mockSession);
       mockPackageRegistry.listUserPackages.mockRejectedValue(
-        new Error('Network error')
+        new Error('Network error'),
       );
 
       await command.run([], {});
@@ -238,7 +242,7 @@ describe('ListCommand', () => {
 
     it('should throw error for invalid visibility', () => {
       expect(() => command.parseVisibility('invalid')).toThrow(
-        'Visibility must be public, private, or all'
+        'Visibility must be public, private, or all',
       );
     });
 
@@ -248,10 +252,10 @@ describe('ListCommand', () => {
 
     it('should throw error for invalid limit', () => {
       expect(() => command.parseLimit('invalid')).toThrow(
-        'Limit must be a positive number'
+        'Limit must be a positive number',
       );
       expect(() => command.parseLimit('0')).toThrow(
-        'Limit must be a positive number'
+        'Limit must be a positive number',
       );
     });
 
@@ -264,7 +268,7 @@ describe('ListCommand', () => {
 
     it('should throw error for invalid sort field', () => {
       expect(() => command.parseSortBy('invalid')).toThrow(
-        'Sort field must be created, updated, downloads, or name'
+        'Sort field must be created, updated, downloads, or name',
       );
     });
 
@@ -276,7 +280,7 @@ describe('ListCommand', () => {
 
     it('should throw error for invalid format', () => {
       expect(() => command.parseFormat('invalid')).toThrow(
-        'Format must be table, json, or simple'
+        'Format must be table, json, or simple',
       );
     });
   });

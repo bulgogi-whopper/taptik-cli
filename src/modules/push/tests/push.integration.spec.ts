@@ -2,14 +2,29 @@ import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
 
-import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
+import { Test, TestingModule } from '@nestjs/testing';
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
+import { AuthModule } from '../../auth/auth.module';
+import { AuthService } from '../../auth/auth.service';
+import { DeployCoreModule } from '../../deploy/core/deploy-core.module';
+import { SupabaseModule } from '../../supabase/supabase.module';
+import { SupabaseService } from '../../supabase/supabase.service';
+import { PushModule } from '../push.module';
+import { AnalyticsService } from '../services/analytics.service';
+import { LocalQueueService } from '../services/local-queue.service';
+import { PackageRegistryService } from '../services/package-registry.service';
+import { PushService } from '../services/push.service';
+import { RateLimiterService } from '../services/rate-limiter.service';
+
 // Mock environment variables for Supabase
 vi.stubEnv('SUPABASE_URL', 'https://test-project.supabase.co');
-vi.stubEnv('SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test-key');
+vi.stubEnv(
+  'SUPABASE_ANON_KEY',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test-key',
+);
 vi.stubEnv('NODE_ENV', 'test');
 
 // Mock fs/promises for SecureStorageService and OperationLockService
@@ -29,20 +44,6 @@ vi.mock('fs/promises', async (importOriginal) => {
   };
 });
 
-import { AuthModule } from '../../auth/auth.module';
-import { AuthService } from '../../auth/auth.service';
-import { DeployCoreModule } from '../../deploy/core/deploy-core.module';
-import { SupabaseModule } from '../../supabase/supabase.module';
-import { SupabaseService } from '../../supabase/supabase.service';
-import { PackageVisibility } from '../interfaces';
-import { PushModule } from '../push.module';
-import { AnalyticsService } from '../services/analytics.service';
-import { CloudUploadService } from '../services/cloud-upload.service';
-import { LocalQueueService } from '../services/local-queue.service';
-import { PackageRegistryService } from '../services/package-registry.service';
-import { PushService } from '../services/push.service';
-import { RateLimiterService } from '../services/rate-limiter.service';
-
 describe('Push Module Integration Tests', () => {
   let module: TestingModule;
   let pushService: PushService;
@@ -54,7 +55,11 @@ describe('Push Module Integration Tests', () => {
 
   beforeEach(async () => {
     // Create temp directory for test files
-    tempDir = path.join(os.tmpdir(), 'taptik-integration-test', Date.now().toString());
+    tempDir = path.join(
+      os.tmpdir(),
+      'taptik-integration-test',
+      Date.now().toString(),
+    );
     await fs.mkdir(tempDir, { recursive: true });
 
     module = await Test.createTestingModule({
@@ -70,7 +75,9 @@ describe('Push Module Integration Tests', () => {
     }).compile();
 
     pushService = module.get<PushService>(PushService);
-    packageRegistry = module.get<PackageRegistryService>(PackageRegistryService);
+    packageRegistry = module.get<PackageRegistryService>(
+      PackageRegistryService,
+    );
     localQueue = module.get<LocalQueueService>(LocalQueueService);
     analytics = module.get<AnalyticsService>(AnalyticsService);
     rateLimiter = module.get<RateLimiterService>(RateLimiterService);
@@ -150,7 +157,7 @@ describe('Push Module Integration Tests', () => {
       expect(localQueue).toBeDefined();
       expect(analytics).toBeDefined();
       expect(rateLimiter).toBeDefined();
-      
+
       // Test that services have expected methods
       expect(typeof pushService.push).toBe('function');
       expect(typeof packageRegistry.listUserPackages).toBe('function');
@@ -161,7 +168,7 @@ describe('Push Module Integration Tests', () => {
       const supabaseService = module.get(SupabaseService);
       expect(supabaseService).toBeDefined();
       expect(supabaseService.getClient).toBeDefined();
-      
+
       // Test that mock client is working
       const client = supabaseService.getClient();
       expect(client).toBeDefined();
@@ -172,7 +179,7 @@ describe('Push Module Integration Tests', () => {
       const authService = module.get(AuthService);
       expect(authService).toBeDefined();
       expect(authService.getSession).toBeDefined();
-      
+
       // Test that mock session is working
       const session = await authService.getSession();
       expect(session).toBeDefined();
@@ -185,14 +192,16 @@ describe('Push Module Integration Tests', () => {
     it('should have working Supabase client mocks', async () => {
       const supabaseService = module.get(SupabaseService);
       const client = supabaseService.getClient();
-      
+
       // Test auth mock
       const userResult = await client.auth.getUser();
       expect(userResult.data.user).toBeDefined();
       expect(userResult.data.user.id).toBe('test-user');
-      
+
       // Test storage mock
-      const uploadResult = await client.storage.from('packages').upload('test.taptik', Buffer.from('test'));
+      const uploadResult = await client.storage
+        .from('packages')
+        .upload('test.taptik', Buffer.from('test'));
       expect(uploadResult.data).toBeDefined();
       expect(uploadResult.error).toBe(null);
     });
@@ -200,12 +209,17 @@ describe('Push Module Integration Tests', () => {
     it('should have working database mocks', async () => {
       const supabaseService = module.get(SupabaseService);
       const client = supabaseService.getClient();
-      
+
       // Test database operations
-      const insertResult = await client.from('taptik_packages').insert({ name: 'test' });
+      const insertResult = await client
+        .from('taptik_packages')
+        .insert({ name: 'test' });
       expect(insertResult.error).toBe(null);
-      
-      const selectResult = await client.from('taptik_packages').select().eq('id', 'test');
+
+      const selectResult = await client
+        .from('taptik_packages')
+        .select()
+        .eq('id', 'test');
       expect(selectResult.error).toBe(null);
     });
   });

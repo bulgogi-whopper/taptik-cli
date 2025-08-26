@@ -5,37 +5,39 @@ import { Logger } from '@nestjs/common';
 
 import { Command, CommandRunner, Option } from 'nest-commander';
 
-import {
-  SanitizationResult,
-  TaptikContext,
-  TaptikPackage,
-  ValidationResult as CloudValidationResult,
-} from '../../context/interfaces/cloud.interface';
 import { MetadataGeneratorService } from '../../context/services/metadata-generator.service';
 import { PackageService } from '../../context/services/package.service';
 import { SanitizationService } from '../../context/services/sanitization.service';
 import { ValidationService } from '../../context/services/validation.service';
-import { PackageVisibility, PushOptions } from '../../push/interfaces/push-options.interface';
-import { UploadProgress } from '../../push/interfaces/upload-progress.interface';
+import { PackageVisibility } from '../../push/interfaces/push-options.interface';
 import { PushService } from '../../push/services/push.service';
 import {
-  BuildConfig,
   BuildPlatform,
   BuildCategoryName,
 } from '../interfaces/build-config.interface';
-import { CloudTransformationService } from '../interfaces/cloud-services.interface';
-import { SettingsData } from '../interfaces/settings-data.interface';
-import {
-  TaptikPersonalContext,
-  TaptikProjectContext,
-  TaptikPromptTemplates,
-} from '../interfaces/taptik-format.interface';
 import { CollectionService } from '../services/collection/collection.service';
 import { ErrorHandlerService } from '../services/error-handler/error-handler.service';
 import { InteractiveService } from '../services/interactive/interactive.service';
 import { OutputService } from '../services/output/output.service';
 import { ProgressService } from '../services/progress/progress.service';
 import { TransformationService } from '../services/transformation/transformation.service';
+
+import type {
+  SanitizationResult,
+  TaptikContext,
+  TaptikPackage,
+  ValidationResult as CloudValidationResult,
+} from '../../context/interfaces/cloud.interface';
+import type { PushOptions } from '../../push/interfaces/push-options.interface';
+import type { UploadProgress } from '../../push/interfaces/upload-progress.interface';
+import type { BuildConfig } from '../interfaces/build-config.interface';
+import type { CloudTransformationService } from '../interfaces/cloud-services.interface';
+import type { SettingsData } from '../interfaces/settings-data.interface';
+import type {
+  TaptikPersonalContext,
+  TaptikProjectContext,
+  TaptikPromptTemplates,
+} from '../interfaces/taptik-format.interface';
 
 @Command({
   name: 'build',
@@ -118,7 +120,8 @@ export class BuildCommand extends CommandRunner {
 
   @Option({
     flags: '--push',
-    description: 'Automatically push the built package to the cloud after successful build',
+    description:
+      'Automatically push the built package to the cloud after successful build',
   })
   parsePush(): boolean {
     return true;
@@ -126,7 +129,8 @@ export class BuildCommand extends CommandRunner {
 
   @Option({
     flags: '--push-public',
-    description: 'Make the pushed package publicly accessible (use with --push)',
+    description:
+      'Make the pushed package publicly accessible (use with --push)',
   })
   parsePushPublic(): boolean {
     return true;
@@ -142,7 +146,8 @@ export class BuildCommand extends CommandRunner {
 
   @Option({
     flags: '--push-tags <tags>',
-    description: 'Comma-separated tags for the pushed package (use with --push)',
+    description:
+      'Comma-separated tags for the pushed package (use with --push)',
   })
   parsePushTags(value: string): string {
     return value;
@@ -167,7 +172,7 @@ export class BuildCommand extends CommandRunner {
     const isQuiet = options?.quiet as boolean;
     const presetPlatform = options?.platform as BuildPlatform;
     const presetCategories = options?.categories as string[];
-    
+
     // Push-related options
     const shouldPush = options?.push as boolean;
     const pushPublic = options?.pushPublic as boolean;
@@ -366,14 +371,19 @@ export class BuildCommand extends CommandRunner {
             return;
           }
           this.progressService.completeStep('Security sanitization');
-        } catch (error) {
+        } catch (error: unknown) {
+          const errorMessage =
+            error instanceof Error ? error.message : 'Unknown error';
           this.logger.error('Security sanitization failed:', error);
-          this.progressService.failStep('Security sanitization', error.message);
+          this.progressService.failStep(
+            'Security sanitization',
+            new Error(errorMessage),
+          );
           this.errorHandler.addWarning({
             type: 'security',
             message:
               'Security sanitization failed, continuing with original data',
-            details: error.message,
+            details: errorMessage,
           });
           sanitizationResult = {
             sanitizedData: contextData,
@@ -406,18 +416,21 @@ export class BuildCommand extends CommandRunner {
             { compression: 'gzip', optimizeSize: true },
           );
           this.progressService.completeStep('Package creation');
-        } catch (error) {
+        } catch (error: unknown) {
+          const errorMessage =
+            error instanceof Error ? error.message : 'Unknown error';
+          const errorStack = error instanceof Error ? error.stack : undefined;
           this.logger.error('Package creation failed:', error);
           this.progressService.failStep(
-            error.message.includes('metadata')
+            errorMessage.includes('metadata')
               ? 'Metadata generation'
               : 'Package creation',
-            error.message,
+            new Error(errorMessage),
           );
           this.errorHandler.addWarning({
             type: 'package',
-            message: error.message,
-            details: error.stack,
+            message: errorMessage,
+            details: errorStack,
           });
         }
 
@@ -439,13 +452,18 @@ export class BuildCommand extends CommandRunner {
               });
             }
             this.progressService.completeStep('Cloud validation');
-          } catch (error) {
+          } catch (error: unknown) {
+            const errorMessage =
+              error instanceof Error ? error.message : 'Unknown error';
             this.logger.error('Validation failed:', error);
-            this.progressService.failStep('Cloud validation', error.message);
+            this.progressService.failStep(
+              'Cloud validation',
+              new Error(errorMessage),
+            );
             validationResult = {
               isValid: false,
               cloudCompatible: false,
-              errors: [error.message],
+              errors: [errorMessage],
               warnings: [],
               schemaCompliant: false,
               sizeLimit: {
@@ -622,8 +640,10 @@ export class BuildCommand extends CommandRunner {
         'local',
         localData.steeringFiles.length + localData.hookFiles.length + 3,
       );
-    } catch (error) {
-      warnings.push(`Local settings collection failed: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      warnings.push(`Local settings collection failed: ${errorMessage}`);
       localSettings = {
         steeringFiles: [],
         hooks: [],
@@ -649,8 +669,10 @@ export class BuildCommand extends CommandRunner {
         'global',
         globalData.promptTemplates.length + globalData.configFiles.length + 2,
       );
-    } catch (error) {
-      warnings.push(`Global settings collection failed: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      warnings.push(`Global settings collection failed: ${errorMessage}`);
       globalSettings = {
         globalPrompts: [],
       };
@@ -739,15 +761,17 @@ export class BuildCommand extends CommandRunner {
 
         this.progressService.completeTransformation(category.name);
         return { category: category.name, result };
-      } catch (error) {
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
         this.errorHandler.addWarning({
           type: 'partial_conversion',
           message: `Failed to transform ${category.name}`,
-          details: error.message,
+          details: errorMessage,
         });
         this.progressService.failStep(
           `Failed to transform ${category.name}`,
-          error,
+          error instanceof Error ? error : new Error(errorMessage),
         );
         return { category: category.name, result: undefined };
       }
@@ -920,10 +944,12 @@ export class BuildCommand extends CommandRunner {
         errorMessages,
         buildTime,
       );
-    } catch (error) {
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       this.logger.warn(
         'Failed to display detailed build summary',
-        error.message,
+        errorMessage,
       );
       // Continue without detailed summary
     }
@@ -999,11 +1025,10 @@ export class BuildCommand extends CommandRunner {
 
       const fileStats = await Promise.all(fileStatsPromises);
       outputFiles.push(...fileStats);
-    } catch (error) {
-      this.logger.warn(
-        'Failed to read output files for summary',
-        error.message,
-      );
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.warn('Failed to read output files for summary', errorMessage);
     }
 
     return outputFiles;
@@ -1117,9 +1142,11 @@ export class BuildCommand extends CommandRunner {
         'local',
         Object.keys(localSettings).length,
       );
-    } catch (error) {
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       warnings.push(
-        `Claude Code local settings collection failed: ${error.message}`,
+        `Claude Code local settings collection failed: ${errorMessage}`,
       );
       localSettings = {};
       this.progressService.completeScan('local', 0);
@@ -1160,9 +1187,11 @@ export class BuildCommand extends CommandRunner {
         'global',
         Object.keys(globalSettings).length,
       );
-    } catch (error) {
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       warnings.push(
-        `Claude Code global settings collection failed: ${error.message}`,
+        `Claude Code global settings collection failed: ${errorMessage}`,
       );
       globalSettings = {};
       this.progressService.completeScan('global', 0);
@@ -1349,15 +1378,17 @@ export class BuildCommand extends CommandRunner {
         }
 
         this.progressService.completeTransformation(category.name);
-      } catch (error) {
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
         this.errorHandler.addWarning({
           type: 'partial_conversion',
           message: `Failed to transform ${category.name}`,
-          details: error.message,
+          details: errorMessage,
         });
         this.progressService.failStep(
           `${category.name} transformation failed`,
-          error,
+          error instanceof Error ? error : new Error(errorMessage),
         );
       }
     });
@@ -1404,10 +1435,12 @@ export class BuildCommand extends CommandRunner {
             ) => Promise<void>
           )(outputPath, cloudPackage.metadata);
         }
-      } catch (error) {
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
         this.logger.debug(
           'writeCloudMetadata not available or failed:',
-          error.message,
+          errorMessage,
         );
       }
 
@@ -1428,10 +1461,12 @@ export class BuildCommand extends CommandRunner {
             ) => Promise<void>
           )(outputPath, sanitizationResult.report);
         }
-      } catch (error) {
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
         this.logger.debug(
           'writeSanitizationReport not available or failed:',
-          error.message,
+          errorMessage,
         );
       }
 
@@ -1449,10 +1484,12 @@ export class BuildCommand extends CommandRunner {
             ) => Promise<void>
           )(outputPath, validationResult);
         }
-      } catch (error) {
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
         this.logger.debug(
           'writeValidationReport not available or failed:',
-          error.message,
+          errorMessage,
         );
       }
 
@@ -1477,15 +1514,17 @@ export class BuildCommand extends CommandRunner {
             this.logger.log('☁️  Package is ready for cloud upload');
           }
         }
-      } catch (error) {
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
         this.logger.debug(
           'displayCloudReadySummary not available or failed:',
-          error.message,
+          errorMessage,
         );
       }
 
       return outputPath;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Failed to generate cloud output:', error);
       throw error;
     }
@@ -1543,20 +1582,22 @@ export class BuildCommand extends CommandRunner {
   ): Promise<void> {
     try {
       this.logger.log('📤 Pushing package to cloud...');
-      
+
       // Find the package file
       const packageFilePath = path.join(outputPath, 'taptik.package');
-      
+
       // Read the package file
       const fs = await import('fs/promises');
       let fileBuffer: Buffer;
-      let fileStats: any;
-      
+      let fileStats: { size: number };
+
       try {
         fileBuffer = await fs.readFile(packageFilePath);
         fileStats = await fs.stat(packageFilePath);
-      } catch (error) {
-        this.logger.error(`Failed to read package file: ${error.message}`);
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
+        this.logger.error(`Failed to read package file: ${errorMessage}`);
         this.errorHandler.addWarning({
           type: 'push',
           message: 'Failed to push package to cloud',
@@ -1566,13 +1607,14 @@ export class BuildCommand extends CommandRunner {
       }
 
       // Parse tags if provided
-      const tags = pushOptions.pushTags 
-        ? pushOptions.pushTags.split(',').map(t => t.trim())
+      const tags = pushOptions.pushTags
+        ? pushOptions.pushTags.split(',').map((t) => t.trim())
         : ['claude-code', 'auto-generated'];
 
       // Generate title from metadata if not provided
-      const title = pushOptions.pushTitle || 
-        cloudPackage.metadata?.title || 
+      const title =
+        pushOptions.pushTitle ||
+        cloudPackage.metadata?.title ||
         'Claude Code Configuration';
 
       // Build push options
@@ -1583,11 +1625,12 @@ export class BuildCommand extends CommandRunner {
           size: fileStats.size,
           path: packageFilePath,
         },
-        visibility: pushOptions.pushPublic 
-          ? PackageVisibility.Public 
+        visibility: pushOptions.pushPublic
+          ? PackageVisibility.Public
           : PackageVisibility.Private,
         title,
-        description: cloudPackage.metadata?.description || 
+        description:
+          cloudPackage.metadata?.description ||
           'Configuration package built with taptik build command',
         tags,
         teamId: pushOptions.pushTeam,
@@ -1598,7 +1641,7 @@ export class BuildCommand extends CommandRunner {
 
       // Track progress
       let lastProgress: UploadProgress | null = null;
-      
+
       // Execute push with progress tracking
       await this.pushService.push(pushOpts, (progress) => {
         lastProgress = progress;
@@ -1615,22 +1658,28 @@ export class BuildCommand extends CommandRunner {
       if (lastProgress?.configId) {
         this.logger.log('✅ Package pushed successfully!');
         this.logger.log(`   Configuration ID: ${lastProgress.configId}`);
-        
+
         if (lastProgress.shareUrl) {
           this.logger.log(`   Share URL: ${lastProgress.shareUrl}`);
         }
-        
+
         if (pushOptions.pushPublic) {
           this.logger.log('   📢 Your configuration is now publicly available');
         } else {
           this.logger.log('   🔒 Your configuration is private');
         }
       }
-    } catch (error) {
-      this.logger.error(`Push failed: ${error.message}`);
-      
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      const errorCode =
+        error && typeof error === 'object' && 'code' in error
+          ? (error as { code: unknown }).code
+          : undefined;
+      this.logger.error(`Push failed: ${errorMessage}`);
+
       // Check if it's an authentication error
-      if (error.code === 'AUTH_001' || error.message.includes('auth')) {
+      if (errorCode === 'AUTH_001' || errorMessage.includes('auth')) {
         this.logger.log('💡 Run "taptik auth login" to authenticate first');
         this.errorHandler.addWarning({
           type: 'push',
@@ -1639,14 +1688,16 @@ export class BuildCommand extends CommandRunner {
         });
       } else {
         this.errorHandler.addWarning({
-          type: 'push', 
+          type: 'push',
           message: 'Failed to push package to cloud',
-          details: error.message,
+          details: errorMessage,
         });
       }
-      
+
       // Don't fail the entire build if push fails
-      this.logger.log('⚠️  Build completed but push failed. Package saved locally.');
+      this.logger.log(
+        '⚠️  Build completed but push failed. Package saved locally.',
+      );
     }
   }
 }

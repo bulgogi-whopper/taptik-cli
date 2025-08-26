@@ -10,14 +10,14 @@ export enum AuditEventType {
   PACKAGE_DELETED = 'PACKAGE_DELETED',
   PACKAGE_DOWNLOADED = 'PACKAGE_DOWNLOADED',
   PACKAGE_VISIBILITY_CHANGED = 'PACKAGE_VISIBILITY_CHANGED',
-  
+
   // Security events
   AUTH_FAILED = 'AUTH_FAILED',
   UNAUTHORIZED_ACCESS = 'UNAUTHORIZED_ACCESS',
   MALICIOUS_CONTENT_DETECTED = 'MALICIOUS_CONTENT_DETECTED',
   SENSITIVE_DATA_DETECTED = 'SENSITIVE_DATA_DETECTED',
   RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED',
-  
+
   // System events
   UPLOAD_FAILED = 'UPLOAD_FAILED',
   SANITIZATION_PERFORMED = 'SANITIZATION_PERFORMED',
@@ -54,9 +54,7 @@ export class AuditLoggerService {
   private readonly FLUSH_INTERVAL = 5000; // 5 seconds
   private readonly BUFFER_SIZE = 50;
 
-  constructor(
-    private readonly supabaseService: SupabaseService,
-  ) {
+  constructor(private readonly supabaseService: SupabaseService) {
     // Start auto-flush timer
     this.startAutoFlush();
   }
@@ -74,7 +72,9 @@ export class AuditLoggerService {
   ): Promise<void> {
     const entry: AuditLogEntry = {
       timestamp: new Date(),
-      eventType: success ? AuditEventType.PACKAGE_UPLOADED : AuditEventType.UPLOAD_FAILED,
+      eventType: success
+        ? AuditEventType.PACKAGE_UPLOADED
+        : AuditEventType.UPLOAD_FAILED,
       userId,
       packageId: packageMetadata.id,
       configId: packageMetadata.configId,
@@ -271,7 +271,7 @@ export class AuditLoggerService {
       AuditEventType.MALICIOUS_CONTENT_DETECTED,
       userId,
       securityContext,
-      { 
+      {
         configId,
         detectionType,
         blocked: true,
@@ -282,16 +282,14 @@ export class AuditLoggerService {
   /**
    * Query audit logs
    */
-  async queryLogs(
-    filters: {
-      userId?: string;
-      configId?: string;
-      eventType?: AuditEventType;
-      startDate?: Date;
-      endDate?: Date;
-      limit?: number;
-    },
-  ): Promise<AuditLogEntry[]> {
+  async queryLogs(filters: {
+    userId?: string;
+    configId?: string;
+    eventType?: AuditEventType;
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+  }): Promise<AuditLogEntry[]> {
     try {
       const client = this.supabaseService.getClient();
       let query = client.from('audit_logs').select('*');
@@ -335,7 +333,10 @@ export class AuditLoggerService {
   /**
    * Get security summary for a user
    */
-  async getUserSecuritySummary(userId: string, days: number = 30): Promise<{
+  async getUserSecuritySummary(
+    userId: string,
+    days: number = 30,
+  ): Promise<{
     totalEvents: number;
     securityEvents: number;
     failedAttempts: number;
@@ -358,22 +359,26 @@ export class AuditLoggerService {
       AuditEventType.RATE_LIMIT_EXCEEDED,
     ];
 
-    const securityEvents = logs.filter(log => 
-      securityEventTypes.includes(log.eventType)
+    const securityEvents = logs.filter((log) =>
+      securityEventTypes.includes(log.eventType),
     );
 
-    const failedEvents = logs.filter(log => !log.success);
+    const failedEvents = logs.filter((log) => !log.success);
 
     return {
       totalEvents: logs.length,
       securityEvents: securityEvents.length,
       failedAttempts: failedEvents.length,
-      suspiciousActivities: securityEvents.filter(e => 
-        [AuditEventType.MALICIOUS_CONTENT_DETECTED, AuditEventType.UNAUTHORIZED_ACCESS].includes(e.eventType)
+      suspiciousActivities: securityEvents.filter((e) =>
+        [
+          AuditEventType.MALICIOUS_CONTENT_DETECTED,
+          AuditEventType.UNAUTHORIZED_ACCESS,
+        ].includes(e.eventType),
       ).length,
-      lastSecurityEvent: securityEvents.length > 0 
-        ? new Date(securityEvents[0].timestamp)
-        : undefined,
+      lastSecurityEvent:
+        securityEvents.length > 0
+          ? new Date(securityEvents[0].timestamp)
+          : undefined,
     };
   }
 
@@ -382,7 +387,7 @@ export class AuditLoggerService {
    */
   private async addToBuffer(entry: AuditLogEntry): Promise<void> {
     this.auditBuffer.push(entry);
-    
+
     if (this.auditBuffer.length >= this.BUFFER_SIZE) {
       await this.flush();
     }
@@ -401,9 +406,9 @@ export class AuditLoggerService {
 
     try {
       const client = this.supabaseService.getClient();
-      
+
       const { error } = await client.from('audit_logs').insert(
-        entriesToFlush.map(entry => ({
+        entriesToFlush.map((entry) => ({
           timestamp: entry.timestamp,
           event_type: entry.eventType,
           user_id: entry.userId,
@@ -415,7 +420,7 @@ export class AuditLoggerService {
           success: entry.success,
           error_message: entry.errorMessage,
           duration: entry.duration,
-        }))
+        })),
       );
 
       if (error) {
@@ -437,8 +442,8 @@ export class AuditLoggerService {
    */
   private startAutoFlush(): void {
     this.flushTimer = setInterval(() => {
-      this.flush().catch(error => 
-        this.logger.error('Auto-flush failed', error)
+      this.flush().catch((error) =>
+        this.logger.error('Auto-flush failed', error),
       );
     }, this.FLUSH_INTERVAL);
   }
@@ -457,9 +462,11 @@ export class AuditLoggerService {
   /**
    * Sanitize changes to remove sensitive data
    */
-  private sanitizeChanges(changes: Record<string, unknown>): Record<string, unknown> {
+  private sanitizeChanges(
+    changes: Record<string, unknown>,
+  ): Record<string, unknown> {
     const sanitized: Record<string, unknown> = {};
-    
+
     for (const [key, value] of Object.entries(changes)) {
       // Don't log sensitive field values
       if (['password', 'token', 'secret', 'apiKey'].includes(key)) {
@@ -468,16 +475,18 @@ export class AuditLoggerService {
         sanitized[key] = value;
       }
     }
-    
+
     return sanitized;
   }
 
   /**
    * Sanitize metadata to remove sensitive information
    */
-  private sanitizeMetadata(metadata?: Record<string, unknown>): Record<string, unknown> | undefined {
+  private sanitizeMetadata(
+    metadata?: Record<string, unknown>,
+  ): Record<string, unknown> | undefined {
     if (!metadata) return undefined;
-    
+
     return this.sanitizeChanges(metadata);
   }
 
@@ -488,10 +497,10 @@ export class AuditLoggerService {
     if (this.flushTimer) {
       clearInterval(this.flushTimer);
     }
-    
+
     // Final flush
-    this.flush().catch(error => 
-      this.logger.error('Final flush failed', error)
+    this.flush().catch((error) =>
+      this.logger.error('Final flush failed', error),
     );
   }
 }

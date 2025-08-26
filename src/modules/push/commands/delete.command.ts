@@ -43,13 +43,10 @@ export class DeleteCommand extends CommandRunner {
     return true;
   }
 
-  async run(
-    inputs: string[],
-    options: DeleteCommandOptions,
-  ): Promise<void> {
+  async run(inputs: string[], options: DeleteCommandOptions): Promise<void> {
     try {
       const configId = inputs[0];
-      
+
       if (!configId) {
         this.logger.error('Please provide a configuration ID');
         console.log(chalk.gray('\nUsage: taptik delete <config-id> [options]'));
@@ -59,13 +56,16 @@ export class DeleteCommand extends CommandRunner {
       // Check authentication
       const session = await this.authService.getSession();
       if (!session?.user) {
-        this.logger.error('Authentication required. Please run "taptik auth login" first.');
+        this.logger.error(
+          'Authentication required. Please run "taptik auth login" first.',
+        );
         process.exit(1);
       }
 
       // Fetch package to delete
-      const packageToDelete = await this.packageRegistry.getPackageByConfigId(configId);
-      
+      const packageToDelete =
+        await this.packageRegistry.getPackageByConfigId(configId);
+
       if (!packageToDelete) {
         this.logger.error(`Package with ID ${configId} not found`);
         process.exit(1);
@@ -80,15 +80,25 @@ export class DeleteCommand extends CommandRunner {
       // Show package information
       if (!options.force) {
         console.log(chalk.cyan('\nPackage to delete:'));
-        console.log(`  Title: ${chalk.bold(packageToDelete.title || packageToDelete.name)}`);
+        console.log(
+          `  Title: ${chalk.bold(packageToDelete.title || packageToDelete.name)}`,
+        );
         console.log(`  ID: ${chalk.gray(packageToDelete.configId)}`);
         console.log(`  Platform: ${chalk.gray(packageToDelete.platform)}`);
         console.log(`  Version: ${chalk.gray(packageToDelete.version)}`);
-        console.log(`  Visibility: ${packageToDelete.isPublic ? chalk.green('public') : chalk.yellow('private')}`);
-        console.log(`  Created: ${chalk.gray(this.formatDate(packageToDelete.createdAt))}`);
-        
+        console.log(
+          `  Visibility: ${packageToDelete.isPublic ? chalk.green('public') : chalk.yellow('private')}`,
+        );
+        console.log(
+          `  Created: ${chalk.gray(this.formatDate(packageToDelete.createdAt))}`,
+        );
+
         if (packageToDelete.isPublic) {
-          console.log(chalk.yellow('\n⚠️  This is a public package that may be used by others'));
+          console.log(
+            chalk.yellow(
+              '\n⚠️  This is a public package that may be used by others',
+            ),
+          );
         }
       }
 
@@ -133,23 +143,31 @@ export class DeleteCommand extends CommandRunner {
       await this.packageRegistry.deletePackage(configId);
 
       console.log(chalk.green('✅ Package deleted successfully!'));
-      console.log(chalk.gray(`\nPackage ${configId} has been permanently removed`));
-      
+      console.log(
+        chalk.gray(`\nPackage ${configId} has been permanently removed`),
+      );
+
       // Suggest next action
-      console.log(chalk.gray('\nTip: Use "taptik list --cloud" to see your remaining packages'));
+      console.log(
+        chalk.gray(
+          '\nTip: Use "taptik list --cloud" to see your remaining packages',
+        ),
+      );
     } catch (error) {
       this.logger.error(`Failed to delete package: ${error.message}`);
-      
+
       if (error.message.includes('not found')) {
-        console.log(chalk.gray('\nTip: Use "taptik list --cloud" to see your packages'));
+        console.log(
+          chalk.gray('\nTip: Use "taptik list --cloud" to see your packages'),
+        );
       }
-      
+
       process.exit(1);
     }
   }
 
   private formatDate(date: Date | string): string {
     const d = new Date(date);
-    return `${d.toLocaleDateString()  } ${  d.toLocaleTimeString()}`;
+    return `${d.toLocaleDateString()} ${d.toLocaleTimeString()}`;
   }
 }

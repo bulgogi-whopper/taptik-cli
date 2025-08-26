@@ -1,11 +1,15 @@
 import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 
 import { TaptikPackage } from '../../context/interfaces/cloud.interface';
-import { PushOptions, PackageVisibility, UploadProgress } from '../../push/interfaces';
+import {
+  PushOptions,
+  PackageVisibility,
+  UploadProgress,
+} from '../../push/interfaces';
 
 import { BuildCommand } from './build.command';
 
-// Mock fs/promises 
+// Mock fs/promises
 const mockFsPromises = {
   readFile: vi.fn(),
   stat: vi.fn(),
@@ -70,16 +74,17 @@ describe('BuildCommand - Push Feature', () => {
 
     // Create partial BuildCommand with only what we need for testing
     buildCommand = new BuildCommand(
-      {} as any,  // interactiveService
-      {} as any,  // collectionService
-      {} as any,  // transformationService
-      {} as any,  // sanitizationService
-      {} as any,  // metadataGeneratorService
-      {} as any,  // packageService
-      {} as any,  // validationService
-      {} as any,  // outputService
-      {} as any,  // progressService
-      {           // errorHandler
+      {} as any, // interactiveService
+      {} as any, // collectionService
+      {} as any, // transformationService
+      {} as any, // sanitizationService
+      {} as any, // metadataGeneratorService
+      {} as any, // packageService
+      {} as any, // validationService
+      {} as any, // outputService
+      {} as any, // progressService
+      {
+        // errorHandler
         addWarning: vi.fn(),
       } as any,
       mockPushService,
@@ -94,7 +99,7 @@ describe('BuildCommand - Push Feature', () => {
     buildCommand.errorHandler = {
       addWarning: vi.fn(),
     };
-    
+
     // Ensure pushService is accessible
     buildCommand.pushService = mockPushService;
 
@@ -107,17 +112,23 @@ describe('BuildCommand - Push Feature', () => {
     mockFsPromises.stat.mockReset();
     mockFsExtra.readFile.mockReset();
     mockFsExtra.stat.mockReset();
-    
+
     // Mock readFile for the specific path the command expects (fs/promises)
     mockFsPromises.readFile.mockImplementation((filePath) => {
-      if (filePath === '/tmp/taptik.package' || filePath.endsWith('taptik.package')) {
+      if (
+        filePath === '/tmp/taptik.package' ||
+        filePath.endsWith('taptik.package')
+      ) {
         return Promise.resolve(Buffer.from('test-content'));
       }
       return Promise.reject(new Error('File not found'));
     });
-    
+
     mockFsPromises.stat.mockImplementation((filePath) => {
-      if (filePath === '/tmp/taptik.package' || filePath.endsWith('taptik.package')) {
+      if (
+        filePath === '/tmp/taptik.package' ||
+        filePath.endsWith('taptik.package')
+      ) {
         return Promise.resolve({
           size: 1024,
           isFile: () => true,
@@ -126,17 +137,23 @@ describe('BuildCommand - Push Feature', () => {
       }
       return Promise.reject(new Error('File not found'));
     });
-    
+
     // Also set up mockFsExtra in case it's used elsewhere
     mockFsExtra.readFile.mockImplementation((filePath) => {
-      if (filePath === '/tmp/taptik.package' || filePath.endsWith('taptik.package')) {
+      if (
+        filePath === '/tmp/taptik.package' ||
+        filePath.endsWith('taptik.package')
+      ) {
         return Promise.resolve(Buffer.from('test-content'));
       }
       return Promise.reject(new Error('File not found'));
     });
-    
+
     mockFsExtra.stat.mockImplementation((filePath) => {
-      if (filePath === '/tmp/taptik.package' || filePath.endsWith('taptik.package')) {
+      if (
+        filePath === '/tmp/taptik.package' ||
+        filePath.endsWith('taptik.package')
+      ) {
         return Promise.resolve({
           size: 1024,
           isFile: () => true,
@@ -164,7 +181,10 @@ describe('BuildCommand - Push Feature', () => {
       };
 
       mockPushService.push.mockImplementation(
-        async (options: PushOptions, onProgress: (progress: UploadProgress) => void) => {
+        async (
+          options: PushOptions,
+          onProgress: (progress: UploadProgress) => void,
+        ) => {
           onProgress(mockProgress);
           return { configId: 'test-config-id' };
         },
@@ -202,7 +222,9 @@ describe('BuildCommand - Push Feature', () => {
         expect.any(Function),
       );
 
-      expect(buildCommand.logger.log).toHaveBeenCalledWith('✅ Package pushed successfully!');
+      expect(buildCommand.logger.log).toHaveBeenCalledWith(
+        '✅ Package pushed successfully!',
+      );
     });
 
     it('should use private visibility by default', async () => {
@@ -235,7 +257,9 @@ describe('BuildCommand - Push Feature', () => {
         false,
       );
 
-      expect(buildCommand.logger.error).toHaveBeenCalledWith('Push failed: Not authenticated');
+      expect(buildCommand.logger.error).toHaveBeenCalledWith(
+        'Push failed: Not authenticated',
+      );
       expect(buildCommand.logger.log).toHaveBeenCalledWith(
         expect.stringContaining('taptik auth login'),
       );
@@ -277,7 +301,9 @@ describe('BuildCommand - Push Feature', () => {
         false,
       );
 
-      expect(buildCommand.logger.error).toHaveBeenCalledWith('Push failed: Network timeout');
+      expect(buildCommand.logger.error).toHaveBeenCalledWith(
+        'Push failed: Network timeout',
+      );
       expect(buildCommand.errorHandler.addWarning).toHaveBeenCalledWith({
         type: 'push',
         message: 'Failed to push package to cloud',
@@ -291,11 +317,19 @@ describe('BuildCommand - Push Feature', () => {
     it('should display progress in verbose mode', async () => {
       const progressUpdates: UploadProgress[] = [
         { stage: 'validation', percentage: 25, message: 'Validating' },
-        { stage: 'upload', percentage: 100, message: 'Complete', configId: 'test-id' },
+        {
+          stage: 'upload',
+          percentage: 100,
+          message: 'Complete',
+          configId: 'test-id',
+        },
       ];
 
       mockPushService.push.mockImplementation(
-        async (options: PushOptions, onProgress: (progress: UploadProgress) => void) => {
+        async (
+          options: PushOptions,
+          onProgress: (progress: UploadProgress) => void,
+        ) => {
           progressUpdates.forEach(onProgress);
           return { configId: 'test-id' };
         },
@@ -369,12 +403,7 @@ describe('BuildCommand - Push Feature', () => {
 
       mockPushService.push.mockResolvedValue({ configId: 'test-id' });
 
-      await buildCommand.pushPackageToCloud(
-        '/tmp',
-        minimalPackage,
-        {},
-        false,
-      );
+      await buildCommand.pushPackageToCloud('/tmp', minimalPackage, {}, false);
 
       expect(mockPushService.push).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -396,7 +425,10 @@ describe('BuildCommand - Push Feature', () => {
       };
 
       mockPushService.push.mockImplementation(
-        async (options: PushOptions, onProgress: (progress: UploadProgress) => void) => {
+        async (
+          options: PushOptions,
+          onProgress: (progress: UploadProgress) => void,
+        ) => {
           onProgress(mockProgress);
           return { configId: 'test-config-id' };
         },
@@ -426,7 +458,10 @@ describe('BuildCommand - Push Feature', () => {
       };
 
       mockPushService.push.mockImplementation(
-        async (options: PushOptions, onProgress: (progress: UploadProgress) => void) => {
+        async (
+          options: PushOptions,
+          onProgress: (progress: UploadProgress) => void,
+        ) => {
           onProgress(mockProgress);
           return { configId: 'test-config-id' };
         },

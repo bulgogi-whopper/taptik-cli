@@ -58,35 +58,48 @@ export class VisibilityCommand extends CommandRunner {
   ): Promise<void> {
     try {
       const configId = inputs[0];
-      
+
       if (!configId) {
         this.logger.error('Please provide a configuration ID');
-        console.log(chalk.gray('\nUsage: taptik visibility <config-id> [--public|--private]'));
+        console.log(
+          chalk.gray(
+            '\nUsage: taptik visibility <config-id> [--public|--private]',
+          ),
+        );
         process.exit(1);
       }
 
       // Check that only one visibility option is set
       if (options.public && options.private) {
-        this.logger.error('Please specify either --public or --private, not both');
+        this.logger.error(
+          'Please specify either --public or --private, not both',
+        );
         process.exit(1);
       }
 
       if (!options.public && !options.private) {
         this.logger.error('Please specify either --public or --private');
-        console.log(chalk.gray('\nUsage: taptik visibility <config-id> [--public|--private]'));
+        console.log(
+          chalk.gray(
+            '\nUsage: taptik visibility <config-id> [--public|--private]',
+          ),
+        );
         process.exit(1);
       }
 
       // Check authentication
       const session = await this.authService.getSession();
       if (!session?.user) {
-        this.logger.error('Authentication required. Please run "taptik auth login" first.');
+        this.logger.error(
+          'Authentication required. Please run "taptik auth login" first.',
+        );
         process.exit(1);
       }
 
       // Fetch package
-      const packageData = await this.packageRegistry.getPackageByConfigId(configId);
-      
+      const packageData =
+        await this.packageRegistry.getPackageByConfigId(configId);
+
       if (!packageData) {
         this.logger.error(`Package with ID ${configId} not found`);
         process.exit(1);
@@ -110,25 +123,35 @@ export class VisibilityCommand extends CommandRunner {
 
       // Show package information
       console.log(chalk.cyan('\nPackage information:'));
-      console.log(`  Title: ${chalk.bold(packageData.title || packageData.name)}`);
+      console.log(
+        `  Title: ${chalk.bold(packageData.title || packageData.name)}`,
+      );
       console.log(`  ID: ${chalk.gray(packageData.configId)}`);
-      console.log(`  Current visibility: ${packageData.isPublic ? chalk.green('public') : chalk.yellow('private')}`);
-      console.log(`  New visibility: ${makePublic ? chalk.green('public') : chalk.yellow('private')}`);
+      console.log(
+        `  Current visibility: ${packageData.isPublic ? chalk.green('public') : chalk.yellow('private')}`,
+      );
+      console.log(
+        `  New visibility: ${makePublic ? chalk.green('public') : chalk.yellow('private')}`,
+      );
 
       // Show warnings
       if (makePublic) {
         console.log(chalk.yellow('\n⚠️  Making this package public will:'));
         console.log(chalk.yellow('  • Allow anyone to download and use it'));
-        console.log(chalk.yellow('  • Make it searchable in the public registry'));
+        console.log(
+          chalk.yellow('  • Make it searchable in the public registry'),
+        );
         console.log(chalk.yellow('  • Generate a public share URL'));
       } else {
         console.log(chalk.yellow('\n⚠️  Making this package private will:'));
         console.log(chalk.yellow('  • Restrict access to only you'));
         console.log(chalk.yellow('  • Remove it from public search results'));
         console.log(chalk.yellow('  • Invalidate any shared URLs'));
-        
+
         if (packageData.isPublic) {
-          console.log(chalk.red('  • Break any existing integrations using this package'));
+          console.log(
+            chalk.red('  • Break any existing integrations using this package'),
+          );
         }
       }
 
@@ -157,21 +180,35 @@ export class VisibilityCommand extends CommandRunner {
       );
 
       console.log(chalk.green('✅ Visibility updated successfully!'));
-      console.log(`\nPackage is now ${makePublic ? chalk.green('public') : chalk.yellow('private')}`);
-      
+      console.log(
+        `\nPackage is now ${makePublic ? chalk.green('public') : chalk.yellow('private')}`,
+      );
+
       if (makePublic) {
-        console.log(chalk.gray(`\nShare URL: https://taptik.com/packages/${updatedPackage.configId}`));
-        console.log(chalk.gray('Anyone with this URL can download your package'));
+        console.log(
+          chalk.gray(
+            `\nShare URL: https://taptik.com/packages/${updatedPackage.configId}`,
+          ),
+        );
+        console.log(
+          chalk.gray('Anyone with this URL can download your package'),
+        );
       } else {
-        console.log(chalk.gray('\nThis package is now private and only accessible to you'));
+        console.log(
+          chalk.gray(
+            '\nThis package is now private and only accessible to you',
+          ),
+        );
       }
     } catch (error) {
       this.logger.error(`Failed to update visibility: ${error.message}`);
-      
+
       if (error.message.includes('not found')) {
-        console.log(chalk.gray('\nTip: Use "taptik list --cloud" to see your packages'));
+        console.log(
+          chalk.gray('\nTip: Use "taptik list --cloud" to see your packages'),
+        );
       }
-      
+
       process.exit(1);
     }
   }

@@ -362,7 +362,6 @@ describe('AnalyticsService', () => {
 
         mockSupabaseClient.rpc = mockRpc;
 
-        // eslint-disable-next-line no-await-in-loop
         await service.getTrendingPackages({ period });
 
         expect(mockRpc).toHaveBeenCalledWith(

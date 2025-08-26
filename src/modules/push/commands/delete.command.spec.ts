@@ -84,15 +84,18 @@ describe('DeleteCommand', () => {
     };
 
     // Directly instantiate the command with mocked services
-    command = new DeleteCommand(mockAuthService as any, mockPackageRegistry as any);
-    
+    command = new DeleteCommand(
+      mockAuthService as any,
+      mockPackageRegistry as any,
+    );
+
     // Mock process.exit
     vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
-    
+
     // Mock console methods
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    
+
     // Reset inquirer mock
     vi.mocked(inquirer.prompt).mockReset();
   });
@@ -106,9 +109,11 @@ describe('DeleteCommand', () => {
 
       await command.run(['config-1'], {});
 
-      expect(mockPackageRegistry.deletePackage).toHaveBeenCalledWith('config-1');
+      expect(mockPackageRegistry.deletePackage).toHaveBeenCalledWith(
+        'config-1',
+      );
       expect(console.log).toHaveBeenCalledWith(
-        chalk.green('✅ Package deleted successfully!')
+        chalk.green('✅ Package deleted successfully!'),
       );
     });
 
@@ -138,7 +143,9 @@ describe('DeleteCommand', () => {
       await command.run(['config-1'], { force: true });
 
       expect(inquirer.prompt).not.toHaveBeenCalled();
-      expect(mockPackageRegistry.deletePackage).toHaveBeenCalledWith('config-1');
+      expect(mockPackageRegistry.deletePackage).toHaveBeenCalledWith(
+        'config-1',
+      );
     });
 
     it('should show warning for public packages', async () => {
@@ -152,7 +159,9 @@ describe('DeleteCommand', () => {
       await command.run(['config-1'], {});
 
       expect(console.log).toHaveBeenCalledWith(
-        chalk.yellow('\n⚠️  This is a public package that may be used by others')
+        chalk.yellow(
+          '\n⚠️  This is a public package that may be used by others',
+        ),
       );
     });
 
@@ -165,7 +174,7 @@ describe('DeleteCommand', () => {
 
       expect(mockPackageRegistry.deletePackage).not.toHaveBeenCalled();
       expect(console.log).toHaveBeenCalledWith(
-        chalk.gray('Deletion cancelled')
+        chalk.gray('Deletion cancelled'),
       );
     });
 
@@ -178,7 +187,7 @@ describe('DeleteCommand', () => {
 
       expect(mockPackageRegistry.deletePackage).not.toHaveBeenCalled();
       expect(console.log).toHaveBeenCalledWith(
-        chalk.gray('Deletion cancelled')
+        chalk.gray('Deletion cancelled'),
       );
     });
 
@@ -222,7 +231,7 @@ describe('DeleteCommand', () => {
     it('should handle errors gracefully', async () => {
       mockAuthService.getSession.mockResolvedValue(mockSession);
       mockPackageRegistry.getPackageByConfigId.mockRejectedValue(
-        new Error('Network error')
+        new Error('Network error'),
       );
 
       await command.run(['config-1'], {});

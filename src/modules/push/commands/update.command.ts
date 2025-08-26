@@ -61,13 +61,10 @@ export class UpdateCommand extends CommandRunner {
     return true;
   }
 
-  async run(
-    inputs: string[],
-    options: UpdateCommandOptions,
-  ): Promise<void> {
+  async run(inputs: string[], options: UpdateCommandOptions): Promise<void> {
     try {
       const configId = inputs[0];
-      
+
       if (!configId) {
         this.logger.error('Please provide a configuration ID');
         console.log(chalk.gray('\nUsage: taptik update <config-id> [options]'));
@@ -77,13 +74,16 @@ export class UpdateCommand extends CommandRunner {
       // Check authentication
       const session = await this.authService.getSession();
       if (!session?.user) {
-        this.logger.error('Authentication required. Please run "taptik auth login" first.');
+        this.logger.error(
+          'Authentication required. Please run "taptik auth login" first.',
+        );
         process.exit(1);
       }
 
       // Fetch existing package
-      const existingPackage = await this.packageRegistry.getPackageByConfigId(configId);
-      
+      const existingPackage =
+        await this.packageRegistry.getPackageByConfigId(configId);
+
       if (!existingPackage) {
         this.logger.error(`Package with ID ${configId} not found`);
         process.exit(1);
@@ -96,25 +96,40 @@ export class UpdateCommand extends CommandRunner {
       }
 
       // Prepare updates
-      const updates: { title?: string; description?: string; userTags?: string[]; } = {};
+      const updates: {
+        title?: string;
+        description?: string;
+        userTags?: string[];
+      } = {};
       let hasUpdates = false;
 
       // Check if any CLI options were provided
-      const hasCliOptions = options.title !== undefined || options.description !== undefined || options.tags !== undefined;
+      const hasCliOptions =
+        options.title !== undefined ||
+        options.description !== undefined ||
+        options.tags !== undefined;
 
       if (options.title && options.title !== existingPackage.title) {
         updates.title = options.title;
         hasUpdates = true;
       }
 
-      if (options.description && options.description !== existingPackage.description) {
+      if (
+        options.description &&
+        options.description !== existingPackage.description
+      ) {
         updates.description = options.description;
         hasUpdates = true;
       }
 
       if (options.tags) {
-        const newTags = options.tags.split(',').map(t => t.trim()).filter(Boolean);
-        if (JSON.stringify(newTags) !== JSON.stringify(existingPackage.userTags)) {
+        const newTags = options.tags
+          .split(',')
+          .map((t) => t.trim())
+          .filter(Boolean);
+        if (
+          JSON.stringify(newTags) !== JSON.stringify(existingPackage.userTags)
+        ) {
           updates.userTags = newTags;
           hasUpdates = true;
         }
@@ -123,20 +138,28 @@ export class UpdateCommand extends CommandRunner {
       if (!hasUpdates && !hasCliOptions) {
         // Interactive mode if no options provided
         const answers = await this.promptForUpdates(existingPackage);
-        
+
         if (answers.title && answers.title !== existingPackage.title) {
           updates.title = answers.title;
           hasUpdates = true;
         }
-        
-        if (answers.description && answers.description !== existingPackage.description) {
+
+        if (
+          answers.description &&
+          answers.description !== existingPackage.description
+        ) {
           updates.description = answers.description;
           hasUpdates = true;
         }
-        
+
         if (answers.tags) {
-          const newTags = answers.tags.split(',').map(t => t.trim()).filter(Boolean);
-          if (JSON.stringify(newTags) !== JSON.stringify(existingPackage.userTags)) {
+          const newTags = answers.tags
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean);
+          if (
+            JSON.stringify(newTags) !== JSON.stringify(existingPackage.userTags)
+          ) {
             updates.userTags = newTags;
             hasUpdates = true;
           }
@@ -151,13 +174,19 @@ export class UpdateCommand extends CommandRunner {
       // Show changes
       console.log(chalk.cyan('\nChanges to apply:'));
       if (updates.title) {
-        console.log(`  Title: ${chalk.gray(existingPackage.title)} → ${chalk.green(updates.title)}`);
+        console.log(
+          `  Title: ${chalk.gray(existingPackage.title)} → ${chalk.green(updates.title)}`,
+        );
       }
       if (updates.description) {
-        console.log(`  Description: ${chalk.gray(existingPackage.description || '(none)')} → ${chalk.green(updates.description)}`);
+        console.log(
+          `  Description: ${chalk.gray(existingPackage.description || '(none)')} → ${chalk.green(updates.description)}`,
+        );
       }
       if (updates.userTags) {
-        console.log(`  Tags: ${chalk.gray(existingPackage.userTags?.join(', ') || '(none)')} → ${chalk.green(updates.userTags.join(', '))}`);
+        console.log(
+          `  Tags: ${chalk.gray(existingPackage.userTags?.join(', ') || '(none)')} → ${chalk.green(updates.userTags.join(', '))}`,
+        );
       }
 
       // Confirm updates
@@ -179,30 +208,47 @@ export class UpdateCommand extends CommandRunner {
 
       // Apply updates
       console.log(chalk.gray('\nUpdating package...'));
-      const updatedPackage = await this.packageRegistry.updatePackage(configId, updates);
+      const updatedPackage = await this.packageRegistry.updatePackage(
+        configId,
+        updates,
+      );
 
       console.log(chalk.green('✅ Package updated successfully!'));
       console.log(chalk.gray(`\nConfiguration ID: ${updatedPackage.configId}`));
-      
+
       if (updatedPackage.isPublic) {
-        console.log(chalk.gray(`Share URL: https://taptik.com/packages/${updatedPackage.configId}`));
+        console.log(
+          chalk.gray(
+            `Share URL: https://taptik.com/packages/${updatedPackage.configId}`,
+          ),
+        );
       }
     } catch (error) {
       this.logger.error(`Failed to update package: ${error.message}`);
-      
+
       if (error.message.includes('not found')) {
-        console.log(chalk.gray('\nTip: Use "taptik list --cloud" to see your packages'));
+        console.log(
+          chalk.gray('\nTip: Use "taptik list --cloud" to see your packages'),
+        );
       }
-      
+
       process.exit(1);
     }
   }
 
-  private async promptForUpdates(existingPackage: { title: string; description?: string; userTags?: string[]; }): Promise<{ title?: string; description?: string; tags?: string; }> {
+  private async promptForUpdates(existingPackage: {
+    title: string;
+    description?: string;
+    userTags?: string[];
+  }): Promise<{ title?: string; description?: string; tags?: string }> {
     console.log(chalk.cyan('\nCurrent package information:'));
     console.log(`  Title: ${chalk.gray(existingPackage.title)}`);
-    console.log(`  Description: ${chalk.gray(existingPackage.description || '(none)')}`);
-    console.log(`  Tags: ${chalk.gray(existingPackage.userTags?.join(', ') || '(none)')}`);
+    console.log(
+      `  Description: ${chalk.gray(existingPackage.description || '(none)')}`,
+    );
+    console.log(
+      `  Tags: ${chalk.gray(existingPackage.userTags?.join(', ') || '(none)')}`,
+    );
     console.log();
 
     return inquirer.prompt([

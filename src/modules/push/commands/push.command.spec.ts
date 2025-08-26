@@ -81,7 +81,11 @@ describe('PushCommand', () => {
       push: vi.fn().mockImplementation(async (options: any, callback: any) => {
         // Default successful implementation
         if (callback) {
-          callback({ stage: 'Completed', percentage: 100, configId: 'test-id' });
+          callback({
+            stage: 'Completed',
+            percentage: 100,
+            configId: 'test-id',
+          });
         }
         return Promise.resolve();
       }),
@@ -103,24 +107,38 @@ describe('PushCommand', () => {
   describe('run', () => {
     it('should fail if no file path is provided', async () => {
       await expect(command.run([], {})).rejects.toThrow('process.exit');
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('File path is required'));
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('File path is required'),
+      );
     });
 
     it('should fail if file does not exist', async () => {
       (fs.pathExists as any).mockResolvedValue(false);
-      
-      await expect(command.run([mockFilePath], {})).rejects.toThrow('process.exit');
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('File not found'));
+
+      await expect(command.run([mockFilePath], {})).rejects.toThrow(
+        'process.exit',
+      );
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('File not found'),
+      );
     });
 
     it('should fail if file is not a .taptik file', async () => {
-      await expect(command.run(['/path/to/test.txt'], {})).rejects.toThrow('process.exit');
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('must have .taptik extension'));
+      await expect(command.run(['/path/to/test.txt'], {})).rejects.toThrow(
+        'process.exit',
+      );
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('must have .taptik extension'),
+      );
     });
 
     it('should fail if both --public and --private are specified', async () => {
-      await expect(command.run([mockFilePath], { public: true, private: true })).rejects.toThrow('process.exit');
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Cannot specify both --public and --private'));
+      await expect(
+        command.run([mockFilePath], { public: true, private: true }),
+      ).rejects.toThrow('process.exit');
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('Cannot specify both --public and --private'),
+      );
     });
 
     it('should upload with public visibility when --public is specified', async () => {
@@ -132,7 +150,7 @@ describe('PushCommand', () => {
         expect.objectContaining({
           visibility: PackageVisibility.Public,
         }),
-        expect.any(Function)
+        expect.any(Function),
       );
     });
 
@@ -145,20 +163,23 @@ describe('PushCommand', () => {
         expect.objectContaining({
           visibility: PackageVisibility.Private,
         }),
-        expect.any(Function)
+        expect.any(Function),
       );
     });
 
     it('should parse tags correctly from comma-separated string', async () => {
       (inquirer.prompt as any).mockResolvedValue({ confirmed: true });
 
-      await command.run([mockFilePath], { tags: 'frontend,react,typescript', force: true });
+      await command.run([mockFilePath], {
+        tags: 'frontend,react,typescript',
+        force: true,
+      });
 
       expect(pushService.push).toHaveBeenCalledWith(
         expect.objectContaining({
           tags: ['frontend', 'react', 'typescript'],
         }),
-        expect.any(Function)
+        expect.any(Function),
       );
     });
 
@@ -188,15 +209,21 @@ describe('PushCommand', () => {
       await command.run([mockFilePath], {});
 
       expect(pushService.push).not.toHaveBeenCalled();
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Upload cancelled'));
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('Upload cancelled'),
+      );
     });
 
     it('should perform dry run when --dry-run is specified', async () => {
       await command.run([mockFilePath], { dryRun: true });
 
       expect(pushService.push).not.toHaveBeenCalled();
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Dry Run Mode'));
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Dry run completed successfully'));
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('Dry Run Mode'),
+      );
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('Dry run completed successfully'),
+      );
     });
 
     it('should pass all options to push service', async () => {
@@ -225,40 +252,66 @@ describe('PushCommand', () => {
           force: true,
           dryRun: false,
         }),
-        expect.any(Function)
+        expect.any(Function),
       );
     });
 
     it('should display progress updates during upload', async () => {
       const progressUpdates: UploadProgress[] = [
-        { stage: 'Authenticating', percentage: 10, message: 'Checking credentials' },
+        {
+          stage: 'Authenticating',
+          percentage: 10,
+          message: 'Checking credentials',
+        },
         { stage: 'Validating', percentage: 30, message: 'Validating package' },
-        { stage: 'Uploading', percentage: 70, message: 'Uploading to cloud', eta: 5 },
-        { stage: 'Completed', percentage: 100, configId: 'test-id', shareUrl: 'https://example.com/test' },
+        {
+          stage: 'Uploading',
+          percentage: 70,
+          message: 'Uploading to cloud',
+          eta: 5,
+        },
+        {
+          stage: 'Completed',
+          percentage: 100,
+          configId: 'test-id',
+          shareUrl: 'https://example.com/test',
+        },
       ];
 
       (inquirer.prompt as any).mockResolvedValue({ confirmed: true });
-      pushService.push.mockImplementation(async (options: any, callback: any) => {
-        for (const progress of progressUpdates) {
-          if (callback) {
-            callback(progress);
+      pushService.push.mockImplementation(
+        async (options: any, callback: any) => {
+          for (const progress of progressUpdates) {
+            if (callback) {
+              callback(progress);
+            }
           }
-        }
-        return Promise.resolve();
-      });
+          return Promise.resolve();
+        },
+      );
 
       await command.run([mockFilePath], { force: true });
 
       // Check that progress was displayed
-      progressUpdates.forEach(progress => {
-        expect(console.log).toHaveBeenCalledWith(expect.stringContaining(progress.stage));
-        expect(console.log).toHaveBeenCalledWith(expect.stringContaining(`${progress.percentage}%`));
+      progressUpdates.forEach((progress) => {
+        expect(console.log).toHaveBeenCalledWith(
+          expect.stringContaining(progress.stage),
+        );
+        expect(console.log).toHaveBeenCalledWith(
+          expect.stringContaining(`${progress.percentage}%`),
+        );
       });
 
       // Check success message
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Upload completed successfully'));
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('test-id'));
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('https://example.com/test'));
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('Upload completed successfully'),
+      );
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('test-id'),
+      );
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('https://example.com/test'),
+      );
     });
 
     it('should handle upload errors with suggestions', async () => {
@@ -270,12 +323,22 @@ describe('PushCommand', () => {
       (inquirer.prompt as any).mockResolvedValue({ confirmed: true });
       pushService.push.mockRejectedValue(error);
 
-      await expect(command.run([mockFilePath], { force: true })).rejects.toThrow('process.exit');
+      await expect(
+        command.run([mockFilePath], { force: true }),
+      ).rejects.toThrow('process.exit');
 
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Upload failed'));
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Not authenticated'));
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Suggestions'));
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('taptik auth login'));
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('Upload failed'),
+      );
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('Not authenticated'),
+      );
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('Suggestions'),
+      );
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('taptik auth login'),
+      );
     });
 
     it('should generate default title from filename', async () => {
@@ -287,7 +350,7 @@ describe('PushCommand', () => {
         expect.objectContaining({
           title: 'My Awesome Config',
         }),
-        expect.any(Function)
+        expect.any(Function),
       );
     });
 
@@ -300,30 +363,40 @@ describe('PushCommand', () => {
         expect.objectContaining({
           title: 'Custom Title',
         }),
-        expect.any(Function)
+        expect.any(Function),
       );
     });
 
     it('should display different messages for public vs private uploads', async () => {
       (inquirer.prompt as any).mockResolvedValue({ confirmed: true });
-      
+
       // Test public upload
       await command.run([mockFilePath], { public: true, force: true });
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('publicly available'));
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('publicly available'),
+      );
 
       // Clear mocks and reset pushService for next test
       vi.clearAllMocks();
       vi.spyOn(console, 'log').mockImplementation(() => {});
-      pushService.push.mockImplementation(async (options: any, callback: any) => {
-        if (callback) {
-          callback({ stage: 'Completed', percentage: 100, configId: 'test-id' });
-        }
-        return Promise.resolve();
-      });
+      pushService.push.mockImplementation(
+        async (options: any, callback: any) => {
+          if (callback) {
+            callback({
+              stage: 'Completed',
+              percentage: 100,
+              configId: 'test-id',
+            });
+          }
+          return Promise.resolve();
+        },
+      );
 
       // Test private upload
       await command.run([mockFilePath], { private: true, force: true });
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('private'));
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('private'),
+      );
     });
   });
 

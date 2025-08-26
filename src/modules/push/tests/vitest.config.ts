@@ -31,21 +31,24 @@ export default defineConfig({
     mockReset: true,
     clearMocks: true,
     restoreMocks: true,
-    
+
     // Test categorization
     include: [
       // Unit tests
       'src/modules/push/**/*.spec.ts',
       'src/modules/push/**/*.test.ts',
     ],
-    
+
     // Separate test suites
     sequence: {
       suites: [
         // Run unit tests first
         {
           name: 'unit',
-          files: ['src/modules/push/services/**/*.spec.ts', 'src/modules/push/commands/**/*.spec.ts'],
+          files: [
+            'src/modules/push/services/**/*.spec.ts',
+            'src/modules/push/commands/**/*.spec.ts',
+          ],
         },
         // Then integration tests
         {

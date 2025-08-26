@@ -6,7 +6,10 @@ import { Command, CommandRunner, Option } from 'nest-commander';
 
 import { AuthService } from '../../auth/auth.service';
 import { PackageMetadata } from '../interfaces';
-import { PackageRegistryService, PackageFilters } from '../services/package-registry.service';
+import {
+  PackageRegistryService,
+  PackageFilters,
+} from '../services/package-registry.service';
 
 interface ListCommandOptions {
   cloud?: boolean;
@@ -80,7 +83,9 @@ export class ListCommand extends CommandRunner {
   })
   parseSortBy(value: string): 'created' | 'updated' | 'downloads' | 'name' {
     if (!['created', 'updated', 'downloads', 'name'].includes(value)) {
-      throw new Error('Sort field must be created, updated, downloads, or name');
+      throw new Error(
+        'Sort field must be created, updated, downloads, or name',
+      );
     }
     return value as 'created' | 'updated' | 'downloads' | 'name';
   }
@@ -97,21 +102,20 @@ export class ListCommand extends CommandRunner {
     return value as 'table' | 'json' | 'simple';
   }
 
-  async run(
-    _inputs: string[],
-    options: ListCommandOptions,
-  ): Promise<void> {
+  async run(_inputs: string[], options: ListCommandOptions): Promise<void> {
     try {
       // Check authentication
       const session = await this.authService.getSession();
       if (!session?.user) {
-        this.logger.error('Authentication required. Please run "taptik auth login" first.');
+        this.logger.error(
+          'Authentication required. Please run "taptik auth login" first.',
+        );
         process.exit(1);
       }
 
       // Build filters
       const filters: PackageFilters = {};
-      
+
       if (options.platform) {
         filters.platform = options.platform;
       }
@@ -127,7 +131,10 @@ export class ListCommand extends CommandRunner {
       );
 
       // Sort packages
-      const sortedPackages = this.sortPackages(packages, options.sortBy || 'created');
+      const sortedPackages = this.sortPackages(
+        packages,
+        options.sortBy || 'created',
+      );
 
       // Apply limit
       const limitedPackages = sortedPackages.slice(0, options.limit || 20);
@@ -135,9 +142,13 @@ export class ListCommand extends CommandRunner {
       // Display results
       if (limitedPackages.length === 0) {
         console.log(chalk.yellow('No packages found.'));
-        
+
         if (!options.platform && !options.visibility) {
-          console.log(chalk.gray('\nTip: Use "taptik push" to upload your first package.'));
+          console.log(
+            chalk.gray(
+              '\nTip: Use "taptik push" to upload your first package.',
+            ),
+          );
         }
         return;
       }
@@ -147,11 +158,11 @@ export class ListCommand extends CommandRunner {
         case 'json':
           console.log(JSON.stringify(limitedPackages, null, 2));
           break;
-          
+
         case 'simple':
           this.displaySimpleFormat(limitedPackages);
           break;
-          
+
         case 'table':
         default:
           this.displayTableFormat(limitedPackages);
@@ -160,10 +171,16 @@ export class ListCommand extends CommandRunner {
 
       // Show summary
       if (options.format !== 'json') {
-        console.log(chalk.gray(`\nShowing ${limitedPackages.length} of ${packages.length} packages`));
-        
+        console.log(
+          chalk.gray(
+            `\nShowing ${limitedPackages.length} of ${packages.length} packages`,
+          ),
+        );
+
         if (packages.length > limitedPackages.length) {
-          console.log(chalk.gray(`Use --limit ${packages.length} to see all packages`));
+          console.log(
+            chalk.gray(`Use --limit ${packages.length} to see all packages`),
+          );
         }
       }
     } catch (error) {
@@ -177,27 +194,29 @@ export class ListCommand extends CommandRunner {
     sortBy: 'created' | 'updated' | 'downloads' | 'name',
   ): PackageMetadata[] {
     const sorted = [...packages];
-    
+
     switch (sortBy) {
       case 'created':
-        return sorted.sort((a, b) => 
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        return sorted.sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         );
-        
+
       case 'updated':
-        return sorted.sort((a, b) => 
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        return sorted.sort(
+          (a, b) =>
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
         );
-        
+
       case 'downloads':
         // Sort by download count (would need to fetch stats)
         return sorted;
-        
+
       case 'name':
-        return sorted.sort((a, b) => 
-          (a.title || a.name).localeCompare(b.title || b.name)
+        return sorted.sort((a, b) =>
+          (a.title || a.name).localeCompare(b.title || b.name),
         );
-        
+
       default:
         return sorted;
     }
@@ -219,15 +238,13 @@ export class ListCommand extends CommandRunner {
       },
     });
 
-    packages.forEach(pkg => {
+    packages.forEach((pkg) => {
       table.push([
         chalk.white(pkg.configId.substring(0, 8)),
         chalk.bold(pkg.title || pkg.name),
         chalk.gray(pkg.platform),
         chalk.gray(pkg.version),
-        pkg.isPublic 
-          ? chalk.green('public') 
-          : chalk.yellow('private'),
+        pkg.isPublic ? chalk.green('public') : chalk.yellow('private'),
         chalk.gray(this.formatDate(pkg.createdAt)),
       ]);
     });
@@ -236,12 +253,12 @@ export class ListCommand extends CommandRunner {
   }
 
   private displaySimpleFormat(packages: PackageMetadata[]): void {
-    packages.forEach(pkg => {
+    packages.forEach((pkg) => {
       const visibility = pkg.isPublic ? '📢' : '🔒';
       console.log(
         `${visibility} ${chalk.bold(pkg.title || pkg.name)} ` +
-        `${chalk.gray(`(${pkg.configId.substring(0, 8)})`)} ` +
-        `- ${chalk.gray(pkg.platform)} v${pkg.version}`
+          `${chalk.gray(`(${pkg.configId.substring(0, 8)})`)} ` +
+          `- ${chalk.gray(pkg.platform)} v${pkg.version}`,
       );
     });
   }
@@ -251,7 +268,7 @@ export class ListCommand extends CommandRunner {
     const now = new Date();
     const diffMs = now.getTime() - d.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) {
       const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
       if (diffHours === 0) {

@@ -108,11 +108,15 @@ describe('StatsCommand', () => {
     };
 
     // Directly instantiate the command with mocked services
-    command = new StatsCommand(mockAuthService as any, mockPackageRegistry as any, mockAnalyticsService as any);
-    
+    command = new StatsCommand(
+      mockAuthService as any,
+      mockPackageRegistry as any,
+      mockAnalyticsService as any,
+    );
+
     // Mock process.exit
     vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
-    
+
     // Mock console methods
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -126,13 +130,13 @@ describe('StatsCommand', () => {
 
       await command.run(['config-1'], {});
 
-      expect(mockPackageRegistry.getPackageStats).toHaveBeenCalledWith('config-1');
-      expect(console.log).toHaveBeenCalledWith(
-        chalk.cyan('\n📦 Package Information')
+      expect(mockPackageRegistry.getPackageStats).toHaveBeenCalledWith(
+        'config-1',
       );
       expect(console.log).toHaveBeenCalledWith(
-        chalk.cyan('\n📊 Statistics')
+        chalk.cyan('\n📦 Package Information'),
       );
+      expect(console.log).toHaveBeenCalledWith(chalk.cyan('\n📊 Statistics'));
     });
 
     it('should display detailed analytics when --detailed flag is used', async () => {
@@ -143,12 +147,14 @@ describe('StatsCommand', () => {
 
       await command.run(['config-1'], { detailed: true });
 
-      expect(mockAnalyticsService.getPackageAnalytics).toHaveBeenCalledWith('config-1');
-      expect(console.log).toHaveBeenCalledWith(
-        chalk.cyan('\n📈 Analytics (Last 30 Days)')
+      expect(mockAnalyticsService.getPackageAnalytics).toHaveBeenCalledWith(
+        'config-1',
       );
       expect(console.log).toHaveBeenCalledWith(
-        chalk.cyan('\n🌍 Geographic Distribution')
+        chalk.cyan('\n📈 Analytics (Last 30 Days)'),
+      );
+      expect(console.log).toHaveBeenCalledWith(
+        chalk.cyan('\n🌍 Geographic Distribution'),
       );
     });
 
@@ -159,8 +165,9 @@ describe('StatsCommand', () => {
 
       await command.run(['config-1'], { format: 'json' });
 
-      const output = (console.log as any).mock.calls
-        .find((call: any[]) => call[0].includes('{'));
+      const output = (console.log as any).mock.calls.find((call: any[]) =>
+        call[0].includes('{'),
+      );
       expect(output).toBeDefined();
     });
 
@@ -181,9 +188,7 @@ describe('StatsCommand', () => {
 
       await command.run(['config-1'], {});
 
-      expect(console.log).toHaveBeenCalledWith(
-        chalk.cyan('\n💡 Insights')
-      );
+      expect(console.log).toHaveBeenCalledWith(chalk.cyan('\n💡 Insights'));
     });
 
     it('should allow viewing stats for public packages by other users', async () => {
@@ -241,7 +246,7 @@ describe('StatsCommand', () => {
     it('should handle errors gracefully', async () => {
       mockAuthService.getSession.mockResolvedValue(mockSession);
       mockPackageRegistry.getPackageByConfigId.mockRejectedValue(
-        new Error('Network error')
+        new Error('Network error'),
       );
 
       await command.run(['config-1'], {});
@@ -259,7 +264,7 @@ describe('StatsCommand', () => {
 
     it('should throw error for invalid format', () => {
       expect(() => command.parseFormat('invalid')).toThrow(
-        'Format must be table, json, or simple'
+        'Format must be table, json, or simple',
       );
     });
 

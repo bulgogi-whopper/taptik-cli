@@ -49,13 +49,10 @@ export class StatsCommand extends CommandRunner {
     return true;
   }
 
-  async run(
-    inputs: string[],
-    options: StatsCommandOptions,
-  ): Promise<void> {
+  async run(inputs: string[], options: StatsCommandOptions): Promise<void> {
     try {
       const configId = inputs[0];
-      
+
       if (!configId) {
         this.logger.error('Please provide a configuration ID');
         console.log(chalk.gray('\nUsage: taptik stats <config-id> [options]'));
@@ -65,13 +62,16 @@ export class StatsCommand extends CommandRunner {
       // Check authentication
       const session = await this.authService.getSession();
       if (!session?.user) {
-        this.logger.error('Authentication required. Please run "taptik auth login" first.');
+        this.logger.error(
+          'Authentication required. Please run "taptik auth login" first.',
+        );
         process.exit(1);
       }
 
       // Fetch package
-      const packageData = await this.packageRegistry.getPackageByConfigId(configId);
-      
+      const packageData =
+        await this.packageRegistry.getPackageByConfigId(configId);
+
       if (!packageData) {
         this.logger.error(`Package with ID ${configId} not found`);
         process.exit(1);
@@ -79,13 +79,15 @@ export class StatsCommand extends CommandRunner {
 
       // Check ownership or public access
       if (packageData.userId !== session.user.id && !packageData.isPublic) {
-        this.logger.error('You do not have permission to view stats for this package');
+        this.logger.error(
+          'You do not have permission to view stats for this package',
+        );
         process.exit(1);
       }
 
       // Fetch statistics
       const stats = await this.packageRegistry.getPackageStats(configId);
-      
+
       // Fetch detailed analytics if requested
       let analytics = null;
       if (options.detailed) {
@@ -117,11 +119,11 @@ export class StatsCommand extends CommandRunner {
         case 'json':
           console.log(JSON.stringify(statsData, null, 2));
           break;
-          
+
         case 'simple':
           this.displaySimpleFormat(statsData);
           break;
-          
+
         case 'table':
         default:
           this.displayTableFormat(statsData, options.detailed);
@@ -134,33 +136,65 @@ export class StatsCommand extends CommandRunner {
       }
     } catch (error) {
       this.logger.error(`Failed to fetch statistics: ${error.message}`);
-      
+
       if (error.message.includes('not found')) {
-        console.log(chalk.gray('\nTip: Use "taptik list --cloud" to see your packages'));
+        console.log(
+          chalk.gray('\nTip: Use "taptik list --cloud" to see your packages'),
+        );
       }
-      
+
       process.exit(1);
     }
   }
 
-  private displayTableFormat(data: { package: { title: string; configId: string; platform: string; version: string; visibility: string; created: Date | string; }; statistics: { downloads: number; views: number; likes: number; lastDownloaded?: Date | string; }; analytics?: { downloads?: { total: number; dailyAverage: number; trend: number; }; views?: { total: number; dailyAverage: number; trend: number; }; geographic?: Array<{ country: string; count: number; percentage: number; }>; }; }, detailed: boolean): void {
+  private displayTableFormat(
+    data: {
+      package: {
+        title: string;
+        configId: string;
+        platform: string;
+        version: string;
+        visibility: string;
+        created: Date | string;
+      };
+      statistics: {
+        downloads: number;
+        views: number;
+        likes: number;
+        lastDownloaded?: Date | string;
+      };
+      analytics?: {
+        downloads?: { total: number; dailyAverage: number; trend: number };
+        views?: { total: number; dailyAverage: number; trend: number };
+        geographic?: Array<{
+          country: string;
+          count: number;
+          percentage: number;
+        }>;
+      };
+    },
+    detailed: boolean,
+  ): void {
     // Package info table
     console.log(chalk.cyan('\n📦 Package Information'));
     const infoTable = new Table({
       style: { head: [], border: [] },
     });
-    
+
     infoTable.push(
       ['Title', chalk.bold(data.package.title)],
       ['ID', chalk.gray(data.package.configId)],
       ['Platform', chalk.gray(data.package.platform)],
       ['Version', chalk.gray(data.package.version)],
-      ['Visibility', data.package.visibility === 'public' 
-        ? chalk.green('public') 
-        : chalk.yellow('private')],
+      [
+        'Visibility',
+        data.package.visibility === 'public'
+          ? chalk.green('public')
+          : chalk.yellow('private'),
+      ],
       ['Created', chalk.gray(this.formatDate(data.package.created))],
     );
-    
+
     console.log(infoTable.toString());
 
     // Statistics table
@@ -168,16 +202,19 @@ export class StatsCommand extends CommandRunner {
     const statsTable = new Table({
       style: { head: [], border: [] },
     });
-    
+
     statsTable.push(
       ['Downloads', chalk.bold(data.statistics.downloads.toString())],
       ['Views', chalk.bold(data.statistics.views.toString())],
       ['Likes', chalk.bold(data.statistics.likes.toString())],
-      ['Last Downloaded', data.statistics.lastDownloaded 
-        ? chalk.gray(this.formatDate(data.statistics.lastDownloaded))
-        : chalk.gray('Never')],
+      [
+        'Last Downloaded',
+        data.statistics.lastDownloaded
+          ? chalk.gray(this.formatDate(data.statistics.lastDownloaded))
+          : chalk.gray('Never'),
+      ],
     );
-    
+
     console.log(statsTable.toString());
 
     // Detailed analytics
@@ -192,7 +229,7 @@ export class StatsCommand extends CommandRunner {
         ],
         style: { head: [], border: [] },
       });
-      
+
       if (data.analytics.downloads) {
         analyticsTable.push([
           'Downloads',
@@ -201,7 +238,7 @@ export class StatsCommand extends CommandRunner {
           this.formatTrend(data.analytics.downloads.trend),
         ]);
       }
-      
+
       if (data.analytics.views) {
         analyticsTable.push([
           'Views',
@@ -210,17 +247,21 @@ export class StatsCommand extends CommandRunner {
           this.formatTrend(data.analytics.views.trend),
         ]);
       }
-      
+
       console.log(analyticsTable.toString());
-      
+
       // Geographic distribution
       if (data.analytics.geographic && data.analytics.geographic.length > 0) {
         console.log(chalk.cyan('\n🌍 Geographic Distribution'));
         const geoTable = new Table({
-          head: [chalk.cyan('Country'), chalk.cyan('Downloads'), chalk.cyan('Percentage')],
+          head: [
+            chalk.cyan('Country'),
+            chalk.cyan('Downloads'),
+            chalk.cyan('Percentage'),
+          ],
           style: { head: [], border: [] },
         });
-        
+
         data.analytics.geographic.slice(0, 5).forEach((geo) => {
           geoTable.push([
             geo.country,
@@ -228,72 +269,118 @@ export class StatsCommand extends CommandRunner {
             `${geo.percentage.toFixed(1)}%`,
           ]);
         });
-        
+
         console.log(geoTable.toString());
       }
     }
   }
 
-  private displaySimpleFormat(data: { package: { title: string; configId: string; }; statistics: { downloads: number; views: number; likes: number; lastDownloaded?: Date | string; }; }): void {
+  private displaySimpleFormat(data: {
+    package: { title: string; configId: string };
+    statistics: {
+      downloads: number;
+      views: number;
+      likes: number;
+      lastDownloaded?: Date | string;
+    };
+  }): void {
     console.log(chalk.cyan(`\n📦 ${chalk.bold(data.package.title)}`));
     console.log(chalk.gray(`   ${data.package.configId}`));
     console.log();
     console.log(`   Downloads: ${chalk.bold(data.statistics.downloads)}`);
     console.log(`   Views: ${chalk.bold(data.statistics.views)}`);
     console.log(`   Likes: ${chalk.bold(data.statistics.likes)}`);
-    
+
     if (data.statistics.lastDownloaded) {
-      console.log(`   Last download: ${chalk.gray(this.formatRelativeTime(data.statistics.lastDownloaded))}`);
+      console.log(
+        `   Last download: ${chalk.gray(this.formatRelativeTime(data.statistics.lastDownloaded))}`,
+      );
     }
   }
 
-  private displayInsights(data: { statistics: { downloads: number; views: number; likes: number; lastDownloaded?: Date | string; }; package: { visibility: string; }; }): void {
+  private displayInsights(data: {
+    statistics: {
+      downloads: number;
+      views: number;
+      likes: number;
+      lastDownloaded?: Date | string;
+    };
+    package: { visibility: string };
+  }): void {
     console.log(chalk.cyan('\n💡 Insights'));
-    
+
     // Engagement rate
     if (data.statistics.views > 0) {
-      const conversionRate = (data.statistics.downloads / data.statistics.views * 100).toFixed(1);
-      console.log(`  • Conversion rate: ${chalk.bold(`${conversionRate  }%`)} (downloads/views)`);
+      const conversionRate = (
+        (data.statistics.downloads / data.statistics.views) *
+        100
+      ).toFixed(1);
+      console.log(
+        `  • Conversion rate: ${chalk.bold(`${conversionRate}%`)} (downloads/views)`,
+      );
     }
-    
+
     // Like rate
     if (data.statistics.downloads > 0) {
-      const likeRate = (data.statistics.likes / data.statistics.downloads * 100).toFixed(1);
-      console.log(`  • Like rate: ${chalk.bold(`${likeRate  }%`)} (likes/downloads)`);
+      const likeRate = (
+        (data.statistics.likes / data.statistics.downloads) *
+        100
+      ).toFixed(1);
+      console.log(
+        `  • Like rate: ${chalk.bold(`${likeRate}%`)} (likes/downloads)`,
+      );
     }
-    
+
     // Activity status
     if (data.statistics.lastDownloaded) {
       const daysSinceLastDownload = Math.floor(
-        (Date.now() - new Date(data.statistics.lastDownloaded).getTime()) / (1000 * 60 * 60 * 24)
+        (Date.now() - new Date(data.statistics.lastDownloaded).getTime()) /
+          (1000 * 60 * 60 * 24),
       );
-      
+
       if (daysSinceLastDownload === 0) {
         console.log(`  • Status: ${chalk.green('Active')} (downloaded today)`);
       } else if (daysSinceLastDownload < 7) {
-        console.log(`  • Status: ${chalk.green('Active')} (downloaded this week)`);
+        console.log(
+          `  • Status: ${chalk.green('Active')} (downloaded this week)`,
+        );
       } else if (daysSinceLastDownload < 30) {
-        console.log(`  • Status: ${chalk.yellow('Moderate')} (downloaded this month)`);
+        console.log(
+          `  • Status: ${chalk.yellow('Moderate')} (downloaded this month)`,
+        );
       } else {
-        console.log(`  • Status: ${chalk.red('Inactive')} (${daysSinceLastDownload} days since last download)`);
+        console.log(
+          `  • Status: ${chalk.red('Inactive')} (${daysSinceLastDownload} days since last download)`,
+        );
       }
     } else {
       console.log(`  • Status: ${chalk.gray('No downloads yet')}`);
     }
-    
+
     // Recommendations
-    if (data.statistics.downloads === 0 && data.package.visibility === 'private') {
-      console.log(chalk.gray('\n💡 Tip: Consider making your package public to increase visibility'));
+    if (
+      data.statistics.downloads === 0 &&
+      data.package.visibility === 'private'
+    ) {
+      console.log(
+        chalk.gray(
+          '\n💡 Tip: Consider making your package public to increase visibility',
+        ),
+      );
     }
-    
+
     if (data.statistics.likes === 0 && data.statistics.downloads > 10) {
-      console.log(chalk.gray('\n💡 Tip: Encourage users to like your package if they find it useful'));
+      console.log(
+        chalk.gray(
+          '\n💡 Tip: Encourage users to like your package if they find it useful',
+        ),
+      );
     }
   }
 
   private formatDate(date: Date | string): string {
     const d = new Date(date);
-    return `${d.toLocaleDateString()  } ${  d.toLocaleTimeString()}`;
+    return `${d.toLocaleDateString()} ${d.toLocaleTimeString()}`;
   }
 
   private formatRelativeTime(date: Date | string): string {
@@ -301,7 +388,7 @@ export class StatsCommand extends CommandRunner {
     const now = new Date();
     const diffMs = now.getTime() - d.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) {
       const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
       if (diffHours === 0) {

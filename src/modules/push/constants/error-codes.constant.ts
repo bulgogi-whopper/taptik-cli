@@ -35,4 +35,4 @@ export const ErrorCodes = {
   QUEUE_FILE_NOT_FOUND: 'QUEUE_003',
 } as const;
 
-export type ErrorCode = typeof ErrorCodes[keyof typeof ErrorCodes];
+export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];

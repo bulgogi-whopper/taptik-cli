@@ -84,15 +84,18 @@ describe('UpdateCommand', () => {
     };
 
     // Directly instantiate the command with mocked services
-    command = new UpdateCommand(mockAuthService as any, mockPackageRegistry as any);
-    
+    command = new UpdateCommand(
+      mockAuthService as any,
+      mockPackageRegistry as any,
+    );
+
     // Mock process.exit
     vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
-    
+
     // Mock console methods
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    
+
     // Reset inquirer mock
     vi.mocked(inquirer.prompt).mockReset();
   });
@@ -111,10 +114,10 @@ describe('UpdateCommand', () => {
 
       expect(mockPackageRegistry.updatePackage).toHaveBeenCalledWith(
         'config-1',
-        { title: 'New Title' }
+        { title: 'New Title' },
       );
       expect(console.log).toHaveBeenCalledWith(
-        chalk.green('✅ Package updated successfully!')
+        chalk.green('✅ Package updated successfully!'),
       );
     });
 
@@ -131,7 +134,7 @@ describe('UpdateCommand', () => {
 
       expect(mockPackageRegistry.updatePackage).toHaveBeenCalledWith(
         'config-1',
-        { description: 'New description' }
+        { description: 'New description' },
       );
     });
 
@@ -148,7 +151,7 @@ describe('UpdateCommand', () => {
 
       expect(mockPackageRegistry.updatePackage).toHaveBeenCalledWith(
         'config-1',
-        { userTags: ['new', 'tags'] }
+        { userTags: ['new', 'tags'] },
       );
     });
 
@@ -159,7 +162,7 @@ describe('UpdateCommand', () => {
         ...mockPackage,
         title: 'Interactive Title',
       });
-      
+
       vi.mocked(inquirer.prompt)
         .mockResolvedValueOnce({
           title: 'Interactive Title',
@@ -173,7 +176,7 @@ describe('UpdateCommand', () => {
       expect(inquirer.prompt).toHaveBeenCalledTimes(2);
       expect(mockPackageRegistry.updatePackage).toHaveBeenCalledWith(
         'config-1',
-        { title: 'Interactive Title' }
+        { title: 'Interactive Title' },
       );
     });
 
@@ -199,9 +202,7 @@ describe('UpdateCommand', () => {
       await command.run(['config-1'], { title: 'New Title' });
 
       expect(mockPackageRegistry.updatePackage).not.toHaveBeenCalled();
-      expect(console.log).toHaveBeenCalledWith(
-        chalk.gray('Update cancelled')
-      );
+      expect(console.log).toHaveBeenCalledWith(chalk.gray('Update cancelled'));
     });
 
     it('should show no changes message when nothing to update', async () => {
@@ -210,9 +211,7 @@ describe('UpdateCommand', () => {
 
       await command.run(['config-1'], { title: mockPackage.title });
 
-      expect(console.log).toHaveBeenCalledWith(
-        'No changes to apply'
-      );
+      expect(console.log).toHaveBeenCalledWith('No changes to apply');
       expect(mockPackageRegistry.updatePackage).not.toHaveBeenCalled();
     });
 
@@ -256,7 +255,7 @@ describe('UpdateCommand', () => {
     it('should handle errors gracefully', async () => {
       mockAuthService.getSession.mockResolvedValue(mockSession);
       mockPackageRegistry.getPackageByConfigId.mockRejectedValue(
-        new Error('Network error')
+        new Error('Network error'),
       );
 
       await command.run(['config-1'], { title: 'New Title' });
@@ -271,7 +270,9 @@ describe('UpdateCommand', () => {
     });
 
     it('should parse description option', () => {
-      expect(command.parseDescription('New description')).toBe('New description');
+      expect(command.parseDescription('New description')).toBe(
+        'New description',
+      );
     });
 
     it('should parse tags option', () => {

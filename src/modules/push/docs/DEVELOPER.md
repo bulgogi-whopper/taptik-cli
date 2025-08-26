@@ -25,23 +25,27 @@ The Push module enables cloud synchronization of Taptik packages with Supabase. 
 ### Quick Setup
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/taptik/taptik-cli.git
 cd taptik-cli
 ```
 
 2. Install dependencies:
+
 ```bash
 pnpm install
 ```
 
 3. Configure environment:
+
 ```bash
 cp .env.example .env
 # Edit .env with your Supabase credentials
 ```
 
 4. Run tests:
+
 ```bash
 pnpm run test:run src/modules/push
 ```
@@ -118,21 +122,25 @@ graph TD
 ### Local Supabase Development
 
 1. Install Supabase CLI:
+
 ```bash
 brew install supabase/tap/supabase
 ```
 
 2. Start local Supabase:
+
 ```bash
 supabase start
 ```
 
 3. Apply migrations:
+
 ```bash
 supabase db push
 ```
 
 4. Configure local environment:
+
 ```bash
 # .env.local
 SUPABASE_URL=http://localhost:54321
@@ -159,10 +167,7 @@ Configure storage bucket:
 // scripts/setup-storage.ts
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
 async function setupStorage() {
   // Create bucket
@@ -187,15 +192,14 @@ setupStorage();
 ### Adding a New Service
 
 1. Create service file:
+
 ```typescript
 // src/modules/push/services/my-new.service.ts
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class MyNewService {
-  constructor(
-    private readonly supabaseService: SupabaseService,
-  ) {}
+  constructor(private readonly supabaseService: SupabaseService) {}
 
   async myMethod(): Promise<void> {
     // Implementation
@@ -204,6 +208,7 @@ export class MyNewService {
 ```
 
 2. Register in module:
+
 ```typescript
 // src/modules/push/push.module.ts
 @Module({
@@ -217,6 +222,7 @@ export class PushModule {}
 ```
 
 3. Add tests:
+
 ```typescript
 // src/modules/push/services/my-new.service.spec.ts
 import { Test } from '@nestjs/testing';
@@ -242,6 +248,7 @@ describe('MyNewService', () => {
 ### Adding a New Command
 
 1. Create command file:
+
 ```typescript
 // src/modules/push/commands/my-command.command.ts
 import { Command, CommandRunner, Option } from 'nest-commander';
@@ -270,6 +277,7 @@ export class MyCommand extends CommandRunner {
 ```
 
 2. Register command:
+
 ```typescript
 // src/modules/push/push.module.ts
 @Module({
@@ -284,6 +292,7 @@ export class PushModule {}
 ### Adding a New Validation Rule
 
 1. Add to security validator:
+
 ```typescript
 // src/modules/push/services/security-validator.service.ts
 export class SecurityValidatorService {
@@ -292,7 +301,7 @@ export class SecurityValidatorService {
 
   validateInput(input: unknown, fieldName: string): SecurityValidationResult {
     // ... existing validation
-    
+
     // Add new check
     if (this.myPattern.test(String(input))) {
       issues.push({
@@ -302,28 +311,28 @@ export class SecurityValidatorService {
         severity: 'high',
       });
     }
-    
+
     return this.createResult(issues);
   }
 }
 ```
 
 2. Add tests:
+
 ```typescript
 it('should detect my pattern', () => {
   const input = 'text with my-pattern';
   const result = validator.validateInput(input, 'test');
-  
+
   expect(result.isValid).toBe(false);
-  expect(result.issues).toContainEqual(
-    expect.objectContaining({ type: 'MY_PATTERN_DETECTED' })
-  );
+  expect(result.issues).toContainEqual(expect.objectContaining({ type: 'MY_PATTERN_DETECTED' }));
 });
 ```
 
 ### Adding a New Sanitization Rule
 
 1. Add pattern to sanitizer:
+
 ```typescript
 // src/modules/push/services/sanitization.service.ts
 export class SanitizationService {
@@ -332,26 +341,19 @@ export class SanitizationService {
     mySecret: /my-secret-[a-z0-9]+/gi,
   };
 
-  private removePattern(
-    content: string,
-    pattern: RegExp,
-    patternName: string
-  ): SanitizationResult {
+  private removePattern(content: string, pattern: RegExp, patternName: string): SanitizationResult {
     // Implementation
   }
 }
 ```
 
 2. Test the pattern:
+
 ```typescript
 it('should remove my secrets', async () => {
   const content = { secret: 'my-secret-12345' };
-  const result = await sanitizer.sanitizePackage(
-    Buffer.from(JSON.stringify(content)),
-    'test.taptik',
-    mockPlatform
-  );
-  
+  const result = await sanitizer.sanitizePackage(Buffer.from(JSON.stringify(content)), 'test.taptik', mockPlatform);
+
   const sanitized = JSON.parse(result.sanitized.toString());
   expect(sanitized.secret).toBeUndefined();
   expect(result.report.removed).toContain('mySecret');
@@ -397,7 +399,7 @@ describe('Push Integration', () => {
 
     app = module.createNestApplication();
     await app.init();
-    
+
     pushService = app.get<PushService>(PushService);
   });
 
@@ -419,10 +421,8 @@ Test CLI commands:
 ```typescript
 describe('Push Command E2E', () => {
   it('should upload package via CLI', async () => {
-    const { stdout, stderr } = await execAsync(
-      'pnpm cli push test.taptik --dry-run'
-    );
-    
+    const { stdout, stderr } = await execAsync('pnpm cli push test.taptik --dry-run');
+
     expect(stdout).toContain('Dry run completed');
     expect(stderr).toBe('');
   });
@@ -438,9 +438,9 @@ describe('Performance', () => {
   it('should handle 100MB file', async () => {
     const largeBuffer = Buffer.alloc(100 * 1024 * 1024);
     const startTime = Date.now();
-    
+
     await uploader.uploadPackage(largeBuffer, 'large.taptik', 'user-123');
-    
+
     const duration = Date.now() - startTime;
     expect(duration).toBeLessThan(60000); // Under 1 minute
   });
@@ -456,7 +456,7 @@ describe('Security', () => {
   it('should prevent SQL injection', () => {
     const maliciousInput = "'; DROP TABLE users; --";
     const result = validator.validateInput(maliciousInput, 'test');
-    
+
     expect(result.isValid).toBe(false);
     expect(result.riskLevel).toBe('critical');
   });
@@ -481,17 +481,20 @@ DEBUG=taptik:push:sanitize pnpm cli push package.taptik
 #### Upload Failures
 
 1. Check network connectivity:
+
 ```bash
 curl -I https://your-project.supabase.co
 ```
 
 2. Verify authentication:
+
 ```typescript
 const { data, error } = await supabase.auth.getUser();
 console.log('User:', data, 'Error:', error);
 ```
 
 3. Check storage permissions:
+
 ```sql
 SELECT * FROM storage.buckets WHERE name = 'taptik-packages';
 SELECT * FROM storage.objects WHERE bucket_id = 'taptik-packages';
@@ -500,6 +503,7 @@ SELECT * FROM storage.objects WHERE bucket_id = 'taptik-packages';
 #### Rate Limiting Issues
 
 1. Check current limits:
+
 ```typescript
 const result = await rateLimiter.checkLimit(userId, tier);
 console.log('Remaining:', result.remaining);
@@ -507,6 +511,7 @@ console.log('Reset at:', result.resetAt);
 ```
 
 2. Clear rate limit (development):
+
 ```sql
 DELETE FROM rate_limits WHERE user_id = 'user-123';
 ```
@@ -514,17 +519,15 @@ DELETE FROM rate_limits WHERE user_id = 'user-123';
 #### Sanitization Issues
 
 1. Test sanitization patterns:
+
 ```typescript
 const testData = { apiKey: 'sk-test123' };
-const result = await sanitizer.sanitizePackage(
-  Buffer.from(JSON.stringify(testData)),
-  'test.taptik',
-  platform
-);
+const result = await sanitizer.sanitizePackage(Buffer.from(JSON.stringify(testData)), 'test.taptik', platform);
 console.log('Report:', result.report);
 ```
 
 2. Bypass sanitization (development only):
+
 ```typescript
 const options: PushOptions = {
   // ... other options
@@ -535,6 +538,7 @@ const options: PushOptions = {
 ### Performance Profiling
 
 1. Enable timing logs:
+
 ```typescript
 const startTime = performance.now();
 await operation();
@@ -543,12 +547,14 @@ console.log(`Operation took ${duration}ms`);
 ```
 
 2. Memory profiling:
+
 ```bash
 node --inspect pnpm cli push large-package.taptik
 # Open chrome://inspect and profile
 ```
 
 3. Database query analysis:
+
 ```sql
 EXPLAIN ANALYZE
 SELECT * FROM taptik_packages
@@ -562,11 +568,13 @@ LIMIT 20;
 ### Development Workflow
 
 1. Create feature branch:
+
 ```bash
 git checkout -b feature/my-feature
 ```
 
 2. Make changes following TDD:
+
 ```bash
 # Write test first
 pnpm run test:watch src/modules/push/my-feature.spec.ts
@@ -576,6 +584,7 @@ pnpm run test:watch src/modules/push/my-feature.spec.ts
 ```
 
 3. Run quality checks:
+
 ```bash
 pnpm run lint src/modules/push
 pnpm run typecheck
@@ -584,6 +593,7 @@ pnpm run build
 ```
 
 4. Commit with conventional commits:
+
 ```bash
 git commit -m "feat(push): add my feature"
 ```
@@ -602,9 +612,7 @@ Follow NestJS and TypeScript best practices:
 // ✅ Good
 @Injectable()
 export class MyService {
-  constructor(
-    private readonly dependency: Dependency,
-  ) {}
+  constructor(private readonly dependency: Dependency) {}
 
   async myMethod(input: Input): Promise<Output> {
     // Clear, typed implementation
@@ -660,13 +668,13 @@ export class CustomChunkStrategy {
   createChunks(buffer: Buffer, chunkSize: number): Buffer[] {
     const chunks: Buffer[] = [];
     let offset = 0;
-    
+
     while (offset < buffer.length) {
       const size = Math.min(chunkSize, buffer.length - offset);
       chunks.push(buffer.slice(offset, offset + size));
       offset += size;
     }
-    
+
     return chunks;
   }
 }
@@ -707,10 +715,10 @@ export class CustomAnalyticsCollector {
       ...event,
       customField: this.calculateCustomMetric(event),
     };
-    
+
     await this.send(metrics);
   }
-  
+
   private calculateCustomMetric(event: AnalyticsEvent): number {
     // Custom calculation
   }
@@ -725,7 +733,7 @@ Create extensible plugin architecture:
 export interface PushPlugin {
   name: string;
   version: string;
-  
+
   beforeUpload?(options: PushOptions): Promise<PushOptions>;
   afterUpload?(result: PushResult): Promise<void>;
   onError?(error: PushError): Promise<void>;
@@ -733,20 +741,20 @@ export interface PushPlugin {
 
 export class PluginManager {
   private plugins: PushPlugin[] = [];
-  
+
   register(plugin: PushPlugin): void {
     this.plugins.push(plugin);
   }
-  
+
   async executeBeforeUpload(options: PushOptions): Promise<PushOptions> {
     let modifiedOptions = options;
-    
+
     for (const plugin of this.plugins) {
       if (plugin.beforeUpload) {
         modifiedOptions = await plugin.beforeUpload(modifiedOptions);
       }
     }
-    
+
     return modifiedOptions;
   }
 }

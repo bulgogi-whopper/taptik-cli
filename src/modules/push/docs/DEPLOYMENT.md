@@ -61,6 +61,7 @@ brew install supabase/tap/supabase
    - **Service Key**: `eyJ...` (secret, for migrations)
 
 3. Store securely:
+
 ```bash
 # .env.production
 SUPABASE_URL=https://[project-id].supabase.co
@@ -77,6 +78,7 @@ SUPABASE_SERVICE_KEY=eyJ... # Never commit!
    - Configure email templates
 
 3. Enable OAuth providers:
+
 ```sql
 -- Enable Google OAuth
 UPDATE auth.providers
@@ -85,7 +87,7 @@ WHERE provider = 'google';
 
 -- Configure redirect URLs
 INSERT INTO auth.redirect_urls (url)
-VALUES 
+VALUES
   ('http://localhost:3000/auth/callback'),
   ('https://yourdomain.com/auth/callback');
 ```
@@ -121,7 +123,7 @@ CREATE TABLE IF NOT EXISTS taptik_packages (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   archived_at TIMESTAMPTZ,
-  
+
   CONSTRAINT valid_dates CHECK (created_at <= updated_at),
   CONSTRAINT valid_archive CHECK (archived_at IS NULL OR archived_at >= created_at)
 );
@@ -163,7 +165,7 @@ CREATE TABLE IF NOT EXISTS package_versions (
   size BIGINT NOT NULL CHECK (size > 0),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   created_by UUID REFERENCES auth.users(id),
-  
+
   CONSTRAINT unique_package_version UNIQUE(package_id, version)
 );
 
@@ -192,7 +194,7 @@ CREATE INDEX idx_downloads_country ON package_downloads(country_code) WHERE coun
 
 -- Analytics aggregation view
 CREATE MATERIALIZED VIEW package_analytics AS
-SELECT 
+SELECT
   p.id as package_id,
   p.config_id,
   p.name,
@@ -246,7 +248,7 @@ CREATE TABLE IF NOT EXISTS rate_limits (
   count INTEGER NOT NULL DEFAULT 0 CHECK (count >= 0),
   window_start TIMESTAMPTZ NOT NULL,
   last_action TIMESTAMPTZ,
-  
+
   CONSTRAINT unique_rate_limit UNIQUE(user_id, action, window_start)
 );
 
@@ -361,7 +363,7 @@ RETURNS TABLE (
 ) AS $$
 BEGIN
   RETURN QUERY
-  SELECT 
+  SELECT
     COUNT(*)::INTEGER as total_packages,
     COALESCE(SUM(package_size), 0) as total_size,
     COALESCE(SUM(download_count), 0)::INTEGER as total_downloads,
@@ -386,17 +388,17 @@ DECLARE
   window_start_time TIMESTAMPTZ;
 BEGIN
   window_start_time := date_trunc('day', NOW());
-  
+
   SELECT count INTO current_count
   FROM rate_limits
   WHERE user_id = user_uuid
   AND action = action_type
   AND window_start = window_start_time;
-  
+
   IF current_count IS NULL THEN
     INSERT INTO rate_limits (user_id, action, count, window_start, last_action)
     VALUES (user_uuid, action_type, 1, window_start_time, NOW())
-    ON CONFLICT (user_id, action, window_start) 
+    ON CONFLICT (user_id, action, window_start)
     DO UPDATE SET count = rate_limits.count + 1, last_action = NOW();
     RETURN true;
   ELSIF current_count < max_count THEN
@@ -431,19 +433,15 @@ supabase db push
 // scripts/setup-storage.ts
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
-);
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 
 async function setupStorage() {
   // Create main bucket
-  const { data: bucket, error: bucketError } = await supabase.storage
-    .createBucket('taptik-packages', {
-      public: false,
-      fileSizeLimit: 104857600, // 100MB
-      allowedMimeTypes: ['application/json', 'application/octet-stream'],
-    });
+  const { data: bucket, error: bucketError } = await supabase.storage.createBucket('taptik-packages', {
+    public: false,
+    fileSizeLimit: 104857600, // 100MB
+    allowedMimeTypes: ['application/json', 'application/octet-stream'],
+  });
 
   if (bucketError && !bucketError.message.includes('already exists')) {
     console.error('Error creating bucket:', bucketError);
@@ -453,17 +451,11 @@ async function setupStorage() {
   console.log('Bucket ready:', bucket || 'taptik-packages');
 
   // Create folder structure
-  const folders = [
-    'packages/',
-    'temp/',
-    'archives/',
-  ];
+  const folders = ['packages/', 'temp/', 'archives/'];
 
   for (const folder of folders) {
-    const { error } = await supabase.storage
-      .from('taptik-packages')
-      .upload(`${folder}.keep`, new Blob(['']));
-    
+    const { error } = await supabase.storage.from('taptik-packages').upload(`${folder}.keep`, new Blob(['']));
+
     if (error && !error.message.includes('already exists')) {
       console.error(`Error creating folder ${folder}:`, error);
     }
@@ -531,12 +523,10 @@ For better performance, configure CDN:
 
 ```typescript
 // When uploading
-const { data, error } = await supabase.storage
-  .from('taptik-packages')
-  .upload(path, file, {
-    cacheControl: '3600', // 1 hour
-    contentType: 'application/json',
-  });
+const { data, error } = await supabase.storage.from('taptik-packages').upload(path, file, {
+  cacheControl: '3600', // 1 hour
+  contentType: 'application/json',
+});
 ```
 
 ## Environment Configuration
@@ -657,28 +647,7 @@ vercel --prod
 
 ```yaml
 # task-definition.json
-{
-  "family": "taptik-cli",
-  "taskRoleArn": "arn:aws:iam::123456789:role/taptik-task-role",
-  "executionRoleArn": "arn:aws:iam::123456789:role/taptik-execution-role",
-  "containerDefinitions": [
-    {
-      "name": "taptik-cli",
-      "image": "123456789.dkr.ecr.us-east-1.amazonaws.com/taptik-cli:latest",
-      "memory": 512,
-      "cpu": 256,
-      "environment": [
-        {"name": "NODE_ENV", "value": "production"}
-      ],
-      "secrets": [
-        {
-          "name": "SUPABASE_URL",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:123456789:secret:taptik/production:SUPABASE_URL::"
-        }
-      ]
-    }
-  ]
-}
+{ 'family': 'taptik-cli', 'taskRoleArn': 'arn:aws:iam::123456789:role/taptik-task-role', 'executionRoleArn': 'arn:aws:iam::123456789:role/taptik-execution-role', 'containerDefinitions': [{ 'name': 'taptik-cli', 'image': '123456789.dkr.ecr.us-east-1.amazonaws.com/taptik-cli:latest', 'memory': 512, 'cpu': 256, 'environment': [{ 'name': 'NODE_ENV', 'value': 'production' }], 'secrets': [{ 'name': 'SUPABASE_URL', 'valueFrom': 'arn:aws:secretsmanager:us-east-1:123456789:secret:taptik/production:SUPABASE_URL::' }] }] }
 ```
 
 #### Option C: Kubernetes
@@ -700,20 +669,20 @@ spec:
         app: taptik-cli
     spec:
       containers:
-      - name: taptik-cli
-        image: taptik-cli:latest
-        ports:
-        - containerPort: 3000
-        envFrom:
-        - secretRef:
-            name: taptik-secrets
-        resources:
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
+        - name: taptik-cli
+          image: taptik-cli:latest
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: taptik-secrets
+          resources:
+            limits:
+              memory: '512Mi'
+              cpu: '500m'
+            requests:
+              memory: '256Mi'
+              cpu: '250m'
 ```
 
 ```bash
@@ -750,9 +719,7 @@ Sentry.init({
   dsn: process.env.SENTRY_DSN,
   environment: process.env.NODE_ENV,
   tracesSampleRate: 0.1,
-  integrations: [
-    new Sentry.Integrations.Http({ tracing: true }),
-  ],
+  integrations: [new Sentry.Integrations.Http({ tracing: true })],
 });
 ```
 
@@ -762,7 +729,7 @@ Monitor database performance:
 
 ```sql
 -- Check slow queries
-SELECT 
+SELECT
   query,
   calls,
   total_time,
@@ -774,7 +741,7 @@ ORDER BY mean_time DESC
 LIMIT 10;
 
 -- Monitor table sizes
-SELECT 
+SELECT
   schemaname,
   tablename,
   pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size
@@ -783,7 +750,7 @@ WHERE schemaname = 'public'
 ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
 
 -- Check index usage
-SELECT 
+SELECT
   schemaname,
   tablename,
   indexname,
@@ -801,19 +768,18 @@ Monitor storage usage:
 ```typescript
 // Monitor storage usage
 async function monitorStorage() {
-  const { data, error } = await supabase.storage
-    .from('taptik-packages')
-    .list('packages/', {
-      limit: 1000,
-      offset: 0,
-    });
+  const { data, error } = await supabase.storage.from('taptik-packages').list('packages/', {
+    limit: 1000,
+    offset: 0,
+  });
 
-  const totalSize = data?.reduce((sum, file) => {
-    return sum + (file.metadata?.size || 0);
-  }, 0) || 0;
+  const totalSize =
+    data?.reduce((sum, file) => {
+      return sum + (file.metadata?.size || 0);
+    }, 0) || 0;
 
   console.log('Total storage used:', formatBytes(totalSize));
-  
+
   // Alert if approaching limit
   const limitBytes = 10 * 1024 * 1024 * 1024; // 10GB
   if (totalSize > limitBytes * 0.8) {
@@ -835,19 +801,19 @@ groups:
         expr: rate(errors_total[5m]) > 0.05
         for: 5m
         annotations:
-          summary: "High error rate detected"
-          
+          summary: 'High error rate detected'
+
       - alert: SlowUploads
         expr: histogram_quantile(0.95, upload_duration_seconds) > 30
         for: 10m
         annotations:
-          summary: "Uploads taking longer than 30 seconds"
-          
+          summary: 'Uploads taking longer than 30 seconds'
+
       - alert: RateLimitExceeded
         expr: rate(rate_limit_exceeded_total[1h]) > 10
         for: 5m
         annotations:
-          summary: "Many users hitting rate limits"
+          summary: 'Many users hitting rate limits'
 ```
 
 ## Troubleshooting
@@ -864,9 +830,9 @@ psql postgresql://postgres:[password]@db.[project-id].supabase.co:5432/postgres
 SELECT count(*) FROM pg_stat_activity;
 
 # Kill idle connections
-SELECT pg_terminate_backend(pid) 
-FROM pg_stat_activity 
-WHERE state = 'idle' 
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE state = 'idle'
 AND state_change < NOW() - INTERVAL '10 minutes';
 ```
 
@@ -881,16 +847,12 @@ async function debugStorage() {
 
   // Test upload
   const testFile = new Blob(['test']);
-  const { error } = await supabase.storage
-    .from('taptik-packages')
-    .upload('test/debug.txt', testFile);
-    
+  const { error } = await supabase.storage.from('taptik-packages').upload('test/debug.txt', testFile);
+
   if (error) {
     console.error('Upload error:', error);
     // Check policies
-    const { data: policies } = await supabase
-      .from('storage.policies')
-      .select('*');
+    const { data: policies } = await supabase.from('storage.policies').select('*');
     console.log('Policies:', policies);
   }
 }
@@ -916,18 +878,18 @@ curl -X POST https://[project-id].supabase.co/auth/v1/token?grant_type=password 
 
 ```sql
 -- Check rate limits
-SELECT * FROM rate_limits 
+SELECT * FROM rate_limits
 WHERE user_id = 'user-uuid'
 ORDER BY window_start DESC;
 
 -- Reset rate limits (emergency)
-DELETE FROM rate_limits 
+DELETE FROM rate_limits
 WHERE user_id = 'user-uuid';
 
 -- Adjust limits
-UPDATE rate_limits 
-SET count = 0 
-WHERE action = 'upload' 
+UPDATE rate_limits
+SET count = 0
+WHERE action = 'upload'
 AND window_start = date_trunc('day', NOW());
 ```
 
@@ -951,7 +913,7 @@ ANALYZE taptik_packages;
 VACUUM ANALYZE taptik_packages;
 
 -- Create missing indexes
-CREATE INDEX CONCURRENTLY idx_packages_user_platform 
+CREATE INDEX CONCURRENTLY idx_packages_user_platform
 ON taptik_packages(user_id, platform);
 ```
 
@@ -978,14 +940,14 @@ const redis = new Redis(process.env.REDIS_URL);
 async function getCachedPackages(userId: string) {
   const cacheKey = `packages:${userId}`;
   const cached = await redis.get(cacheKey);
-  
+
   if (cached) {
     return JSON.parse(cached);
   }
-  
+
   const packages = await fetchPackagesFromDB(userId);
   await redis.setex(cacheKey, 300, JSON.stringify(packages));
-  
+
   return packages;
 }
 ```
@@ -1040,6 +1002,7 @@ kubectl rollout status deployment/taptik-cli
 ## Support
 
 For deployment support:
+
 - Documentation: [docs.taptik.com](https://docs.taptik.com)
 - GitHub Issues: [taptik-cli/issues](https://github.com/taptik/taptik-cli/issues)
 - Discord: [discord.gg/taptik](https://discord.gg/taptik)

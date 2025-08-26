@@ -4,7 +4,12 @@ import * as path from 'path';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { PushError, PushErrorCode } from '../constants/push.constants';
-import { PackageMetadata, PushOptions, AnalyticsEventType, PackageVisibility } from '../interfaces';
+import {
+  PackageMetadata,
+  PushOptions,
+  AnalyticsEventType,
+  PackageVisibility,
+} from '../interfaces';
 
 import { PushService } from './push.service';
 
@@ -28,7 +33,9 @@ describe('PushService', () => {
   const mockPackagePath = '/path/to/package.taptik';
 
   // Create a default mock PushOptions object
-  const createMockOptions = (overrides?: Partial<PushOptions>): PushOptions => ({
+  const createMockOptions = (
+    overrides?: Partial<PushOptions>,
+  ): PushOptions => ({
     file: {
       buffer: mockPackageBuffer,
       name: 'package.taptik',
@@ -172,9 +179,15 @@ describe('PushService', () => {
         report: { removedCount: 0, findings: [] },
         level: 'safe',
       });
-      mockSanitizationService.generateAutoTags.mockResolvedValue(['claude-code']);
-      mockCloudUploadService.uploadPackage.mockResolvedValue('https://storage.example.com/package');
-      mockPackageRegistryService.registerPackage.mockResolvedValue(mockMetadata);
+      mockSanitizationService.generateAutoTags.mockResolvedValue([
+        'claude-code',
+      ]);
+      mockCloudUploadService.uploadPackage.mockResolvedValue(
+        'https://storage.example.com/package',
+      );
+      mockPackageRegistryService.registerPackage.mockResolvedValue(
+        mockMetadata,
+      );
       mockAnalyticsService.trackUpload.mockResolvedValue();
 
       // Act
@@ -183,7 +196,9 @@ describe('PushService', () => {
       // Assert
       expect(result).toEqual(mockMetadata);
       expect(mockAuthService.getSession).toHaveBeenCalled();
-      expect(mockPackageValidatorService.validateStructure).toHaveBeenCalledWith(mockPackageBuffer);
+      expect(
+        mockPackageValidatorService.validateStructure,
+      ).toHaveBeenCalledWith(mockPackageBuffer);
       expect(mockPackageValidatorService.validateSize).toHaveBeenCalledWith(
         mockPackageBuffer.length,
         'free',
@@ -192,7 +207,9 @@ describe('PushService', () => {
         mockUser.id,
         mockPackageBuffer.length,
       );
-      expect(mockSanitizationService.sanitizePackage).toHaveBeenCalledWith(mockPackageBuffer);
+      expect(mockSanitizationService.sanitizePackage).toHaveBeenCalledWith(
+        mockPackageBuffer,
+      );
       expect(mockCloudUploadService.uploadPackage).toHaveBeenCalled();
       expect(mockPackageRegistryService.registerPackage).toHaveBeenCalled();
       expect(mockAnalyticsService.trackUpload).toHaveBeenCalled();
@@ -203,7 +220,9 @@ describe('PushService', () => {
       mockAuthService.getSession.mockResolvedValue(null);
 
       // Act & Assert
-      await expect(service.upload(mockPackagePath, createMockOptions())).rejects.toThrow(
+      await expect(
+        service.upload(mockPackagePath, createMockOptions()),
+      ).rejects.toThrow(
         new PushError(
           PushErrorCode.AUTH_REQUIRED,
           'Authentication required. Please run "taptik auth login" first',
@@ -217,7 +236,9 @@ describe('PushService', () => {
       mockPackageValidatorService.validateStructure.mockResolvedValue(false);
 
       // Act & Assert
-      await expect(service.upload(mockPackagePath, createMockOptions())).rejects.toThrow(
+      await expect(
+        service.upload(mockPackagePath, createMockOptions()),
+      ).rejects.toThrow(
         new PushError(
           PushErrorCode.INVALID_PACKAGE,
           'Invalid package structure',
@@ -233,7 +254,9 @@ describe('PushService', () => {
       mockPackageValidatorService.validateSize.mockResolvedValue(false);
 
       // Act & Assert
-      await expect(service.upload(mockPackagePath, createMockOptions())).rejects.toThrow(
+      await expect(
+        service.upload(mockPackagePath, createMockOptions()),
+      ).rejects.toThrow(
         new PushError(
           PushErrorCode.PACKAGE_TOO_LARGE,
           'Package size exceeds free tier limit',
@@ -254,7 +277,9 @@ describe('PushService', () => {
       });
 
       // Act & Assert
-      await expect(service.upload(mockPackagePath, createMockOptions())).rejects.toThrow(
+      await expect(
+        service.upload(mockPackagePath, createMockOptions()),
+      ).rejects.toThrow(
         new PushError(
           PushErrorCode.RATE_LIMIT_EXCEEDED,
           'Upload rate limit exceeded',
@@ -280,7 +305,9 @@ describe('PushService', () => {
       });
 
       // Act & Assert
-      await expect(service.upload(mockPackagePath, createMockOptions())).rejects.toThrow(
+      await expect(
+        service.upload(mockPackagePath, createMockOptions()),
+      ).rejects.toThrow(
         new PushError(
           PushErrorCode.SENSITIVE_DATA_DETECTED,
           'Critical sensitive data detected. Use --force to override',
@@ -327,8 +354,12 @@ describe('PushService', () => {
         level: 'blocked',
       });
       mockSanitizationService.generateAutoTags.mockResolvedValue([]);
-      mockCloudUploadService.uploadPackage.mockResolvedValue('https://storage.example.com/package');
-      mockPackageRegistryService.registerPackage.mockResolvedValue(mockMetadata);
+      mockCloudUploadService.uploadPackage.mockResolvedValue(
+        'https://storage.example.com/package',
+      );
+      mockPackageRegistryService.registerPackage.mockResolvedValue(
+        mockMetadata,
+      );
       mockAnalyticsService.trackUpload.mockResolvedValue();
 
       // Act
@@ -378,8 +409,12 @@ describe('PushService', () => {
         level: 'safe',
       });
       mockSanitizationService.generateAutoTags.mockResolvedValue([]);
-      mockCloudUploadService.uploadPackage.mockResolvedValue('https://storage.example.com/package');
-      mockPackageRegistryService.registerPackage.mockResolvedValue(mockMetadata);
+      mockCloudUploadService.uploadPackage.mockResolvedValue(
+        'https://storage.example.com/package',
+      );
+      mockPackageRegistryService.registerPackage.mockResolvedValue(
+        mockMetadata,
+      );
       mockAnalyticsService.trackUpload.mockResolvedValue();
 
       // Act
@@ -421,12 +456,12 @@ describe('PushService', () => {
       vi.mocked(fs.readFile).mockRejectedValue({ code: 'ENOENT' });
 
       // Act & Assert
-      await expect(service.upload(mockPackagePath, createMockOptions())).rejects.toThrow(
-        new PushError(
-          PushErrorCode.INVALID_PACKAGE,
-          'Package file not found',
-          { packagePath: mockPackagePath },
-        ),
+      await expect(
+        service.upload(mockPackagePath, createMockOptions()),
+      ).rejects.toThrow(
+        new PushError(PushErrorCode.INVALID_PACKAGE, 'Package file not found', {
+          packagePath: mockPackagePath,
+        }),
       );
     });
   });
@@ -434,7 +469,9 @@ describe('PushService', () => {
   describe('queueUpload', () => {
     it('should queue upload successfully', async () => {
       // Arrange
-      const options = createMockOptions({ visibility: PackageVisibility.Public });
+      const options = createMockOptions({
+        visibility: PackageVisibility.Public,
+      });
       mockLocalQueueService.addToQueue.mockResolvedValue('queue-123');
 
       // Act
@@ -453,12 +490,12 @@ describe('PushService', () => {
       vi.mocked(fs.readFile).mockRejectedValue({ code: 'ENOENT' });
 
       // Act & Assert
-      await expect(service.queueUpload(mockPackagePath, createMockOptions())).rejects.toThrow(
-        new PushError(
-          PushErrorCode.INVALID_PACKAGE,
-          'Package file not found',
-          { packagePath: mockPackagePath },
-        ),
+      await expect(
+        service.queueUpload(mockPackagePath, createMockOptions()),
+      ).rejects.toThrow(
+        new PushError(PushErrorCode.INVALID_PACKAGE, 'Package file not found', {
+          packagePath: mockPackagePath,
+        }),
       );
       expect(mockLocalQueueService.addToQueue).not.toHaveBeenCalled();
     });
@@ -521,8 +558,12 @@ describe('PushService', () => {
         level: 'safe',
       });
       mockSanitizationService.generateAutoTags.mockResolvedValue([]);
-      mockCloudUploadService.uploadPackage.mockResolvedValue('https://storage.example.com/package');
-      mockPackageRegistryService.registerPackage.mockResolvedValue(mockMetadata);
+      mockCloudUploadService.uploadPackage.mockResolvedValue(
+        'https://storage.example.com/package',
+      );
+      mockPackageRegistryService.registerPackage.mockResolvedValue(
+        mockMetadata,
+      );
       mockAnalyticsService.trackUpload.mockResolvedValue();
 
       // Act
@@ -530,10 +571,22 @@ describe('PushService', () => {
 
       // Assert
       expect(mockLocalQueueService.getQueueStatus).toHaveBeenCalled();
-      expect(mockLocalQueueService.updateStatus).toHaveBeenCalledWith('queue-1', 'uploading');
-      expect(mockLocalQueueService.updateStatus).toHaveBeenCalledWith('queue-1', 'completed');
-      expect(mockLocalQueueService.updateStatus).toHaveBeenCalledWith('queue-2', 'uploading');
-      expect(mockLocalQueueService.updateStatus).toHaveBeenCalledWith('queue-2', 'completed');
+      expect(mockLocalQueueService.updateStatus).toHaveBeenCalledWith(
+        'queue-1',
+        'uploading',
+      );
+      expect(mockLocalQueueService.updateStatus).toHaveBeenCalledWith(
+        'queue-1',
+        'completed',
+      );
+      expect(mockLocalQueueService.updateStatus).toHaveBeenCalledWith(
+        'queue-2',
+        'uploading',
+      );
+      expect(mockLocalQueueService.updateStatus).toHaveBeenCalledWith(
+        'queue-2',
+        'completed',
+      );
     });
 
     it('should handle empty queue', async () => {
@@ -567,7 +620,9 @@ describe('PushService', () => {
       await service.processQueue();
 
       // Assert
-      expect(mockLocalQueueService.incrementAttempts).toHaveBeenCalledWith('queue-1');
+      expect(mockLocalQueueService.incrementAttempts).toHaveBeenCalledWith(
+        'queue-1',
+      );
     });
 
     it('should mark upload as permanently failed after max attempts', async () => {
@@ -588,7 +643,10 @@ describe('PushService', () => {
       await service.processQueue();
 
       // Assert
-      expect(mockLocalQueueService.updateStatus).toHaveBeenCalledWith('queue-1', 'failed');
+      expect(mockLocalQueueService.updateStatus).toHaveBeenCalledWith(
+        'queue-1',
+        'failed',
+      );
       expect(mockLocalQueueService.incrementAttempts).not.toHaveBeenCalled();
     });
   });
@@ -597,7 +655,10 @@ describe('PushService', () => {
     it('should update package metadata successfully', async () => {
       // Arrange
       const configId = 'config-123';
-      const updates = { title: 'Updated Title', description: 'Updated description' };
+      const updates = {
+        title: 'Updated Title',
+        description: 'Updated description',
+      };
       const updatedMetadata: PackageMetadata = {
         id: 'pkg-123',
         configId,
@@ -620,7 +681,9 @@ describe('PushService', () => {
       };
 
       mockAuthService.getSession.mockResolvedValue({ user: mockUser } as any);
-      mockPackageRegistryService.updatePackage.mockResolvedValue(updatedMetadata);
+      mockPackageRegistryService.updatePackage.mockResolvedValue(
+        updatedMetadata,
+      );
       mockAnalyticsService.trackEvent.mockResolvedValue();
 
       // Act
@@ -628,7 +691,10 @@ describe('PushService', () => {
 
       // Assert
       expect(result).toEqual(updatedMetadata);
-      expect(mockPackageRegistryService.updatePackage).toHaveBeenCalledWith(configId, updates);
+      expect(mockPackageRegistryService.updatePackage).toHaveBeenCalledWith(
+        configId,
+        updates,
+      );
       expect(mockAnalyticsService.trackEvent).toHaveBeenCalledWith({
         eventType: AnalyticsEventType.UPDATE,
         packageId: updatedMetadata.id,
@@ -676,7 +742,9 @@ describe('PushService', () => {
       };
 
       mockAuthService.getSession.mockResolvedValue({ user: mockUser } as any);
-      mockPackageRegistryService.listUserPackages.mockResolvedValue([packageMetadata]);
+      mockPackageRegistryService.listUserPackages.mockResolvedValue([
+        packageMetadata,
+      ]);
       mockCloudUploadService.deletePackage.mockResolvedValue();
       mockPackageRegistryService.deletePackage.mockResolvedValue();
       mockAnalyticsService.trackEvent.mockResolvedValue();
@@ -692,7 +760,9 @@ describe('PushService', () => {
       expect(mockCloudUploadService.deletePackage).toHaveBeenCalledWith(
         packageMetadata.storageUrl,
       );
-      expect(mockPackageRegistryService.deletePackage).toHaveBeenCalledWith(configId);
+      expect(mockPackageRegistryService.deletePackage).toHaveBeenCalledWith(
+        configId,
+      );
       expect(mockAnalyticsService.trackEvent).toHaveBeenCalledWith({
         eventType: AnalyticsEventType.DELETE,
         packageId: packageMetadata.id,
@@ -733,7 +803,10 @@ describe('PushService', () => {
   describe('validateTeamPermissions', () => {
     it('should validate team permissions', async () => {
       // Arrange & Act
-      const result = await service.validateTeamPermissions('user-123', 'team-456');
+      const result = await service.validateTeamPermissions(
+        'user-123',
+        'team-456',
+      );
 
       // Assert
       expect(result).toBe(true); // Currently returns true by default

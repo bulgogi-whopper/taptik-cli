@@ -121,7 +121,7 @@ export interface PushErrorContext {
   fileName?: string;
   userId?: string;
   attemptNumber?: number;
-  details?: Record<string, unknown> | any;
+  details?: Record<string, unknown>;
   packagePath?: string;
   size?: number;
   remaining?: number;
@@ -155,7 +155,7 @@ export class PushError extends Error {
     this.originalError = originalError;
     this.userMessage = this.generateUserMessage();
     this.remediation = this.generateRemediation();
-    
+
     // Maintain proper stack trace
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, PushError);
@@ -183,47 +183,60 @@ export class PushError extends Error {
       PushErrorCode.STORAGE_QUOTA_EXCEEDED,
       PushErrorCode.STOR_QUOTA_EXCEEDED,
     ];
-    
+
     return retryableCodes.includes(this.code);
   }
 
   private generateUserMessage(): string {
     const messages: Record<PushErrorCode, string> = {
-      [PushErrorCode.AUTH_REQUIRED]: 'You need to be logged in to perform this action',
-      [PushErrorCode.AUTH_EXPIRED]: 'Your session has expired. Please log in again',
-      [PushErrorCode.INSUFFICIENT_PERMISSIONS]: 'You do not have permission to perform this action',
+      [PushErrorCode.AUTH_REQUIRED]:
+        'You need to be logged in to perform this action',
+      [PushErrorCode.AUTH_EXPIRED]:
+        'Your session has expired. Please log in again',
+      [PushErrorCode.INSUFFICIENT_PERMISSIONS]:
+        'You do not have permission to perform this action',
       [PushErrorCode.AUTH_NOT_AUTHENTICATED]: 'You are not authenticated',
-      [PushErrorCode.AUTH_INSUFFICIENT_PERMISSIONS]: 'You do not have sufficient permissions',
+      [PushErrorCode.AUTH_INSUFFICIENT_PERMISSIONS]:
+        'You do not have sufficient permissions',
       [PushErrorCode.AUTH_SESSION_EXPIRED]: 'Your session has expired',
-      
-      [PushErrorCode.INVALID_PACKAGE]: 'The selected package is invalid or corrupted',
+
+      [PushErrorCode.INVALID_PACKAGE]:
+        'The selected package is invalid or corrupted',
       [PushErrorCode.INVALID_VERSION]: 'The package version is invalid',
-      [PushErrorCode.PACKAGE_TOO_LARGE]: 'The package size exceeds the maximum allowed limit',
+      [PushErrorCode.PACKAGE_TOO_LARGE]:
+        'The package size exceeds the maximum allowed limit',
       [PushErrorCode.UNSUPPORTED_PLATFORM]: 'The platform is not supported',
       [PushErrorCode.VAL_INVALID_FILE]: 'The file is invalid or corrupted',
-      [PushErrorCode.VAL_FILE_TOO_LARGE]: 'The file size exceeds the maximum allowed limit',
-      
-      [PushErrorCode.SENSITIVE_DATA_DETECTED]: 'Sensitive data was detected in the package',
+      [PushErrorCode.VAL_FILE_TOO_LARGE]:
+        'The file size exceeds the maximum allowed limit',
+
+      [PushErrorCode.SENSITIVE_DATA_DETECTED]:
+        'Sensitive data was detected in the package',
       [PushErrorCode.SANITIZATION_FAILED]: 'Failed to sanitize the package',
-      [PushErrorCode.MALICIOUS_CONTENT]: 'Potentially malicious content was detected',
-      
-      [PushErrorCode.UPLOAD_FAILED]: 'Failed to upload the package to the cloud',
-      [PushErrorCode.STORAGE_QUOTA_EXCEEDED]: 'Your storage quota has been exceeded',
+      [PushErrorCode.MALICIOUS_CONTENT]:
+        'Potentially malicious content was detected',
+
+      [PushErrorCode.UPLOAD_FAILED]:
+        'Failed to upload the package to the cloud',
+      [PushErrorCode.STORAGE_QUOTA_EXCEEDED]:
+        'Your storage quota has been exceeded',
       [PushErrorCode.NETWORK_TIMEOUT]: 'The request timed out',
       [PushErrorCode.NET_CONNECTION_FAILED]: 'Network connection failed',
       [PushErrorCode.NET_TIMEOUT]: 'Network request timed out',
       [PushErrorCode.NET_RATE_LIMITED]: 'Too many requests, please slow down',
-      [PushErrorCode.NET_SERVICE_UNAVAILABLE]: 'Service is temporarily unavailable',
-      
-      [PushErrorCode.RATE_LIMIT_EXCEEDED]: 'Rate limit exceeded. Please wait and try again',
+      [PushErrorCode.NET_SERVICE_UNAVAILABLE]:
+        'Service is temporarily unavailable',
+
+      [PushErrorCode.RATE_LIMIT_EXCEEDED]:
+        'Rate limit exceeded. Please wait and try again',
       [PushErrorCode.DAILY_QUOTA_EXCEEDED]: 'Daily upload quota exceeded',
-      
+
       [PushErrorCode.DATABASE_ERROR]: 'Database operation failed',
       [PushErrorCode.INTERNAL_ERROR]: 'An internal error occurred',
       [PushErrorCode.SYSTEM_ERROR]: 'A system error occurred',
       [PushErrorCode.SYS_UNKNOWN_ERROR]: 'An unknown system error occurred',
       [PushErrorCode.SYS_INTERNAL_ERROR]: 'An internal system error occurred',
-      
+
       [PushErrorCode.QUEUE_FULL]: 'The upload queue is full',
       [PushErrorCode.QUEUE_ITEM_NOT_FOUND]: 'Queue item not found',
       [PushErrorCode.FILE_NOT_FOUND]: 'File not found',
@@ -231,39 +244,58 @@ export class PushError extends Error {
       [PushErrorCode.STOR_QUOTA_EXCEEDED]: 'Storage quota has been exceeded',
       [PushErrorCode.STOR_UPLOAD_FAILED]: 'Failed to upload to storage',
     };
-    
+
     return messages[this.code] || this.message;
   }
 
   private generateRemediation(): string | undefined {
     const remediations: Partial<Record<PushErrorCode, string>> = {
       [PushErrorCode.AUTH_REQUIRED]: 'Run "taptik auth login" to authenticate',
-      [PushErrorCode.AUTH_EXPIRED]: 'Run "taptik auth login" to renew your session',
-      [PushErrorCode.INSUFFICIENT_PERMISSIONS]: 'Contact your administrator for access',
-      [PushErrorCode.AUTH_NOT_AUTHENTICATED]: 'Run "taptik auth login" to authenticate',
-      [PushErrorCode.AUTH_INSUFFICIENT_PERMISSIONS]: 'Contact your administrator for access',
-      [PushErrorCode.AUTH_SESSION_EXPIRED]: 'Run "taptik auth login" to renew your session',
-      
-      [PushErrorCode.PACKAGE_TOO_LARGE]: 'Try reducing the package size or contact support',
-      [PushErrorCode.INVALID_PACKAGE]: 'Ensure the file is a valid .taptik package',
-      [PushErrorCode.VAL_INVALID_FILE]: 'Ensure the file is valid and not corrupted',
-      [PushErrorCode.VAL_FILE_TOO_LARGE]: 'Try reducing the file size or contact support',
-      
-      [PushErrorCode.NETWORK_TIMEOUT]: 'Check your internet connection and try again',
-      [PushErrorCode.NET_TIMEOUT]: 'Check your internet connection and try again',
-      [PushErrorCode.NET_CONNECTION_FAILED]: 'Check your internet connection and try again',
-      [PushErrorCode.NET_RATE_LIMITED]: 'Wait a few minutes before trying again',
-      [PushErrorCode.NET_SERVICE_UNAVAILABLE]: 'Service is temporarily down, try again later',
-      [PushErrorCode.RATE_LIMIT_EXCEEDED]: 'Wait a few minutes before trying again',
-      
-      [PushErrorCode.STORAGE_QUOTA_EXCEEDED]: 'Delete unused packages or upgrade your plan',
-      [PushErrorCode.STOR_QUOTA_EXCEEDED]: 'Delete unused packages or upgrade your plan',
+      [PushErrorCode.AUTH_EXPIRED]:
+        'Run "taptik auth login" to renew your session',
+      [PushErrorCode.INSUFFICIENT_PERMISSIONS]:
+        'Contact your administrator for access',
+      [PushErrorCode.AUTH_NOT_AUTHENTICATED]:
+        'Run "taptik auth login" to authenticate',
+      [PushErrorCode.AUTH_INSUFFICIENT_PERMISSIONS]:
+        'Contact your administrator for access',
+      [PushErrorCode.AUTH_SESSION_EXPIRED]:
+        'Run "taptik auth login" to renew your session',
+
+      [PushErrorCode.PACKAGE_TOO_LARGE]:
+        'Try reducing the package size or contact support',
+      [PushErrorCode.INVALID_PACKAGE]:
+        'Ensure the file is a valid .taptik package',
+      [PushErrorCode.VAL_INVALID_FILE]:
+        'Ensure the file is valid and not corrupted',
+      [PushErrorCode.VAL_FILE_TOO_LARGE]:
+        'Try reducing the file size or contact support',
+
+      [PushErrorCode.NETWORK_TIMEOUT]:
+        'Check your internet connection and try again',
+      [PushErrorCode.NET_TIMEOUT]:
+        'Check your internet connection and try again',
+      [PushErrorCode.NET_CONNECTION_FAILED]:
+        'Check your internet connection and try again',
+      [PushErrorCode.NET_RATE_LIMITED]:
+        'Wait a few minutes before trying again',
+      [PushErrorCode.NET_SERVICE_UNAVAILABLE]:
+        'Service is temporarily down, try again later',
+      [PushErrorCode.RATE_LIMIT_EXCEEDED]:
+        'Wait a few minutes before trying again',
+
+      [PushErrorCode.STORAGE_QUOTA_EXCEEDED]:
+        'Delete unused packages or upgrade your plan',
+      [PushErrorCode.STOR_QUOTA_EXCEEDED]:
+        'Delete unused packages or upgrade your plan',
       [PushErrorCode.UPLOAD_FAILED]: 'Try uploading again or contact support',
-      [PushErrorCode.STOR_UPLOAD_FAILED]: 'Try uploading again or contact support',
-      
-      [PushErrorCode.SENSITIVE_DATA_DETECTED]: 'Review and remove sensitive information',
+      [PushErrorCode.STOR_UPLOAD_FAILED]:
+        'Try uploading again or contact support',
+
+      [PushErrorCode.SENSITIVE_DATA_DETECTED]:
+        'Review and remove sensitive information',
     };
-    
+
     return remediations[this.code];
   }
 

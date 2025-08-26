@@ -5,12 +5,14 @@ import { DeployCoreModule } from '../deploy/core/deploy-core.module';
 import { ErrorHandlerService } from '../deploy/services/error-handler.service';
 import { SupabaseModule } from '../supabase/supabase.module';
 
+// Commands
 import { DeleteCommand } from './commands/delete.command';
 import { ListCommand } from './commands/list.command';
 import { PushCommand } from './commands/push.command';
 import { StatsCommand } from './commands/stats.command';
 import { UpdateCommand } from './commands/update.command';
 import { VisibilityCommand } from './commands/visibility.command';
+// Services
 import { AnalyticsService } from './services/analytics.service';
 import { AuditLoggerService } from './services/audit-logger.service';
 import { CloudUploadService } from './services/cloud-upload.service';

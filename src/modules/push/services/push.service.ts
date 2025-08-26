@@ -5,12 +5,12 @@ import * as path from 'path';
 import { Injectable, Logger } from '@nestjs/common';
 
 import { AuthService } from '../../auth/auth.service';
-import { PushError, PushErrorCode, PushErrorContext } from '../constants/push.constants';
-import { 
-  PackageMetadata, 
-  PushOptions, 
+import { PushError, PushErrorCode } from '../constants/push.constants';
+import {
+  PackageMetadata,
+  PushOptions,
   UploadProgress,
-  AnalyticsEventType 
+  AnalyticsEventType,
 } from '../interfaces';
 
 import { AnalyticsService } from './analytics.service';
@@ -69,7 +69,8 @@ export class PushService {
       const packageSize = packageBuffer.length;
 
       // 3. Validate package structure
-      const isValid = await this.packageValidatorService.validateStructure(packageBuffer);
+      const isValid =
+        await this.packageValidatorService.validateStructure(packageBuffer);
       if (!isValid) {
         throw new PushError(
           PushErrorCode.INVALID_PACKAGE,
@@ -101,9 +102,9 @@ export class PushService {
         throw new PushError(
           PushErrorCode.RATE_LIMIT_EXCEEDED,
           'Upload rate limit exceeded',
-          { 
-            remaining: rateLimitCheck.remaining, 
-            resetAt: rateLimitCheck.resetAt 
+          {
+            remaining: rateLimitCheck.remaining,
+            resetAt: rateLimitCheck.resetAt,
           },
         );
       }
@@ -125,9 +126,8 @@ export class PushService {
         message: 'Sanitizing package content...',
       });
 
-      const sanitizationResult = await this.sanitizationService.sanitizePackage(
-        packageBuffer,
-      );
+      const sanitizationResult =
+        await this.sanitizationService.sanitizePackage(packageBuffer);
 
       // Check if sanitization blocked the upload
       if (sanitizationResult.level === 'blocked' && !options.force) {
@@ -174,7 +174,7 @@ export class PushService {
         sanitizationResult.sanitizedBuffer,
         metadata,
         (uploadProgress) => {
-          const percentage = 45 + (uploadProgress.percentage * 0.4); // 45-85%
+          const percentage = 45 + uploadProgress.percentage * 0.4; // 45-85%
           onProgress?.({
             ...uploadProgress,
             percentage,
@@ -201,9 +201,8 @@ export class PushService {
         message: 'Registering package metadata...',
       });
 
-      const registeredMetadata = await this.packageRegistryService.registerPackage(
-        metadata,
-      );
+      const registeredMetadata =
+        await this.packageRegistryService.registerPackage(metadata);
 
       // Phase 6: Track analytics
       await this.analyticsService.trackUpload({
@@ -249,9 +248,12 @@ export class PushService {
     }
   }
 
-  private async validateAuthentication(): Promise<{ id: string; email: string }> {
+  private async validateAuthentication(): Promise<{
+    id: string;
+    email: string;
+  }> {
     const session = await this.authService.getSession();
-    
+
     if (!session?.user) {
       throw new PushError(
         PushErrorCode.AUTH_REQUIRED,
@@ -266,7 +268,7 @@ export class PushService {
     try {
       const absolutePath = path.resolve(packagePath);
       const stats = await fs.stat(absolutePath);
-      
+
       if (!stats.isFile()) {
         throw new PushError(
           PushErrorCode.INVALID_PACKAGE,
@@ -296,7 +298,14 @@ export class PushService {
     autoTags: string[];
     sanitizationLevel: 'safe' | 'warning' | 'blocked';
   }): Promise<PackageMetadata> {
-    const { packagePath, packageBuffer, options, user, autoTags, sanitizationLevel } = params;
+    const {
+      packagePath,
+      packageBuffer,
+      options,
+      user,
+      autoTags,
+      sanitizationLevel,
+    } = params;
 
     // Generate unique config ID
     const configId = this.generateConfigId();
@@ -359,7 +368,7 @@ export class PushService {
       // Attempt to extract platform from package metadata
       // This is a simplified version - real implementation would parse the package
       const content = packageBuffer.toString('utf-8', 0, 1000); // Check first 1KB
-      
+
       if (content.includes('claude-code')) {
         return 'claude-code';
       } else if (content.includes('kiro-ide')) {
@@ -367,7 +376,7 @@ export class PushService {
       } else if (content.includes('cursor-ide')) {
         return 'cursor-ide';
       }
-      
+
       return 'unknown';
     } catch {
       return 'unknown';
@@ -380,11 +389,12 @@ export class PushService {
     try {
       // Extract component information from package
       // This is a simplified version - real implementation would parse the package structure
-      const components: Array<{ name: string; type: string; count: number }> = [];
-      
+      const components: Array<{ name: string; type: string; count: number }> =
+        [];
+
       // Mock implementation - should parse actual package structure
       const content = packageBuffer.toString('utf-8', 0, 5000); // Check first 5KB
-      
+
       if (content.includes('commands')) {
         components.push({ name: 'commands', type: 'command', count: 1 });
       }
@@ -394,7 +404,7 @@ export class PushService {
       if (content.includes('snippets')) {
         components.push({ name: 'snippets', type: 'snippet', count: 1 });
       }
-      
+
       return components;
     } catch {
       return [];
@@ -423,7 +433,9 @@ export class PushService {
     if (onProgress) {
       onProgress(progress);
     }
-    this.logger.debug(`Upload progress: ${progress.stage} - ${progress.percentage}%`);
+    this.logger.debug(
+      `Upload progress: ${progress.stage} - ${progress.percentage}%`,
+    );
   }
 
   async queueUpload(
@@ -433,83 +445,91 @@ export class PushService {
     try {
       // Validate the file exists before queuing
       await this.readPackageFile(packagePath);
-      
+
       // Add to queue for offline processing
-      const queueId = await this.localQueueService.addToQueue(packagePath, options);
-      
+      const queueId = await this.localQueueService.addToQueue(
+        packagePath,
+        options,
+      );
+
       this.logger.log(`Upload queued for offline processing: ${queueId}`);
-      
+
       return queueId;
     } catch (error) {
       this.logger.error('Failed to queue upload:', error);
-      
+
       if (error instanceof PushError) {
         throw error;
       }
-      
-      throw new PushError(
-        PushErrorCode.QUEUE_FULL,
-        'Failed to queue upload',
-        { originalError: error },
-      );
+
+      throw new PushError(PushErrorCode.QUEUE_FULL, 'Failed to queue upload', {
+        originalError: error,
+      });
     }
   }
 
   async processQueue(): Promise<void> {
     try {
       this.logger.log('Processing upload queue...');
-      
+
       // Get pending uploads from queue
       const queueStatus = await this.localQueueService.getQueueStatus();
       const pendingUploads = queueStatus.filter(
         (item) => item.status === 'pending' || item.status === 'failed',
       );
-      
+
       if (pendingUploads.length === 0) {
         this.logger.log('No pending uploads in queue');
         return;
       }
-      
+
       this.logger.log(`Processing ${pendingUploads.length} pending uploads`);
-      
+
       // Process each upload with retry logic
       const uploadPromises = pendingUploads.map(async (queuedUpload) => {
         try {
-          await this.localQueueService.updateStatus(queuedUpload.id, 'uploading');
-          
+          await this.localQueueService.updateStatus(
+            queuedUpload.id,
+            'uploading',
+          );
+
           // Attempt upload
           const metadata = await this.upload(
             queuedUpload.packagePath,
             queuedUpload.options,
           );
-          
+
           // Mark as completed
-          await this.localQueueService.updateStatus(queuedUpload.id, 'completed');
-          
+          await this.localQueueService.updateStatus(
+            queuedUpload.id,
+            'completed',
+          );
+
           this.logger.log(
             `Successfully processed queued upload: ${metadata.configId}`,
           );
         } catch (error) {
-          const pushError = error instanceof PushError
-            ? error
-            : new PushError(
-                PushErrorCode.UPLOAD_FAILED,
-                'Failed to process queued upload',
-                { originalError: error },
-                true,
-              );
-          
+          const pushError =
+            error instanceof PushError
+              ? error
+              : new PushError(
+                  PushErrorCode.UPLOAD_FAILED,
+                  'Failed to process queued upload',
+                  { originalError: error },
+                  true,
+                );
+
           // Check if retryable and under max attempts
-          if (
-            pushError.retryable &&
-            queuedUpload.attempts < 5
-          ) {
+          if (pushError.retryable && queuedUpload.attempts < 5) {
             await this.localQueueService.incrementAttempts(queuedUpload.id);
             this.logger.warn(
               `Upload failed, will retry: ${queuedUpload.id} (attempt ${queuedUpload.attempts + 1}/5)`,
             );
           } else {
-            await this.localQueueService.updateStatus(queuedUpload.id, 'failed');
+            await this.localQueueService.updateStatus(
+              queuedUpload.id,
+              'failed',
+            );
             this.logger.error(
               `Upload permanently failed: ${queuedUpload.id}`,
               pushError,
@@ -517,10 +537,10 @@ export class PushService {
           }
         }
       });
-      
+
       // Wait for all uploads to complete
       await Promise.all(uploadPromises);
-      
+
       this.logger.log('Queue processing complete');
     } catch (error) {
       this.logger.error('Failed to process queue:', error);
@@ -550,13 +570,13 @@ export class PushService {
     try {
       // Validate user owns the package
       const user = await this.validateAuthentication();
-      
+
       // Update in registry
       const updated = await this.packageRegistryService.updatePackage(
         configId,
         updates,
       );
-      
+
       // Track analytics
       await this.analyticsService.trackEvent({
         eventType: AnalyticsEventType.UPDATE,
@@ -564,7 +584,7 @@ export class PushService {
         userId: user.id,
         metadata: { updates },
       });
-      
+
       return updated;
     } catch (error) {
       this.logger.error(`Failed to update package ${configId}:`, error);
@@ -579,13 +599,13 @@ export class PushService {
     try {
       // Validate user owns the package
       const user = await this.validateAuthentication();
-      
+
       // Get package metadata
       const packages = await this.packageRegistryService.listUserPackages(
         user.id,
         { configId },
       );
-      
+
       if (packages.length === 0) {
         throw new PushError(
           PushErrorCode.INSUFFICIENT_PERMISSIONS,
@@ -593,22 +613,22 @@ export class PushService {
           { configId },
         );
       }
-      
+
       const packageMetadata = packages[0];
-      
+
       // Delete from storage
       await this.cloudUploadService.deletePackage(packageMetadata.storageUrl);
-      
+
       // Delete from registry
       await this.packageRegistryService.deletePackage(configId);
-      
+
       // Track analytics
       await this.analyticsService.trackEvent({
         eventType: AnalyticsEventType.DELETE,
         packageId: packageMetadata.id,
         userId: user.id,
       });
-      
+
       this.logger.log(`Package deleted: ${configId}`);
     } catch (error) {
       this.logger.error(`Failed to delete package ${configId}:`, error);
