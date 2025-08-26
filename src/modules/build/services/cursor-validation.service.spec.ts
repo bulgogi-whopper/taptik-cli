@@ -244,7 +244,7 @@ describe('CursorValidationService', () => {
       const result = await service.sanitizeAiConfiguration(config);
 
       // The environment property should be filtered out
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       expect((result.sanitized as any).environment).toBeUndefined();
       // Security level should be unsafe due to API key
       expect(result.report.securityLevel).toBe('unsafe');
