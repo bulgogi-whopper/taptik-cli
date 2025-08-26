@@ -85,20 +85,71 @@ export class CursorValidationService {
     alternative?: string;
     reason?: string;
   }> = {
+    // Cursor-specific extensions
     'cursor.cursor-ai': {
       compatible: false,
       reason: 'Cursor-specific extension',
     },
+    'cursor.cursor-copilot': {
+      compatible: false,
+      reason: 'Cursor-specific extension',
+      alternative: 'github.copilot',
+    },
+    'cursor.cursor-chat': {
+      compatible: false,
+      reason: 'Cursor-specific chat interface',
+    },
+    
+    // AI extensions
     'github.copilot': {
       compatible: true,
     },
+    'github.copilot-chat': {
+      compatible: true,
+    },
+    'tabnine.tabnine-vscode': {
+      compatible: true,
+    },
+    'amazonwebservices.aws-toolkit-vscode': {
+      compatible: true,
+    },
+    
+    // Linting and formatting
     'dbaeumer.vscode-eslint': {
       compatible: true,
     },
     'esbenp.prettier-vscode': {
       compatible: true,
     },
+    'ms-vscode.vscode-typescript-tslint-plugin': {
+      compatible: true,
+    },
+    
+    // Language support
     'ms-vscode.typescript-language-features': {
+      compatible: true,
+    },
+    'ms-python.python': {
+      compatible: true,
+    },
+    'golang.go': {
+      compatible: true,
+    },
+    'rust-lang.rust-analyzer': {
+      compatible: true,
+    },
+    
+    // Popular extensions
+    'ritwickdey.liveserver': {
+      compatible: true,
+    },
+    'formulahendry.auto-rename-tag': {
+      compatible: true,
+    },
+    'christian-kohler.path-intellisense': {
+      compatible: true,
+    },
+    'visualstudioexptteam.vscodeintellicode': {
       compatible: true,
     },
   };

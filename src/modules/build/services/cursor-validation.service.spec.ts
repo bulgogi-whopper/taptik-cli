@@ -294,6 +294,37 @@ describe('CursorValidationService', () => {
       expect(result.vsCodeCompatible).toBe(true);
       expect(result.incompatibleExtensions).toHaveLength(0);
     });
+
+    it('should suggest alternatives for incompatible extensions', async () => {
+      const extensions = [
+        'cursor.cursor-copilot',
+        'cursor.cursor-chat',
+        'github.copilot',
+      ];
+
+      const result = await service.checkExtensionCompatibility(extensions);
+
+      expect(result.vsCodeCompatible).toBe(false);
+      expect(result.incompatibleExtensions).toContain('cursor.cursor-copilot');
+      expect(result.incompatibleExtensions).toContain('cursor.cursor-chat');
+      expect(result.alternativeExtensions['cursor.cursor-copilot']).toBe('github.copilot');
+      expect(result.migrationSuggestions.length).toBeGreaterThan(0);
+    });
+
+    it('should handle mixed compatible and incompatible extensions', async () => {
+      const extensions = [
+        'ms-python.python',
+        'cursor.cursor-ai',
+        'golang.go',
+        'esbenp.prettier-vscode',
+      ];
+
+      const result = await service.checkExtensionCompatibility(extensions);
+
+      expect(result.vsCodeCompatible).toBe(false);
+      expect(result.incompatibleExtensions).toHaveLength(1);
+      expect(result.incompatibleExtensions).toContain('cursor.cursor-ai');
+    });
   });
 
   describe('generateSecurityReport', () => {
