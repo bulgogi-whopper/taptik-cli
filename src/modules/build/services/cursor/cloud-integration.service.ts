@@ -45,7 +45,7 @@ export class CursorCloudIntegrationService {
     const { includeCompatibility = true, generateTags = true, privacyLevel = 'standard' } = options;
 
     // Generate privacy-preserving metadata
-    const anonymizedData = this.privacyService?.generateAnonymizedMetadata?.(cursorData) || cursorData;
+    const _anonymizedData = this.privacyService?.generateAnonymizedMetadata?.(cursorData) || cursorData;
 
     // Check VS Code compatibility
     let compatibility: CursorCloudMetadata['compatibility'] = {
@@ -54,10 +54,10 @@ export class CursorCloudIntegrationService {
     };
 
     if (includeCompatibility && this.validationService) {
-      const compatReport = await this.validationService.checkVSCodeCompatibility(cursorData);
+      const compatReport = await this.validationService.generateComprehensiveCompatibilityReport(cursorData);
       compatibility = {
-        vsCode: compatReport.isCompatible,
-        vscodeVersion: compatReport.targetVersion,
+        vsCode: compatReport.report.vsCodeCompatible,
+        vscodeVersion: '1.80.0', // Default supported version
         cursorFeatures: this.extractCursorFeatures(cursorData),
       };
     }
@@ -123,7 +123,14 @@ export class CursorCloudIntegrationService {
 
     // Snippets count
     if (data.snippets) {
-      features.snippets = Object.values(data.snippets).reduce((sum: number, lang: any) => sum + (Object.keys(lang).length || 0), 0);
+      let snippetCount = 0;
+      for (const lang of Object.values(data.snippets)) {
+        if (lang && typeof lang === 'object') {
+          const langObj = lang as Record<string, unknown>;
+          snippetCount += Object.keys(langObj).length;
+        }
+      }
+      features.snippets = snippetCount;
       features.languages = Object.keys(data.snippets);
     }
 

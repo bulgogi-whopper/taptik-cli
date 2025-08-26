@@ -6,12 +6,14 @@ describe('CursorCloudIntegrationService - Simple Tests', () => {
   const createService = () => {
     const mockSupabase = {} as any;
     const mockValidation = {
-      checkVSCodeCompatibility: async () => ({
-        isCompatible: true,
-        targetVersion: '1.85.0',
-        compatibilityScore: 0.9,
-        issues: [],
-        warnings: [],
+      generateComprehensiveCompatibilityReport: async () => ({
+        report: {
+          vsCodeCompatible: true,
+          targetVersion: '1.85.0',
+          compatibilityScore: 0.9,
+          issues: [],
+          warnings: [],
+        },
       }),
     } as any;
     const mockPrivacy = {

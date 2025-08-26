@@ -79,10 +79,13 @@ export class CursorIntegrationService {
       'CursorPerformanceService',
     ];
 
-    for (const service of services) {
-      // Simulate verification
-      await new Promise(resolve => setTimeout(resolve, 10));
-    }
+    // Process all services in parallel to avoid await in loop
+    await Promise.all(
+      services.map(async (_service) => {
+        // Simulate verification
+        await new Promise(resolve => setTimeout(resolve, 10));
+      })
+    );
 
     return true;
   }

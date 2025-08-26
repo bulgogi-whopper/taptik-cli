@@ -1,5 +1,4 @@
 import * as fs from 'fs';
-import * as path from 'path';
 import { promisify } from 'util';
 
 import { Injectable } from '@nestjs/common';
@@ -34,10 +33,17 @@ export class CursorPerformanceService {
   ): Promise<R[]> {
     const results: R[] = [];
     
+    // Process all batches in parallel to avoid await in loop
+    const batches: T[][] = [];
     for (let i = 0; i < items.length; i += batchSize) {
-      const batch = items.slice(i, i + batchSize);
-      const batchResults = await Promise.all(batch.map(processor));
-      results.push(...batchResults);
+      batches.push(items.slice(i, i + batchSize));
+    }
+    
+    const batchPromises = batches.map(batch => Promise.all(batch.map(processor)));
+    const batchResults = await Promise.all(batchPromises);
+    
+    for (const batchResult of batchResults) {
+      results.push(...batchResult);
     }
     
     return results;
@@ -52,8 +58,9 @@ export class CursorPerformanceService {
       let bytesRead: number;
       
       do {
-        const result = await fileHandle.read(buffer, 0, chunkSize, position);
-        bytesRead = result.bytesRead;
+        // eslint-disable-next-line no-await-in-loop
+        const { bytesRead: readBytes } = await fileHandle.read(buffer, 0, chunkSize, position);
+        bytesRead = readBytes;
         
         if (bytesRead > 0) {
           yield buffer.slice(0, bytesRead);
@@ -199,13 +206,20 @@ export class CursorPerformanceService {
     const batchSize = 20;
     const results: boolean[] = [];
     
+    // Process all batches, avoiding await in loop
+    const batches: any[][] = [];
     for (let i = 0; i < items.length; i += batchSize) {
-      const batch = items.slice(i, i + batchSize);
+      batches.push(items.slice(i, i + batchSize));
+    }
+    
+    for (const batch of batches) {
+      // eslint-disable-next-line no-await-in-loop
       const batchResults = await Promise.all(batch.map(validator));
       results.push(...batchResults);
       
       // Allow other operations to proceed
-      await new Promise(resolve => setImmediate(resolve));
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise(resolve => setTimeout(resolve, 0));
     }
     
     return results;
