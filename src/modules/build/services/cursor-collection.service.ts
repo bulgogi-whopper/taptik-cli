@@ -20,6 +20,7 @@ import {
   LaunchConfiguration,
   TaskConfiguration,
   CursorConfigurationError,
+  CursorWorkspaceConfig,
 } from '../interfaces/cursor-ide.interfaces';
 
 /**
@@ -87,22 +88,28 @@ export class CursorCollectionService {
       
       const snippets = await this.collectSnippets(settingsPath);
       
-      const launch = await this.collectLaunchConfiguration(
+      const rawLaunch = await this.collectLaunchConfiguration(
         path.join(settingsPath, 'launch.json'),
       );
+      const launch = this.processLaunchConfiguration(rawLaunch, projectPath);
       
-      const tasks = await this.collectTaskConfiguration(
+      const rawTasks = await this.collectTaskConfiguration(
         path.join(settingsPath, 'tasks.json'),
       );
+      const tasks = this.processTaskConfiguration(rawTasks, projectPath);
       
       const aiRules = await this.parseCursorAiConfig(settingsPath);
 
       // Determine workspace type
       const workspaceType = await this.determineWorkspaceType(projectPath);
+      
+      // Collect workspace configuration if it exists
+      const workspaceConfig = await this.collectWorkspaceConfiguration(projectPath);
 
       return {
         projectPath,
         workspaceType,
+        workspaceConfig: workspaceConfig || undefined,
         projectAiRules: aiRules || undefined,
         settings,
         extensions: extensions ? {
@@ -442,7 +449,7 @@ export class CursorCollectionService {
   }
 
   /**
-   * Determine workspace type
+   * Determine workspace type and collect workspace configuration
    */
   private async determineWorkspaceType(
     projectPath: string,
@@ -450,12 +457,25 @@ export class CursorCollectionService {
     try {
       // Check for workspace file
       const workspaceFiles = await fs.readdir(projectPath);
-      const hasWorkspaceFile = workspaceFiles.some(
+      const workspaceFile = workspaceFiles.find(
         file => file.endsWith('.code-workspace') || file.endsWith('.cursor-workspace'),
       );
 
-      if (hasWorkspaceFile) {
-        return 'multi-root';
+      if (workspaceFile) {
+        // Parse workspace file to determine if it's multi-root
+        try {
+          const workspacePath = path.join(projectPath, workspaceFile);
+          const workspaceContent = await fs.readFile(workspacePath, 'utf-8');
+          const workspace = JSON.parse(workspaceContent);
+          
+          // Check if workspace has multiple folders
+          if (workspace.folders && Array.isArray(workspace.folders) && workspace.folders.length > 1) {
+            return 'multi-root';
+          }
+        } catch {
+          // Error parsing workspace file, assume single
+        }
+        return 'single';
       }
 
       // Check for package.json or other project markers
@@ -467,5 +487,261 @@ export class CursorCollectionService {
     } catch {
       return 'none';
     }
+  }
+
+  /**
+   * Collect workspace configuration for multi-root projects
+   */
+  async collectWorkspaceConfiguration(
+    projectPath: string,
+  ): Promise<CursorWorkspaceConfig | null> {
+    try {
+      const files = await fs.readdir(projectPath);
+      const workspaceFile = files.find(
+        file => file.endsWith('.code-workspace') || file.endsWith('.cursor-workspace'),
+      );
+
+      if (!workspaceFile) {
+        return null;
+      }
+
+      const workspacePath = path.join(projectPath, workspaceFile);
+      const content = await fs.readFile(workspacePath, 'utf-8');
+      const workspace = JSON.parse(content);
+
+      return {
+        folders: workspace.folders || [],
+        settings: workspace.settings || {},
+        launch: workspace.launch,
+        tasks: workspace.tasks,
+        extensions: workspace.extensions,
+        remoteAuthority: workspace.remoteAuthority,
+      };
+    } catch (error) {
+      this.logger.warn(`Failed to collect workspace configuration: ${error}`);
+      return null;
+    }
+  }
+
+  /**
+   * Substitute VS Code variables in configuration strings
+   * Supports common VS Code variables like ${workspaceFolder}, ${file}, etc.
+   */
+  private substituteVariables(
+    value: string,
+    projectPath: string,
+  ): string {
+    const variables: Record<string, string> = {
+      '${workspaceFolder}': projectPath,
+      '${workspaceFolderBasename}': path.basename(projectPath),
+      '${userHome}': homedir(),
+      '${pathSeparator}': path.sep,
+      '${/}': path.sep,
+    };
+
+    let result = value;
+    for (const [variable, replacement] of Object.entries(variables)) {
+      result = result.replace(new RegExp(variable.replace(/[$()*+.?[\\\]^{|}]/g, '\\$&'), 'g'), replacement);
+    }
+    return result;
+  }
+
+  /**
+   * Process launch configuration with variable substitution
+   */
+  private processLaunchConfiguration(
+    launch: LaunchConfiguration | undefined,
+    projectPath: string,
+  ): LaunchConfiguration | undefined {
+    if (!launch) return undefined;
+
+    return {
+      version: launch.version,
+      configurations: launch.configurations.map(config => {
+        const processed: Record<string, unknown> = { ...config };
+        
+        // Substitute variables in string properties
+        for (const [key, value] of Object.entries(processed)) {
+          if (typeof value === 'string') {
+            processed[key] = this.substituteVariables(value, projectPath);
+          } else if (Array.isArray(value)) {
+            processed[key] = value.map(item => 
+              typeof item === 'string' ? this.substituteVariables(item, projectPath) : item
+            );
+          } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+            // Handle nested objects like env
+            const nestedObject: Record<string, unknown> = {};
+            for (const [nestedKey, nestedValue] of Object.entries(value as Record<string, unknown>)) {
+              if (typeof nestedValue === 'string') {
+                nestedObject[nestedKey] = this.substituteVariables(nestedValue, projectPath);
+              } else {
+                nestedObject[nestedKey] = nestedValue;
+              }
+            }
+            processed[key] = nestedObject;
+          }
+        }
+        
+        return processed as typeof config;
+      }),
+      compounds: launch.compounds,
+    };
+  }
+
+  /**
+   * Process task configuration with variable substitution
+   */
+  private processTaskConfiguration(
+    tasks: TaskConfiguration | undefined,
+    projectPath: string,
+  ): TaskConfiguration | undefined {
+    if (!tasks) return undefined;
+
+    return {
+      version: tasks.version,
+      tasks: tasks.tasks.map(task => {
+        const processed: Record<string, unknown> = { ...task };
+        
+        // Substitute variables in string properties recursively
+        const processValue = (value: unknown): unknown => {
+          if (typeof value === 'string') {
+            return this.substituteVariables(value, projectPath);
+          } else if (Array.isArray(value)) {
+            return value.map(item => processValue(item));
+          } else if (typeof value === 'object' && value !== null) {
+            const nestedObject: Record<string, unknown> = {};
+            for (const [nestedKey, nestedValue] of Object.entries(value as Record<string, unknown>)) {
+              nestedObject[nestedKey] = processValue(nestedValue);
+            }
+            return nestedObject;
+          }
+          return value;
+        };
+        
+        // Process all properties
+        for (const [key, value] of Object.entries(processed)) {
+          processed[key] = processValue(value);
+        }
+        
+        return processed as typeof task;
+      }),
+    };
+  }
+
+  /**
+   * Generate project metadata for classification and discovery
+   */
+  async generateProjectMetadata(
+    projectPath: string,
+  ): Promise<Record<string, unknown>> {
+    const metadata: Record<string, unknown> = {
+      path: projectPath,
+      name: path.basename(projectPath),
+    };
+
+    try {
+      // Check for common project files to determine project type
+      const files = await fs.readdir(projectPath);
+      
+      // Package managers
+      if (files.includes('package.json')) {
+        try {
+          const packageJson = await fs.readFile(path.join(projectPath, 'package.json'), 'utf-8');
+          const pkg = JSON.parse(packageJson);
+          metadata.type = 'node';
+          metadata.framework = this.detectFramework(pkg);
+          metadata.dependencies = Object.keys(pkg.dependencies || {}).length;
+          metadata.devDependencies = Object.keys(pkg.devDependencies || {}).length;
+        } catch {
+          // Invalid package.json
+        }
+      }
+      
+      if (files.includes('Cargo.toml')) {
+        metadata.type = 'rust';
+      }
+      
+      if (files.includes('go.mod')) {
+        metadata.type = 'go';
+      }
+      
+      if (files.includes('requirements.txt') || files.includes('Pipfile')) {
+        metadata.type = 'python';
+      }
+      
+      // Language detection based on file extensions
+      const languages = new Set<string>();
+      for (const file of files) {
+        const ext = path.extname(file).toLowerCase();
+        switch (ext) {
+          case '.ts':
+            languages.add('typescript');
+            break;
+          case '.tsx':
+            languages.add('typescript');
+            languages.add('javascript'); // TSX includes JS/JSX
+            break;
+          case '.js':
+          case '.jsx':
+            languages.add('javascript');
+            break;
+          case '.py':
+            languages.add('python');
+            break;
+          case '.rs':
+            languages.add('rust');
+            break;
+          case '.go':
+            languages.add('go');
+            break;
+          case '.java':
+            languages.add('java');
+            break;
+          case '.cpp':
+          case '.cc':
+          case '.cxx':
+            languages.add('cpp');
+            break;
+        }
+      }
+      
+      metadata.languages = Array.from(languages);
+      
+      // Version control
+      if (files.includes('.git')) {
+        metadata.vcs = 'git';
+      }
+      
+      // Docker
+      if (files.includes('Dockerfile') || files.includes('docker-compose.yml')) {
+        metadata.docker = true;
+      }
+      
+    } catch (error) {
+      this.logger.debug(`Failed to generate project metadata: ${error}`);
+    }
+
+    return metadata;
+  }
+
+  /**
+   * Detect framework from package.json
+   */
+  private detectFramework(pkg: Record<string, unknown>): string | undefined {
+    const dependencies = (pkg.dependencies || {}) as Record<string, unknown>;
+    const devDependencies = (pkg.devDependencies || {}) as Record<string, unknown>;
+    const deps = { ...dependencies, ...devDependencies };
+    
+    if (deps['@nestjs/core']) return 'nestjs';
+    if (deps['next']) return 'nextjs';
+    if (deps['react']) return 'react';
+    if (deps['@angular/core']) return 'angular';
+    if (deps['vue']) return 'vue';
+    if (deps['svelte']) return 'svelte';
+    if (deps['express']) return 'express';
+    if (deps['koa']) return 'koa';
+    if (deps['fastify']) return 'fastify';
+    
+    return undefined;
   }
 }

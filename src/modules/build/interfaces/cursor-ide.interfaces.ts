@@ -237,6 +237,25 @@ export interface CursorAiConfiguration {
 // ============================================================================
 
 /**
+ * Multi-root workspace configuration
+ * Represents the structure of .code-workspace or .cursor-workspace files
+ */
+export interface CursorWorkspaceConfig {
+  folders: Array<{
+    path: string;
+    name?: string;
+  }>;
+  settings?: VSCodeSettings;
+  launch?: LaunchConfiguration;
+  tasks?: TaskConfiguration;
+  extensions?: {
+    recommendations?: string[];
+    unwantedRecommendations?: string[];
+  };
+  remoteAuthority?: string;
+}
+
+/**
  * Launch configuration for debugging
  */
 export interface LaunchConfiguration {
@@ -287,6 +306,7 @@ export interface CursorLocalSettingsData extends CursorSettingsData {
   projectPath: string;
   workspaceType: 'single' | 'multi-root' | 'none';
   projectAiRules?: CursorAiConfiguration;
+  workspaceConfig?: CursorWorkspaceConfig;
 }
 
 /**

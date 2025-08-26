@@ -146,7 +146,22 @@ describe('CursorCollectionService', () => {
         throw new Error('ENOENT');
       });
       
-      vi.mocked(fs.readFile).mockImplementation(async () => JSON.stringify({}));
+      vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
+        const file = filePath.toString();
+        if (file.endsWith('settings.json')) {
+          return JSON.stringify({});
+        }
+        if (file.endsWith('.code-workspace')) {
+          return JSON.stringify({
+            folders: [
+              { path: 'frontend' },
+              { path: 'backend' },
+            ],
+          });
+        }
+        // Return error for other files (launch.json, tasks.json, etc.)
+        throw new Error('ENOENT');
+      });
       
       vi.mocked(fs.readdir).mockResolvedValue([
         'project.code-workspace',
