@@ -3,8 +3,6 @@ import * as path from 'path';
 
 import { Injectable, Logger } from '@nestjs/common';
 
-import { PushError, PushErrorCode } from '../constants/push.constants';
-
 export interface SecurityValidationResult {
   isValid: boolean;
   issues: SecurityIssue[];
@@ -51,8 +49,21 @@ export class SecurityValidatorService {
 
   // Suspicious file extensions
   private readonly SUSPICIOUS_EXTENSIONS = [
-    '.exe', '.bat', '.cmd', '.sh', '.ps1', '.vbs', '.js', '.jar',
-    '.com', '.scr', '.msi', '.dll', '.app', '.deb', '.rpm',
+    '.exe',
+    '.bat',
+    '.cmd',
+    '.sh',
+    '.ps1',
+    '.vbs',
+    '.js',
+    '.jar',
+    '.com',
+    '.scr',
+    '.msi',
+    '.dll',
+    '.app',
+    '.deb',
+    '.rpm',
   ];
 
   // Maximum input sizes (to prevent DOS)
@@ -79,7 +90,9 @@ export class SecurityValidatorService {
       } else if (Array.isArray(input)) {
         issues.push(...this.validateArray(input, fieldName));
       } else if (typeof input === 'object' && input !== null) {
-        issues.push(...this.validateObject(input as Record<string, unknown>, fieldName));
+        issues.push(
+          ...this.validateObject(input as Record<string, unknown>, fieldName),
+        );
       }
 
       // Determine risk level
@@ -92,14 +105,16 @@ export class SecurityValidatorService {
       };
     } catch (error) {
       this.logger.error(`Security validation error for ${fieldName}`, error);
-      
+
       return {
         isValid: false,
-        issues: [{
-          type: SecurityIssueType.INVALID_ENCODING,
-          severity: 'high',
-          message: 'Invalid input encoding or format',
-        }],
+        issues: [
+          {
+            type: SecurityIssueType.INVALID_ENCODING,
+            severity: 'high',
+            message: 'Invalid input encoding or format',
+          },
+        ],
         riskLevel: 'high',
       };
     }
@@ -166,7 +181,9 @@ export class SecurityValidatorService {
   /**
    * Validate package metadata for security issues
    */
-  validatePackageMetadata(metadata: Record<string, unknown>): SecurityValidationResult {
+  validatePackageMetadata(
+    metadata: Record<string, unknown>,
+  ): SecurityValidationResult {
     const issues: SecurityIssue[] = [];
 
     // Check each metadata field
@@ -226,8 +243,10 @@ export class SecurityValidatorService {
 
       // Check for embedded scripts in first 10KB
       const sampleSize = Math.min(buffer.length, 10240);
-      const sample = buffer.slice(0, sampleSize).toString('utf8', 0, sampleSize);
-      
+      const sample = buffer
+        .slice(0, sampleSize)
+        .toString('utf8', 0, sampleSize);
+
       for (const pattern of this.INJECTION_PATTERNS) {
         if (pattern.test(sample)) {
           issues.push({
@@ -249,7 +268,6 @@ export class SecurityValidatorService {
           details: { entropy },
         });
       }
-
     } catch (error) {
       this.logger.error('Error detecting malicious content', error);
     }
@@ -280,7 +298,10 @@ export class SecurityValidatorService {
   /**
    * Validate input size
    */
-  private validateInputSize(input: unknown, fieldName: string): SecurityIssue | null {
+  private validateInputSize(
+    input: unknown,
+    fieldName: string,
+  ): SecurityIssue | null {
     if (typeof input === 'string' && input.length > this.MAX_STRING_LENGTH) {
       return {
         type: SecurityIssueType.OVERSIZED_INPUT,
@@ -330,8 +351,8 @@ export class SecurityValidatorService {
       });
     }
 
-    // Check for control characters
-    if (/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/.test(input)) {
+    // Check for control characters using character code validation
+    if (this.hasControlCharacters(input)) {
       issues.push({
         type: SecurityIssueType.INVALID_ENCODING,
         severity: 'low',
@@ -359,7 +380,11 @@ export class SecurityValidatorService {
   /**
    * Validate object input
    */
-  private validateObject(input: Record<string, unknown>, fieldName: string, depth: number = 0): SecurityIssue[] {
+  private validateObject(
+    input: Record<string, unknown>,
+    fieldName: string,
+    depth: number = 0,
+  ): SecurityIssue[] {
     const issues: SecurityIssue[] = [];
 
     if (depth > this.MAX_OBJECT_DEPTH) {
@@ -374,19 +399,29 @@ export class SecurityValidatorService {
 
     for (const [key, value] of Object.entries(input)) {
       // Validate the key itself
-      const keyValidation = this.validateString(key, `${fieldName}.${key} (key)`);
+      const keyValidation = this.validateString(
+        key,
+        `${fieldName}.${key} (key)`,
+      );
       issues.push(...keyValidation);
 
       // Validate the value
-      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      if (
+        typeof value === 'object' &&
+        value !== null &&
+        !Array.isArray(value)
+      ) {
         const nestedIssues = this.validateObject(
           value as Record<string, unknown>,
           `${fieldName}.${key}`,
-          depth + 1
+          depth + 1,
         );
         issues.push(...nestedIssues);
       } else {
-        const valueValidation = this.validateInput(value, `${fieldName}.${key}`);
+        const valueValidation = this.validateInput(
+          value,
+          `${fieldName}.${key}`,
+        );
         issues.push(...valueValidation.issues);
       }
     }
@@ -402,11 +437,11 @@ export class SecurityValidatorService {
 
     // Check for common executable signatures
     const signatures = [
-      [0x4D, 0x5A], // PE/COFF (Windows EXE/DLL)
-      [0x7F, 0x45, 0x4C, 0x46], // ELF (Linux)
-      [0xCE, 0xFA, 0xED, 0xFE], // Mach-O (macOS) 32-bit
-      [0xCF, 0xFA, 0xED, 0xFE], // Mach-O (macOS) 64-bit
-      [0xCA, 0xFE, 0xBA, 0xBE], // Java class file
+      [0x4d, 0x5a], // PE/COFF (Windows EXE/DLL)
+      [0x7f, 0x45, 0x4c, 0x46], // ELF (Linux)
+      [0xce, 0xfa, 0xed, 0xfe], // Mach-O (macOS) 32-bit
+      [0xcf, 0xfa, 0xed, 0xfe], // Mach-O (macOS) 64-bit
+      [0xca, 0xfe, 0xba, 0xbe], // Java class file
       [0x23, 0x21], // Shebang (#!)
     ];
 
@@ -429,7 +464,7 @@ export class SecurityValidatorService {
    */
   private calculateEntropy(buffer: Buffer): number {
     const freq: Map<number, number> = new Map();
-    
+
     for (const byte of buffer) {
       freq.set(byte, (freq.get(byte) || 0) + 1);
     }
@@ -443,6 +478,28 @@ export class SecurityValidatorService {
     }
 
     return entropy;
+  }
+
+  /**
+   * Check if string contains control characters
+   * Replaces regex-based approach to avoid ESLint no-control-regex warning
+   */
+  private hasControlCharacters(input: string): boolean {
+    for (let i = 0; i < input.length; i++) {
+      const charCode = input.charCodeAt(i);
+      
+      // Check for control characters (0x00-0x08, 0x0B, 0x0C, 0x0E-0x1F, 0x7F)
+      if (
+        (charCode >= 0x00 && charCode <= 0x08) ||
+        charCode === 0x0B ||
+        charCode === 0x0C ||
+        (charCode >= 0x0E && charCode <= 0x1F) ||
+        charCode === 0x7F
+      ) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -467,14 +524,16 @@ export class SecurityValidatorService {
   /**
    * Calculate overall risk level from issues
    */
-  private calculateRiskLevel(issues: SecurityIssue[]): 'low' | 'medium' | 'high' | 'critical' {
-    if (issues.some(i => i.severity === 'critical')) {
+  private calculateRiskLevel(
+    issues: SecurityIssue[],
+  ): 'low' | 'medium' | 'high' | 'critical' {
+    if (issues.some((i) => i.severity === 'critical')) {
       return 'critical';
     }
-    if (issues.some(i => i.severity === 'high')) {
+    if (issues.some((i) => i.severity === 'high')) {
       return 'high';
     }
-    if (issues.some(i => i.severity === 'medium')) {
+    if (issues.some((i) => i.severity === 'medium')) {
       return 'medium';
     }
     if (issues.length > 0) {

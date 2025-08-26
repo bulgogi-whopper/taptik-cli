@@ -155,13 +155,16 @@ export class LocalQueueService implements OnModuleInit, OnModuleDestroy {
     this.debounceSave();
   }
 
-  async updateStatus(id: string, status: QueuedUpload['status']): Promise<void> {
+  async updateStatus(
+    id: string,
+    status: QueuedUpload['status'],
+  ): Promise<void> {
     const item = this.queue.get(id);
     if (item) {
       item.status = status;
       item.lastAttempt = new Date();
       this.queue.set(id, item);
-      await this.debounceSave();
+      this.debounceSave();
     }
   }
 
@@ -171,7 +174,7 @@ export class LocalQueueService implements OnModuleInit, OnModuleDestroy {
       item.attempts = (item.attempts || 0) + 1;
       item.lastAttempt = new Date();
       this.queue.set(id, item);
-      await this.debounceSave();
+      this.debounceSave();
     }
   }
 
@@ -328,29 +331,24 @@ export class LocalQueueService implements OnModuleInit, OnModuleDestroy {
     try {
       const pendingUploads = await this.getPendingUploads();
 
-      // Process uploads sequentially
-
-      for (const upload of pendingUploads) {
+      // Process uploads sequentially using reduce to maintain order
+      await pendingUploads.reduce(async (previousPromise, upload) => {
+        await previousPromise;
+        
         try {
-          // eslint-disable-next-line no-await-in-loop
           await this.updateQueueStatus(upload.id, 'uploading');
-          // eslint-disable-next-line no-await-in-loop
           await onProcess(upload);
-          // eslint-disable-next-line no-await-in-loop
           await this.updateQueueStatus(upload.id, 'completed');
         } catch (error) {
-          // eslint-disable-next-line no-await-in-loop
           const attempts = await this.incrementRetryAttempt(upload.id);
 
           if (attempts >= this.queueConfig.maxRetryAttempts) {
-            // eslint-disable-next-line no-await-in-loop
             await this.updateQueueStatus(
               upload.id,
               'failed',
               error instanceof Error ? error.message : 'Unknown error',
             );
           } else {
-            // eslint-disable-next-line no-await-in-loop
             await this.updateQueueStatus(
               upload.id,
               'pending',
@@ -358,7 +356,7 @@ export class LocalQueueService implements OnModuleInit, OnModuleDestroy {
             );
           }
         }
-      }
+      }, Promise.resolve());
     } catch (_error) {
       // Error processing queue - will retry on next interval
       // Silent failure to avoid stopping the background sync

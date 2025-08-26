@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 import { SupabaseService } from '../../supabase/supabase.service';
 import {
@@ -28,6 +28,7 @@ interface DuplicateCheckResult {
 
 @Injectable()
 export class CloudUploadService {
+  private readonly logger = new Logger(CloudUploadService.name);
   private readonly BUCKET_CONFIG = UPLOAD_CONFIG;
   private readonly activeUploads = new Map<string, ChunkedUpload>();
 
@@ -54,8 +55,8 @@ export class CloudUploadService {
         throw new PushError(
           PushErrorCode.DATABASE_ERROR,
           `Failed to check for duplicate: ${error.message}`,
+          { operation: 'checkDuplicate' },
           error,
-          true,
         );
       }
 
@@ -71,8 +72,8 @@ export class CloudUploadService {
       throw new PushError(
         PushErrorCode.DATABASE_ERROR,
         'Failed to check for duplicate package',
-        error,
-        true,
+        { operation: 'checkDuplicate' },
+        error as Error,
       );
     }
   }
@@ -148,8 +149,8 @@ export class CloudUploadService {
       throw new PushError(
         PushErrorCode.UPLOAD_FAILED,
         'Failed to upload package',
-        error,
-        true,
+        { operation: 'uploadPackage' },
+        error as Error,
       );
     }
   }
@@ -165,8 +166,7 @@ export class CloudUploadService {
         throw new PushError(
           PushErrorCode.UPLOAD_FAILED,
           `Upload session ${uploadId} not found or expired`,
-          { uploadId },
-          false,
+          { operation: 'resumeUpload', packageId: uploadId },
         );
       }
 
@@ -196,8 +196,8 @@ export class CloudUploadService {
       throw new PushError(
         PushErrorCode.UPLOAD_FAILED,
         'Failed to resume upload',
-        error,
-        true,
+        { operation: 'resumeUpload' },
+        error as Error,
       );
     }
   }
@@ -215,8 +215,7 @@ export class CloudUploadService {
         throw new PushError(
           PushErrorCode.UPLOAD_FAILED,
           'Invalid storage URL format',
-          { storageUrl },
-          false,
+          { operation: 'deletePackage', fileName: storageUrl },
         );
       }
 
@@ -231,8 +230,8 @@ export class CloudUploadService {
         throw new PushError(
           PushErrorCode.UPLOAD_FAILED,
           `Failed to delete package: ${error.message}`,
+          { operation: 'deletePackage', fileName: filePath },
           error,
-          true,
         );
       }
     } catch (error) {
@@ -242,8 +241,8 @@ export class CloudUploadService {
       throw new PushError(
         PushErrorCode.UPLOAD_FAILED,
         'Failed to delete package from storage',
-        error,
-        true,
+        { operation: 'deletePackage' },
+        error as Error,
       );
     }
   }
@@ -297,8 +296,8 @@ export class CloudUploadService {
       throw new PushError(
         PushErrorCode.UPLOAD_FAILED,
         `Upload failed: ${error.message}`,
+        { operation: 'performDirectUpload' },
         error,
-        true,
       );
     }
 
@@ -306,8 +305,7 @@ export class CloudUploadService {
       throw new PushError(
         PushErrorCode.UPLOAD_FAILED,
         'Upload succeeded but no path returned',
-        { data },
-        false,
+        { operation: 'performDirectUpload' },
       );
     }
 
@@ -366,7 +364,7 @@ export class CloudUploadService {
       chunks.push(packageBuffer.subarray(start, end));
     }
 
-    // Upload missing chunks sequentially (required for progress tracking)
+    // Upload missing chunks concurrently with progress tracking
     const missingChunks = [];
     for (let i = 0; i < uploadInfo.totalChunks; i++) {
       if (!uploadInfo.uploadedChunks.includes(i)) {
@@ -374,12 +372,12 @@ export class CloudUploadService {
       }
     }
 
-    for (const chunkIndex of missingChunks) {
+    // Create upload promises for all missing chunks
+    const chunkUploadPromises = missingChunks.map(async (chunkIndex) => {
       const chunkPath = storagePath
         ? `${storagePath}.chunk.${chunkIndex}`
         : `temp/chunk.${uploadInfo.uploadId}.${chunkIndex}`;
 
-      // eslint-disable-next-line no-await-in-loop
       const { error } = await client.storage
         .from(this.BUCKET_CONFIG.BUCKET_NAME)
         .upload(chunkPath, chunks[chunkIndex], {
@@ -390,11 +388,12 @@ export class CloudUploadService {
         throw new PushError(
           PushErrorCode.UPLOAD_FAILED,
           `Failed to upload chunk ${chunkIndex}: ${error.message}`,
+          { operation: 'continueChunkedUpload', packageId: `chunk-${chunkIndex}` },
           error,
-          true,
         );
       }
 
+      // Track successful upload
       uploadInfo.uploadedChunks.push(chunkIndex);
 
       // Update progress
@@ -412,7 +411,12 @@ export class CloudUploadService {
         totalBytes: packageBuffer.length,
         message: `Uploaded chunk ${chunkIndex + 1}/${uploadInfo.totalChunks}`,
       });
-    }
+
+      return chunkIndex;
+    });
+
+    // Wait for all chunk uploads to complete
+    await Promise.all(chunkUploadPromises);
 
     // Combine chunks into final file
     const finalPath =
@@ -429,8 +433,8 @@ export class CloudUploadService {
       throw new PushError(
         PushErrorCode.UPLOAD_FAILED,
         `Failed to create final file: ${error.message}`,
+        { operation: 'continueChunkedUpload' },
         error,
-        true,
       );
     }
 
@@ -441,8 +445,7 @@ export class CloudUploadService {
       throw new PushError(
         PushErrorCode.UPLOAD_FAILED,
         'Upload succeeded but no path returned',
-        { data },
-        false,
+        { operation: 'continueChunkedUpload' },
       );
     }
 
@@ -475,11 +478,7 @@ export class CloudUploadService {
         .remove(chunkPaths);
     } catch (error) {
       // Log error but don't throw - cleanup failure shouldn't fail the upload
-      // In production, this would use a proper logger
-      if (process.env.NODE_ENV === 'development') {
-        // eslint-disable-next-line no-console
-        console.warn('Failed to cleanup chunk files:', error);
-      }
+      this.logger.warn('Failed to cleanup chunk files:', error);
     }
   }
 

@@ -311,6 +311,7 @@ export default [
       'unicorn/consistent-function-scoping': 'off',
       'import-x/no-extraneous-dependencies': 'off',
       'no-console': 'off',
+      'no-await-in-loop': 'off', // Allow await in loop for test files
     },
   },
 

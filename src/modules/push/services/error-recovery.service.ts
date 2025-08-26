@@ -38,39 +38,54 @@ export class ErrorRecoveryService {
     options?: RetryOptions,
   ): Promise<T> {
     const retryOptions = { ...this.defaultRetryOptions, ...options };
-    let lastError: Error | undefined;
 
-    for (let attempt = 1; attempt <= retryOptions.maxAttempts; attempt++) {
-      try {
-        this.logger.debug(`Attempting ${operationName} (attempt ${attempt}/${retryOptions.maxAttempts})`);
-        return await operation();
-      } catch (error) {
-        lastError = error;
-        
-        const pushError = this.wrapError(error, operationName, attempt);
-        
-        if (!pushError.retryable || attempt === retryOptions.maxAttempts) {
-          this.logger.error(`Operation ${operationName} failed after ${attempt} attempts`, pushError);
-          throw pushError;
-        }
+    return this.attemptOperation(operation, operationName, retryOptions, 1);
+  }
 
-        const delay = this.calculateDelay(attempt, retryOptions);
-        this.logger.warn(
-          `Operation ${operationName} failed (attempt ${attempt}), retrying in ${delay}ms...`,
-          { error: pushError.message, code: pushError.code }
+  /**
+   * Recursively attempt an operation with retry logic
+   */
+  private async attemptOperation<T>(
+    operation: () => Promise<T>,
+    operationName: string,
+    retryOptions: Required<RetryOptions>,
+    attempt: number,
+  ): Promise<T> {
+    try {
+      this.logger.debug(
+        `Attempting ${operationName} (attempt ${attempt}/${retryOptions.maxAttempts})`,
+      );
+      return await operation();
+    } catch (error) {
+      const pushError = this.wrapError(error, operationName, attempt);
+
+      if (!pushError.retryable || attempt === retryOptions.maxAttempts) {
+        this.logger.error(
+          `Operation ${operationName} failed after ${attempt} attempts`,
+          pushError,
         );
-        
-        await this.sleep(delay);
+        throw pushError;
       }
-    }
 
-    throw lastError;
+      const delay = this.calculateDelay(attempt, retryOptions);
+      this.logger.warn(
+        `Operation ${operationName} failed (attempt ${attempt}), retrying in ${delay}ms...`,
+        { error: pushError.message, code: pushError.code },
+      );
+
+      await this.sleep(delay);
+      return this.attemptOperation(operation, operationName, retryOptions, attempt + 1);
+    }
   }
 
   /**
    * Wrap an error into a PushError with appropriate context
    */
-  private wrapError(error: unknown, operation: string, attemptNumber: number): PushError {
+  private wrapError(
+    error: unknown,
+    operation: string,
+    attemptNumber: number,
+  ): PushError {
     if (error instanceof PushError) {
       error.context.attemptNumber = attemptNumber;
       return error;
@@ -78,7 +93,7 @@ export class ErrorRecoveryService {
 
     const errorMessage = error instanceof Error ? error.message : String(error);
     const code = this.determineErrorCode(error);
-    
+
     return new PushError(
       code,
       errorMessage,
@@ -93,21 +108,28 @@ export class ErrorRecoveryService {
   private determineErrorCode(error: unknown): PushErrorCode {
     if (error instanceof Error) {
       const message = error.message.toLowerCase();
-      
+
       // Network-related errors
-      if (message.includes('network') || message.includes('fetch') || message.includes('econnrefused')) {
+      if (
+        message.includes('network') ||
+        message.includes('fetch') ||
+        message.includes('econnrefused')
+      ) {
         return PushErrorCode.NET_CONNECTION_FAILED;
       }
       if (message.includes('timeout') || message.includes('timedout')) {
         return PushErrorCode.NET_TIMEOUT;
       }
-      if (message.includes('rate limit') || message.includes('too many requests')) {
+      if (
+        message.includes('rate limit') ||
+        message.includes('too many requests')
+      ) {
         return PushErrorCode.NET_RATE_LIMITED;
       }
       if (message.includes('503') || message.includes('service unavailable')) {
         return PushErrorCode.NET_SERVICE_UNAVAILABLE;
       }
-      
+
       // Auth-related errors
       if (message.includes('unauthorized') || message.includes('401')) {
         return PushErrorCode.AUTH_NOT_AUTHENTICATED;
@@ -118,7 +140,7 @@ export class ErrorRecoveryService {
       if (message.includes('session') && message.includes('expired')) {
         return PushErrorCode.AUTH_SESSION_EXPIRED;
       }
-      
+
       // Validation errors
       if (message.includes('invalid') && message.includes('file')) {
         return PushErrorCode.VAL_INVALID_FILE;
@@ -126,7 +148,7 @@ export class ErrorRecoveryService {
       if (message.includes('too large') || message.includes('size limit')) {
         return PushErrorCode.VAL_FILE_TOO_LARGE;
       }
-      
+
       // Storage errors
       if (message.includes('quota') || message.includes('storage limit')) {
         return PushErrorCode.STOR_QUOTA_EXCEEDED;
@@ -135,26 +157,29 @@ export class ErrorRecoveryService {
         return PushErrorCode.STOR_UPLOAD_FAILED;
       }
     }
-    
+
     return PushErrorCode.SYS_UNKNOWN_ERROR;
   }
 
   /**
    * Calculate delay with exponential backoff and optional jitter
    */
-  private calculateDelay(attempt: number, options: Required<RetryOptions>): number {
+  private calculateDelay(
+    attempt: number,
+    options: Required<RetryOptions>,
+  ): number {
     const exponentialDelay = Math.min(
       options.baseDelay * Math.pow(options.backoffMultiplier, attempt - 1),
-      options.maxDelay
+      options.maxDelay,
     );
-    
+
     if (options.jitter) {
       // Add random jitter (±25% of the delay)
       const jitterRange = exponentialDelay * 0.25;
       const jitter = (Math.random() - 0.5) * 2 * jitterRange;
       return Math.round(exponentialDelay + jitter);
     }
-    
+
     return exponentialDelay;
   }
 
@@ -162,7 +187,7 @@ export class ErrorRecoveryService {
    * Sleep for a specified duration
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -181,17 +206,25 @@ export class ErrorRecoveryService {
    */
   recordSuccess(state: RecoveryState, stepName: string): void {
     state.successfulSteps.push(stepName);
-    this.logger.debug(`Recovery state: Step "${stepName}" completed successfully`);
+    this.logger.debug(
+      `Recovery state: Step "${stepName}" completed successfully`,
+    );
   }
 
   /**
    * Record a failed step in the recovery state
    */
-  recordFailure(state: RecoveryState, stepName: string, error: PushError): void {
+  recordFailure(
+    state: RecoveryState,
+    stepName: string,
+    error: PushError,
+  ): void {
     state.failedStep = stepName;
     state.lastError = error;
     state.attemptNumber++;
-    this.logger.warn(`Recovery state: Step "${stepName}" failed`, { error: error.message });
+    this.logger.warn(`Recovery state: Step "${stepName}" failed`, {
+      error: error.message,
+    });
   }
 
   /**
@@ -201,21 +234,21 @@ export class ErrorRecoveryService {
     if (!state.lastError) {
       return false;
     }
-    
+
     if (!state.lastError.retryable) {
       return false;
     }
-    
+
     if (state.attemptNumber >= maxAttempts) {
       return false;
     }
-    
+
     // Don't retry if we've been trying for too long (5 minutes)
     const elapsedTime = Date.now() - state.startTime.getTime();
     if (elapsedTime > 5 * 60 * 1000) {
       return false;
     }
-    
+
     return true;
   }
 
@@ -226,21 +259,24 @@ export class ErrorRecoveryService {
     if (error.remediation) {
       return error.remediation;
     }
-    
+
     const suggestions: Partial<Record<PushErrorCode, string>> = {
-      [PushErrorCode.NET_CONNECTION_FAILED]: 
+      [PushErrorCode.NET_CONNECTION_FAILED]:
         'Please check your internet connection and firewall settings',
-      [PushErrorCode.NET_TIMEOUT]: 
+      [PushErrorCode.NET_TIMEOUT]:
         'The operation is taking longer than expected. Try again with a smaller package',
-      [PushErrorCode.AUTH_SESSION_EXPIRED]: 
+      [PushErrorCode.AUTH_SESSION_EXPIRED]:
         'Your session has expired. Please log in again using "taptik auth login"',
-      [PushErrorCode.VAL_FILE_TOO_LARGE]: 
+      [PushErrorCode.VAL_FILE_TOO_LARGE]:
         'Consider splitting your package or removing unnecessary files',
-      [PushErrorCode.STOR_QUOTA_EXCEEDED]: 
+      [PushErrorCode.STOR_QUOTA_EXCEEDED]:
         'You have reached your storage limit. Delete old packages or upgrade your plan',
     };
-    
-    return suggestions[error.code] || 'Please try again later or contact support if the issue persists';
+
+    return (
+      suggestions[error.code] ||
+      'Please try again later or contact support if the issue persists'
+    );
   }
 
   /**
@@ -248,7 +284,7 @@ export class ErrorRecoveryService {
    */
   logErrorDetails(error: PushError, includeStack: boolean = false): void {
     const sanitizedContext = this.sanitizeContext(error.context);
-    
+
     this.logger.error('Push operation failed', {
       code: error.code,
       message: error.userMessage,
@@ -264,12 +300,12 @@ export class ErrorRecoveryService {
    */
   private sanitizeContext(context: PushError['context']): PushError['context'] {
     const sanitized = { ...context };
-    
+
     // Remove or mask sensitive fields
     if (sanitized.userId) {
-      sanitized.userId = `${sanitized.userId.substring(0, 8)  }...`;
+      sanitized.userId = `${sanitized.userId.substring(0, 8)}...`;
     }
-    
+
     if (sanitized.details) {
       const details = { ...sanitized.details };
       // Remove any fields that might contain sensitive data
@@ -279,7 +315,7 @@ export class ErrorRecoveryService {
       delete details['secret'];
       sanitized.details = details;
     }
-    
+
     return sanitized;
   }
 }

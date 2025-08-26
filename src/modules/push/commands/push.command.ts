@@ -10,7 +10,10 @@ import ora from 'ora';
 
 import { ErrorHandlerService } from '../../deploy/services/error-handler.service';
 import { ErrorCodes } from '../constants/error-codes.constant';
-import { PackageVisibility, PushOptions } from '../interfaces/push-options.interface';
+import {
+  PackageVisibility,
+  PushOptions,
+} from '../interfaces/push-options.interface';
 import { UploadProgress } from '../interfaces/upload-progress.interface';
 import { PushService } from '../services/push.service';
 
@@ -54,14 +57,18 @@ export class PushCommand extends CommandRunner {
       const filePath = path.resolve(args[0]);
 
       // Check if file exists and is a .taptik file
-      if (!await fs.pathExists(filePath)) {
+      if (!(await fs.pathExists(filePath))) {
         console.error(chalk.red(`Error: File not found: ${filePath}`));
         process.exit(1);
       }
 
       const fileExt = path.extname(filePath);
       if (fileExt !== '.taptik') {
-        console.error(chalk.red(`Error: File must have .taptik extension (got: ${fileExt})`));
+        console.error(
+          chalk.red(
+            `Error: File must have .taptik extension (got: ${fileExt})`,
+          ),
+        );
         process.exit(1);
       }
 
@@ -69,7 +76,9 @@ export class PushCommand extends CommandRunner {
       const visibility = this.parseVisibility(options);
 
       // Parse tags
-      const tags = options.tags ? options.tags.split(',').map(t => t.trim()) : [];
+      const tags = options.tags
+        ? options.tags.split(',').map((t) => t.trim())
+        : [];
 
       // Read file for upload
       const fileBuffer = await fs.readFile(filePath);
@@ -111,9 +120,9 @@ export class PushCommand extends CommandRunner {
 
       // Start upload with progress tracking
       console.log(chalk.cyan('\n📤 Starting upload...\n'));
-      
+
       let lastProgress: UploadProgress | null = null;
-      
+
       await this.pushService.push(pushOptions, (progress) => {
         this.displayProgress(progress);
         lastProgress = progress;
@@ -123,18 +132,19 @@ export class PushCommand extends CommandRunner {
       if (lastProgress?.configId) {
         console.log(chalk.green('\n✅ Upload completed successfully!'));
         console.log(chalk.gray(`Configuration ID: ${lastProgress.configId}`));
-        
+
         if (lastProgress.shareUrl) {
           console.log(chalk.cyan(`\n🔗 Share URL: ${lastProgress.shareUrl}`));
         }
-        
+
         if (visibility === PackageVisibility.Public) {
-          console.log(chalk.blue('\n📢 Your configuration is now publicly available'));
+          console.log(
+            chalk.blue('\n📢 Your configuration is now publicly available'),
+          );
         } else {
           console.log(chalk.gray('\n🔒 Your configuration is private'));
         }
       }
-
     } catch (error) {
       this.handleError(error as Error);
     }
@@ -222,11 +232,15 @@ export class PushCommand extends CommandRunner {
 
   private parseVisibility(options: PushCommandOptions): PackageVisibility {
     if (options.public && options.private) {
-      console.error(chalk.red('Error: Cannot specify both --public and --private'));
+      console.error(
+        chalk.red('Error: Cannot specify both --public and --private'),
+      );
       process.exit(1);
     }
-    
-    return options.public ? PackageVisibility.Public : PackageVisibility.Private;
+
+    return options.public
+      ? PackageVisibility.Public
+      : PackageVisibility.Private;
   }
 
   private generateDefaultTitle(fileName: string): string {
@@ -241,29 +255,33 @@ export class PushCommand extends CommandRunner {
     console.log(chalk.cyan('\n📦 Package Upload Summary:'));
     console.log(chalk.gray('─'.repeat(40)));
     console.log(`  File: ${chalk.white(options.file.name)}`);
-    console.log(`  Size: ${chalk.white(this.formatFileSize(options.file.size))}`);
+    console.log(
+      `  Size: ${chalk.white(this.formatFileSize(options.file.size))}`,
+    );
     console.log(`  Title: ${chalk.white(options.title)}`);
-    
+
     if (options.description) {
       console.log(`  Description: ${chalk.white(options.description)}`);
     }
-    
+
     console.log(`  Visibility: ${chalk.white(options.visibility)}`);
-    
+
     if (options.tags.length > 0) {
       console.log(`  Tags: ${chalk.white(options.tags.join(', '))}`);
     }
-    
+
     if (options.teamId) {
       console.log(`  Team: ${chalk.white(options.teamId)}`);
     }
-    
+
     console.log(`  Version: ${chalk.white(options.version)}`);
     console.log(chalk.gray('─'.repeat(40)));
 
     // Warn about public visibility
     if (options.visibility === PackageVisibility.Public) {
-      console.log(chalk.yellow('\n⚠️  Warning: This package will be publicly accessible'));
+      console.log(
+        chalk.yellow('\n⚠️  Warning: This package will be publicly accessible'),
+      );
     }
 
     const { confirmed } = await inquirer.prompt([
@@ -279,23 +297,27 @@ export class PushCommand extends CommandRunner {
   }
 
   private async performDryRun(options: PushOptions): Promise<void> {
-    console.log(chalk.cyan('\n🔍 Dry Run Mode - No actual upload will occur\n'));
+    console.log(
+      chalk.cyan('\n🔍 Dry Run Mode - No actual upload will occur\n'),
+    );
     console.log(chalk.gray('─'.repeat(50)));
     console.log(chalk.white('Package Information:'));
     console.log(`  File: ${options.file.name}`);
     console.log(`  Size: ${this.formatFileSize(options.file.size)}`);
     console.log(`  Path: ${options.file.path}`);
-    
+
     console.log(chalk.white('\nMetadata:'));
     console.log(`  Title: ${options.title}`);
     console.log(`  Description: ${options.description || '(none)'}`);
     console.log(`  Visibility: ${options.visibility}`);
-    console.log(`  Tags: ${options.tags.length > 0 ? options.tags.join(', ') : '(none)'}`);
+    console.log(
+      `  Tags: ${options.tags.length > 0 ? options.tags.join(', ') : '(none)'}`,
+    );
     console.log(`  Team: ${options.teamId || '(none)'}`);
     console.log(`  Version: ${options.version}`);
-    
+
     console.log(chalk.white('\nValidation Checks:'));
-    
+
     // Simulate validation
     const validationSteps = [
       'File format validation',
@@ -306,11 +328,12 @@ export class PushCommand extends CommandRunner {
       'Rate limit check',
     ];
 
-    for (const step of validationSteps) {
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise(resolve => setTimeout(resolve, 200));
-      console.log(chalk.green(`  ✓ ${step}`));
-    }
+    await Promise.all(
+      validationSteps.map(async (step, index) => {
+        await new Promise((resolve) => setTimeout(resolve, 200 * (index + 1)));
+        console.log(chalk.green(`  ✓ ${step}`));
+      }),
+    );
 
     console.log(chalk.white('\nUpload Steps (simulated):'));
     console.log('  1. Authenticate user');
@@ -320,7 +343,7 @@ export class PushCommand extends CommandRunner {
     console.log('  5. Upload to cloud storage');
     console.log('  6. Register in database');
     console.log('  7. Track analytics');
-    
+
     console.log(chalk.gray('─'.repeat(50)));
     console.log(chalk.green('\n✅ Dry run completed successfully'));
     console.log(chalk.gray('No files were uploaded'));
@@ -334,11 +357,11 @@ export class PushCommand extends CommandRunner {
 
     const progressBar = this.createProgressBar(progress.percentage);
     const statusIcon = this.getStatusIcon(progress.stage);
-    
+
     console.log(
       `${statusIcon} ${chalk.cyan(progress.stage)} ${progressBar} ${chalk.yellow(
-        `${progress.percentage}%`
-      )}`
+        `${progress.percentage}%`,
+      )}`,
     );
 
     if (progress.message) {
@@ -354,21 +377,21 @@ export class PushCommand extends CommandRunner {
     const barLength = 30;
     const filled = Math.floor((percentage / 100) * barLength);
     const empty = barLength - filled;
-    
+
     return chalk.green('█'.repeat(filled)) + chalk.gray('░'.repeat(empty));
   }
 
   private getStatusIcon(stage: string): string {
     const icons: Record<string, string> = {
-      'Authenticating': '🔐',
-      'Validating': '🔍',
-      'Sanitizing': '🧹',
-      'Uploading': '📤',
-      'Registering': '📝',
-      'Completing': '🎯',
-      'Completed': '✅',
+      Authenticating: '🔐',
+      Validating: '🔍',
+      Sanitizing: '🧹',
+      Uploading: '📤',
+      Registering: '📝',
+      Completing: '🎯',
+      Completed: '✅',
     };
-    
+
     return icons[stage] || '⏳';
   }
 
@@ -394,7 +417,7 @@ export class PushCommand extends CommandRunner {
     const errorMessage = error.message || 'An unexpected error occurred';
 
     console.error(chalk.red(`\n❌ Upload failed: ${errorMessage}`));
-    
+
     if (errorCode) {
       console.error(chalk.gray(`Error code: ${errorCode}`));
     }
@@ -403,7 +426,7 @@ export class PushCommand extends CommandRunner {
     const suggestions = this.getErrorSuggestions(errorCode);
     if (suggestions.length > 0) {
       console.log(chalk.yellow('\n💡 Suggestions:'));
-      suggestions.forEach(suggestion => {
+      suggestions.forEach((suggestion) => {
         console.log(chalk.gray(`  • ${suggestion}`));
       });
     }
@@ -443,6 +466,8 @@ export class PushCommand extends CommandRunner {
       ],
     };
 
-    return suggestions[errorCode] || ['Please try again later or contact support'];
+    return (
+      suggestions[errorCode] || ['Please try again later or contact support']
+    );
   }
 }
