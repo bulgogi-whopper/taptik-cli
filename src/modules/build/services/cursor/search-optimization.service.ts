@@ -1,33 +1,14 @@
 import { Injectable } from '@nestjs/common';
 
-export interface SearchMetadata {
-  title: string;
-  description: string;
-  tags: string[];
-  categories: string[];
-  keywords: string[];
-  technologies: string[];
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
-  popularity: number;
-}
-
-export interface DeploymentMetadata {
-  targetPlatforms: string[];
-  compatibility: {
-    platform: string;
-    version: string;
-    supported: boolean;
-  }[];
-  requirements: {
-    minVersion?: string;
-    extensions?: string[];
-    features?: string[];
-  };
-}
+import {
+  SearchMetadata,
+  DeploymentMetadata,
+} from '../../interfaces/build-types.interface';
+import { CursorSettingsData } from '../../interfaces/cursor-ide.interfaces';
 
 @Injectable()
 export class CursorSearchOptimizationService {
-  generateSearchMetadata(cursorData: any): SearchMetadata {
+  generateSearchMetadata(cursorData: CursorSettingsData): SearchMetadata {
     const tags = this.extractTags(cursorData);
     const categories = this.categorizeConfig(cursorData);
     const keywords = this.extractKeywords(cursorData);
@@ -41,11 +22,12 @@ export class CursorSearchOptimizationService {
       keywords,
       technologies,
       difficulty: this.assessDifficulty(cursorData),
+      primaryLanguage: this.detectPrimaryLanguage(cursorData),
       popularity: 0,
     };
   }
 
-  generateDeploymentMetadata(cursorData: any): DeploymentMetadata {
+  generateDeploymentMetadata(cursorData: CursorSettingsData & { vsCodeCompatible?: boolean }): DeploymentMetadata {
     return {
       targetPlatforms: ['cursor-ide', 'vscode', 'vscode-insiders'],
       compatibility: [
@@ -54,13 +36,13 @@ export class CursorSearchOptimizationService {
       ],
       requirements: {
         minVersion: '1.0.0',
-        extensions: cursorData.extensions?.map((e: any) => e.id) || [],
+        extensions: cursorData.extensions?.recommendations || [],
         features: this.extractRequiredFeatures(cursorData),
       },
     };
   }
 
-  private generateTitle(data: any): string {
+  private generateTitle(data: CursorSettingsData & { aiConfiguration?: { enabled: boolean } }): string {
     const parts = [];
     
     if (data.aiConfiguration?.enabled) {
@@ -77,15 +59,15 @@ export class CursorSearchOptimizationService {
     return parts.join(' ');
   }
 
-  private generateDescription(data: any): string {
+  private generateDescription(data: CursorSettingsData & { aiConfiguration?: { enabled: boolean } }): string {
     const features = [];
     
     if (data.aiConfiguration?.enabled) {
       features.push('AI assistance');
     }
     
-    if (data.extensions?.length > 0) {
-      features.push(`${data.extensions.length} extensions`);
+    if (data.extensions?.recommendations && data.extensions.recommendations.length > 0) {
+      features.push(`${data.extensions.recommendations.length} extensions`);
     }
     
     if (data.snippets && Object.keys(data.snippets).length > 0) {
@@ -95,7 +77,7 @@ export class CursorSearchOptimizationService {
     return `Cursor IDE configuration with ${features.join(', ')}`;
   }
 
-  private extractTags(data: any): string[] {
+  private extractTags(data: CursorSettingsData & { aiConfiguration?: { enabled: boolean } }): string[] {
     const tags = new Set<string>();
     
     tags.add('cursor-ide');
@@ -114,7 +96,7 @@ export class CursorSearchOptimizationService {
     return Array.from(tags);
   }
 
-  private categorizeConfig(data: any): string[] {
+  private categorizeConfig(data: CursorSettingsData & { aiConfiguration?: { enabled: boolean } }): string[] {
     const categories = [];
     
     if (data.aiConfiguration?.enabled) {
@@ -133,7 +115,7 @@ export class CursorSearchOptimizationService {
     return categories.length > 0 ? categories : ['General Development'];
   }
 
-  private extractKeywords(data: any): string[] {
+  private extractKeywords(data: CursorSettingsData & { aiConfiguration?: { enabled?: boolean; defaultModel?: string } }): string[] {
     const keywords = new Set<string>();
     
     keywords.add('cursor');
@@ -147,11 +129,11 @@ export class CursorSearchOptimizationService {
     return Array.from(keywords);
   }
 
-  private detectTechnologies(data: any): string[] {
+  private detectTechnologies(data: CursorSettingsData): string[] {
     const tech = new Set<string>();
     
-    data.extensions?.forEach((ext: any) => {
-      const id = ext.id?.toLowerCase() || '';
+    data.extensions?.recommendations?.forEach((extId: string) => {
+      const id = extId.toLowerCase() || '';
       if (id.includes('react')) tech.add('React');
       if (id.includes('vue')) tech.add('Vue');
       if (id.includes('angular')) tech.add('Angular');
@@ -162,7 +144,7 @@ export class CursorSearchOptimizationService {
     return Array.from(tech);
   }
 
-  private detectPrimaryLanguage(data: any): string | null {
+  private detectPrimaryLanguage(data: CursorSettingsData): string | null {
     if (!data.snippets) return null;
     
     const langs = Object.keys(data.snippets);
@@ -177,10 +159,10 @@ export class CursorSearchOptimizationService {
     return langs.length > 0 ? langs[0] : null;
   }
 
-  private assessDifficulty(data: any): 'beginner' | 'intermediate' | 'advanced' {
+  private assessDifficulty(data: CursorSettingsData & { aiConfiguration?: { enabled: boolean } }): 'beginner' | 'intermediate' | 'advanced' {
     let complexity = 0;
     
-    if (data.extensions?.length > 10) complexity++;
+    if (data.extensions?.recommendations && data.extensions.recommendations.length > 10) complexity++;
     if (data.aiConfiguration?.enabled) complexity++;
     if (data.snippets && Object.keys(data.snippets).length > 5) complexity++;
     if (data.settings && Object.keys(data.settings).length > 20) complexity++;
@@ -190,7 +172,7 @@ export class CursorSearchOptimizationService {
     return 'beginner';
   }
 
-  private extractRequiredFeatures(data: any): string[] {
+  private extractRequiredFeatures(data: CursorSettingsData & { aiConfiguration?: { enabled: boolean } }): string[] {
     const features = [];
     
     if (data.aiConfiguration?.enabled) {
@@ -204,7 +186,10 @@ export class CursorSearchOptimizationService {
     return features;
   }
 
-  optimizeForSearch(metadata: SearchMetadata): any {
+  optimizeForSearch(metadata: SearchMetadata): SearchMetadata & {
+    searchableText: string;
+    boost: number;
+  } {
     return {
       ...metadata,
       searchableText: `${metadata.title} ${metadata.description} ${metadata.tags.join(' ')} ${metadata.keywords.join(' ')}`.toLowerCase(),

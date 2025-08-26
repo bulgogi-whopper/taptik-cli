@@ -12,9 +12,14 @@ describe('CursorSearchOptimizationService', () => {
   describe('generateSearchMetadata', () => {
     it('should generate metadata for AI-enabled config', () => {
       const data = {
+        sourcePath: '/test/path',
+        collectedAt: new Date().toISOString(),
+        isGlobal: true,
         aiConfiguration: { enabled: true, defaultModel: 'gpt-4' },
         snippets: { javascript: {}, python: {} },
-        extensions: [{ id: 'react' }],
+        extensions: {
+          installed: [{ id: 'react' }]
+        },
       };
 
       const metadata = service.generateSearchMetadata(data);
@@ -28,6 +33,9 @@ describe('CursorSearchOptimizationService', () => {
 
     it('should categorize web development configs', () => {
       const data = {
+        sourcePath: '/test/path',
+        collectedAt: new Date().toISOString(),
+        isGlobal: true,
         snippets: { javascript: {}, typescript: {}, html: {} },
       };
 
@@ -38,7 +46,12 @@ describe('CursorSearchOptimizationService', () => {
 
     it('should detect advanced difficulty', () => {
       const data = {
-        extensions: new Array(15).fill({ id: 'ext' }),
+        sourcePath: '/test/path',
+        collectedAt: new Date().toISOString(),
+        isGlobal: true,
+        extensions: {
+          installed: new Array(15).fill({ id: 'ext' })
+        },
         aiConfiguration: { enabled: true },
         snippets: { a: {}, b: {}, c: {}, d: {}, e: {}, f: {} },
         settings: Object.fromEntries(new Array(25).fill(null).map((_, i) => [`key${i}`, i])),
@@ -53,8 +66,13 @@ describe('CursorSearchOptimizationService', () => {
   describe('generateDeploymentMetadata', () => {
     it('should generate deployment metadata', () => {
       const data = {
+        sourcePath: '/test/path',
+        collectedAt: new Date().toISOString(),
+        isGlobal: true,
         vsCodeCompatible: true,
-        extensions: [{ id: 'ext1' }, { id: 'ext2' }],
+        extensions: {
+          installed: [{ id: 'ext1' }, { id: 'ext2' }]
+        },
         settings: { 'cursor.copilotEnabled': true },
       };
 
@@ -77,6 +95,7 @@ describe('CursorSearchOptimizationService', () => {
         categories: ['Test'],
         keywords: ['test', 'config'],
         technologies: ['React', 'Python', 'Docker', 'Kubernetes'],
+        primaryLanguage: 'typescript',
         difficulty: 'advanced' as const,
         popularity: 0,
       };

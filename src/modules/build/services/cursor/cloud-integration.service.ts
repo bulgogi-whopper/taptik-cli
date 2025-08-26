@@ -2,29 +2,18 @@ import { Injectable } from '@nestjs/common';
 
 import { SupabaseService } from 'src/modules/supabase/supabase.service';
 
+import {
+  CloudReadinessResult,
+  GenericConfig,
+  SettingsData, CursorCloudMetadata 
+} from '../../interfaces/build-types.interface';
+import {
+  CursorSettingsData,
+} from '../../interfaces/cursor-ide.interfaces';
 import { CursorValidationService } from '../cursor-validation.service';
 
 import { CursorPrivacyMetadataService } from './privacy-metadata.service';
 
-export interface CursorCloudMetadata {
-  platform: 'cursor-ide';
-  version: string;
-  compatibility: {
-    vsCode: boolean;
-    vscodeVersion?: string;
-    cursorFeatures: string[];
-  };
-  features: {
-    ai: boolean;
-    extensions: number;
-    snippets: number;
-    themes: string[];
-    languages: string[];
-  };
-  tags: string[];
-  categories: string[];
-  searchTerms: string[];
-}
 
 @Injectable()
 export class CursorCloudIntegrationService {
@@ -35,7 +24,7 @@ export class CursorCloudIntegrationService {
   ) {}
 
   async prepareCursorMetadata(
-    cursorData: any,
+    cursorData: SettingsData,
     options: {
       includeCompatibility?: boolean;
       generateTags?: boolean;
@@ -54,7 +43,7 @@ export class CursorCloudIntegrationService {
     };
 
     if (includeCompatibility && this.validationService) {
-      const compatReport = await this.validationService.generateComprehensiveCompatibilityReport(cursorData);
+      const compatReport = await this.validationService.generateComprehensiveCompatibilityReport(cursorData as unknown as CursorSettingsData);
       compatibility = {
         vsCode: compatReport.report.vsCodeCompatible,
         vscodeVersion: '1.80.0', // Default supported version
@@ -81,7 +70,7 @@ export class CursorCloudIntegrationService {
     };
   }
 
-  private extractCursorFeatures(data: any): string[] {
+  private extractCursorFeatures(data: SettingsData): string[] {
     const features: string[] = [];
 
     if (data.aiConfiguration?.enabled) {
@@ -99,14 +88,14 @@ export class CursorCloudIntegrationService {
       features.push('copilot-integration');
     }
 
-    if (data.extensions?.some((e: any) => e.id?.includes('cursor'))) {
+    if (data.extensions?.some(e => e.id?.includes('cursor'))) {
       features.push('cursor-extensions');
     }
 
     return features;
   }
 
-  private extractFeatures(data: any, privacyLevel: string): CursorCloudMetadata['features'] {
+  private extractFeatures(data: SettingsData, privacyLevel: string): CursorCloudMetadata['features'] {
     const features: CursorCloudMetadata['features'] = {
       ai: false,
       extensions: 0,
@@ -135,14 +124,17 @@ export class CursorCloudIntegrationService {
     }
 
     // Themes (only if privacy allows)
-    if (privacyLevel !== 'minimal' && data.settings?.workbench?.colorTheme) {
-      features.themes = [data.settings.workbench.colorTheme];
+    if (privacyLevel !== 'minimal' && data.settings?.['workbench.colorTheme']) {
+      const colorTheme = data.settings['workbench.colorTheme'];
+      if (typeof colorTheme === 'string') {
+        features.themes = [colorTheme];
+      }
     }
 
     return features;
   }
 
-  private generateTags(data: any): string[] {
+  private generateTags(data: SettingsData): string[] {
     const tags = new Set<string>();
 
     // Platform tags
@@ -176,16 +168,19 @@ export class CursorCloudIntegrationService {
     }
 
     // Theme tags
-    if (data.settings?.workbench?.colorTheme) {
-      const theme = data.settings.workbench.colorTheme.toLowerCase();
-      if (theme.includes('dark')) tags.add('dark-theme');
-      if (theme.includes('light')) tags.add('light-theme');
+    if (data.settings?.['workbench.colorTheme']) {
+      const colorTheme = data.settings['workbench.colorTheme'];
+      if (typeof colorTheme === 'string') {
+        const theme = colorTheme.toLowerCase();
+        if (theme.includes('dark')) tags.add('dark-theme');
+        if (theme.includes('light')) tags.add('light-theme');
+      }
     }
 
     return Array.from(tags);
   }
 
-  private extractExtensionTags(extensions: any[]): string[] {
+  private extractExtensionTags(extensions: Array<{ id?: string; name?: string }>): string[] {
     const tags = new Set<string>();
     const techKeywords = {
       react: ['react', 'jsx'],
@@ -217,7 +212,7 @@ export class CursorCloudIntegrationService {
     return Array.from(tags);
   }
 
-  private categorizeConfiguration(data: any): string[] {
+  private categorizeConfiguration(data: SettingsData): string[] {
     const categories: string[] = [];
 
     // Development category
@@ -242,7 +237,7 @@ export class CursorCloudIntegrationService {
     }
 
     // DevOps
-    if (data.snippets?.yaml || data.snippets?.dockerfile || data.extensions?.some((e: any) => 
+    if (data.snippets?.yaml || data.snippets?.dockerfile || data.extensions?.some(e => 
       e.id?.toLowerCase().includes('docker') || e.id?.toLowerCase().includes('kubernetes')
     )) {
       categories.push('devops');
@@ -251,7 +246,7 @@ export class CursorCloudIntegrationService {
     return categories.length > 0 ? categories : ['general'];
   }
 
-  private generateSearchTerms(data: any, features: CursorCloudMetadata['features']): string[] {
+  private generateSearchTerms(data: SettingsData, features: CursorCloudMetadata['features']): string[] {
     const terms = new Set<string>();
 
     // Add platform terms
@@ -288,9 +283,9 @@ export class CursorCloudIntegrationService {
   }
 
   async addSupabaseMetadata(
-    packageData: any,
+    packageData: GenericConfig,
     cursorMetadata: CursorCloudMetadata,
-  ): Promise<any> {
+  ): Promise<GenericConfig> {
     return {
       ...packageData,
       metadata: {
@@ -309,11 +304,7 @@ export class CursorCloudIntegrationService {
     };
   }
 
-  validateCloudReadiness(data: any): {
-    ready: boolean;
-    issues: string[];
-    warnings: string[];
-  } {
+  validateCloudReadiness(data: SettingsData): CloudReadinessResult {
     const issues: string[] = [];
     const warnings: string[] = [];
 

@@ -54,8 +54,9 @@ describe('CursorSecurityService', () => {
 
       const result = await service.filterSensitiveData(data);
       
-      expect(result.config.awsAccessKey).toBe('[FILTERED]');
-      expect(result.config.awsSecretKey).toBe('[FILTERED]');
+      const config = result.config as any;
+      expect(config.awsAccessKey).toBe('[FILTERED]');
+      expect(config.awsSecretKey).toBe('[FILTERED]');
     });
 
     it('should detect database connection strings', async () => {
@@ -69,9 +70,10 @@ describe('CursorSecurityService', () => {
 
       const result = await service.filterSensitiveData(data);
       
-      expect(result.database.mongoUri).toBe('[FILTERED]');
-      expect(result.database.postgresUrl).toBe('[FILTERED]');
-      expect(result.database.mysqlConnection).toBe('[FILTERED]');
+      const database = result.database as any;
+      expect(database.mongoUri).toBe('[FILTERED]');
+      expect(database.postgresUrl).toBe('[FILTERED]');
+      expect(database.mysqlConnection).toBe('[FILTERED]');
     });
 
     it('should detect JWT tokens', async () => {
@@ -84,8 +86,9 @@ describe('CursorSecurityService', () => {
 
       const result = await service.filterSensitiveData(data);
       
-      expect(result.auth.token).toBe('[FILTERED]');
-      expect(result.auth.bearer).toBe('[FILTERED]');
+      const auth = result.auth as any;
+      expect(auth.token).toBe('[FILTERED]');
+      expect(auth.bearer).toBe('[FILTERED]');
     });
 
     it('should detect private keys', async () => {
@@ -98,8 +101,9 @@ describe('CursorSecurityService', () => {
 
       const result = await service.filterSensitiveData(data);
       
-      expect(result.keys.ssh).toBe('[FILTERED]');
-      expect(result.keys.pem).toBe('[FILTERED]');
+      const keys = result.keys as any;
+      expect(keys.ssh).toBe('[FILTERED]');
+      expect(keys.pem).toBe('[FILTERED]');
     });
 
     it('should detect credit card numbers', async () => {
@@ -113,9 +117,10 @@ describe('CursorSecurityService', () => {
 
       const result = await service.filterSensitiveData(data);
       
-      expect(result.payment.card1).toBe('[FILTERED]');
-      expect(result.payment.card2).toBe('[FILTERED]');
-      expect(result.payment.card3).toBe('[FILTERED]');
+      const payment = result.payment as any;
+      expect(payment.card1).toBe('[FILTERED]');
+      expect(payment.card2).toBe('[FILTERED]');
+      expect(payment.card3).toBe('[FILTERED]');
     });
 
     it('should preserve safe data', async () => {
@@ -150,10 +155,11 @@ describe('CursorSecurityService', () => {
 
       const result = await service.filterSensitiveData(data);
       
-      expect(result.level1.safe).toBe('data');
-      expect(result.level1.level2.apiKey).toBe('[FILTERED]');
-      expect(result.level1.level2.level3.password).toBe('[FILTERED]');
-      expect(result.level1.level2.level3.normal).toBe('value');
+      const level1 = result.level1 as any;
+      expect(level1.safe).toBe('data');
+      expect(level1.level2.apiKey).toBe('[FILTERED]');
+      expect(level1.level2.level3.password).toBe('[FILTERED]');
+      expect(level1.level2.level3.normal).toBe('value');
     });
 
     it('should handle arrays', async () => {
@@ -310,9 +316,11 @@ describe('CursorSecurityService', () => {
 
       const result = await service.filterSensitiveData(aiConfig);
 
-      expect(result.modelConfig.openai.apiKey).toBe('[FILTERED]');
-      expect(result.modelConfig.openai.model).toBe('gpt-4');
-      expect(result.globalPrompts[0].content).toBe('[FILTERED]');
+      const modelConfig = result.modelConfig as any;
+      expect(modelConfig.openai.apiKey).toBe('[FILTERED]');
+      expect(modelConfig.openai.model).toBe('gpt-4');
+      const globalPrompts = result.globalPrompts as any;
+      expect(globalPrompts[0].content).toBe('[FILTERED]');
     });
 
     it('should apply settings context rules', async () => {
@@ -327,8 +335,9 @@ describe('CursorSecurityService', () => {
       const result = await service.filterSensitiveData(settings);
 
       expect(result['http.proxy']).toBe('[FILTERED]');
-      expect(result['terminal.integrated.env.linux'].API_KEY).toBe('[FILTERED]');
-      expect(result['terminal.integrated.env.linux'].PATH).toBe('/usr/bin');
+      const envLinux = result['terminal.integrated.env.linux'] as any;
+      expect(envLinux.API_KEY).toBe('[FILTERED]');
+      expect(envLinux.PATH).toBe('/usr/bin');
     });
 
     it('should apply extension context rules', async () => {
@@ -344,9 +353,11 @@ describe('CursorSecurityService', () => {
 
       const result = await service.filterSensitiveData(extensions);
 
-      expect(result['github.copilot'].apiKey).toBe('[FILTERED]');
-      expect(result['github.copilot'].enabled).toBe(true);
-      expect(result['prettier.config'].semi).toBe(false);
+      const copilot = result['github.copilot'] as any;
+      expect(copilot.apiKey).toBe('[FILTERED]');
+      expect(copilot.enabled).toBe(true);
+      const prettier = result['prettier.config'] as any;
+      expect(prettier.semi).toBe(false);
     });
   });
 

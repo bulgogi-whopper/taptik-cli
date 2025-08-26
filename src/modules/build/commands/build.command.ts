@@ -923,25 +923,40 @@ export class BuildCommand extends CommandRunner {
         this.progressService.startTransformation(category.name);
         
         switch (category.name) {
-          case BuildCategoryName.PERSONAL_CONTEXT:
-            transformedData.personalContext = 
-              await this.cursorTransformationService.transformCursorPersonalContext(
-                settingsData.globalSettings as any,
-              );
+          case BuildCategoryName.PERSONAL_CONTEXT: {
+            // Get the actual Cursor global settings
+            const globalCursorSettings = await this.cursorCollectionService.collectCursorGlobalSettings();
+            if (globalCursorSettings) {
+              transformedData.personalContext = 
+                await this.cursorTransformationService.transformCursorPersonalContext(
+                  globalCursorSettings,
+                );
+            }
             break;
+          }
             
-          case BuildCategoryName.PROJECT_CONTEXT:
-            transformedData.projectContext = 
-              await this.cursorTransformationService.transformCursorProjectContext(
-                settingsData.localSettings as any,
-              );
+          case BuildCategoryName.PROJECT_CONTEXT: {
+            // Get the actual Cursor local settings
+            const localCursorSettings = await this.cursorCollectionService.collectCursorLocalSettings(process.cwd());
+            if (localCursorSettings) {
+              transformedData.projectContext = 
+                await this.cursorTransformationService.transformCursorProjectContext(
+                  localCursorSettings,
+                );
+            }
             break;
+          }
             
           case BuildCategoryName.PROMPT_TEMPLATES: {
-            const aiConfig = (settingsData.globalSettings as any)?.globalAiRules ||
-                           (settingsData.localSettings as any)?.localAiRules;
-            transformedData.promptTemplates = 
-              await this.cursorTransformationService.transformCursorPromptTemplates(aiConfig);
+            // Get AI configuration from both sources
+            const globalCursorSettings = await this.cursorCollectionService.collectCursorGlobalSettings();
+            const localCursorSettings = await this.cursorCollectionService.collectCursorLocalSettings(process.cwd());
+            
+            const aiConfig = globalCursorSettings?.globalAiRules || localCursorSettings?.projectAiRules;
+            if (aiConfig) {
+              transformedData.promptTemplates = 
+                await this.cursorTransformationService.transformCursorPromptTemplates(aiConfig);
+            }
             break;
           }
         }

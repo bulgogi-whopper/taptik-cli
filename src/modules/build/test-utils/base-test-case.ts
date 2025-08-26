@@ -11,7 +11,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 /* eslint-enable import-x/no-extraneous-dependencies */
 
 
+import { MockService } from '../interfaces/build-types.interface';
+import { VSCodeSettings, CursorAiConfiguration, CursorSettingsData } from '../interfaces/cursor-ide.interfaces';
+
 import { MockCursorFileSystem } from './cursor-test-helpers';
+
+// Type definitions for testing
+type ServiceConstructor<T = unknown> = new (...args: unknown[]) => T;
+type MockImplementation = (...args: unknown[]) => unknown;
+type SpyInstance = ReturnType<typeof vi.spyOn>;
 
 /**
  * Base test case class with common testing utilities
@@ -25,7 +33,7 @@ export abstract class BaseTestCase {
    * Get the providers for the testing module
    * Override this in subclasses to provide service-specific providers
    */
-  protected abstract getProviders(): any[];
+  protected abstract getProviders(): Array<ServiceConstructor | { provide: ServiceConstructor; useValue: unknown; }>;
 
   /**
    * Setup method called before each test
@@ -115,17 +123,17 @@ export abstract class BaseTestCase {
    * Assert that an async function throws a specific error
    */
   protected async assertAsyncThrows(
-    fn: () => Promise<any>,
+    fn: () => Promise<unknown>,
     errorMessage?: string | RegExp,
   ): Promise<void> {
     let thrown = false;
-    let error: any;
+    let error: Error;
 
     try {
       await fn();
     } catch (e) {
       thrown = true;
-      error = e;
+      error = e as Error;
     }
 
     expect(thrown).toBe(true);
@@ -142,12 +150,12 @@ export abstract class BaseTestCase {
   /**
    * Create a spy for a service method
    */
-  protected createSpy<T>(
+  protected createSpy<T, K extends keyof T>(
     service: T,
-    methodName: keyof T,
-    implementation?: (...args: any[]) => any,
-  ): any {
-    const spy = vi.spyOn(service as any, methodName as string);
+    methodName: K,
+    implementation?: MockImplementation,
+  ): SpyInstance {
+    const spy = vi.spyOn(service as Record<string, (...args: unknown[]) => unknown>, methodName as string);
     
     if (implementation) {
       spy.mockImplementation(implementation);
@@ -160,8 +168,8 @@ export abstract class BaseTestCase {
    * Assert that a spy was called with specific arguments
    */
   protected assertSpyCalled(
-    spy: any,
-    expectedArgs?: any[],
+    spy: SpyInstance,
+    expectedArgs?: unknown[],
     callIndex: number = 0,
   ): void {
     expect(spy).toHaveBeenCalled();
@@ -178,8 +186,8 @@ export abstract class BaseTestCase {
   protected createMockService<T>(
     serviceName: string,
     methods: (keyof T)[],
-  ): T {
-    const mockService: any = {
+  ): MockService<T> {
+    const mockService: MockService = {
       [serviceName]: serviceName,
     };
 
@@ -187,7 +195,7 @@ export abstract class BaseTestCase {
       mockService[method as string] = vi.fn();
     });
 
-    return mockService as T;
+    return mockService as MockService<T>;
   }
 
   /**
@@ -200,14 +208,19 @@ export abstract class BaseTestCase {
   ): Promise<void> {
     const startTime = Date.now();
 
-    /* eslint-disable no-await-in-loop */
-    while (!condition()) {
-      if (Date.now() - startTime > timeout) {
-        throw new Error('Timeout waiting for condition');
-      }
-      await new Promise((resolve) => setTimeout(resolve, interval));
-    }
-    /* eslint-enable no-await-in-loop */
+    // Use a promise-based approach to avoid await in loop
+    return new Promise<void>((resolve, reject) => {
+      const checkCondition = () => {
+        if (condition()) {
+          resolve();
+        } else if (Date.now() - startTime > timeout) {
+          reject(new Error('Timeout waiting for condition'));
+        } else {
+          setTimeout(checkCondition, interval);
+        }
+      };
+      checkCondition();
+    });
   }
 
   /**
@@ -224,20 +237,20 @@ export abstract class BaseTestCase {
 /**
  * Service test case base class
  */
-export abstract class ServiceTestCase extends BaseTestCase {
-  protected service!: any;
+export abstract class ServiceTestCase<T = unknown> extends BaseTestCase {
+  protected service!: T;
 
   /**
    * Get the service class to test
    */
-  protected abstract getServiceClass(): any;
+  protected abstract getServiceClass(): ServiceConstructor<T>;
 
   /**
    * Get the service dependencies
    */
-  protected abstract getServiceDependencies(): any[];
+  protected abstract getServiceDependencies(): Array<ServiceConstructor | { provide: ServiceConstructor; useValue: unknown; }>;
 
-  protected getProviders(): any[] {
+  protected getProviders(): Array<ServiceConstructor | { provide: ServiceConstructor; useValue: unknown; }> {
     return [
       this.getServiceClass(),
       ...this.getServiceDependencies(),
@@ -254,14 +267,14 @@ export abstract class ServiceTestCase extends BaseTestCase {
  * Integration test case base class
  */
 export abstract class IntegrationTestCase extends BaseTestCase {
-  protected services: Map<any, any> = new Map();
+  protected services: Map<ServiceConstructor, unknown> = new Map();
 
   /**
    * Get the list of services for integration testing
    */
-  protected abstract getIntegrationServices(): any[];
+  protected abstract getIntegrationServices(): ServiceConstructor[];
 
-  protected getProviders(): any[] {
+  protected getProviders(): Array<ServiceConstructor | { provide: ServiceConstructor; useValue: unknown; }> {
     return this.getIntegrationServices();
   }
 
@@ -278,8 +291,8 @@ export abstract class IntegrationTestCase extends BaseTestCase {
   /**
    * Get a service instance by class
    */
-  protected getService<T>(ServiceClass: any): T {
-    return this.services.get(ServiceClass);
+  protected getService<T>(ServiceClass: ServiceConstructor<T>): T {
+    return this.services.get(ServiceClass) as T;
   }
 }
 
@@ -371,7 +384,7 @@ export class TestDataFactory {
   /**
    * Create test Cursor settings
    */
-  static createCursorSettings(overrides?: Partial<any>): any {
+  static createCursorSettings(overrides?: Partial<VSCodeSettings>): VSCodeSettings {
     return {
       'editor.fontSize': 14,
       'editor.fontFamily': 'JetBrains Mono',
@@ -386,7 +399,7 @@ export class TestDataFactory {
   /**
    * Create test AI rules
    */
-  static createAiRules(overrides?: Partial<any>): any {
+  static createAiRules(overrides?: Partial<CursorAiConfiguration>): CursorAiConfiguration {
     return {
       version: '1.0.0',
       rules: [
@@ -404,7 +417,7 @@ export class TestDataFactory {
   /**
    * Create test extension list
    */
-  static createExtensions(extensions?: string[]): any {
+  static createExtensions(extensions?: string[]): { recommendations: string[] } {
     return {
       recommendations: extensions || [
         'dbaeumer.vscode-eslint',
@@ -417,7 +430,7 @@ export class TestDataFactory {
   /**
    * Create test snippets
    */
-  static createSnippets(lang: string = 'typescript'): any {
+  static createSnippets(lang: string = 'typescript'): Record<string, Record<string, { prefix: string; body: string[]; description: string }>> {
     return {
       [lang]: {
         'Test Snippet': {
@@ -432,10 +445,9 @@ export class TestDataFactory {
   /**
    * Create a complete test configuration
    */
-  static createCompleteConfig(): any {
+  static createCompleteConfig(): CursorSettingsData {
     return {
       settings: this.createCursorSettings(),
-      aiRules: this.createAiRules(),
       extensions: this.createExtensions(),
       snippets: this.createSnippets(),
       keybindings: [
@@ -444,6 +456,9 @@ export class TestDataFactory {
           command: 'cursor.aiChat',
         },
       ],
+      sourcePath: '/test/path',
+      collectedAt: new Date().toISOString(),
+      isGlobal: false,
     };
   }
 }

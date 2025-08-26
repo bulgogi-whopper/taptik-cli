@@ -6,6 +6,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import {
+  VSCodeSchemaDefinition,
+  SecurityPattern,
+  ExtensionCompatibilityInfo,
+} from '../interfaces/build-types.interface';
+import {
   CursorSettingsData,
   CursorValidationResult,
   ValidationError,
@@ -28,8 +33,7 @@ export class CursorValidationService {
   private readonly logger = new Logger(CursorValidationService.name);
 
   // VS Code schema definitions (subset for validation)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private readonly VSCODE_SETTINGS_SCHEMA: Record<string, any> = {
+  private readonly VSCODE_SETTINGS_SCHEMA: Record<string, VSCodeSchemaDefinition> = {
     'editor.fontSize': { type: 'number', min: 6, max: 100 },
     'editor.fontFamily': { type: 'string' },
     'editor.tabSize': { type: 'number', min: 1, max: 100 },
@@ -50,7 +54,7 @@ export class CursorValidationService {
   };
 
   // Security patterns for sensitive data detection
-  private readonly SECURITY_PATTERNS = [
+  private readonly SECURITY_PATTERNS: SecurityPattern[] = [
     {
       pattern: /(?:api[_-]?key|apikey)\s*[:=]\s*["']?([\w-]{20,})["']?/gi,
       type: 'api_key',
@@ -84,11 +88,7 @@ export class CursorValidationService {
   ];
 
   // Extension compatibility mapping
-  private readonly EXTENSION_COMPATIBILITY: Record<string, {
-    compatible: boolean;
-    alternative?: string;
-    reason?: string;
-  }> = {
+  private readonly EXTENSION_COMPATIBILITY: Record<string, ExtensionCompatibilityInfo> = {
     // Cursor-specific extensions
     'cursor.cursor-ai': {
       compatible: false,
@@ -217,8 +217,7 @@ export class CursorValidationService {
   private validateValue(
     key: string,
     value: unknown,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    schema: any,
+    schema: VSCodeSchemaDefinition,
   ): {
     error?: ValidationError;
     warning?: ValidationWarning;
@@ -243,7 +242,7 @@ export class CursorValidationService {
     }
 
     // Enum validation
-    if (schema.enum && !schema.enum.includes(value)) {
+    if (schema.enum && typeof value === 'string' && !schema.enum.includes(value)) {
       result.error = {
         code: 'INVALID_ENUM_VALUE',
         message: `Invalid value for "${key}": ${value}. Expected one of: ${schema.enum.join(', ')}`,
@@ -781,8 +780,7 @@ export class CursorValidationService {
     // Remove API keys from model config
     if (sanitized.modelConfig) {
       if ('apiKey' in sanitized.modelConfig) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        delete (sanitized.modelConfig as any).apiKey;
+        delete (sanitized.modelConfig as Record<string, unknown>).apiKey;
         filteredFields.push('modelConfig.apiKey');
         hasApiKeys = true;
       }
@@ -838,8 +836,7 @@ export class CursorValidationService {
     );
     
     for (const topKey of additionalKeys) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const topValue = (sanitized as any)[topKey];
+      const topValue = (sanitized as Record<string, unknown>)[topKey];
       
       // Check for sensitive data in additional properties
       if (topValue !== null && topValue !== undefined) {
@@ -855,8 +852,7 @@ export class CursorValidationService {
               break;
             }
           }
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          delete (sanitized as any)[topKey];
+          delete (sanitized as Record<string, unknown>)[topKey];
         }
       }
     }
@@ -1248,7 +1244,7 @@ export class CursorValidationService {
         if (!compatibility.compatible) {
           incompatibleExtensions.push(extensionId);
           
-          const category = (compatibility as any).category || 'general';
+          const category = (compatibility as ExtensionCompatibilityInfo & { category?: string }).category || 'general';
           if (!categorizedIncompatible[category]) {
             categorizedIncompatible[category] = [];
           }
@@ -1382,13 +1378,13 @@ export class CursorValidationService {
   ): Promise<Record<string, unknown>> {
     const filtered = JSON.parse(JSON.stringify(data));
     
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const filterObject = (obj: any, path: string = ''): void => {
+    const filterObject = (obj: Record<string, unknown> | unknown, path: string = ''): void => {
       if (!obj || typeof obj !== 'object') {
         return;
       }
 
-      for (const [key, value] of Object.entries(obj)) {
+      const objRecord = obj as Record<string, unknown>;
+      for (const [key, value] of Object.entries(objRecord)) {
         const currentPath = path ? `${path}.${key}` : key;
 
         // Check if key contains sensitive patterns
@@ -1409,14 +1405,14 @@ export class CursorValidationService {
         // If key explicitly matches sensitive patterns, delete it
         if (sensitiveKeyPatterns.some(pattern => pattern.test(key))) {
           this.logger.debug(`Filtering sensitive field: ${currentPath}`);
-          delete obj[key];
+          delete objRecord[key];
           continue;
         }
 
         // Special handling for keys containing 'Token' (like githubToken)
         if (keyHasSensitiveWord) {
           this.logger.debug(`Filtering field with sensitive word: ${currentPath}`);
-          delete obj[key];
+          delete objRecord[key];
           continue;
         }
 
@@ -1426,7 +1422,7 @@ export class CursorValidationService {
             // For values that look like keys/tokens but the field name doesn't indicate it
             // Replace with [FILTERED]
             this.logger.debug(`Filtering sensitive value at: ${currentPath}`);
-            obj[key] = '[FILTERED]';
+            objRecord[key] = '[FILTERED]';
             continue;
           }
         }

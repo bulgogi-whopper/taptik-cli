@@ -9,6 +9,9 @@ import * as path from 'path';
 import { Injectable, Logger } from '@nestjs/common';
 
 import {
+  GenericConfig,
+} from '../interfaces/build-types.interface';
+import {
   CursorLocalSettingsData,
   CursorGlobalSettingsData,
   CursorAiConfiguration,
@@ -83,16 +86,16 @@ export class CursorTransformationService {
     try {
       // Apply security filtering if enabled
       const settings = applySecurityFilter
-        ? await this.securityService.filterSensitiveData(globalSettings)
+        ? await this.securityService.filterSensitiveData(globalSettings as unknown as GenericConfig)
         : globalSettings;
 
-      const preferences = await this.extractUserPreferences(settings);
-      const workStyle = await this.extractWorkStyle(settings);
-      const communication = await this.extractCommunication(settings);
-      const metadata = this.generatePersonalMetadata(settings);
+      const preferences = await this.extractUserPreferences(settings as CursorGlobalSettingsData);
+      const workStyle = await this.extractWorkStyle(settings as CursorGlobalSettingsData);
+      const communication = await this.extractCommunication(settings as CursorGlobalSettingsData);
+      const metadata = this.generatePersonalMetadata(settings as CursorGlobalSettingsData);
 
       const personalContext: TaptikPersonalContext = {
-        user_id: this.generateUserId(settings),
+        user_id: this.generateUserId(settings as CursorGlobalSettingsData),
         preferences,
         work_style: workStyle,
         communication,
@@ -120,16 +123,16 @@ export class CursorTransformationService {
     try {
       // Apply security filtering if enabled
       const settings = applySecurityFilter
-        ? await this.securityService.filterSensitiveData(localSettings)
+        ? await this.securityService.filterSensitiveData(localSettings as unknown as GenericConfig)
         : localSettings;
 
-      const projectInfo = await this.extractProjectInfo(settings);
-      const technicalStack = await this.extractTechnicalStack(settings);
-      const developmentGuidelines = await this.extractDevelopmentGuidelines(settings);
-      const metadata = this.generateProjectMetadata(settings);
+      const projectInfo = await this.extractProjectInfo(settings as CursorLocalSettingsData);
+      const technicalStack = await this.extractTechnicalStack(settings as CursorLocalSettingsData);
+      const developmentGuidelines = await this.extractDevelopmentGuidelines(settings as CursorLocalSettingsData);
+      const metadata = this.generateProjectMetadata(settings as CursorLocalSettingsData);
 
       const projectContext: TaptikProjectContext = {
-        project_id: this.generateProjectId(settings),
+        project_id: this.generateProjectId(settings as CursorLocalSettingsData),
         project_info: projectInfo,
         technical_stack: technicalStack,
         development_guidelines: developmentGuidelines,
@@ -159,12 +162,13 @@ export class CursorTransformationService {
     if (aiConfig) {
       // Apply security filtering if enabled
       const config = applySecurityFilter
-        ? await this.securityService.filterSensitiveData(aiConfig)
+        ? await this.securityService.filterSensitiveData(aiConfig as unknown as GenericConfig)
         : aiConfig;
 
       // Transform AI rules
-      if (config.rules) {
-        for (const rule of config.rules) {
+      const typedConfig = config as CursorAiConfiguration;
+      if (typedConfig.rules) {
+        for (const rule of typedConfig.rules) {
           if (rule.enabled !== false) {
             templates.push({
               id: randomUUID(),

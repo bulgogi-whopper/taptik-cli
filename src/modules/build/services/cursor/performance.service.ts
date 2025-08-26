@@ -3,22 +3,19 @@ import { promisify } from 'util';
 
 import { Injectable } from '@nestjs/common';
 
+import {
+  PerformanceMetrics,
+  CacheEntry,
+  MemoryReport,
+  ProcessorFunction,
+  ValidatorFunction,
+  LazyLoader,
+  GenericConfig,
+  ExtensionInfo,
+} from '../../interfaces/build-types.interface';
+
 const readFile = promisify(fs.readFile);
 const stat = promisify(fs.stat);
-
-export interface PerformanceMetrics {
-  processingTime: number;
-  memoryUsage: number;
-  fileSize: number;
-  itemsProcessed: number;
-}
-
-export interface CacheEntry {
-  key: string;
-  value: any;
-  timestamp: number;
-  ttl: number;
-}
 
 @Injectable()
 export class CursorPerformanceService {
@@ -28,7 +25,7 @@ export class CursorPerformanceService {
 
   async processInParallel<T, R>(
     items: T[],
-    processor: (item: T) => Promise<R>,
+    processor: ProcessorFunction<T, R>,
     batchSize = 5,
   ): Promise<R[]> {
     const results: R[] = [];
@@ -58,7 +55,7 @@ export class CursorPerformanceService {
       let bytesRead: number;
       
       do {
-        // eslint-disable-next-line no-await-in-loop
+        // eslint-disable-next-line no-await-in-loop -- Required for file streaming
         const { bytesRead: readBytes } = await fileHandle.read(buffer, 0, chunkSize, position);
         bytesRead = readBytes;
         
@@ -72,7 +69,7 @@ export class CursorPerformanceService {
     }
   }
 
-  async processLargeConfig(configPath: string): Promise<any> {
+  async processLargeConfig(configPath: string): Promise<GenericConfig> {
     const stats = await stat(configPath);
     const isLarge = stats.size > 1024 * 1024; // > 1MB
     
@@ -84,7 +81,7 @@ export class CursorPerformanceService {
     }
   }
 
-  private async processInChunks(configPath: string): Promise<any> {
+  private async processInChunks(configPath: string): Promise<GenericConfig> {
     const chunks: string[] = [];
     
     for await (const chunk of this.streamLargeFile(configPath)) {
@@ -108,14 +105,14 @@ export class CursorPerformanceService {
     return entry.value as T;
   }
 
-  setCache(key: string, value: any, ttl = this.DEFAULT_TTL): void {
+  setCache<T>(key: string, value: T, ttl = this.DEFAULT_TTL): void {
     if (this.cache.size >= this.MAX_CACHE_SIZE) {
       this.evictOldest();
     }
     
     this.cache.set(key, {
       key,
-      value,
+      value: value as unknown,
       timestamp: Date.now(),
       ttl,
     });
@@ -153,9 +150,15 @@ export class CursorPerformanceService {
     };
   }
 
-  async optimizeExtensionProcessing(extensions: any[]): Promise<any[]> {
+  async optimizeExtensionProcessing(extensions: ExtensionInfo[]): Promise<Array<ExtensionInfo & { 
+    processed: boolean; 
+    metadata: { size: number; timestamp: number; }
+  }>> {
     const cacheKey = `extensions_${JSON.stringify(extensions.map(e => e.id))}`;
-    const cached = this.getCached<any[]>(cacheKey);
+    const cached = this.getCached<Array<ExtensionInfo & { 
+      processed: boolean; 
+      metadata: { size: number; timestamp: number; }
+    }>>(cacheKey);
     
     if (cached) return cached;
     
@@ -169,7 +172,10 @@ export class CursorPerformanceService {
     return processed;
   }
 
-  private async processExtension(extension: any): Promise<any> {
+  private async processExtension(extension: ExtensionInfo): Promise<ExtensionInfo & { 
+    processed: boolean; 
+    metadata: { size: number; timestamp: number; }
+  }> {
     // Simulate processing
     await new Promise(resolve => setTimeout(resolve, 10));
     
@@ -183,7 +189,7 @@ export class CursorPerformanceService {
     };
   }
 
-  createLazyLoader<T>(loader: () => Promise<T>): () => Promise<T> {
+  createLazyLoader<T>(loader: LazyLoader<T>): LazyLoader<T> {
     let cached: T | null = null;
     let loading: Promise<T> | null = null;
     
@@ -202,30 +208,34 @@ export class CursorPerformanceService {
     };
   }
 
-  async validateInBatches(items: any[], validator: (item: any) => Promise<boolean>): Promise<boolean[]> {
+  async validateInBatches<T>(items: T[], validator: ValidatorFunction<T>): Promise<boolean[]> {
     const batchSize = 20;
     const results: boolean[] = [];
     
     // Process all batches, avoiding await in loop
-    const batches: any[][] = [];
+    const batches: T[][] = [];
     for (let i = 0; i < items.length; i += batchSize) {
       batches.push(items.slice(i, i + batchSize));
     }
     
-    for (const batch of batches) {
-      // eslint-disable-next-line no-await-in-loop
-      const batchResults = await Promise.all(batch.map(validator));
-      results.push(...batchResults);
-      
-      // Allow other operations to proceed
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise(resolve => setTimeout(resolve, 0));
+    // Process batches sequentially but items within each batch in parallel
+    const batchPromises = batches.map(async (batch, index) => {
+      // Add slight delay between batches to prevent overwhelming
+      if (index > 0) {
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+      return Promise.all(batch.map(validator));
+    });
+    
+    const batchResults = await Promise.all(batchPromises);
+    for (const batchResult of batchResults) {
+      results.push(...batchResult);
     }
     
     return results;
   }
 
-  getMemoryReport(): any {
+  getMemoryReport(): MemoryReport {
     const usage = process.memoryUsage();
     
     return {

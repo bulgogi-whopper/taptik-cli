@@ -6,21 +6,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import {
+  SecurityPattern,
+  FilteringStats,
+  SecurityAnalysisDetails,
+  GenericConfig,
+} from '../interfaces/build-types.interface';
+import {
   CursorSettingsData,
   SecurityReport,
 } from '../interfaces/cursor-ide.interfaces';
 
-/**
- * Security pattern definition
- */
-interface SecurityPattern {
-  pattern: RegExp;
-  type: string;
-  severity: 'critical' | 'high' | 'medium' | 'low';
-  category: string;
-  description: string;
-  replacement?: string;
-}
+// CursorSecurityPattern extends SecurityPattern which now includes all needed properties
 
 /**
  * Security level types
@@ -48,14 +44,7 @@ export interface SecurityFilterResult {
   filtered: unknown;
   report: SecurityReport;
   auditLog: SecurityAuditEntry[];
-  statistics: {
-    totalFieldsScanned: number;
-    totalFieldsFiltered: number;
-    criticalIssues: number;
-    highIssues: number;
-    mediumIssues: number;
-    lowIssues: number;
-  };
+  statistics: FilteringStats;
 }
 
 /**
@@ -354,7 +343,7 @@ export class CursorSecurityService {
    * Perform comprehensive security filtering on configuration data
    */
   async performComprehensiveSecurityFiltering(
-    data: CursorSettingsData,
+    data: GenericConfig,
     options?: {
       mode: 'strict' | 'moderate' | 'lenient';
       enableAudit?: boolean;
@@ -382,13 +371,20 @@ export class CursorSecurityService {
     const filtered = JSON.parse(JSON.stringify(data));
     
     // Statistics tracking
-    const stats = {
-      totalFieldsScanned: 0,
-      totalFieldsFiltered: 0,
-      criticalIssues: 0,
-      highIssues: 0,
-      mediumIssues: 0,
-      lowIssues: 0,
+    const stats: FilteringStats = {
+      totalFields: 0,
+      filteredFields: 0,
+      securityIssues: {
+        critical: 0,
+        warning: 0,
+        info: 0,
+      },
+      categories: {
+        apiKeys: 0,
+        tokens: 0,
+        passwords: 0,
+        other: 0,
+      },
     };
 
     // Perform recursive filtering
@@ -402,13 +398,13 @@ export class CursorSecurityService {
 
     // Context-aware analysis
     if (enableContextAnalysis) {
-      await this.performContextAnalysis(filteredData, stats, enableAudit);
+      await this.performContextAnalysis(filteredData as GenericConfig, stats, enableAudit);
     }
 
     // Generate security report
     const report = await this.generateAdvancedSecurityReport(
       data,
-      filteredData,
+      filteredData as GenericConfig,
       stats,
       activePatterns,
     );
@@ -444,14 +440,14 @@ export class CursorSecurityService {
    * Recursive security filtering with path tracking
    */
   private async recursiveSecurityFilter(
-    obj: any,
+    obj: unknown,
     patterns: SecurityPattern[],
     path: string,
-    stats: any,
+    stats: FilteringStats,
     enableAudit: boolean,
-  ): Promise<any> {
+  ): Promise<unknown> {
     if (!obj || typeof obj !== 'object') {
-      stats.totalFieldsScanned++;
+      stats.totalFields++;
       
       // Check string values for sensitive patterns
       if (typeof obj === 'string') {
@@ -477,18 +473,18 @@ export class CursorSecurityService {
     }
 
     // Handle objects
-    const filtered: any = {};
-    const entries = Object.entries(obj);
+    const filtered: Record<string, unknown> = {};
+    const entries = Object.entries(obj as Record<string, unknown>);
     
     // Process all entries in parallel to avoid await in loop
     const processedEntries = await Promise.all(
       entries.map(async ([key, value]) => {
         const fieldPath = path ? `${path}.${key}` : key;
-        stats.totalFieldsScanned++;
+        stats.totalFields++;
 
         // Check if key itself contains sensitive patterns
         if (this.isKeySensitive(key, patterns)) {
-          stats.totalFieldsFiltered++;
+          stats.filteredFields++;
           this.logAudit('filtered', 'sensitive_key', fieldPath, 'high', `Key contains sensitive pattern: ${key}`, enableAudit);
           return [key, '[FILTERED]'];
         }
@@ -504,7 +500,7 @@ export class CursorSecurityService {
 
         // Check if value was filtered
         if (filteredValue !== value) {
-          stats.totalFieldsFiltered++;
+          stats.filteredFields++;
         }
 
         return [key, filteredValue];
@@ -513,7 +509,9 @@ export class CursorSecurityService {
     
     // Reconstruct object from processed entries
     for (const [key, value] of processedEntries) {
-      filtered[key] = value;
+      if (typeof key === 'string') {
+        filtered[key] = value;
+      }
     }
 
     return filtered;
@@ -526,7 +524,7 @@ export class CursorSecurityService {
     value: string,
     patterns: SecurityPattern[],
     path: string,
-    stats: any,
+    stats: FilteringStats,
     enableAudit: boolean,
   ): string {
     let filtered = value;
@@ -600,16 +598,16 @@ export class CursorSecurityService {
    * Perform context-aware analysis
    */
   private async performContextAnalysis(
-    data: any,
-    stats: any,
+    data: GenericConfig,
+    stats: FilteringStats,
     enableAudit: boolean,
   ): Promise<void> {
     // Check AI configuration context
     if (data.aiConfig) {
       for (const blockedField of this.CONTEXT_RULES.aiConfig.blockedFields) {
         if (this.hasNestedField(data.aiConfig, blockedField)) {
-          stats.totalFieldsFiltered++;
-          stats.criticalIssues++;
+          stats.filteredFields++;
+          stats.securityIssues.critical++;
           
           this.logAudit(
             'blocked',
@@ -631,8 +629,8 @@ export class CursorSecurityService {
         );
         
         if (isBlocked) {
-          stats.totalFieldsFiltered++;
-          stats.highIssues++;
+          stats.filteredFields++;
+          stats.securityIssues.warning++;
           
           this.logAudit(
             'blocked',
@@ -647,14 +645,15 @@ export class CursorSecurityService {
     }
 
     // Check extensions for suspicious patterns
-    if (data.extensions?.installed) {
-      for (const ext of data.extensions.installed) {
+    const extensions = data.extensions as { installed?: Array<{ id?: string }> } | undefined;
+    if (extensions?.installed) {
+      for (const ext of extensions.installed) {
         const isSuspicious = this.CONTEXT_RULES.extensions.suspiciousPatterns.some(
           pattern => ext.id?.toLowerCase().includes(pattern),
         );
         
         if (isSuspicious) {
-          stats.mediumIssues++;
+          stats.securityIssues.info++;
           
           this.logAudit(
             'detected',
@@ -672,7 +671,7 @@ export class CursorSecurityService {
   /**
    * Check if object has nested field
    */
-  private hasNestedField(obj: any, path: string): boolean {
+  private hasNestedField(obj: unknown, path: string): boolean {
     const parts = path.split('.');
     let current = obj;
     
@@ -702,19 +701,19 @@ export class CursorSecurityService {
   /**
    * Update severity statistics
    */
-  private updateSeverityStats(stats: any, severity: string): void {
+  private updateSeverityStats(stats: FilteringStats, severity: string): void {
     switch (severity) {
       case 'critical':
-        stats.criticalIssues++;
+        stats.securityIssues.critical++;
         break;
       case 'high':
-        stats.highIssues++;
+        stats.securityIssues.warning++;
         break;
       case 'medium':
-        stats.mediumIssues++;
+        stats.securityIssues.info++;
         break;
       case 'low':
-        stats.lowIssues++;
+        stats.securityIssues.info++;
         break;
     }
   }
@@ -751,9 +750,9 @@ export class CursorSecurityService {
    * Generate advanced security report
    */
   private async generateAdvancedSecurityReport(
-    original: any,
-    filtered: any,
-    stats: any,
+    original: GenericConfig,
+    filtered: GenericConfig,
+    stats: FilteringStats,
     patterns: SecurityPattern[],
   ): Promise<SecurityReport> {
     const filteredFields: string[] = [];
@@ -761,13 +760,13 @@ export class CursorSecurityService {
 
     // Calculate security level
     let securityLevel: 'safe' | 'warning' | 'unsafe';
-    if (stats.criticalIssues > 0) {
+    if (stats.securityIssues.critical > 0) {
       securityLevel = 'unsafe';
       recommendations.push('CRITICAL: Remove all sensitive data before sharing');
-    } else if (stats.highIssues > 0) {
+    } else if (stats.securityIssues.warning > 0) {
       securityLevel = 'unsafe';
       recommendations.push('HIGH: Review and remove sensitive information');
-    } else if (stats.mediumIssues > 0) {
+    } else if (stats.securityIssues.info > 0) {
       securityLevel = 'warning';
       recommendations.push('MEDIUM: Consider removing potentially sensitive data');
     } else {
@@ -804,16 +803,16 @@ export class CursorSecurityService {
     }
 
     // Add statistics to recommendations
-    if (stats.totalFieldsFiltered > 0) {
+    if (stats.filteredFields > 0) {
       recommendations.push(
-        `Filtered ${stats.totalFieldsFiltered} fields out of ${stats.totalFieldsScanned} scanned`,
+        `Filtered ${stats.filteredFields} fields out of ${stats.totalFields} scanned`,
       );
     }
 
     return {
       hasApiKeys: detectedCategories.has('api_keys'),
       hasTokens: detectedCategories.has('tokens'),
-      hasSensitiveData: stats.totalFieldsFiltered > 0,
+      hasSensitiveData: stats.filteredFields > 0,
       filteredFields: [...new Set(filteredFields)], // Remove duplicates
       securityLevel,
       recommendations,
@@ -830,7 +829,7 @@ export class CursorSecurityService {
     issues: string[];
     recommendations: string[];
   }> {
-    const result = await this.performComprehensiveSecurityFiltering(data, {
+    const result = await this.performComprehensiveSecurityFiltering(data as unknown as GenericConfig, {
       mode: 'strict',
       enableAudit: true,
       enableContextAnalysis: true,
@@ -855,7 +854,7 @@ export class CursorSecurityService {
       recommendations.push('Review all detected issues and remove sensitive data');
     }
 
-    if (result.statistics.criticalIssues === 0 && result.statistics.highIssues === 0) {
+    if (result.statistics.securityIssues.critical === 0 && result.statistics.securityIssues.warning === 0) {
       recommendations.push('Consider using encrypted storage for team settings');
       recommendations.push('Implement access controls for shared configurations');
     }
@@ -870,23 +869,23 @@ export class CursorSecurityService {
   /**
    * Public method: Filter sensitive data from configuration
    */
-  async filterSensitiveData(data: any): Promise<any> {
+  async filterSensitiveData(data: GenericConfig): Promise<GenericConfig> {
     const result = await this.performComprehensiveSecurityFiltering(data, {
       mode: 'strict',
       enableAudit: true,
       enableContextAnalysis: true,
     });
-    return result.filtered;
+    return result.filtered as GenericConfig;
   }
 
   /**
    * Public method: Generate security report
    */
-  async generateSecurityReport(data: any): Promise<SecurityReport & { 
+  async generateSecurityReport(data: GenericConfig): Promise<SecurityReport & { 
     level: SecurityLevel;
     filteredItems: number;
     categories: string[];
-    details: any;
+    details: SecurityAnalysisDetails;
     auditTrail: SecurityAuditEntry[];
   }> {
     const result = await this.performComprehensiveSecurityFiltering(data, {
@@ -897,11 +896,11 @@ export class CursorSecurityService {
 
     // Determine security level
     let level: SecurityLevel = 'low';
-    if (result.statistics.criticalIssues > 0) {
+    if (result.statistics.securityIssues.critical > 0) {
       level = 'critical';
-    } else if (result.statistics.highIssues > 0) {
+    } else if (result.statistics.securityIssues.warning > 0) {
       level = 'high';
-    } else if (result.statistics.mediumIssues > 0) {
+    } else if (result.statistics.securityIssues.info > 0) {
       level = 'medium';
     }
 
@@ -914,12 +913,28 @@ export class CursorSecurityService {
       }
     }
 
+    // Create SecurityAnalysisDetails from FilteringStats
+    const details: SecurityAnalysisDetails = {
+      patterns: [{
+        type: 'sensitive_data',
+        matches: result.statistics.filteredFields,
+        fields: result.auditLog.map(entry => entry.field || entry.path || 'unknown'),
+        severity: 'high'
+      }],
+      recommendations: result.report.recommendations || [],
+      complianceStatus: {
+        gdpr: result.statistics.securityIssues.critical === 0,
+        sox: result.statistics.securityIssues.critical === 0,
+        pci: result.statistics.categories.apiKeys === 0,
+      },
+    };
+
     return {
       ...result.report,
       level,
-      filteredItems: result.statistics.totalFieldsFiltered,
+      filteredItems: result.statistics.filteredFields,
       categories: Array.from(categories),
-      details: result.statistics,
+      details,
       auditTrail: result.auditLog,
     };
   }
@@ -954,12 +969,12 @@ export class CursorSecurityService {
   /**
    * Public method: Check if data is safe for team sharing
    */
-  async isTeamSharingCompatible(data: any): Promise<{
+  async isTeamSharingCompatible(data: GenericConfig): Promise<{
     compatible: boolean;
     issues: string[];
     requiredActions: string[];
   }> {
-    const result = await this.validateForTeamSharing(data);
+    const result = await this.validateForTeamSharing(data as unknown as CursorSettingsData);
     
     const requiredActions: string[] = [];
     if (!result.isSafe) {
@@ -987,7 +1002,7 @@ export class CursorSecurityService {
   /**
    * Public method: Validate compliance requirements
    */
-  async validateComplianceRequirements(data: any): Promise<{
+  async validateComplianceRequirements(data: GenericConfig): Promise<{
     compliant: boolean;
     violations: string[];
   }> {
@@ -1025,7 +1040,7 @@ export class CursorSecurityService {
    * Generate security compliance report
    */
   async generateComplianceReport(
-    data: CursorSettingsData,
+    data: GenericConfig,
     standards: ('gdpr' | 'hipaa' | 'pci-dss' | 'sox')[] = ['gdpr'],
   ): Promise<{
     compliant: boolean;
@@ -1074,7 +1089,7 @@ export class CursorSecurityService {
 
     // Check PCI-DSS compliance
     if (standards.includes('pci-dss')) {
-      if (result.statistics.criticalIssues > 0) {
+      if (result.statistics.securityIssues.critical > 0) {
         violations.push({
           standard: 'PCI-DSS',
           requirement: 'Protect cardholder data',
