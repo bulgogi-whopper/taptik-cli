@@ -43,6 +43,18 @@ export enum DeployErrorCode {
   BACKUP_NOT_FOUND = 602,
   CORRUPT_BACKUP = 603,
 
+  // Cursor-specific errors (7xx)
+  CURSOR_NOT_INSTALLED = 700,
+  CURSOR_CONFIG_INVALID = 701,
+  CURSOR_EXTENSION_CONFLICT = 702,
+  CURSOR_WORKSPACE_LOCKED = 703,
+  CURSOR_AI_CONFIG_TOO_LARGE = 704,
+  CURSOR_RULES_MALFORMED = 705,
+  CURSOR_SNIPPET_SYNTAX_ERROR = 706,
+  CURSOR_DEBUG_CONFIG_INVALID = 707,
+  CURSOR_TASK_CONFIG_INVALID = 708,
+  CURSOR_VERSION_INCOMPATIBLE = 709,
+
   // Unknown errors (9xx)
   UNKNOWN_ERROR = 999,
 }
@@ -201,6 +213,114 @@ export class DeployError extends Error {
         });
         break;
 
+      // Cursor-specific error suggestions
+      case DeployErrorCode.CURSOR_NOT_INSTALLED:
+        suggestions.push({
+          action: 'Install Cursor IDE from the official website',
+          documentation: 'https://cursor.sh/',
+        });
+        suggestions.push({
+          action: 'Verify Cursor is in your PATH',
+          command: 'which cursor',
+        });
+        break;
+
+      case DeployErrorCode.CURSOR_CONFIG_INVALID:
+        suggestions.push({
+          action: 'Validate your Cursor configuration',
+          command: 'taptik deploy --platform cursor --validate-only',
+        });
+        suggestions.push({
+          action: 'Check Cursor configuration documentation',
+          documentation: 'https://docs.cursor.sh/configuration',
+        });
+        break;
+
+      case DeployErrorCode.CURSOR_EXTENSION_CONFLICT:
+        suggestions.push({
+          action: 'Disable conflicting extensions in Cursor',
+        });
+        suggestions.push({
+          action: 'Review extension compatibility matrix',
+          documentation: 'https://docs.taptik.dev/cursor-extensions',
+        });
+        break;
+
+      case DeployErrorCode.CURSOR_WORKSPACE_LOCKED:
+        suggestions.push({
+          action: 'Close Cursor and try again',
+        });
+        suggestions.push({
+          action: 'Check for running Cursor processes',
+          command: 'ps aux | grep -i cursor',
+        });
+        break;
+
+      case DeployErrorCode.CURSOR_AI_CONFIG_TOO_LARGE:
+        suggestions.push({
+          action: 'Reduce AI configuration size',
+          command: 'taptik deploy --platform cursor --optimize-ai-content',
+        });
+        suggestions.push({
+          action: 'Split large AI rules into multiple files',
+        });
+        break;
+
+      case DeployErrorCode.CURSOR_RULES_MALFORMED:
+        suggestions.push({
+          action: 'Validate .cursorrules syntax',
+          command: 'taptik validate --file .cursorrules',
+        });
+        suggestions.push({
+          action: 'Check Cursor rules documentation',
+          documentation: 'https://docs.cursor.sh/features/rules',
+        });
+        break;
+
+      case DeployErrorCode.CURSOR_SNIPPET_SYNTAX_ERROR:
+        suggestions.push({
+          action: 'Validate snippet syntax',
+          command: 'taptik validate --component snippets',
+        });
+        suggestions.push({
+          action: 'Check Cursor snippet format guide',
+          documentation: 'https://docs.cursor.sh/features/snippets',
+        });
+        break;
+
+      case DeployErrorCode.CURSOR_DEBUG_CONFIG_INVALID:
+        suggestions.push({
+          action: 'Validate launch.json configuration',
+          command: 'taptik validate --file .vscode/launch.json',
+        });
+        suggestions.push({
+          action: 'Check Cursor debugging documentation',
+          documentation: 'https://docs.cursor.sh/debugging',
+        });
+        break;
+
+      case DeployErrorCode.CURSOR_TASK_CONFIG_INVALID:
+        suggestions.push({
+          action: 'Validate tasks.json configuration',
+          command: 'taptik validate --file .vscode/tasks.json',
+        });
+        suggestions.push({
+          action: 'Check Cursor tasks documentation',
+          documentation: 'https://docs.cursor.sh/tasks',
+        });
+        break;
+
+      case DeployErrorCode.CURSOR_VERSION_INCOMPATIBLE:
+        suggestions.push({
+          action: 'Update Cursor to the latest version',
+          command: 'cursor --update',
+        });
+        suggestions.push({
+          action: 'Check minimum version requirements',
+          documentation: 'https://docs.taptik.dev/cursor-compatibility',
+        });
+        break;
+
       default:
         suggestions.push({
           action: 'Check the logs for more details',
@@ -263,6 +383,27 @@ export class DeployError extends Error {
       ) {
         code = DeployErrorCode.MALICIOUS_CONTENT;
         severity = 'critical';
+      } else if (error.message.includes('cursor not found')) {
+        code = DeployErrorCode.CURSOR_NOT_INSTALLED;
+        severity = 'critical';
+      } else if (error.message.includes('cursor config') && error.message.includes('invalid')) {
+        code = DeployErrorCode.CURSOR_CONFIG_INVALID;
+      } else if (error.message.includes('extension conflict')) {
+        code = DeployErrorCode.CURSOR_EXTENSION_CONFLICT;
+      } else if (error.message.includes('workspace locked')) {
+        code = DeployErrorCode.CURSOR_WORKSPACE_LOCKED;
+      } else if (error.message.includes('ai config too large')) {
+        code = DeployErrorCode.CURSOR_AI_CONFIG_TOO_LARGE;
+      } else if (error.message.includes('cursorrules') && error.message.includes('malformed')) {
+        code = DeployErrorCode.CURSOR_RULES_MALFORMED;
+      } else if (error.message.includes('snippet syntax')) {
+        code = DeployErrorCode.CURSOR_SNIPPET_SYNTAX_ERROR;
+      } else if (error.message.includes('debug config') && error.message.includes('invalid')) {
+        code = DeployErrorCode.CURSOR_DEBUG_CONFIG_INVALID;
+      } else if (error.message.includes('task config') && error.message.includes('invalid')) {
+        code = DeployErrorCode.CURSOR_TASK_CONFIG_INVALID;
+      } else if (error.message.includes('cursor version') && error.message.includes('incompatible')) {
+        code = DeployErrorCode.CURSOR_VERSION_INCOMPATIBLE;
       }
 
       return new DeployError(code, error.message, severity, context, error);
