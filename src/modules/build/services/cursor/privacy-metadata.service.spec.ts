@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+
 import { describe, beforeEach, it, expect } from 'vitest';
 
 import { CursorPrivacyMetadataService } from './privacy-metadata.service';
