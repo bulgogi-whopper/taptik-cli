@@ -1815,6 +1815,7 @@ export class BuildCommand extends CommandRunner {
         tags,
         teamId: pushOptions.pushTeam,
         version: cloudPackage.metadata?.version || '1.0.0',
+        autoBump: true, // Auto-increment version if conflict
         force: true, // Skip confirmation since build already confirmed
         dryRun: false,
       };

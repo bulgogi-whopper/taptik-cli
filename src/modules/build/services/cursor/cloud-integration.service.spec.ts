@@ -41,8 +41,20 @@ describe('CursorCloudIntegrationService - Simple Tests', () => {
           { id: 'cursor.ai-extension', name: 'Cursor AI' },
         ],
         snippets: {
-          javascript: { log: 'console.log' },
-          python: { print: 'print()' },
+          javascript: { 
+            log: { 
+              prefix: 'log', 
+              body: 'console.log',
+              description: 'Log statement'
+            } 
+          },
+          python: { 
+            print: { 
+              prefix: 'print', 
+              body: 'print()', 
+              description: 'Print statement' 
+            } 
+          },
         },
       };
 
@@ -186,10 +198,18 @@ describe('CursorCloudIntegrationService - Simple Tests', () => {
       expect(result.metadata.cursor).toBeDefined();
       expect(result.metadata.cursor).toEqual(cursorMetadata);
       expect(result.metadata.searchable).toBeDefined();
-      expect(result.metadata.searchable.platform).toBe('cursor-ide');
-      expect(result.metadata.searchable.hasAi).toBe(true);
-      expect(result.metadata.searchable.extensionCount).toBe(5);
-      expect(result.metadata.searchable.languages).toContain('javascript');
+      
+      const searchable = result.metadata.searchable as {
+        platform: string;
+        hasAi: boolean;
+        extensionCount: number;
+        languages: string[];
+      };
+      
+      expect(searchable.platform).toBe('cursor-ide');
+      expect(searchable.hasAi).toBe(true);
+      expect(searchable.extensionCount).toBe(5);
+      expect(searchable.languages).toContain('javascript');
     });
   });
 

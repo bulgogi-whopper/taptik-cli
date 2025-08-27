@@ -28,6 +28,18 @@ export class CursorSearchOptimizationService {
   }
 
   generateDeploymentMetadata(cursorData: CursorSettingsData & { vsCodeCompatible?: boolean }): DeploymentMetadata {
+    const extractExtensions = (): string[] => {
+      if (cursorData.extensions?.recommendations) {
+        return cursorData.extensions.recommendations;
+      }
+      
+      if (cursorData.extensions?.installed) {
+        return cursorData.extensions.installed.map(ext => ext.id);
+      }
+      
+      return [];
+    };
+
     return {
       targetPlatforms: ['cursor-ide', 'vscode', 'vscode-insiders'],
       compatibility: [
@@ -36,7 +48,7 @@ export class CursorSearchOptimizationService {
       ],
       requirements: {
         minVersion: '1.0.0',
-        extensions: cursorData.extensions?.recommendations || [],
+        extensions: extractExtensions(),
         features: this.extractRequiredFeatures(cursorData),
       },
     };

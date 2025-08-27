@@ -331,13 +331,28 @@ export class PushService {
     // Extract components info
     const components = await this.extractComponents(packageBuffer);
 
+    // Auto-version if not provided or if auto-bump is enabled
+    let {version} = options;
+    if (!version || options.autoBump) {
+      version = await this.packageRegistryService.getNextAvailableVersion(
+        user.id,
+        fileName,
+        options.version,
+      );
+      if (options.autoBump && version !== options.version) {
+        this.logger.log(
+          `Auto-bumped version from ${options.version || '1.0.0'} to ${version}`,
+        );
+      }
+    }
+
     const metadata: PackageMetadata = {
       id: '', // Will be set by registry
       configId,
       name: fileName,
       title: options.title || defaultTitle,
       description: options.description,
-      version: options.version || '1.0.0',
+      version,
       platform,
       isPublic,
       sanitizationLevel,

@@ -57,8 +57,8 @@ describe('CursorPerformanceService', () => {
   describe('optimizeExtensionProcessing', () => {
     it('should cache extension processing results', async () => {
       const extensions = [
-        { id: 'ext1', name: 'Extension 1' },
-        { id: 'ext2', name: 'Extension 2' },
+        { id: 'ext1', name: 'Extension 1', version: '1.0.0', enabled: true, publisher: 'test' },
+        { id: 'ext2', name: 'Extension 2', version: '1.1.0', enabled: true, publisher: 'test' },
       ];
 
       const result1 = await service.optimizeExtensionProcessing(extensions);

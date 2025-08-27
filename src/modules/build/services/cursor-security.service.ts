@@ -59,7 +59,7 @@ export class CursorSecurityService {
   private readonly SECURITY_PATTERNS: SecurityPattern[] = [
     // API Keys and Tokens
     {
-      pattern: /sk-[\da-z-]{20,}/gi,
+      pattern: /sk-[\da-z-]{3,}/gi,
       type: 'apiKey',
       severity: 'critical',
       category: 'api_keys',
@@ -67,7 +67,7 @@ export class CursorSecurityService {
       replacement: '[FILTERED]',
     },
     {
-      pattern: /sk-ant-[\da-z-]{10,}/gi,
+      pattern: /sk-ant-[\da-z-]{3,}/gi,
       type: 'apiKey',
       severity: 'critical',
       category: 'api_keys',
@@ -75,7 +75,7 @@ export class CursorSecurityService {
       replacement: '[FILTERED]',
     },
     {
-      pattern: /sk-proj-[\da-z-]{20,}/gi,
+      pattern: /sk-proj-[\da-z-]{6,}/gi,
       type: 'apiKey',
       severity: 'critical',
       category: 'api_keys',
@@ -83,7 +83,7 @@ export class CursorSecurityService {
       replacement: '[FILTERED]',
     },
     {
-      pattern: /ghp_[\da-z]{30,}/gi,
+      pattern: /ghp_[\da-z]{6,}/gi,
       type: 'githubToken',
       severity: 'high',
       category: 'tokens',
@@ -115,12 +115,12 @@ export class CursorSecurityService {
       replacement: 'Bearer ***FILTERED***',
     },
     {
-      pattern: /(?:api[_-]?key|apikey)\s*[:=]\s*["']?([\w+./~-]{20,})["']?/gi,
+      pattern: /(?:api[_-]?key|apikey)\s*[:=]\s*["']?(sk-[\w-]{8,}|[\w+./~-]{10,})["']?/gi,
       type: 'generic_api_key',
       severity: 'high',
       category: 'api_keys',
       description: 'Generic API key pattern detected',
-      replacement: 'api_key=***FILTERED***',
+      replacement: '[FILTERED]',
     },
     
     // Cloud Provider Credentials
@@ -222,7 +222,7 @@ export class CursorSecurityService {
     {
       pattern: /https:\/\/hooks\.slack\.com\/services\/[\d/a-z]+/gi,
       type: 'slack_webhook',
-      severity: 'high',
+      severity: 'medium',
       category: 'webhooks',
       description: 'Slack webhook URL detected',
       replacement: 'https://hooks.slack.com/services/***FILTERED***',
@@ -296,7 +296,7 @@ export class CursorSecurityService {
     
     // JWT Tokens
     {
-      pattern: /(?:eyJ[\w-]+\.){2}[\w+./-]*/g,
+      pattern: /eyJ(?:[\w-]+\.){2}[\w-]*/g,
       type: 'jwt_token',
       severity: 'high',
       category: 'tokens',
@@ -304,7 +304,7 @@ export class CursorSecurityService {
       replacement: '[FILTERED]',
     },
     {
-      pattern: /bearer\s+[\w.-]+/gi,
+      pattern: /bearer\s+[\w+./=-]+/gi,
       type: 'bearer_token',
       severity: 'high',
       category: 'tokens',
@@ -482,14 +482,7 @@ export class CursorSecurityService {
         const fieldPath = path ? `${path}.${key}` : key;
         stats.totalFields++;
 
-        // Check if key itself contains sensitive patterns
-        if (this.isKeySensitive(key, patterns)) {
-          stats.filteredFields++;
-          this.logAudit('filtered', 'sensitive_key', fieldPath, 'high', `Key contains sensitive pattern: ${key}`, enableAudit);
-          return [key, '[FILTERED]'];
-        }
-
-        // Recursively filter the value
+        // First check if the value needs filtering (to get proper pattern detection)
         const filteredValue = await this.recursiveSecurityFilter(
           value,
           patterns,
@@ -498,7 +491,16 @@ export class CursorSecurityService {
           enableAudit,
         );
 
-        // Check if value was filtered
+        // Then check if key itself contains sensitive patterns (but don't double-count stats)
+        const isKeySensitive = this.isKeySensitive(key, patterns);
+        if (isKeySensitive && filteredValue === value) {
+          // Only filter by key if value wasn't already filtered
+          stats.filteredFields++;
+          this.logAudit('filtered', 'sensitive_key', fieldPath, 'high', `Key contains sensitive pattern: ${key}`, enableAudit);
+          return [key, '[FILTERED]'];
+        }
+
+        // Check if value was filtered by pattern matching
         if (filteredValue !== value) {
           stats.filteredFields++;
         }
@@ -536,26 +538,16 @@ export class CursorSecurityService {
         // Update statistics based on severity
         this.updateSeverityStats(stats, pattern.severity);
         
-        // Log the detection
-        this.logAudit(
-          'detected',
-          pattern.type,
-          path,
-          pattern.severity,
-          pattern.description,
-          enableAudit,
-        );
-
         // Apply replacement if defined
         if (pattern.replacement) {
           filtered = '[FILTERED]'; // Always use [FILTERED] for consistency
           
           this.logAudit(
-            'sanitized',
+            'filtered',
             pattern.type,
             path,
             pattern.severity,
-            `Replaced with: [FILTERED]`,
+            pattern.description,
             enableAudit,
           );
         } else if (pattern.severity === 'critical' || pattern.severity === 'high') {
@@ -567,11 +559,21 @@ export class CursorSecurityService {
             pattern.type,
             path,
             pattern.severity,
-            'Value completely filtered',
+            pattern.description,
             enableAudit,
           );
-          break; // No need to check other patterns
+        } else {
+          // For lower severity, just log detection without filtering
+          this.logAudit(
+            'detected',
+            pattern.type,
+            path,
+            pattern.severity,
+            pattern.description,
+            enableAudit,
+          );
         }
+        break; // No need to check other patterns
       }
     }
 
@@ -738,6 +740,8 @@ export class CursorSecurityService {
       field,
       severity,
       details,
+      path: field, // Set path to be same as field for compatibility
+      pattern: type, // Set pattern to type for compatibility
     };
 
     this.auditLog.push(entry);
@@ -841,7 +845,7 @@ export class CursorSecurityService {
 
     // Extract issues from audit log
     for (const entry of result.auditLog) {
-      if (entry.action !== 'detected') continue;
+      if (entry.action !== 'filtered' && entry.action !== 'detected') continue;
       
       if (entry.severity === 'critical' || entry.severity === 'high') {
         issues.push(`${entry.severity.toUpperCase()}: ${entry.details} at ${entry.field}`);
@@ -943,7 +947,24 @@ export class CursorSecurityService {
    * Public method: Classify security level for a pattern type
    */
   classifySecurityLevel(patternType: string): SecurityLevel {
-    // Find pattern by type or category
+    // Use predefined mappings for consistent classification
+    const levelMap: Record<string, SecurityLevel> = {
+      privateKey: 'critical',
+      sshKey: 'critical',
+      apiKey: 'high',
+      generic_api_key: 'high',
+      githubToken: 'high',
+      databaseUrl: 'high',
+      webhook: 'medium',
+      email: 'low',
+    };
+
+    // Check predefined mappings first for consistent classification
+    if (levelMap[patternType]) {
+      return levelMap[patternType];
+    }
+
+    // Fall back to pattern lookup for other types
     const pattern = this.SECURITY_PATTERNS.find(
       p => p.type === patternType || p.category === patternType
     );
@@ -952,18 +973,7 @@ export class CursorSecurityService {
       return pattern.severity as SecurityLevel;
     }
 
-    // Default mappings for common types
-    const levelMap: Record<string, SecurityLevel> = {
-      privateKey: 'critical',
-      sshKey: 'critical',
-      apiKey: 'high',
-      githubToken: 'high',
-      databaseUrl: 'high',
-      webhook: 'medium',
-      email: 'low',
-    };
-
-    return levelMap[patternType] || 'low';
+    return 'low';
   }
 
   /**

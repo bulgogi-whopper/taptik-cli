@@ -112,6 +112,7 @@ export class MockCursorFileSystem {
         }
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return entries as any;
     });
 
@@ -132,6 +133,25 @@ export class MockCursorFileSystem {
         },
         isFile: () => this.fileSystem.has(filePath as string),
         size: this.fileSystem.get(filePath as string)?.length || 0,
+        // Add required properties for fs.Stats compatibility
+        dev: 0,
+        ino: 0,
+        mode: 0,
+        nlink: 0,
+        uid: 0,
+        gid: 0,
+        rdev: 0,
+        blksize: 0,
+        blocks: 0,
+        atimeMs: Date.now(),
+        mtimeMs: Date.now(),
+        ctimeMs: Date.now(),
+        birthtimeMs: Date.now(),
+        atime: new Date(),
+        mtime: new Date(),
+        ctime: new Date(),
+        birthtime: new Date(),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any;
     });
   }
@@ -325,7 +345,7 @@ export class TransformationTestHelper {
     // Check specific mappings
     if (cursorConfig.settings) {
       const settings = cursorConfig.settings as Record<string, unknown>;
-      const personal = (taptikConfig.personalContext as any)?.preferences;
+      const personal = (taptikConfig.personalContext as { preferences?: Record<string, unknown> })?.preferences;
 
       if (settings['editor.fontSize']) {
         expect(personal?.fontSize).toBe(settings['editor.fontSize']);
@@ -347,7 +367,7 @@ export class TransformationTestHelper {
     if (aiRules.rules && Array.isArray(aiRules.rules)) {
       expect(promptTemplates).toHaveLength(aiRules.rules.length);
 
-      aiRules.rules.forEach((rule: any, index: number) => {
+      aiRules.rules.forEach((rule: { name: string; prompt: string }, index: number) => {
         const template = promptTemplates[index];
         expect(template).toHaveProperty('name', rule.name);
         expect(template).toHaveProperty('prompt', rule.prompt);
@@ -419,17 +439,17 @@ export class PerformanceTestHelper {
 
     // Generate settings
     for (let i = 0; i < config.settings; i++) {
-      (result.settings as any)[`setting.${i}`] = `value-${i}`;
+      (result.settings as Record<string, string>)[`setting.${i}`] = `value-${i}`;
     }
 
     // Generate extensions
     for (let i = 0; i < config.extensions; i++) {
-      (result.extensions as any).recommendations.push(`ext.extension-${i}`);
+      (result.extensions as { recommendations: string[] }).recommendations.push(`ext.extension-${i}`);
     }
 
     // Generate snippets
     for (let i = 0; i < config.snippets; i++) {
-      (result.snippets as any)[`snippet-${i}`] = {
+      (result.snippets as Record<string, { prefix: string; body: string[] }>)[`snippet-${i}`] = {
         prefix: `prefix-${i}`,
         body: [`line1-${i}`, `line2-${i}`],
       };
@@ -487,7 +507,7 @@ export class IntegrationTestHelper {
   /**
    * Assert complete build pipeline success
    */
-  static assertBuildSuccess(result: any): void {
+  static assertBuildSuccess(result: { personalContext?: unknown; projectContext?: unknown; promptTemplates?: unknown; errors: unknown[]; warnings?: unknown }): void {
     expect(result).toHaveProperty('personalContext');
     expect(result).toHaveProperty('projectContext');
     expect(result).toHaveProperty('promptTemplates');

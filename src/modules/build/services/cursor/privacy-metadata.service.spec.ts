@@ -29,9 +29,16 @@ describe('CursorPrivacyMetadataService', () => {
         },
         aiConfiguration: {
           defaultModel: 'gpt-4',
-          rules: ['rule1', 'rule2'],
+          rules: [
+            { name: 'rule1', pattern: '*.ts', prompt: 'Test rule 1', enabled: true },
+            { name: 'rule2', pattern: '*.js', prompt: 'Test rule 2', enabled: true }
+          ],
         },
-        extensions: ['ext1', 'ext2', 'ext3'],
+        extensions: [
+          { id: 'ext1', name: 'Extension 1' },
+          { id: 'ext2', name: 'Extension 2' },
+          { id: 'ext3', name: 'Extension 3' }
+        ],
         snippets: {
           javascript: {},
           typescript: {},
@@ -56,7 +63,7 @@ describe('CursorPrivacyMetadataService', () => {
 
     it('should extract correct usage patterns', () => {
       const data = {
-        extensions: new Array(5).fill('ext'),
+        extensions: new Array(5).fill(null).map((_, i) => ({ id: `ext${i}`, name: `Extension ${i}` })),
         snippets: {
           javascript: {},
           typescript: {},

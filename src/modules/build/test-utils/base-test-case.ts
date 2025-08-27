@@ -303,7 +303,13 @@ export class MockServicesFactory {
   /**
    * Create a mock CollectionService
    */
-  static createMockCollectionService(): any {
+  static createMockCollectionService(): {
+    collectCursorLocalSettings: ReturnType<typeof vi.fn>;
+    collectCursorGlobalSettings: ReturnType<typeof vi.fn>;
+    parseCursorAiConfig: ReturnType<typeof vi.fn>;
+    collectCursorExtensions: ReturnType<typeof vi.fn>;
+    collectCursorSnippets: ReturnType<typeof vi.fn>;
+  } {
     return {
       collectCursorLocalSettings: vi.fn(),
       collectCursorGlobalSettings: vi.fn(),
@@ -316,7 +322,12 @@ export class MockServicesFactory {
   /**
    * Create a mock TransformationService
    */
-  static createMockTransformationService(): any {
+  static createMockTransformationService(): {
+    transformCursorPersonalContext: ReturnType<typeof vi.fn>;
+    transformCursorProjectContext: ReturnType<typeof vi.fn>;
+    transformCursorPromptTemplates: ReturnType<typeof vi.fn>;
+    mapCursorExtensions: ReturnType<typeof vi.fn>;
+  } {
     return {
       transformCursorPersonalContext: vi.fn(),
       transformCursorProjectContext: vi.fn(),
@@ -328,7 +339,12 @@ export class MockServicesFactory {
   /**
    * Create a mock ValidationService
    */
-  static createMockValidationService(): any {
+  static createMockValidationService(): {
+    validateVSCodeSchema: ReturnType<typeof vi.fn>;
+    sanitizeAiConfiguration: ReturnType<typeof vi.fn>;
+    checkExtensionCompatibility: ReturnType<typeof vi.fn>;
+    generateSecurityReport: ReturnType<typeof vi.fn>;
+  } {
     return {
       validateVSCodeSchema: vi.fn(),
       sanitizeAiConfiguration: vi.fn(),
@@ -340,7 +356,12 @@ export class MockServicesFactory {
   /**
    * Create a mock OutputService
    */
-  static createMockOutputService(): any {
+  static createMockOutputService(): {
+    generateFiles: ReturnType<typeof vi.fn>;
+    writeFile: ReturnType<typeof vi.fn>;
+    createDirectory: ReturnType<typeof vi.fn>;
+    displaySummary: ReturnType<typeof vi.fn>;
+  } {
     return {
       generateFiles: vi.fn(),
       writeFile: vi.fn(),
@@ -352,7 +373,14 @@ export class MockServicesFactory {
   /**
    * Create a mock ProgressService
    */
-  static createMockProgressService(): any {
+  static createMockProgressService(): {
+    startStep: ReturnType<typeof vi.fn>;
+    updateProgress: ReturnType<typeof vi.fn>;
+    completeStep: ReturnType<typeof vi.fn>;
+    failStep: ReturnType<typeof vi.fn>;
+    startSpinner: ReturnType<typeof vi.fn>;
+    stopSpinner: ReturnType<typeof vi.fn>;
+  } {
     return {
       startStep: vi.fn(),
       updateProgress: vi.fn(),
@@ -366,7 +394,13 @@ export class MockServicesFactory {
   /**
    * Create a mock ErrorHandlerService
    */
-  static createMockErrorHandlerService(): any {
+  static createMockErrorHandlerService(): {
+    handleError: ReturnType<typeof vi.fn>;
+    addWarning: ReturnType<typeof vi.fn>;
+    getWarnings: ReturnType<typeof vi.fn>;
+    hasErrors: ReturnType<typeof vi.fn>;
+    reset: ReturnType<typeof vi.fn>;
+  } {
     return {
       handleError: vi.fn(),
       addWarning: vi.fn(),

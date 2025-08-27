@@ -44,6 +44,12 @@ describe('CloudUploadService', () => {
       eq: vi.fn().mockReturnThis(),
       is: vi.fn().mockReturnThis(),
       single: vi.fn(),
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: { id: 'test-user-123' } },
+          error: null,
+        }),
+      },
       storage: {
         from: vi.fn().mockReturnThis(),
         upload: vi.fn(),
@@ -89,7 +95,12 @@ describe('CloudUploadService', () => {
         'checksum',
         'test-checksum',
       );
+      expect(mockSupabaseClient.eq).toHaveBeenCalledWith(
+        'user_id',
+        'test-user-123',
+      );
       expect(mockSupabaseClient.is).toHaveBeenCalledWith('archived_at', null);
+      expect(mockSupabaseClient.is).toHaveBeenCalledWith('team_id', null);
     });
 
     it('should return existing package info when duplicate found', async () => {
