@@ -65,6 +65,7 @@ describe('PushService', () => {
       deletePackage: vi.fn(),
       listUserPackages: vi.fn(),
       getPackageStats: vi.fn(),
+      getNextAvailableVersion: vi.fn().mockResolvedValue('1.0.0'),
     };
 
     mockSanitizationService = {
