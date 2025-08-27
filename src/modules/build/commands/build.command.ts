@@ -1861,11 +1861,11 @@ export class BuildCommand extends CommandRunner {
 
       // Check if it's an authentication error
       if (errorCode === 'AUTH_001' || errorMessage.includes('auth')) {
-        this.logger.log('💡 Run "taptik auth login" to authenticate first');
+        this.logger.log('💡 Run "taptik login" to authenticate first');
         this.errorHandler.addWarning({
           type: 'push',
           message: 'Authentication required for push',
-          details: 'Please run "taptik auth login" before using --push',
+          details: 'Please run "taptik login" before using --push',
         });
       } else {
         this.errorHandler.addWarning({

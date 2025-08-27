@@ -268,7 +268,7 @@ describe('BuildCommand - Push Feature', () => {
       expect(buildCommand.errorHandler.addWarning).toHaveBeenCalledWith({
         type: 'push',
         message: 'Authentication required for push',
-        details: 'Please run "taptik auth login" before using --push',
+        details: 'Please run "taptik login" before using --push',
       });
     });
 

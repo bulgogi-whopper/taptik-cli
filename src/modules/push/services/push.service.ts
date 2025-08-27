@@ -257,7 +257,7 @@ export class PushService {
     if (!session?.user) {
       throw new PushError(
         PushErrorCode.AUTH_REQUIRED,
-        'Authentication required. Please run "taptik auth login" first',
+        'Authentication required. Please run "taptik login" first',
       );
     }
 
