@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 
-import { SupportedPlatform } from '../interfaces/deploy-options.interface';
 import { ComponentType } from '../interfaces/component-types.interface';
 import { CursorComponentType } from '../interfaces/cursor-deployment.interface';
+import { SupportedPlatform } from '../interfaces/deploy-options.interface';
 
 export interface HelpContent {
   title: string;
@@ -317,7 +317,7 @@ export class HelpDocumentationService {
 
     // Search component help
     for (const [key, help] of this.componentHelp.entries()) {
-      const relevance = this.calculateRelevance(lowerQuery, help.name + ' ' + help.description);
+      const relevance = this.calculateRelevance(lowerQuery, `${help.name  } ${  help.description}`);
       if (relevance > 0.1) {
         results.push({
           type: 'component',
@@ -330,7 +330,7 @@ export class HelpDocumentationService {
 
     // Search error documentation
     for (const [code, error] of this.errorDocs.entries()) {
-      const relevance = this.calculateRelevance(lowerQuery, error.title + ' ' + error.description);
+      const relevance = this.calculateRelevance(lowerQuery, `${error.title  } ${  error.description}`);
       if (relevance > 0.1) {
         results.push({
           type: 'error',
@@ -811,6 +811,7 @@ export class HelpDocumentationService {
     });
   }
 
+  // FIXME: 컴포넌트 목록 점검, cli 실행시 컴포넌트 목록 help 확인
   private getValidComponentsForPlatform(platform: SupportedPlatform): string[] {
     switch (platform) {
       case 'cursor-ide':

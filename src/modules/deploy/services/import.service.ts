@@ -210,6 +210,7 @@ export class ImportService {
     attempt: number,
   ): Promise<Buffer> {
     try {
+      // FIXME: bucket name 확인(push와 싱크)
       const client = this.supabaseService.getClient();
       const { data, error } = await client.storage
         .from('taptik-configs')
@@ -240,6 +241,7 @@ export class ImportService {
   private async parseConfiguration(data: Buffer): Promise<TaptikContext> {
     try {
       const jsonString = data.toString('utf8');
+      // FIXME: table 설계 확인
       return JSON.parse(jsonString) as TaptikContext;
     } catch (error) {
       throw new Error(
