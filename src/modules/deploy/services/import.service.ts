@@ -184,6 +184,7 @@ export class ImportService {
 
   async getConfigMetadata(configId: string): Promise<CloudMetadataDto | null> {
     try {
+      // FIXME: metadata -> bucket이 아니라 table에서 가져오도록 수정
       const client = this.supabaseService.getClient();
       const { data, error } = await client.storage
         .from('taptik-configs')
