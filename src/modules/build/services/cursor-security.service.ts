@@ -1,0 +1,1127 @@
+/**
+ * CursorSecurityService - Advanced security filtering and protection for Cursor IDE configurations
+ * Provides comprehensive security filtering, pattern detection, and audit capabilities
+ */
+
+import { Injectable, Logger } from '@nestjs/common';
+
+import {
+  SecurityPattern,
+  FilteringStats,
+  SecurityAnalysisDetails,
+  GenericConfig,
+} from '../interfaces/build-types.interface';
+import {
+  CursorSettingsData,
+  SecurityReport,
+} from '../interfaces/cursor-ide.interfaces';
+
+// CursorSecurityPattern extends SecurityPattern which now includes all needed properties
+
+/**
+ * Security level types
+ */
+export type SecurityLevel = 'critical' | 'high' | 'medium' | 'low';
+
+/**
+ * Security audit entry
+ */
+export interface SecurityAuditEntry {
+  timestamp: string;
+  action: 'filtered' | 'detected' | 'blocked' | 'sanitized';
+  type: string;
+  field?: string;
+  severity: string;
+  details: string;
+  path?: string;
+  pattern?: string;
+}
+
+/**
+ * Security filtering result
+ */
+export interface SecurityFilterResult {
+  filtered: unknown;
+  report: SecurityReport;
+  auditLog: SecurityAuditEntry[];
+  statistics: FilteringStats;
+}
+
+/**
+ * Advanced security filtering service for Cursor IDE configurations
+ */
+@Injectable()
+export class CursorSecurityService {
+  private readonly logger = new Logger(CursorSecurityService.name);
+  private auditLog: SecurityAuditEntry[] = [];
+
+  // Comprehensive security patterns with categories
+  private readonly SECURITY_PATTERNS: SecurityPattern[] = [
+    // API Keys and Tokens
+    {
+      pattern: /sk-[\da-z-]{3,}/gi,
+      type: 'apiKey',
+      severity: 'critical',
+      category: 'api_keys',
+      description: 'OpenAI API key detected',
+      replacement: '[FILTERED]',
+    },
+    {
+      pattern: /sk-ant-[\da-z-]{3,}/gi,
+      type: 'apiKey',
+      severity: 'critical',
+      category: 'api_keys',
+      description: 'Anthropic API key detected',
+      replacement: '[FILTERED]',
+    },
+    {
+      pattern: /sk-proj-[\da-z-]{6,}/gi,
+      type: 'apiKey',
+      severity: 'critical',
+      category: 'api_keys',
+      description: 'OpenAI project key detected',
+      replacement: '[FILTERED]',
+    },
+    {
+      pattern: /ghp_[\da-z]{6,}/gi,
+      type: 'githubToken',
+      severity: 'high',
+      category: 'tokens',
+      description: 'GitHub personal access token detected',
+      replacement: '[FILTERED]',
+    },
+    {
+      pattern: /ghs_[\dA-Za-z]{36,}/g,
+      type: 'github_server_token',
+      severity: 'critical',
+      category: 'tokens',
+      description: 'GitHub server token detected',
+      replacement: 'ghs_***FILTERED***',
+    },
+    {
+      pattern: /github_pat_[\dA-Za-z]{22}_[\dA-Za-z]{59}/g,
+      type: 'github_fine_grained_pat',
+      severity: 'critical',
+      category: 'tokens',
+      description: 'GitHub fine-grained personal access token detected',
+      replacement: 'github_pat_***FILTERED***',
+    },
+    {
+      pattern: /Bearer\s+[\w+./~-]+=*/g,
+      type: 'bearer_token',
+      severity: 'high',
+      category: 'tokens',
+      description: 'Bearer token detected',
+      replacement: 'Bearer ***FILTERED***',
+    },
+    {
+      pattern: /(?:api[_-]?key|apikey)\s*[:=]\s*["']?(sk-[\w-]{8,}|[\w+./~-]{10,})["']?/gi,
+      type: 'generic_api_key',
+      severity: 'high',
+      category: 'api_keys',
+      description: 'Generic API key pattern detected',
+      replacement: '[FILTERED]',
+    },
+    
+    // Cloud Provider Credentials
+    {
+      pattern: /akia[\da-z]{16}/gi,
+      type: 'aws_access_key',
+      severity: 'critical',
+      category: 'cloud_credentials',
+      description: 'AWS access key ID detected',
+      replacement: '[FILTERED]',
+    },
+    {
+      pattern: /AIza[\w-]{35}/g,
+      type: 'gcp_api_key',
+      severity: 'critical',
+      category: 'cloud_credentials',
+      description: 'Google Cloud API key detected',
+      replacement: 'AIza***FILTERED***',
+    },
+    {
+      pattern: /[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}/gi,
+      type: 'azure_subscription_id',
+      severity: 'medium',
+      category: 'cloud_credentials',
+      description: 'Potential Azure subscription ID detected',
+    },
+    
+    // Database and Connection Strings
+    {
+      pattern: /mongodb(?:\+srv)?:\/{2}[^:]+:([^@]+)@[^/]+/gi,
+      type: 'databaseUrl',
+      severity: 'high',
+      category: 'database',
+      description: 'MongoDB connection string with credentials detected',
+      replacement: '[FILTERED]',
+    },
+    {
+      pattern: /https?:\/\/[^:]+:[^@]+@[^/]+/g,
+      type: 'proxy_url',
+      severity: 'high',
+      category: 'credentials',
+      description: 'URL with embedded credentials detected',
+      replacement: '[FILTERED]',
+    },
+    {
+      pattern: /postgres(?:ql)?:\/{2}[^:]+:([^@]+)@[^/]+/gi,
+      type: 'postgresql_connection',
+      severity: 'critical',
+      category: 'database',
+      description: 'PostgreSQL connection string with credentials detected',
+      replacement: 'postgresql://***FILTERED***@***',
+    },
+    {
+      pattern: /mysql:\/{2}[^:]+:([^@]+)@[^/]+/gi,
+      type: 'mysql_connection',
+      severity: 'critical',
+      category: 'database',
+      description: 'MySQL connection string with credentials detected',
+      replacement: 'mysql://***FILTERED***@***',
+    },
+    
+    // Passwords and Secrets
+    {
+      pattern: /(?:password|passwd|pwd)\s*[:=]\s*["']?([^\s"']{8,})["']?/gi,
+      type: 'password',
+      severity: 'critical',
+      category: 'credentials',
+      description: 'Password detected',
+      replacement: 'password=***FILTERED***',
+    },
+    {
+      pattern: /(?:secret|client_secret)\s*[:=]\s*["']?([^\s"']{8,})["']?/gi,
+      type: 'secret',
+      severity: 'critical',
+      category: 'credentials',
+      description: 'Secret detected',
+      replacement: 'secret=***FILTERED***',
+    },
+    
+    // SSH Keys
+    {
+      pattern: /-{5}BEGIN (?:RSA|DSA|EC|OPENS{2}H)? ?PRIVATE KEY-{5}[\S\s]*?(?:-{5}END|$)/g,
+      type: 'privateKey',
+      severity: 'critical',
+      category: 'ssh_keys',
+      description: 'Private SSH key detected',
+      replacement: '[FILTERED]',
+    },
+    {
+      pattern: /-{5}BEGIN RSA PRIVATE KEY-{5}[\S\s]*?(?:-{5}END|$)/g,
+      type: 'sshKey',
+      severity: 'critical',
+      category: 'ssh_keys',
+      description: 'RSA Private key detected',
+      replacement: '[FILTERED]',
+    },
+    
+    // Webhook URLs
+    {
+      pattern: /https:\/\/hooks\.slack\.com\/services\/[\d/a-z]+/gi,
+      type: 'slack_webhook',
+      severity: 'medium',
+      category: 'webhooks',
+      description: 'Slack webhook URL detected',
+      replacement: 'https://hooks.slack.com/services/***FILTERED***',
+    },
+    {
+      pattern: /https:\/\/discord\.com\/api\/webhooks\/\d+\/[\w-]+/gi,
+      type: 'discord_webhook',
+      severity: 'high',
+      category: 'webhooks',
+      description: 'Discord webhook URL detected',
+      replacement: 'https://discord.com/api/webhooks/***FILTERED***',
+    },
+    
+    // Cryptocurrency
+    {
+      pattern: /(?:bc1|[13])[\dA-HJ-NP-Za-z]{25,62}/g,
+      type: 'bitcoin_address',
+      severity: 'medium',
+      category: 'cryptocurrency',
+      description: 'Bitcoin address detected',
+    },
+    {
+      pattern: /0x[\dA-Fa-f]{40}/g,
+      type: 'ethereum_address',
+      severity: 'medium',
+      category: 'cryptocurrency',
+      description: 'Ethereum address detected',
+    },
+    
+    // Credit Cards
+    {
+      pattern: /\b4\d{12}(?:\d{3})?\b/g,
+      type: 'credit_card',
+      severity: 'critical',
+      category: 'financial',
+      description: 'Visa card number detected',
+      replacement: '[FILTERED]',
+    },
+    {
+      pattern: /\b5[1-5]\d{14}\b/g,
+      type: 'credit_card',
+      severity: 'critical',
+      category: 'financial',
+      description: 'MasterCard number detected',
+      replacement: '[FILTERED]',
+    },
+    {
+      pattern: /\b3[47]\d{13}\b/g,
+      type: 'credit_card',
+      severity: 'critical',
+      category: 'financial',
+      description: 'American Express number detected',
+      replacement: '[FILTERED]',
+    },
+    {
+      pattern: /\b3[47]\d{2}[\s-]?\d{6}[\s-]?\d{5}\b/g,
+      type: 'credit_card',
+      severity: 'critical',
+      category: 'financial',
+      description: 'American Express number detected (formatted)',
+      replacement: '[FILTERED]',
+    },
+    {
+      pattern: /\b(?:\d{4}[\s-]?){3}\d{4}\b/g,
+      type: 'credit_card',
+      severity: 'critical',
+      category: 'financial',
+      description: 'Credit card number detected',
+      replacement: '[FILTERED]',
+    },
+    
+    // JWT Tokens
+    {
+      pattern: /eyJ(?:[\w-]+\.){2}[\w-]*/g,
+      type: 'jwt_token',
+      severity: 'high',
+      category: 'tokens',
+      description: 'JWT token detected',
+      replacement: '[FILTERED]',
+    },
+    {
+      pattern: /bearer\s+[\w+./=-]+/gi,
+      type: 'bearer_token',
+      severity: 'high',
+      category: 'tokens',
+      description: 'Bearer token detected',
+      replacement: '[FILTERED]',
+    },
+    
+    // Environment Variables
+    {
+      pattern: /process\.env\.[_a-z]+(?:key|token|secret|password)/gi,
+      type: 'env_variable_reference',
+      severity: 'low',
+      category: 'environment',
+      description: 'Environment variable reference detected',
+    },
+  ];
+
+  // Context-aware filtering rules
+  private readonly CONTEXT_RULES = {
+    aiConfig: {
+      allowedFields: ['modelConfig.provider', 'modelConfig.model', 'modelConfig.temperature'],
+      blockedFields: ['apiKeys', 'tokens', 'credentials'],
+      sensitiveFields: ['modelConfig.apiKey', 'rules.*.apiKey'],
+    },
+    settings: {
+      allowedPrefixes: ['editor.', 'workbench.', 'files.', 'terminal.'],
+      blockedPrefixes: ['cursor.api', 'auth.', 'credentials.'],
+    },
+    extensions: {
+      allowedPublishers: ['microsoft', 'github', 'redhat', 'golang'],
+      suspiciousPatterns: ['crack', 'hack', 'keygen', 'activator'],
+    },
+  };
+
+  /**
+   * Perform comprehensive security filtering on configuration data
+   */
+  async performComprehensiveSecurityFiltering(
+    data: GenericConfig,
+    options?: {
+      mode: 'strict' | 'moderate' | 'lenient';
+      enableAudit?: boolean;
+      enableContextAnalysis?: boolean;
+      customPatterns?: SecurityPattern[];
+    },
+  ): Promise<SecurityFilterResult> {
+    const mode = options?.mode || 'strict';
+    const enableAudit = options?.enableAudit !== false;
+    const enableContextAnalysis = options?.enableContextAnalysis !== false;
+    const customPatterns = options?.customPatterns || [];
+
+    // Reset audit log for new filtering session
+    if (enableAudit) {
+      this.auditLog = [];
+    }
+
+    // Combine default and custom patterns
+    const patterns = [...this.SECURITY_PATTERNS, ...customPatterns];
+
+    // Apply security level filtering based on mode
+    const activePatterns = this.filterPatternsByMode(patterns, mode);
+
+    // Deep clone data for filtering
+    const filtered = JSON.parse(JSON.stringify(data));
+    
+    // Statistics tracking
+    const stats: FilteringStats = {
+      totalFields: 0,
+      filteredFields: 0,
+      securityIssues: {
+        critical: 0,
+        warning: 0,
+        info: 0,
+      },
+      categories: {
+        apiKeys: 0,
+        tokens: 0,
+        passwords: 0,
+        other: 0,
+      },
+    };
+
+    // Perform recursive filtering
+    const filteredData = await this.recursiveSecurityFilter(
+      filtered,
+      activePatterns,
+      '',
+      stats,
+      enableAudit,
+    );
+
+    // Context-aware analysis
+    if (enableContextAnalysis) {
+      await this.performContextAnalysis(filteredData as GenericConfig, stats, enableAudit);
+    }
+
+    // Generate security report
+    const report = await this.generateAdvancedSecurityReport(
+      data,
+      filteredData as GenericConfig,
+      stats,
+      activePatterns,
+    );
+
+    return {
+      filtered: filteredData,
+      report,
+      auditLog: this.auditLog,
+      statistics: stats,
+    };
+  }
+
+  /**
+   * Filter patterns based on security mode
+   */
+  private filterPatternsByMode(
+    patterns: SecurityPattern[],
+    mode: 'strict' | 'moderate' | 'lenient',
+  ): SecurityPattern[] {
+    switch (mode) {
+      case 'strict':
+        return patterns; // All patterns active
+      case 'moderate':
+        return patterns.filter(p => p.severity !== 'low');
+      case 'lenient':
+        return patterns.filter(p => p.severity === 'critical');
+      default:
+        return patterns;
+    }
+  }
+
+  /**
+   * Recursive security filtering with path tracking
+   */
+  private async recursiveSecurityFilter(
+    obj: unknown,
+    patterns: SecurityPattern[],
+    path: string,
+    stats: FilteringStats,
+    enableAudit: boolean,
+  ): Promise<unknown> {
+    if (!obj || typeof obj !== 'object') {
+      stats.totalFields++;
+      
+      // Check string values for sensitive patterns
+      if (typeof obj === 'string') {
+        return this.filterStringValue(obj, patterns, path, stats, enableAudit);
+      }
+      
+      return obj;
+    }
+
+    // Handle arrays
+    if (Array.isArray(obj)) {
+      return Promise.all(
+        obj.map((item, index) => 
+          this.recursiveSecurityFilter(
+            item,
+            patterns,
+            `${path}[${index}]`,
+            stats,
+            enableAudit,
+          ),
+        ),
+      );
+    }
+
+    // Handle objects
+    const filtered: Record<string, unknown> = {};
+    const entries = Object.entries(obj as Record<string, unknown>);
+    
+    // Process all entries in parallel to avoid await in loop
+    const processedEntries = await Promise.all(
+      entries.map(async ([key, value]) => {
+        const fieldPath = path ? `${path}.${key}` : key;
+        stats.totalFields++;
+
+        // First check if the value needs filtering (to get proper pattern detection)
+        const filteredValue = await this.recursiveSecurityFilter(
+          value,
+          patterns,
+          fieldPath,
+          stats,
+          enableAudit,
+        );
+
+        // Then check if key itself contains sensitive patterns (but don't double-count stats)
+        const isKeySensitive = this.isKeySensitive(key, patterns);
+        if (isKeySensitive && filteredValue === value) {
+          // Only filter by key if value wasn't already filtered
+          stats.filteredFields++;
+          this.logAudit('filtered', 'sensitive_key', fieldPath, 'high', `Key contains sensitive pattern: ${key}`, enableAudit);
+          return [key, '[FILTERED]'];
+        }
+
+        // Check if value was filtered by pattern matching
+        if (filteredValue !== value) {
+          stats.filteredFields++;
+        }
+
+        return [key, filteredValue];
+      }),
+    );
+    
+    // Reconstruct object from processed entries
+    for (const [key, value] of processedEntries) {
+      if (typeof key === 'string') {
+        filtered[key] = value;
+      }
+    }
+
+    return filtered;
+  }
+
+  /**
+   * Filter string value for sensitive patterns
+   */
+  private filterStringValue(
+    value: string,
+    patterns: SecurityPattern[],
+    path: string,
+    stats: FilteringStats,
+    enableAudit: boolean,
+  ): string {
+    let filtered = value;
+
+    for (const pattern of patterns) {
+      pattern.pattern.lastIndex = 0; // Reset regex
+      
+      if (pattern.pattern.test(value)) {
+        // Update statistics based on severity
+        this.updateSeverityStats(stats, pattern.severity);
+        
+        // Apply replacement if defined
+        if (pattern.replacement) {
+          filtered = '[FILTERED]'; // Always use [FILTERED] for consistency
+          
+          this.logAudit(
+            'filtered',
+            pattern.type,
+            path,
+            pattern.severity,
+            pattern.description,
+            enableAudit,
+          );
+        } else if (pattern.severity === 'critical' || pattern.severity === 'high') {
+          // For critical/high severity without replacement, redact entirely
+          filtered = '[FILTERED]';
+          
+          this.logAudit(
+            'filtered',
+            pattern.type,
+            path,
+            pattern.severity,
+            pattern.description,
+            enableAudit,
+          );
+        } else {
+          // For lower severity, just log detection without filtering
+          this.logAudit(
+            'detected',
+            pattern.type,
+            path,
+            pattern.severity,
+            pattern.description,
+            enableAudit,
+          );
+        }
+        break; // No need to check other patterns
+      }
+    }
+
+    return filtered;
+  }
+
+  /**
+   * Check if a key name is sensitive
+   */
+  private isKeySensitive(key: string, _patterns: SecurityPattern[]): boolean {
+    const sensitiveKeywords = [
+      'apikey', 'api_key', 'api-key',
+      'secret', 'password', 'passwd', 'pwd',
+      'token', 'auth', 'credential',
+      'private', 'privatekey', 'private_key',
+      'clientsecret', 'client_secret',
+    ];
+
+    const lowerKey = key.toLowerCase();
+    return sensitiveKeywords.some(keyword => lowerKey.includes(keyword));
+  }
+
+  /**
+   * Perform context-aware analysis
+   */
+  private async performContextAnalysis(
+    data: GenericConfig,
+    stats: FilteringStats,
+    enableAudit: boolean,
+  ): Promise<void> {
+    // Check AI configuration context
+    if (data.aiConfig) {
+      for (const blockedField of this.CONTEXT_RULES.aiConfig.blockedFields) {
+        if (this.hasNestedField(data.aiConfig, blockedField)) {
+          stats.filteredFields++;
+          stats.securityIssues.critical++;
+          
+          this.logAudit(
+            'blocked',
+            'context_violation',
+            `aiConfig.${blockedField}`,
+            'critical',
+            'Blocked field in AI configuration',
+            enableAudit,
+          );
+        }
+      }
+    }
+
+    // Check settings context
+    if (data.settings) {
+      for (const [key] of Object.entries(data.settings)) {
+        const isBlocked = this.CONTEXT_RULES.settings.blockedPrefixes.some(
+          prefix => key.startsWith(prefix),
+        );
+        
+        if (isBlocked) {
+          stats.filteredFields++;
+          stats.securityIssues.warning++;
+          
+          this.logAudit(
+            'blocked',
+            'context_violation',
+            `settings.${key}`,
+            'high',
+            'Blocked settings prefix detected',
+            enableAudit,
+          );
+        }
+      }
+    }
+
+    // Check extensions for suspicious patterns
+    const extensions = data.extensions as { installed?: Array<{ id?: string }> } | undefined;
+    if (extensions?.installed) {
+      for (const ext of extensions.installed) {
+        const isSuspicious = this.CONTEXT_RULES.extensions.suspiciousPatterns.some(
+          pattern => ext.id?.toLowerCase().includes(pattern),
+        );
+        
+        if (isSuspicious) {
+          stats.securityIssues.info++;
+          
+          this.logAudit(
+            'detected',
+            'suspicious_extension',
+            `extensions.${ext.id}`,
+            'medium',
+            'Suspicious extension pattern detected',
+            enableAudit,
+          );
+        }
+      }
+    }
+  }
+
+  /**
+   * Check if object has nested field
+   */
+  private hasNestedField(obj: unknown, path: string): boolean {
+    const parts = path.split('.');
+    let current = obj;
+    
+    for (const part of parts) {
+      if (part === '*') {
+        // Wildcard - check all array items or object values
+        if (Array.isArray(current)) {
+          return current.some(item => this.hasNestedField(item, parts.slice(parts.indexOf(part) + 1).join('.')));
+        } else if (typeof current === 'object' && current !== null) {
+          return Object.values(current).some(value => 
+            this.hasNestedField(value, parts.slice(parts.indexOf(part) + 1).join('.')),
+          );
+        }
+        return false;
+      }
+      
+      if (!current || typeof current !== 'object' || !(part in current)) {
+        return false;
+      }
+      
+      current = current[part];
+    }
+    
+    return true;
+  }
+
+  /**
+   * Update severity statistics
+   */
+  private updateSeverityStats(stats: FilteringStats, severity: string): void {
+    switch (severity) {
+      case 'critical':
+        stats.securityIssues.critical++;
+        break;
+      case 'high':
+        stats.securityIssues.warning++;
+        break;
+      case 'medium':
+        stats.securityIssues.info++;
+        break;
+      case 'low':
+        stats.securityIssues.info++;
+        break;
+    }
+  }
+
+  /**
+   * Log security audit entry
+   */
+  private logAudit(
+    action: SecurityAuditEntry['action'],
+    type: string,
+    field: string,
+    severity: string,
+    details: string,
+    enableAudit: boolean,
+  ): void {
+    if (!enableAudit) return;
+
+    const entry: SecurityAuditEntry = {
+      timestamp: new Date().toISOString(),
+      action,
+      type,
+      field,
+      severity,
+      details,
+      path: field, // Set path to be same as field for compatibility
+      pattern: type, // Set pattern to type for compatibility
+    };
+
+    this.auditLog.push(entry);
+    
+    // Also log to NestJS logger for debugging
+    this.logger.debug(`Security ${action}: ${type} at ${field} - ${details}`);
+  }
+
+  /**
+   * Generate advanced security report
+   */
+  private async generateAdvancedSecurityReport(
+    original: GenericConfig,
+    filtered: GenericConfig,
+    stats: FilteringStats,
+    patterns: SecurityPattern[],
+  ): Promise<SecurityReport> {
+    const filteredFields: string[] = [];
+    const recommendations: string[] = [];
+
+    // Calculate security level
+    let securityLevel: 'safe' | 'warning' | 'unsafe';
+    if (stats.securityIssues.critical > 0) {
+      securityLevel = 'unsafe';
+      recommendations.push('CRITICAL: Remove all sensitive data before sharing');
+    } else if (stats.securityIssues.warning > 0) {
+      securityLevel = 'unsafe';
+      recommendations.push('HIGH: Review and remove sensitive information');
+    } else if (stats.securityIssues.info > 0) {
+      securityLevel = 'warning';
+      recommendations.push('MEDIUM: Consider removing potentially sensitive data');
+    } else {
+      securityLevel = 'safe';
+      recommendations.push('Configuration appears safe for sharing');
+    }
+
+    // Add pattern-specific recommendations
+    const detectedCategories = new Set<string>();
+    for (const entry of this.auditLog) {
+      if (entry.action === 'detected' || entry.action === 'filtered') {
+        const pattern = patterns.find(p => p.type === entry.type);
+        if (pattern) {
+          detectedCategories.add(pattern.category);
+        }
+        if (entry.field) {
+          filteredFields.push(entry.field);
+        }
+      }
+    }
+
+    // Category-specific recommendations
+    if (detectedCategories.has('api_keys')) {
+      recommendations.push('Store API keys in environment variables or secure vaults');
+    }
+    if (detectedCategories.has('database')) {
+      recommendations.push('Use connection pooling and secure credential management');
+    }
+    if (detectedCategories.has('ssh_keys')) {
+      recommendations.push('Never commit private SSH keys to repositories');
+    }
+    if (detectedCategories.has('tokens')) {
+      recommendations.push('Use short-lived tokens and implement token rotation');
+    }
+
+    // Add statistics to recommendations
+    if (stats.filteredFields > 0) {
+      recommendations.push(
+        `Filtered ${stats.filteredFields} fields out of ${stats.totalFields} scanned`,
+      );
+    }
+
+    return {
+      hasApiKeys: detectedCategories.has('api_keys'),
+      hasTokens: detectedCategories.has('tokens'),
+      hasSensitiveData: stats.filteredFields > 0,
+      filteredFields: [...new Set(filteredFields)], // Remove duplicates
+      securityLevel,
+      recommendations,
+    };
+  }
+
+  /**
+   * Validate configuration for team sharing
+   */
+  async validateForTeamSharing(
+    data: CursorSettingsData,
+  ): Promise<{
+    isSafe: boolean;
+    issues: string[];
+    recommendations: string[];
+  }> {
+    const result = await this.performComprehensiveSecurityFiltering(data as unknown as GenericConfig, {
+      mode: 'strict',
+      enableAudit: true,
+      enableContextAnalysis: true,
+    });
+
+    const isSafe = result.report.securityLevel === 'safe';
+    const issues: string[] = [];
+    const recommendations: string[] = [];
+
+    // Extract issues from audit log
+    for (const entry of result.auditLog) {
+      if (entry.action !== 'filtered' && entry.action !== 'detected') continue;
+      
+      if (entry.severity === 'critical' || entry.severity === 'high') {
+        issues.push(`${entry.severity.toUpperCase()}: ${entry.details} at ${entry.field}`);
+      }
+    }
+
+    // Add team-specific recommendations
+    if (!isSafe) {
+      recommendations.push('Run security filtering before sharing with team');
+      recommendations.push('Review all detected issues and remove sensitive data');
+    }
+
+    if (result.statistics.securityIssues.critical === 0 && result.statistics.securityIssues.warning === 0) {
+      recommendations.push('Consider using encrypted storage for team settings');
+      recommendations.push('Implement access controls for shared configurations');
+    }
+
+    return {
+      isSafe,
+      issues,
+      recommendations: [...result.report.recommendations, ...recommendations],
+    };
+  }
+
+  /**
+   * Public method: Filter sensitive data from configuration
+   */
+  async filterSensitiveData(data: GenericConfig): Promise<GenericConfig> {
+    const result = await this.performComprehensiveSecurityFiltering(data, {
+      mode: 'strict',
+      enableAudit: true,
+      enableContextAnalysis: true,
+    });
+    return result.filtered as GenericConfig;
+  }
+
+  /**
+   * Public method: Generate security report
+   */
+  async generateSecurityReport(data: GenericConfig): Promise<SecurityReport & { 
+    level: SecurityLevel;
+    filteredItems: number;
+    categories: string[];
+    details: SecurityAnalysisDetails;
+    auditTrail: SecurityAuditEntry[];
+  }> {
+    const result = await this.performComprehensiveSecurityFiltering(data, {
+      mode: 'strict',
+      enableAudit: true,
+      enableContextAnalysis: true,
+    });
+
+    // Determine security level
+    let level: SecurityLevel = 'low';
+    if (result.statistics.securityIssues.critical > 0) {
+      level = 'critical';
+    } else if (result.statistics.securityIssues.warning > 0) {
+      level = 'high';
+    } else if (result.statistics.securityIssues.info > 0) {
+      level = 'medium';
+    }
+
+    // Extract categories from audit log
+    const categories = new Set<string>();
+    for (const entry of result.auditLog) {
+      const pattern = this.SECURITY_PATTERNS.find(p => p.type === entry.type);
+      if (pattern) {
+        categories.add(pattern.category);
+      }
+    }
+
+    // Create SecurityAnalysisDetails from FilteringStats
+    const details: SecurityAnalysisDetails = {
+      patterns: [{
+        type: 'sensitive_data',
+        matches: result.statistics.filteredFields,
+        fields: result.auditLog.map(entry => entry.field || entry.path || 'unknown'),
+        severity: 'high'
+      }],
+      recommendations: result.report.recommendations || [],
+      complianceStatus: {
+        gdpr: result.statistics.securityIssues.critical === 0,
+        sox: result.statistics.securityIssues.critical === 0,
+        pci: result.statistics.categories.apiKeys === 0,
+      },
+    };
+
+    return {
+      ...result.report,
+      level,
+      filteredItems: result.statistics.filteredFields,
+      categories: Array.from(categories),
+      details,
+      auditTrail: result.auditLog,
+    };
+  }
+
+  /**
+   * Public method: Classify security level for a pattern type
+   */
+  classifySecurityLevel(patternType: string): SecurityLevel {
+    // Use predefined mappings for consistent classification
+    const levelMap: Record<string, SecurityLevel> = {
+      privateKey: 'critical',
+      sshKey: 'critical',
+      apiKey: 'high',
+      generic_api_key: 'high',
+      githubToken: 'high',
+      databaseUrl: 'high',
+      webhook: 'medium',
+      email: 'low',
+    };
+
+    // Check predefined mappings first for consistent classification
+    if (levelMap[patternType]) {
+      return levelMap[patternType];
+    }
+
+    // Fall back to pattern lookup for other types
+    const pattern = this.SECURITY_PATTERNS.find(
+      p => p.type === patternType || p.category === patternType
+    );
+
+    if (pattern) {
+      return pattern.severity as SecurityLevel;
+    }
+
+    return 'low';
+  }
+
+  /**
+   * Public method: Check if data is safe for team sharing
+   */
+  async isTeamSharingCompatible(data: GenericConfig): Promise<{
+    compatible: boolean;
+    issues: string[];
+    requiredActions: string[];
+  }> {
+    const result = await this.validateForTeamSharing(data as unknown as CursorSettingsData);
+    
+    const requiredActions: string[] = [];
+    if (!result.isSafe) {
+      // Map issues to required actions
+      for (const issue of result.issues) {
+        if (issue.includes('API key')) {
+          requiredActions.push('Remove or replace API keys with environment variables');
+        }
+        if (issue.includes('database') || issue.includes('connection string')) {
+          requiredActions.push('Remove or replace database connection strings');
+        }
+        if (issue.includes('token')) {
+          requiredActions.push('Remove or replace authentication tokens');
+        }
+      }
+    }
+
+    return {
+      compatible: result.isSafe,
+      issues: result.issues,
+      requiredActions: [...new Set(requiredActions)], // Remove duplicates
+    };
+  }
+
+  /**
+   * Public method: Validate compliance requirements
+   */
+  async validateComplianceRequirements(data: GenericConfig): Promise<{
+    compliant: boolean;
+    violations: string[];
+  }> {
+    await this.generateComplianceReport(data, ['gdpr', 'pci-dss']);
+    
+    const violations: string[] = [];
+    
+    // Check for PII patterns
+    const dataStr = JSON.stringify(data);
+    if (/\b\d{3}-\d{2}-\d{4}\b/.test(dataStr)) {
+      violations.push('PII detected: SSN pattern found');
+    }
+    
+    // Check for credit cards
+    const creditCardPatterns = [
+      /\b4\d{12}(?:\d{3})?\b/, // Visa
+      /\b5[1-5]\d{14}\b/, // MasterCard  
+      /\b3[47]\d{13}\b/, // American Express
+    ];
+    
+    for (const pattern of creditCardPatterns) {
+      if (pattern.test(dataStr)) {
+        violations.push('PCI DSS: Credit card number detected');
+        break;
+      }
+    }
+    
+    return {
+      compliant: violations.length === 0,
+      violations,
+    };
+  }
+
+  /**
+   * Generate security compliance report
+   */
+  async generateComplianceReport(
+    data: GenericConfig,
+    standards: ('gdpr' | 'hipaa' | 'pci-dss' | 'sox')[] = ['gdpr'],
+  ): Promise<{
+    compliant: boolean;
+    violations: Array<{
+      standard: string;
+      requirement: string;
+      violation: string;
+      severity: string;
+    }>;
+    recommendations: string[];
+  }> {
+    const violations: Array<{
+      standard: string;
+      requirement: string;
+      violation: string;
+      severity: string;
+    }> = [];
+    
+    const result = await this.performComprehensiveSecurityFiltering(data, {
+      mode: 'strict',
+      enableAudit: true,
+    });
+
+    // Check GDPR compliance
+    if (standards.includes('gdpr')) {
+      // Check for personal data
+      const personalDataPatterns = [
+        /\b[\w%+.-]+@[\d.a-z-]+\.[a-z]{2,}\b/gi, // Email
+        /\b(?:\d{3}[.-]?){2}\d{4}\b/g, // Phone
+        /\b\d{3}-\d{2}-\d{4}\b/g, // SSN
+      ];
+
+      const dataStr = JSON.stringify(data);
+      for (const pattern of personalDataPatterns) {
+        if (pattern.test(dataStr)) {
+          violations.push({
+            standard: 'GDPR',
+            requirement: 'Personal data protection',
+            violation: 'Personal information detected in configuration',
+            severity: 'high',
+          });
+          break;
+        }
+      }
+    }
+
+    // Check PCI-DSS compliance
+    if (standards.includes('pci-dss')) {
+      if (result.statistics.securityIssues.critical > 0) {
+        violations.push({
+          standard: 'PCI-DSS',
+          requirement: 'Protect cardholder data',
+          violation: 'Sensitive payment or authentication data detected',
+          severity: 'critical',
+        });
+      }
+    }
+
+    // Generate recommendations based on violations
+    const recommendations: string[] = [];
+    if (violations.length > 0) {
+      recommendations.push('Implement data encryption at rest');
+      recommendations.push('Use tokenization for sensitive data');
+      recommendations.push('Establish data retention policies');
+      recommendations.push('Implement audit logging for compliance');
+    }
+
+    return {
+      compliant: violations.length === 0,
+      violations,
+      recommendations,
+    };
+  }
+}

@@ -60,7 +60,7 @@ describe('RateLimiterService', () => {
           });
         }
         return createChainableMock({
-          data: { upload_count: 50 },
+          data: { daily_uploads: 50, daily_reset_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() },
           error: null,
         });
       });
@@ -82,7 +82,7 @@ describe('RateLimiterService', () => {
         gte: vi.fn().mockReturnThis(),
         lt: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({
-          data: { upload_count: 100 },
+          data: { daily_uploads: 100, daily_reset_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() },
           error: null,
         }),
       };
@@ -120,7 +120,7 @@ describe('RateLimiterService', () => {
         gte: vi.fn().mockReturnThis(),
         lt: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({
-          data: { upload_count: 500 },
+          data: { daily_uploads: 500, daily_reset_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() },
           error: null,
         }),
       };
@@ -372,7 +372,7 @@ describe('RateLimiterService', () => {
         gte: vi.fn().mockReturnThis(),
         lt: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({
-          data: { upload_count: 95 },
+          data: { daily_uploads: 95, daily_reset_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() },
           error: null,
         }),
       };
@@ -425,7 +425,7 @@ describe('RateLimiterService', () => {
         gte: vi.fn().mockReturnThis(),
         lt: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({
-          data: { upload_count: 100 },
+          data: { daily_uploads: 100, daily_reset_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() },
           error: null,
         }),
       };
@@ -478,7 +478,7 @@ describe('RateLimiterService', () => {
         gte: vi.fn().mockReturnThis(),
         lt: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({
-          data: { upload_count: 10 },
+          data: { daily_uploads: 10, daily_reset_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() },
           error: null,
         }),
       };
@@ -529,29 +529,57 @@ describe('RateLimiterService', () => {
       const userId = 'test-user-id';
       const fileSize = 50 * 1024 * 1024;
 
-      mockSupabaseClient.rpc.mockResolvedValue({
+      // Mock rate_limits table operations - no existing record case
+      const mockRateLimitInsert = vi.fn().mockResolvedValue({
         data: null,
         error: null,
       });
 
-      const mockInsert = vi.fn().mockResolvedValue({
+      const mockRateLimitQuery = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ 
+          data: null, 
+          error: { code: 'PGRST116' } // No existing record
+        }),
+        insert: mockRateLimitInsert,
+      };
+
+      // Mock bandwidth_usage table operations
+      const mockBandwidthInsert = vi.fn().mockResolvedValue({
         data: null,
         error: null,
       });
 
-      mockSupabaseClient.from.mockReturnValue({
-        insert: mockInsert,
-      } as any);
+      mockSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'rate_limits') {
+          return mockRateLimitQuery as any;
+        }
+        if (table === 'bandwidth_usage') {
+          return { insert: mockBandwidthInsert } as any;
+        }
+        return { insert: mockBandwidthInsert } as any;
+      });
 
       await service.recordUpload(userId, fileSize);
 
-      expect(mockSupabaseClient.rpc).toHaveBeenCalledWith(
-        'increment_upload_count',
+      // Check that both tables were accessed
+      expect(mockSupabaseClient.from).toHaveBeenCalledWith('rate_limits');
+      expect(mockSupabaseClient.from).toHaveBeenCalledWith('bandwidth_usage');
+      
+      // Check that rate_limits insert was called (new record)
+      expect(mockRateLimitInsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          p_user_id: userId,
+          user_id: userId,
+          daily_uploads: 1,
+          monthly_uploads: 1,
+          daily_bandwidth_bytes: fileSize,
+          monthly_bandwidth_bytes: fileSize,
         }),
       );
-      expect(mockInsert).toHaveBeenCalledWith(
+      
+      // Check that bandwidth_usage insert was called
+      expect(mockBandwidthInsert).toHaveBeenCalledWith(
         expect.objectContaining({
           user_id: userId,
           bytes_used: fileSize,
@@ -563,10 +591,21 @@ describe('RateLimiterService', () => {
       const userId = 'test-user-id';
       const fileSize = 50 * 1024 * 1024;
 
-      mockSupabaseClient.rpc.mockRejectedValue(new Error('RPC error'));
-      mockSupabaseClient.from.mockReturnValue({
-        insert: vi.fn().mockRejectedValue(new Error('Insert error')),
-      } as any);
+      // Mock the rate_limits table query to return null (no existing record)
+      const mockRateLimitQuery = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } }),
+      };
+
+      mockSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'rate_limits') {
+          return mockRateLimitQuery as any;
+        }
+        return {
+          insert: vi.fn().mockRejectedValue(new Error('Insert error')),
+        } as any;
+      });
 
       await expect(
         service.recordUpload(userId, fileSize),
@@ -586,7 +625,7 @@ describe('RateLimiterService', () => {
         gte: vi.fn().mockReturnThis(),
         lt: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({
-          data: { upload_count: 85 },
+          data: { daily_uploads: 85, daily_reset_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() },
           error: null,
         }),
       };
@@ -636,7 +675,7 @@ describe('RateLimiterService', () => {
         gte: vi.fn().mockReturnThis(),
         lt: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({
-          data: { upload_count: 95 },
+          data: { daily_uploads: 95, daily_reset_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() },
           error: null,
         }),
       };
@@ -702,7 +741,7 @@ describe('RateLimiterService', () => {
         gte: vi.fn().mockReturnThis(),
         lt: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({
-          data: { upload_count: 92 },
+          data: { daily_uploads: 92, daily_reset_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() },
           error: null,
         }),
       };
@@ -758,7 +797,7 @@ describe('RateLimiterService', () => {
         gte: vi.fn().mockReturnThis(),
         lt: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({
-          data: { upload_count: 82 },
+          data: { daily_uploads: 82, daily_reset_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() },
           error: null,
         }),
       };
@@ -812,7 +851,7 @@ describe('RateLimiterService', () => {
         gte: vi.fn().mockReturnThis(),
         lt: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({
-          data: { upload_count: 30 },
+          data: { daily_uploads: 30, daily_reset_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() },
           error: null,
         }),
       };

@@ -16,6 +16,7 @@ export interface PushOptions {
   tags: string[];
   teamId?: string;
   version: string;
+  autoBump?: boolean;
   force: boolean;
   dryRun: boolean;
 }

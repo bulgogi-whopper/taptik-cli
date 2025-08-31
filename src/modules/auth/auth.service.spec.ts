@@ -144,9 +144,9 @@ describe('AuthService', () => {
     it('should return null when not authenticated', async () => {
       // Arrange
       mockSessionService.loadSession.mockResolvedValue(null);
-      mockAuth.getUser.mockResolvedValue({
-        data: { user: null },
-        error: { message: 'User not authenticated' },
+      mockAuth.getSession.mockResolvedValue({
+        data: { session: null },
+        error: null, // No error, just no session - this is the normal "not authenticated" case
       });
 
       // Act
@@ -160,8 +160,8 @@ describe('AuthService', () => {
     it('should return null when no user found', async () => {
       // Arrange
       mockSessionService.loadSession.mockResolvedValue(null);
-      mockAuth.getUser.mockResolvedValue({
-        data: { user: null },
+      mockAuth.getSession.mockResolvedValue({
+        data: { session: null },
         error: null,
       });
 

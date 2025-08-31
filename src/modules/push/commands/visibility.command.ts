@@ -91,7 +91,7 @@ export class VisibilityCommand extends CommandRunner {
       const session = await this.authService.getSession();
       if (!session?.user) {
         this.logger.error(
-          'Authentication required. Please run "taptik auth login" first.',
+          'Authentication required. Please run "taptik login" first.',
         );
         process.exit(1);
       }
