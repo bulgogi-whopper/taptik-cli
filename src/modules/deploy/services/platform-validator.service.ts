@@ -88,6 +88,7 @@ export class PlatformValidatorService {
       });
     }
 
+    // FIXME: validation 로직 통일
     // Platform-specific validation
     if (platform === 'claude-code') {
       const claudeResult = await this.validateClaudeCode(context);
