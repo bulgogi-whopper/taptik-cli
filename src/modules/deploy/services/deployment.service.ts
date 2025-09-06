@@ -6,20 +6,20 @@ import { Injectable } from '@nestjs/common';
 
 import { TaptikContext } from '../../context/interfaces/taptik-context.interface';
 import { PLATFORM_PATHS } from '../constants/platform-paths.constants';
+import { CursorDeploymentOptions, CursorDeploymentResult } from '../interfaces/cursor-deployment.interface';
 import {
   DeployOptions,
   ComponentType,
 } from '../interfaces/deploy-options.interface';
 import { DeploymentResult } from '../interfaces/deployment-result.interface';
-import { CursorDeploymentOptions, CursorDeploymentResult } from '../interfaces/cursor-deployment.interface';
 
 import { BackupService } from './backup.service';
+import { CursorDeploymentService } from './cursor-deployment.service';
 import { DiffService } from './diff.service';
 import { ErrorRecoveryService } from './error-recovery.service';
 import { KiroComponentHandlerService } from './kiro-component-handler.service';
 import { KiroInstallationDetectorService } from './kiro-installation-detector.service';
 import { KiroTransformerService } from './kiro-transformer.service';
-import { CursorDeploymentService } from './cursor-deployment.service';
 import { LargeFileStreamerService } from './large-file-streamer.service';
 import { PerformanceMonitorService } from './performance-monitor.service';
 import { PlatformValidatorService } from './platform-validator.service';
@@ -137,6 +137,7 @@ export class DeploymentService {
       }
 
       // Step 5: Check for conflicts
+      // FIXME: context를 변환하고 나서 찾아야할 것 같음
       const existingConfig = await this.loadExistingClaudeCodeConfig();
       if (existingConfig) {
         const diff = this.diffService.generateDiff(context, existingConfig);
@@ -171,10 +172,11 @@ export class DeploymentService {
           // Start component timing
           this.performanceMonitor.startComponentTiming(deploymentId, component);
 
+          // FIXME: context를 변환하는게 아니라 그대로 deploy 하는 중
           if (component === 'settings') {
             // Deploy settings even if empty for testing purposes
-            const settings = context.content.ide?.claudeCode?.settings || {};
-            await this.deployGlobalSettings(settings);
+            const settings = context.content['settings'] || {};
+            await this.deployGlobalSettings(settings as Record<string, unknown>);
             (result.deployedComponents as string[]).push('settings');
             result.summary.filesDeployed++;
           } else if (component === 'agents' && context.content.tools?.agents) {
@@ -1332,6 +1334,7 @@ export class DeploymentService {
   }
 
   private getComponentsToDeploy(options: DeployOptions): ComponentType[] {
+    // FIXME: component 정리 필요 -> personal, project, prompts, tools, settings, agents, commands ?
     const allComponents: ComponentType[] = [
       'settings',
       'agents',
@@ -1489,7 +1492,7 @@ export class DeploymentService {
       dryRun: options.dryRun,
       conflictStrategy: options.conflictStrategy,
       validateOnly: options.validateOnly,
-      context: context, // Pass the full context
+      context, // Pass the full context
     };
   }
 
