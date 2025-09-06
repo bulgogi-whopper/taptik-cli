@@ -1351,7 +1351,7 @@ export class DeploymentService {
   async deployToCursor(
     context: TaptikContext,
     options: DeployOptions,
-  ): Promise<DeploymentResult> {
+  ): Promise<DeploymentResult> { // FIXME: ide별로 result type이 다름
     // Convert DeployOptions to CursorDeploymentOptions
     const cursorOptions = this.convertToCursorDeploymentOptions(context, options);
     
