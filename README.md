@@ -262,6 +262,62 @@ taptik pull --latest --target cursor
 taptik pull --dry-run  # Preview without applying
 ```
 
+### List Command
+
+The `list` command helps you discover and explore configuration packages available in the Taptik cloud.
+
+#### Basic Usage
+
+```bash
+# List all public configurations
+taptik list
+
+# Filter configurations by title
+taptik list --filter "frontend"
+taptik list --filter "typescript setup"
+
+# Sort configurations
+taptik list --sort date    # Sort by creation date (default)
+taptik list --sort name    # Sort alphabetically by title
+
+# Limit number of results
+taptik list --limit 10     # Show 10 results
+taptik list --limit 50     # Show up to 50 results (max: 100)
+
+# Combine options for precise discovery
+taptik list --filter "react" --sort name --limit 20
+```
+
+#### Subcommands
+
+```bash
+# List configurations you've liked (requires authentication)
+taptik list liked
+taptik list liked --sort date --limit 10
+```
+
+#### Command Options
+
+| Option | Description | Default | Valid Values |
+|--------|-------------|---------|--------------|
+| `--filter <query>` | Filter by configuration title | None | Any string |
+| `--sort <field>` | Sort results | `date` | `date`, `name` |
+| `--limit <n>` | Limit number of results | `20` | 1-100 |
+
+#### Output Format
+
+Results are displayed in a clean table format showing:
+- **ID**: Short identifier for the configuration
+- **Title**: Configuration name/title
+- **Created**: When the configuration was created (relative time)
+- **Size**: File size of the configuration package
+- **Access**: Whether the configuration is Public or Private
+
+#### Authentication
+
+- **Public listings**: No authentication required
+- **Liked configurations**: Requires login with `taptik login`
+
 ### Information & Discovery
 
 ```bash
@@ -269,9 +325,10 @@ taptik pull --dry-run  # Preview without applying
 taptik info
 
 # List available configurations
-taptik list
-taptik list --filter "typescript"
-taptik list --sort date --limit 10
+taptik list                              # List all public configurations
+taptik list --filter "typescript"       # Filter by title
+taptik list --sort name --limit 10       # Sort alphabetically, limit results
+taptik list liked                        # List your liked configurations (requires auth)
 
 # Version information
 taptik --version
