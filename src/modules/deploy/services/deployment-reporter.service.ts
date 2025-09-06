@@ -1,14 +1,14 @@
 import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
 import * as os from 'node:os';
+import * as path from 'node:path';
 
 import { Injectable, Logger } from '@nestjs/common';
 
-import { DeploymentResult, DeploymentError, DeploymentWarning } from '../interfaces/deployment-result.interface';
-import { SupportedPlatform } from '../interfaces/deploy-options.interface';
+import { TaptikContext } from '../../context/interfaces/taptik-context.interface';
 import { ComponentType } from '../interfaces/component-types.interface';
 import { CursorComponentType } from '../interfaces/cursor-deployment.interface';
-import { TaptikContext } from '../../context/interfaces/taptik-context.interface';
+import { SupportedPlatform } from '../interfaces/deploy-options.interface';
+import { DeploymentResult, DeploymentError, DeploymentWarning } from '../interfaces/deployment-result.interface';
 
 export interface DeploymentReport {
   id: string;
@@ -518,7 +518,7 @@ export class DeploymentReporterService {
   // Private helper methods
 
   private generateReportId(platform: SupportedPlatform, contextId: string): string {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const timestamp = new Date().toISOString().replace(/[.:]/g, '-');
     return `${platform}-${contextId}-${timestamp}`;
   }
 
@@ -892,7 +892,7 @@ export class DeploymentReporterService {
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))  } ${  sizes[i]}`;
   }
 
   private generateHtmlReport(report: DeploymentReport): string {

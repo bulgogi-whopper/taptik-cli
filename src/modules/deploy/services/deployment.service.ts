@@ -6,20 +6,19 @@ import { Injectable } from '@nestjs/common';
 
 import { TaptikContext } from '../../context/interfaces/taptik-context.interface';
 import { PLATFORM_PATHS } from '../constants/platform-paths.constants';
+import { CursorDeploymentOptions, CursorDeploymentResult } from '../interfaces/cursor-deployment.interface';
 import {
   DeployOptions,
   ComponentType,
 } from '../interfaces/deploy-options.interface';
 import { DeploymentResult } from '../interfaces/deployment-result.interface';
-import { CursorDeploymentOptions, CursorDeploymentResult } from '../interfaces/cursor-deployment.interface';
 
 import { BackupService } from './backup.service';
+import { CursorDeploymentService } from './cursor-deployment.service';
 import { DiffService } from './diff.service';
 import { ErrorRecoveryService } from './error-recovery.service';
 import { KiroComponentHandlerService } from './kiro-component-handler.service';
-import { KiroInstallationDetectorService } from './kiro-installation-detector.service';
 import { KiroTransformerService } from './kiro-transformer.service';
-import { CursorDeploymentService } from './cursor-deployment.service';
 import { LargeFileStreamerService } from './large-file-streamer.service';
 import { PerformanceMonitorService } from './performance-monitor.service';
 import { PlatformValidatorService } from './platform-validator.service';
@@ -37,7 +36,6 @@ export class DeploymentService {
     private readonly largeFileStreamer: LargeFileStreamerService,
     private readonly kiroTransformer: KiroTransformerService,
     private readonly kiroComponentHandler: KiroComponentHandlerService,
-    private readonly kiroInstallationDetector: KiroInstallationDetectorService,
     private readonly cursorDeploymentService: CursorDeploymentService,
   ) {}
 
@@ -137,6 +135,7 @@ export class DeploymentService {
       }
 
       // Step 5: Check for conflicts
+      // FIXME: context를 변환하고 나서 찾아야할 것 같음
       const existingConfig = await this.loadExistingClaudeCodeConfig();
       if (existingConfig) {
         const diff = this.diffService.generateDiff(context, existingConfig);
@@ -171,10 +170,11 @@ export class DeploymentService {
           // Start component timing
           this.performanceMonitor.startComponentTiming(deploymentId, component);
 
+          // FIXME: context를 변환하는게 아니라 그대로 deploy 하는 중
           if (component === 'settings') {
             // Deploy settings even if empty for testing purposes
-            const settings = context.content.ide?.claudeCode?.settings || {};
-            await this.deployGlobalSettings(settings);
+            const settings = context.content['settings'] || {};
+            await this.deployGlobalSettings(settings as Record<string, unknown>);
             (result.deployedComponents as string[]).push('settings');
             result.summary.filesDeployed++;
           } else if (component === 'agents' && context.content.tools?.agents) {
@@ -322,83 +322,6 @@ export class DeploymentService {
     };
 
     try {
-      // Step 1: Check Kiro installation and compatibility
-      this.performanceMonitor.recordMemoryUsage(
-        deploymentId,
-        'installation-check-start',
-      );
-
-      const installationInfo =
-        await this.kiroInstallationDetector.detectKiroInstallation();
-
-      if (!installationInfo.isInstalled) {
-        result.errors.push({
-          message:
-            'Kiro IDE is not installed or not found in expected locations',
-          code: 'KIRO_NOT_INSTALLED',
-          severity: 'CRITICAL',
-        });
-        this.performanceMonitor.endDeploymentTiming(deploymentId);
-        result.metadata!.performanceReport =
-          'Kiro deployment failed - installation not found';
-        return result;
-      }
-
-      // Add installation info to warnings for user visibility
-      result.warnings.push({
-        message: `Kiro IDE detected: v${installationInfo.version || 'unknown'} at ${installationInfo.installationPath}`,
-        code: 'KIRO_INSTALLATION_DETECTED',
-      });
-
-      // Check compatibility
-      if (!installationInfo.isCompatible) {
-        const compatibilityResult =
-          await this.kiroInstallationDetector.checkCompatibility(
-            installationInfo.version,
-          );
-
-        // Add compatibility issues as warnings or errors based on severity
-        for (const issue of compatibilityResult.issues) {
-          if (issue.severity === 'critical') {
-            result.errors.push({
-              message: `Compatibility issue: ${issue.message}`,
-              code: 'KIRO_COMPATIBILITY_ERROR',
-              severity: 'HIGH',
-            });
-          } else {
-            result.warnings.push({
-              message: `Compatibility warning: ${issue.message}`,
-              code: 'KIRO_COMPATIBILITY_WARNING',
-            });
-          }
-        }
-
-        // Stop deployment if critical compatibility issues exist
-        if (
-          compatibilityResult.issues.some(
-            (issue) => issue.severity === 'critical',
-          )
-        ) {
-          this.performanceMonitor.endDeploymentTiming(deploymentId);
-          result.metadata!.performanceReport =
-            'Kiro deployment failed - compatibility issues';
-          return result;
-        }
-
-        // Add recommendations
-        for (const recommendation of compatibilityResult.recommendations) {
-          result.warnings.push({
-            message: `Recommendation: ${recommendation}`,
-            code: 'KIRO_RECOMMENDATION',
-          });
-        }
-      }
-
-      this.performanceMonitor.recordMemoryUsage(
-        deploymentId,
-        'installation-check-end',
-      );
-
       // Step 2: Validate configuration for Kiro platform
       this.performanceMonitor.recordMemoryUsage(
         deploymentId,
@@ -443,6 +366,7 @@ export class DeploymentService {
       // Step 4: Security scan for Kiro components
       this.performanceMonitor.recordMemoryUsage(deploymentId, 'security-start');
 
+      // FIXME: 각 ide별로 transformer를 만들어야 함
       // Transform TaptikContext to Kiro formats for security scanning
       const globalSettings =
         this.kiroTransformer.transformPersonalContext(context);
@@ -632,6 +556,7 @@ export class DeploymentService {
       });
 
       // Step 9: Handle backup strategy
+      // FIXME: dryRun이면 백업 만들 필요 없음 순서 바꾸기
       if (options.conflictStrategy === 'backup') {
         try {
           const backupPath = await this.createKiroBackup();
@@ -1332,6 +1257,7 @@ export class DeploymentService {
   }
 
   private getComponentsToDeploy(options: DeployOptions): ComponentType[] {
+    // FIXME: component 정리 필요 -> personal, project, prompts, tools, settings, agents, commands ?
     const allComponents: ComponentType[] = [
       'settings',
       'agents',
@@ -1425,7 +1351,7 @@ export class DeploymentService {
   async deployToCursor(
     context: TaptikContext,
     options: DeployOptions,
-  ): Promise<DeploymentResult> {
+  ): Promise<DeploymentResult> { // FIXME: ide별로 result type이 다름
     // Convert DeployOptions to CursorDeploymentOptions
     const cursorOptions = this.convertToCursorDeploymentOptions(context, options);
     
@@ -1489,7 +1415,7 @@ export class DeploymentService {
       dryRun: options.dryRun,
       conflictStrategy: options.conflictStrategy,
       validateOnly: options.validateOnly,
-      context: context, // Pass the full context
+      context, // Pass the full context
     };
   }
 

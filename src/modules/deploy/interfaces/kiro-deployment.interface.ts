@@ -11,6 +11,7 @@ import {
 /**
  * Kiro-specific deployment options
  */
+// FIXME: kiro 옵션 제거??
 export interface KiroDeploymentOptions {
   platform: Extract<SupportedPlatform, 'kiro-ide'>;
   conflictStrategy: KiroConflictStrategy;

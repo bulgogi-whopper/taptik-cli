@@ -1,10 +1,10 @@
-import { ComponentTypes } from './component-types.interface';
-import { DeploymentOptions } from './deploy-options.interface';
-import { DeploymentResult } from './deployment-result.interface';
 import { CursorComponentType } from '../constants/cursor.constants';
 
+import { DeploymentOptions, SupportedPlatform } from './deploy-options.interface';
+import { DeploymentResult } from './deployment-result.interface';
+
 export interface CursorDeploymentOptions extends DeploymentOptions {
-  platform: 'cursor';
+  platform: SupportedPlatform;
   cursorPath?: string;
   workspacePath?: string;
   globalSettings?: boolean;
