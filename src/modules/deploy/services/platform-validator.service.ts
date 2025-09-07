@@ -88,7 +88,6 @@ export class PlatformValidatorService {
       });
     }
 
-    // FIXME: validation 로직 통일
     // Platform-specific validation
     if (platform === 'claude-code') {
       const claudeResult = await this.validateClaudeCode(context);
@@ -122,18 +121,23 @@ export class PlatformValidatorService {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
-    const { tools } = context.content;
+    const { ide, tools } = context.content;
+
+    // Get Claude Code specific settings
+    const claudeCodeSettings = ide?.['claude-code'] || ide?.claudeCode;
 
     // Validate agents if present (from tools context or ide context)
     const agentsFromTools =
       tools?.agents && Array.isArray(tools.agents) ? tools.agents : [];
-    const allAgents = [...agentsFromTools];
+    const agentsFromIde =
+      ide?.agents && Array.isArray(ide.agents) ? ide.agents : [];
+    const allAgents = [...agentsFromTools, ...agentsFromIde];
 
     if (allAgents.length > 0) {
       const adaptedAgents = allAgents.map((agent) => ({
         name: agent.name,
         description:
-          (agent.metadata?.description as string) || '',
+          (agent.metadata?.description as string) || agent.description || '',
         content: agent.content,
         metadata: {
           version: (agent.metadata?.version as string) || '1.0.0',
@@ -152,13 +156,16 @@ export class PlatformValidatorService {
     // Validate commands if present (from tools context or ide context)
     const commandsFromTools =
       tools?.commands && Array.isArray(tools.commands) ? tools.commands : [];
-    const allCommands = [...commandsFromTools];
+    const commandsFromIde =
+      ide?.commands && Array.isArray(ide.commands) ? ide.commands : [];
+    const allCommands = [...commandsFromTools, ...commandsFromIde];
 
     if (allCommands.length > 0) {
       const adaptedCommands = allCommands.map((command) => ({
         name: command.name,
         description:
           (command.metadata?.description as string) ||
+          command.description ||
           '',
         content: command.content,
         permissions: command.permissions || [],
@@ -173,6 +180,18 @@ export class PlatformValidatorService {
       const commandErrors = this.validateCommands(adaptedCommands);
       errors.push(...commandErrors.errors);
       warnings.push(...(commandErrors.warnings || []));
+    }
+
+    // Validate settings if present
+    if (
+      claudeCodeSettings?.settings &&
+      typeof claudeCodeSettings.settings === 'object'
+    ) {
+      const settingsErrors = this.validateSettings(
+        claudeCodeSettings.settings as ClaudeCodeSettings,
+      );
+      errors.push(...settingsErrors.errors);
+      warnings.push(...(settingsErrors.warnings || []));
     }
 
     return {

@@ -31,7 +31,6 @@ export interface BackupInfo {
 
 @Injectable()
 export class BackupService {
-  // FIXME: 백업 경로 수정
   protected readonly backupDir = path.join(os.homedir(), '.taptik', 'backups');
 
   async createBackup(filePath: string): Promise<string> {

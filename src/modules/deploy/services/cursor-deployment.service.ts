@@ -1,8 +1,5 @@
-import { Readable } from 'stream';
-
 import { Injectable, Logger } from '@nestjs/common';
-
-import { ALL_CURSOR_COMPONENT_TYPES } from '../constants/cursor.constants';
+import { Readable } from 'stream';
 import { 
   CursorDeploymentOptions, 
   CursorDeploymentResult, 
@@ -11,14 +8,14 @@ import {
 } from '../interfaces/cursor-deployment.interface';
 import { DeploymentError, DeploymentWarning } from '../interfaces/deployment-result.interface';
 import { TaptikContext } from '../interfaces/taptik-context.interface';
-
-import { CursorBackupService } from './cursor-backup.service';
-import { CursorConflictResolverService } from './cursor-conflict-resolver.service';
-import { CursorFileWriterService } from './cursor-file-writer.service';
-import { CursorInstallationDetectorService } from './cursor-installation-detector.service';
 import { CursorTransformerService } from './cursor-transformer.service';
 import { CursorValidatorService } from './cursor-validator.service';
-
+import { CursorFileWriterService } from './cursor-file-writer.service';
+import { CursorInstallationDetectorService } from './cursor-installation-detector.service';
+import { CursorBackupService } from './cursor-backup.service';
+import { CursorConflictResolverService } from './cursor-conflict-resolver.service';
+import { CursorDeploymentStateService } from './cursor-deployment-state.service';
+import { ALL_CURSOR_COMPONENT_TYPES } from '../constants/cursor.constants';
 
 /**
  * Task 6.1: Main Cursor deployment service orchestration
@@ -37,9 +34,10 @@ export class CursorDeploymentService implements ICursorDeploymentService {
     private readonly transformerService: CursorTransformerService,
     private readonly validatorService: CursorValidatorService,
     private readonly fileWriterService: CursorFileWriterService,
+    private readonly installationDetectorService: CursorInstallationDetectorService,
     private readonly backupService: CursorBackupService,
     private readonly conflictResolver: CursorConflictResolverService,
-    private readonly installationDetectorService: CursorInstallationDetectorService,
+    private readonly stateManager: CursorDeploymentStateService,
   ) {}
 
   /**
@@ -90,6 +88,15 @@ export class CursorDeploymentService implements ICursorDeploymentService {
       // Step 3: Initialize deployment state tracking
       this.logger.log('Step 3: Initializing deployment state...');
       const componentTypes = this.getComponentTypesToDeploy(options);
+      
+      await this.stateManager.saveDeploymentState(this.generateDeploymentId(), deploymentOptionsWithPath, {
+        status: 'initializing',
+        startedAt: new Date().toISOString(),
+        completedComponents: [],
+        failedComponents: [],
+        inProgressComponents: [],
+        componentErrors: {},
+      });
 
       // Step 4: Create backup before deployment
       this.logger.log('Step 4: Creating backup...');
@@ -114,7 +121,6 @@ export class CursorDeploymentService implements ICursorDeploymentService {
       this.logger.log('Step 5: Processing components with parallel deployment optimization...');
       
       // Task 6.3: Implement parallel component deployment where safe
-      // FIXME: transformer가 없음
       const { parallelComponents, sequentialComponents } = this.categorizeComponentsForDeployment(componentTypes);
       
       // Deploy parallel-safe components first
@@ -285,7 +291,7 @@ export class CursorDeploymentService implements ICursorDeploymentService {
         configurationFiles,
         errors,
         warnings,
-        deploymentId: `preview-${  this.generateDeploymentId()}`,
+        deploymentId: 'preview-' + this.generateDeploymentId(),
         timestamp: new Date().toISOString(),
         preview: true,
       };
@@ -643,8 +649,7 @@ export class CursorDeploymentService implements ICursorDeploymentService {
         this.logger.error('Installation detector service not available');
         return null;
       }
-      const installationInfo = await this.installationDetectorService.detectCursorInstallation();
-      return installationInfo.installationPath;
+      return await this.installationDetectorService.detectCursorInstallation();
     } catch (error) {
       this.logger.error('Failed to detect Cursor installation:', error);
       return null;

@@ -1,10 +1,7 @@
+import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-
-import { Injectable, Logger } from '@nestjs/common';
-
-import { CursorComponentType } from '../constants';
-import { CursorDeploymentOptions } from '../interfaces/cursor-deployment.interface';
+import { CursorDeploymentOptions, CursorComponentType } from '../interfaces/cursor-deployment.interface';
 import { DeploymentError, DeploymentWarning } from '../interfaces/deployment-result.interface';
 
 /**
@@ -54,7 +51,6 @@ export class CursorBackupService {
       // Backup each component
       for (const component of components) {
         try {
-          // eslint-disable-next-line no-await-in-loop
           const componentBackup = await this.backupComponent(component, options, backupPath);
           backedUpFiles.push(...componentBackup.files);
           warnings.push(...componentBackup.warnings);
@@ -271,7 +267,6 @@ export class CursorBackupService {
     for (const filePath of filesToBackup) {
       try {
         // Check if file exists
-        // eslint-disable-next-line no-await-in-loop
         const exists = await this.fileExists(filePath);
         if (!exists) {
           warnings.push({
@@ -284,12 +279,10 @@ export class CursorBackupService {
         }
 
         // Read and backup file
-        // eslint-disable-next-line no-await-in-loop
         const content = await fs.readFile(filePath, 'utf8');
         const backupFileName = this.sanitizeFileName(path.basename(filePath));
         const backupFilePath = path.join(componentBackupPath, backupFileName);
         
-        // eslint-disable-next-line no-await-in-loop
         await fs.writeFile(backupFilePath, content, 'utf8');
 
         files.push({
@@ -335,7 +328,7 @@ export class CursorBackupService {
    */
   private getComponentFilePaths(component: CursorComponentType, options: CursorDeploymentOptions): string[] {
     const cursorPath = options.cursorPath || this.getDefaultCursorPath();
-    const {workspacePath} = options;
+    const workspacePath = options.workspacePath;
     
     switch (component) {
       case 'global-settings':
@@ -379,7 +372,7 @@ export class CursorBackupService {
       
       case 'workspace-config':
         return workspacePath ? [
-          path.join(workspacePath, `${path.basename(workspacePath)  }.code-workspace`),
+          path.join(workspacePath, path.basename(workspacePath) + '.code-workspace'),
         ] : [];
       
       default:
@@ -427,7 +420,7 @@ export class CursorBackupService {
    * Get default Cursor path based on OS
    */
   private getDefaultCursorPath(): string {
-    const {platform} = process;
+    const platform = process.platform;
     const home = process.env.HOME || process.env.USERPROFILE || '/tmp';
     
     switch (platform) {
@@ -446,14 +439,14 @@ export class CursorBackupService {
    * Sanitize filename for backup
    */
   private sanitizeFileName(fileName: string): string {
-    return fileName.replace(/[^\d.A-Za-z-]/g, '_');
+    return fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
   }
 
   /**
    * Generate backup ID
    */
   private generateBackupId(deploymentId: string): string {
-    const timestamp = new Date().toISOString().replace(/[.:]/g, '-');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const shortDeploymentId = deploymentId.split('-').pop() || 'unknown';
     return `backup-${timestamp}-${shortDeploymentId}`;
   }

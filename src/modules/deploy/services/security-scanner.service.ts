@@ -467,7 +467,7 @@ export class SecurityScannerService {
   }
 
   // Kiro-specific security scanning methods
-  // FIXME: security 검사 통일
+
   async scanKiroComponents(
     components: Array<{
       type: KiroComponentType;

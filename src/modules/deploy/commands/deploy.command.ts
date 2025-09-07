@@ -8,11 +8,11 @@ import {
   ConflictStrategy,
 } from '../interfaces/deploy-options.interface';
 import { DeploymentResult } from '../interfaces/deployment-result.interface';
-import { DeploymentReporterService } from '../services/deployment-reporter.service';
 import { DeploymentService } from '../services/deployment.service';
-import { ErrorMessageHelperService } from '../services/error-message-helper.service';
-import { HelpDocumentationService } from '../services/help-documentation.service';
 import { ImportService } from '../services/import.service';
+import { HelpDocumentationService } from '../services/help-documentation.service';
+import { ErrorMessageHelperService } from '../services/error-message-helper.service';
+import { DeploymentReporterService } from '../services/deployment-reporter.service';
 
 interface DeployCommandOptions {
   platform?: SupportedPlatform;
@@ -188,7 +188,6 @@ export class DeployCommand extends CommandRunner {
         components: options.components?.map((c) => c as ComponentType),
         skipComponents: options.skipComponents?.map((c) => c as ComponentType),
         // Task 7.2: Add Cursor-specific options to deployOptions
-        // FIXME: cursor specific options 점검
         cursorPath: options.cursorPath,
         workspacePath: options.workspacePath,
         skipAiConfig: options.skipAiConfig,
