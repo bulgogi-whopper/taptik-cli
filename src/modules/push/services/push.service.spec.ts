@@ -65,6 +65,7 @@ describe('PushService', () => {
       deletePackage: vi.fn(),
       listUserPackages: vi.fn(),
       getPackageStats: vi.fn(),
+      getNextAvailableVersion: vi.fn().mockResolvedValue('1.0.0'),
     };
 
     mockSanitizationService = {
@@ -225,7 +226,7 @@ describe('PushService', () => {
       ).rejects.toThrow(
         new PushError(
           PushErrorCode.AUTH_REQUIRED,
-          'Authentication required. Please run "taptik auth login" first',
+          'Authentication required. Please run "taptik login" first',
         ),
       );
     });
@@ -711,7 +712,7 @@ describe('PushService', () => {
       await expect(service.updatePackage('config-123', {})).rejects.toThrow(
         new PushError(
           PushErrorCode.AUTH_REQUIRED,
-          'Authentication required. Please run "taptik auth login" first',
+          'Authentication required. Please run "taptik login" first',
         ),
       );
     });
@@ -794,7 +795,7 @@ describe('PushService', () => {
       await expect(service.deletePackage('config-123')).rejects.toThrow(
         new PushError(
           PushErrorCode.AUTH_REQUIRED,
-          'Authentication required. Please run "taptik auth login" first',
+          'Authentication required. Please run "taptik login" first',
         ),
       );
     });

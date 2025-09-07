@@ -5,6 +5,10 @@ import { PushModule } from '../push/push.module';
 
 import { BuildCommand } from './commands/build.command';
 import { CollectionService } from './services/collection/collection.service';
+import { CursorCollectionService } from './services/cursor-collection.service';
+import { CursorSecurityService } from './services/cursor-security.service';
+import { CursorTransformationService } from './services/cursor-transformation.service';
+import { CursorValidationService } from './services/cursor-validation.service';
 import { ErrorHandlerService } from './services/error-handler/error-handler.service';
 import { InteractiveService } from './services/interactive/interactive.service';
 import { OutputService } from './services/output/output.service';
@@ -17,6 +21,10 @@ import { TransformationService } from './services/transformation/transformation.
     BuildCommand,
     InteractiveService,
     CollectionService,
+    CursorCollectionService,
+    CursorSecurityService,
+    CursorTransformationService,
+    CursorValidationService,
     TransformationService,
     OutputService,
     ProgressService,
@@ -26,6 +34,10 @@ import { TransformationService } from './services/transformation/transformation.
     BuildCommand,
     InteractiveService,
     CollectionService,
+    CursorCollectionService,
+    CursorSecurityService,
+    CursorTransformationService,
+    CursorValidationService,
     TransformationService,
     OutputService,
     ProgressService,

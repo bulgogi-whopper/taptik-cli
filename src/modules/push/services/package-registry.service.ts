@@ -8,6 +8,7 @@ import { ErrorHandlerService } from '../../deploy/services/error-handler.service
 import { SupabaseService } from '../../supabase/supabase.service';
 import { PushError, PushErrorCode, postgrestErrorToContext, deployErrorToContext } from '../constants/push.constants';
 import { PackageMetadata, ComponentInfo } from '../interfaces';
+import { VersionUtils } from '../utils/version.utils';
 
 export interface PackageFilters {
   platform?: string;
@@ -469,6 +470,50 @@ export class PackageRegistryService {
     } catch (_error) {
       // Version history error is non-critical, continue without it
     }
+  }
+
+  async getLatestVersion(userId: string, packageName: string): Promise<string | null> {
+    try {
+      const client = this.supabaseService.getClient();
+
+      const { data } = await client
+        .from('taptik_packages')
+        .select('version')
+        .eq('user_id', userId)
+        .eq('name', packageName)
+        .is('archived_at', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      return data?.version || null;
+    } catch (_error) {
+      // No existing versions found
+      return null;
+    }
+  }
+
+  async getNextAvailableVersion(
+    userId: string,
+    packageName: string,
+    preferredVersion?: string,
+  ): Promise<string> {
+    const latestVersion = await this.getLatestVersion(userId, packageName);
+    
+    if (!latestVersion) {
+      return preferredVersion || '1.0.0';
+    }
+
+    // If preferred version is provided and is higher than latest, use it
+    if (preferredVersion) {
+      const comparison = VersionUtils.compareVersions(preferredVersion, latestVersion);
+      if (comparison > 0) {
+        return preferredVersion;
+      }
+    }
+
+    // Otherwise, auto-increment the patch version
+    return VersionUtils.getNextVersion(latestVersion, 'patch');
   }
 
   private mapDatabaseToMetadata(data: DatabasePackage): PackageMetadata {

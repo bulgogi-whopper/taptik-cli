@@ -122,6 +122,8 @@ describe('BuildCommand Error Handling', () => {
     command = new BuildCommand(
       interactiveService,
       collectionService,
+      {} as any, // cursorCollectionService
+      {} as any, // cursorTransformationService
       transformationService,
       sanitizationService,
       metadataGeneratorService,

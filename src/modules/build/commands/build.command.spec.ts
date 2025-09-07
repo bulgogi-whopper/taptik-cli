@@ -305,6 +305,8 @@ describe('BuildCommand', () => {
     command = new BuildCommand(
       interactiveService,
       collectionService,
+      {} as any, // cursorCollectionService
+      {} as any, // cursorTransformationService
       transformationService,
       sanitizationService,
       metadataGeneratorService,
@@ -625,6 +627,8 @@ describe('BuildCommand', () => {
       const command1 = new BuildCommand(
         interactiveService,
         collectionService,
+        {} as any, // cursorCollectionService
+        {} as any, // cursorTransformationService
         transformationService,
         sanitizationService,
         metadataGeneratorService,
@@ -639,6 +643,8 @@ describe('BuildCommand', () => {
       const command2 = new BuildCommand(
         interactiveService,
         collectionService,
+        {} as any, // cursorCollectionService
+        {} as any, // cursorTransformationService
         transformationService,
         sanitizationService,
         metadataGeneratorService,

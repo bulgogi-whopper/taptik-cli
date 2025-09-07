@@ -25,6 +25,7 @@ interface PushCommandOptions {
   tags?: string;
   team?: string;
   version?: string;
+  autoBump?: boolean;
   force?: boolean;
   dryRun?: boolean;
   yes?: boolean;
@@ -99,6 +100,7 @@ export class PushCommand extends CommandRunner {
         tags,
         teamId: options.team,
         version: options.version || '1.0.0',
+        autoBump: options.autoBump || false,
         force: options.force || false,
         dryRun: options.dryRun || false,
       };
@@ -204,6 +206,14 @@ export class PushCommand extends CommandRunner {
   })
   parseVersion(value: string): string {
     return value;
+  }
+
+  @Option({
+    flags: '--auto-bump',
+    description: 'Automatically increment version if conflict exists',
+  })
+  parseAutoBump(): boolean {
+    return true;
   }
 
   @Option({

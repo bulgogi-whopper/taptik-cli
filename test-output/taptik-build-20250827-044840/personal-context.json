@@ -1,0 +1,36 @@
+{
+  "user_id": "071e4022-147e-4937-a290-2a8d28f64fb1",
+  "preferences": {
+    "preferred_languages": [
+      "javascript"
+    ],
+    "coding_style": {
+      "indentation": "2 spaces",
+      "naming_convention": "camelCase",
+      "comment_style": "standard",
+      "code_organization": "feature-based"
+    },
+    "tools_and_frameworks": [],
+    "development_environment": [
+      "Theme: Default Dark+",
+      "Font size: 14",
+      "Minimap enabled"
+    ]
+  },
+  "work_style": {
+    "preferred_workflow": "iterative",
+    "problem_solving_approach": "holistic",
+    "documentation_level": "standard",
+    "testing_approach": "balanced"
+  },
+  "communication": {
+    "preferred_explanation_style": "concise",
+    "technical_depth": "intermediate",
+    "feedback_style": "direct"
+  },
+  "metadata": {
+    "source_platform": "cursor-ide",
+    "created_at": "2025-08-26T19:48:40.876Z",
+    "version": "1.0.0"
+  }
+}

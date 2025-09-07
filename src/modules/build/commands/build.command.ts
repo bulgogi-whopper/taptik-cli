@@ -16,6 +16,8 @@ import {
   BuildCategoryName,
 } from '../interfaces/build-config.interface';
 import { CollectionService } from '../services/collection/collection.service';
+import { CursorCollectionService } from '../services/cursor-collection.service';
+import { CursorTransformationService } from '../services/cursor-transformation.service';
 import { ErrorHandlerService } from '../services/error-handler/error-handler.service';
 import { InteractiveService } from '../services/interactive/interactive.service';
 import { OutputService } from '../services/output/output.service';
@@ -49,6 +51,8 @@ export class BuildCommand extends CommandRunner {
   constructor(
     private readonly interactiveService: InteractiveService,
     private readonly collectionService: CollectionService,
+    private readonly cursorCollectionService: CursorCollectionService,
+    private readonly cursorTransformationService: CursorTransformationService,
     private readonly transformationService: TransformationService,
     private readonly sanitizationService: SanitizationService,
     private readonly metadataGeneratorService: MetadataGeneratorService,
@@ -611,6 +615,11 @@ export class BuildCommand extends CommandRunner {
     if (_buildConfig.platform === BuildPlatform.CLAUDE_CODE) {
       return this.collectClaudeCodeData(_buildConfig);
     }
+    
+    // Route to Cursor IDE collection if platform is Cursor
+    if (_buildConfig.platform === BuildPlatform.CURSOR) {
+      return this.collectCursorData(_buildConfig);
+    }
 
     const warnings: string[] = [];
     const errors: string[] = [];
@@ -716,6 +725,11 @@ export class BuildCommand extends CommandRunner {
     if (buildConfig.platform === BuildPlatform.CLAUDE_CODE) {
       return this.transformClaudeCodeData(settingsData, buildConfig);
     }
+    
+    // Route to Cursor IDE transformation if platform is Cursor
+    if (buildConfig.platform === BuildPlatform.CURSOR) {
+      return this.transformCursorData(settingsData, buildConfig);
+    }
     const transformedData: {
       personalContext?: TaptikPersonalContext;
       projectContext?: TaptikProjectContext;
@@ -796,6 +810,172 @@ export class BuildCommand extends CommandRunner {
         }
       }
     }
+
+    return transformedData;
+  }
+
+  /**
+   * Collect data from Cursor IDE settings
+   */
+  private async collectCursorData(
+    _buildConfig: BuildConfig,
+  ): Promise<SettingsData> {
+    const warnings: string[] = [];
+    const errors: string[] = [];
+
+    // Collect local Cursor settings
+    this.progressService.startScan('local');
+    let localSettings;
+    try {
+      localSettings = await this.cursorCollectionService.collectCursorLocalSettings(process.cwd());
+      this.progressService.completeScan(
+        'local',
+        Object.keys(localSettings).length,
+      );
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      warnings.push(
+        `Cursor IDE local settings collection failed: ${errorMessage}`,
+      );
+      localSettings = {};
+      this.progressService.completeScan('local', 0);
+    }
+
+    // Collect global Cursor settings
+    this.progressService.startScan('global');
+    let globalSettings;
+    try {
+      globalSettings = await this.cursorCollectionService.collectCursorGlobalSettings();
+      this.progressService.completeScan(
+        'global',
+        Object.keys(globalSettings).length,
+      );
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      warnings.push(
+        `Cursor IDE global settings collection failed: ${errorMessage}`,
+      );
+      globalSettings = {};
+      this.progressService.completeScan('global', 0);
+    }
+
+    // Add warnings to error handler
+    warnings.forEach((warning) =>
+      this.errorHandler.addWarning({
+        type: 'missing_file',
+        message: warning,
+      }),
+    );
+
+    // Ensure the settings have the expected structure for OutputService
+    const normalizedLocalSettings = {
+      ...localSettings,
+      steeringFiles: [],
+      hooks: [],
+    };
+
+    const normalizedGlobalSettings = {
+      ...globalSettings,
+      promptTemplates: [],
+    };
+
+    return {
+      localSettings: normalizedLocalSettings,
+      globalSettings: normalizedGlobalSettings,
+      collectionMetadata: {
+        sourcePlatform: 'cursor',
+        collectionTimestamp: new Date().toISOString(),
+        projectPath: process.cwd(),
+        globalPath: `${homedir()}/.cursor`,
+        warnings,
+        errors,
+      },
+    };
+  }
+
+  /**
+   * Transform Cursor IDE data into taptik format
+   */
+  private async transformCursorData(
+    settingsData: SettingsData,
+    buildConfig: BuildConfig,
+  ): Promise<{
+    personalContext?: TaptikPersonalContext;
+    projectContext?: TaptikProjectContext;
+    promptTemplates?: TaptikPromptTemplates;
+  }> {
+    const transformedData: {
+      personalContext?: TaptikPersonalContext;
+      projectContext?: TaptikProjectContext;
+      promptTemplates?: TaptikPromptTemplates;
+    } = {};
+
+    // Transform each enabled category
+    const enabledCategories = buildConfig.categories.filter(
+      (category) => category.enabled,
+    );
+
+    // Process categories in parallel to avoid await-in-loop
+    await Promise.all(enabledCategories.map(async (category) => {
+      try {
+        this.progressService.startTransformation(category.name);
+        
+        switch (category.name) {
+          case BuildCategoryName.PERSONAL_CONTEXT: {
+            // Get the actual Cursor global settings
+            const globalCursorSettings = await this.cursorCollectionService.collectCursorGlobalSettings();
+            if (globalCursorSettings) {
+              transformedData.personalContext = 
+                await this.cursorTransformationService.transformCursorPersonalContext(
+                  globalCursorSettings,
+                );
+            }
+            break;
+          }
+            
+          case BuildCategoryName.PROJECT_CONTEXT: {
+            // Get the actual Cursor local settings
+            const localCursorSettings = await this.cursorCollectionService.collectCursorLocalSettings(process.cwd());
+            if (localCursorSettings) {
+              transformedData.projectContext = 
+                await this.cursorTransformationService.transformCursorProjectContext(
+                  localCursorSettings,
+                );
+            }
+            break;
+          }
+            
+          case BuildCategoryName.PROMPT_TEMPLATES: {
+            // Get AI configuration from both sources
+            const globalCursorSettings = await this.cursorCollectionService.collectCursorGlobalSettings();
+            const localCursorSettings = await this.cursorCollectionService.collectCursorLocalSettings(process.cwd());
+            
+            const aiConfig = globalCursorSettings?.globalAiRules || localCursorSettings?.projectAiRules;
+            if (aiConfig) {
+              transformedData.promptTemplates = 
+                await this.cursorTransformationService.transformCursorPromptTemplates(aiConfig);
+            }
+            break;
+          }
+        }
+        
+        this.progressService.completeTransformation(category.name);
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
+        this.errorHandler.addWarning({
+          type: 'partial_conversion',
+          message: `Failed to transform ${category.name}`,
+          details: errorMessage,
+        });
+        this.progressService.failStep(
+          `${category.name} transformation failed`,
+          error instanceof Error ? error : new Error(errorMessage),
+        );
+      }
+    }));
 
     return transformedData;
   }
@@ -1635,6 +1815,7 @@ export class BuildCommand extends CommandRunner {
         tags,
         teamId: pushOptions.pushTeam,
         version: cloudPackage.metadata?.version || '1.0.0',
+        autoBump: true, // Auto-increment version if conflict
         force: true, // Skip confirmation since build already confirmed
         dryRun: false,
       };
@@ -1680,11 +1861,11 @@ export class BuildCommand extends CommandRunner {
 
       // Check if it's an authentication error
       if (errorCode === 'AUTH_001' || errorMessage.includes('auth')) {
-        this.logger.log('💡 Run "taptik auth login" to authenticate first');
+        this.logger.log('💡 Run "taptik login" to authenticate first');
         this.errorHandler.addWarning({
           type: 'push',
           message: 'Authentication required for push',
-          details: 'Please run "taptik auth login" before using --push',
+          details: 'Please run "taptik login" before using --push',
         });
       } else {
         this.errorHandler.addWarning({

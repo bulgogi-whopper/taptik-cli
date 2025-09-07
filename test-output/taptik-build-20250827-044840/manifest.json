@@ -1,0 +1,17 @@
+{
+  "build_id": "build-mesyle7i-hyofct",
+  "source_platform": "cursor",
+  "categories": [
+    "personal-context"
+  ],
+  "created_at": "2025-08-26T19:48:40.878Z",
+  "taptik_version": "1.0.0",
+  "source_files": [],
+  "output_files": [
+    {
+      "filename": "personal-context.json",
+      "category": "personal-context",
+      "size": 911
+    }
+  ]
+}
