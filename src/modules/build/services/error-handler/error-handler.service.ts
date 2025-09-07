@@ -278,7 +278,6 @@ export class ErrorHandlerService {
   handleCriticalErrorAndExit(error: CriticalError): never {
     this.addCriticalError(error);
     this.displayErrorSummary();
-
     process.exit(error.exitCode);
   }
 
@@ -291,18 +290,17 @@ export class ErrorHandlerService {
         ...this.errorSummary.criticalErrors.map((error) => error.exitCode),
         1,
       );
-
       process.exit(highestExitCode);
     }
 
     if (this.hasWarnings()) {
-      this.logger.log('\n✅ Build completed with warnings');
-      this.logger.log('\n✅ Build completed with warnings');
+      console.log('\n✅ Build completed with warnings');
+       
       process.exit(0);
     }
 
-    this.logger.log('\n✅ Build completed successfully');
-    this.logger.log('\n✅ Build completed successfully');
+    console.log('\n✅ Build completed successfully');
+     
     process.exit(0);
   }
 
