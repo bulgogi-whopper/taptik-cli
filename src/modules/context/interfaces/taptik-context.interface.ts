@@ -43,8 +43,6 @@ export interface ContextContent {
   prompts?: PromptsContext;
   /** MCP servers and custom tool configurations */
   tools?: ToolsContext;
-  /** IDE-specific settings for each platform */
-  ide?: IdeContext;
   /** Allow additional fields for flexibility */
   [key: string]: unknown;
 }
@@ -196,39 +194,6 @@ export interface ToolsContext {
     permissions?: string[];
     metadata?: Record<string, unknown>;
   }>;
-}
-
-export interface IdeContext {
-  /** Claude Code specific settings */
-  claudeCode?: {
-    settings?: Record<string, unknown>;
-    keybindings?: Record<string, unknown>;
-    extensions?: string[];
-    mcp_config?: Record<string, unknown>;
-    claude_md?: string;
-  };
-  'claude-code'?: {
-    settings?: Record<string, unknown>;
-    keybindings?: Record<string, unknown>;
-    extensions?: string[];
-    mcp_config?: Record<string, unknown>;
-    claude_md?: string;
-  };
-  /** Kiro IDE specific settings */
-  'kiro-ide'?: {
-    settings?: Record<string, unknown>;
-    specs?: Record<string, unknown>;
-    steering?: Record<string, unknown>;
-    hooks?: Record<string, unknown>;
-  };
-  /** Cursor IDE specific settings */
-  'cursor-ide'?: {
-    settings?: Record<string, unknown>;
-    keybindings?: Record<string, unknown>;
-    extensions?: string[];
-  };
-  /** Generic IDE settings for other platforms */
-  [ideId: string]: Record<string, unknown> | undefined;
 }
 
 export interface SecurityInfo {
