@@ -40,8 +40,6 @@
     "@types/fs-extra": "^11.0.4",
     "@types/inquirer": "^9.0.9",
     "chalk": "^5.6.0",
-    "ajv": "^8.17.1",
-    "ajv-formats": "^3.0.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "cli-table3": "^0.6.5",

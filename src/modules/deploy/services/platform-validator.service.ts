@@ -21,8 +21,8 @@ export class PlatformValidatorService {
   constructor(private readonly kiroValidator: KiroValidatorService) {}
   private readonly SUPPORTED_PLATFORMS = {
     'claude-code': true,
-    'kiro-ide': true,
-    'cursor-ide': true, // Task 7.1: Enable Cursor IDE support
+    'kiro-ide': false, // Phase 2
+    'cursor-ide': false, // Phase 2
   };
 
   async validateForPlatform(
@@ -103,11 +103,6 @@ export class PlatformValidatorService {
         errors.push(...kiroResult.errors);
         warnings.push(...(kiroResult.warnings || []));
       }
-    } else if (platform === 'cursor-ide') {
-      // Task 7.1: Add Cursor IDE validation
-      const cursorResult = await this.validateCursor(context);
-      errors.push(...cursorResult.errors);
-      warnings.push(...(cursorResult.warnings || []));
     }
 
     return {
@@ -371,190 +366,5 @@ export class PlatformValidatorService {
   private isValidPermissionFormat(permission: string): boolean {
     // Check for format: Tool(pattern)
     return /^[A-Z_a-z]+\(.+\)$/.test(permission);
-  }
-
-  /**
-   * Task 7.1: Validate Cursor IDE configuration
-   */
-  async validateCursor(context: TaptikContext): Promise<ValidationResult> {
-    const errors: ValidationError[] = [];
-    const warnings: ValidationWarning[] = [];
-
-    // Basic context validation
-    if (!context.content) {
-      errors.push({
-        field: 'context.content',
-        message: 'Context content is required for Cursor IDE deployment',
-        code: 'REQUIRED_FIELD',
-        severity: 'HIGH',
-      });
-      return { isValid: false, errors, warnings };
-    }
-
-    // Validate AI configuration if present
-    if (context.content.ai) {
-      const aiValidation = this.validateCursorAIConfig(context.content.ai);
-      errors.push(...aiValidation.errors);
-      warnings.push(...(aiValidation.warnings || []));
-    }
-
-    // Validate IDE-specific settings
-    if (context.content.ide?.cursorIDE) {
-      const ideValidation = this.validateCursorIDESettings(context.content.ide.cursorIDE);
-      errors.push(...ideValidation.errors);
-      warnings.push(...(ideValidation.warnings || []));
-    }
-
-    // Validate project context for workspace settings
-    if (context.content.project) {
-      const projectValidation = this.validateCursorProjectSettings(context.content.project);
-      errors.push(...projectValidation.errors);
-      warnings.push(...(projectValidation.warnings || []));
-    }
-
-    // Add Cursor-specific warnings
-    warnings.push({
-      field: 'platform',
-      message: 'Cursor IDE support includes AI configuration, extensions, snippets, and workspace settings',
-      suggestion: 'Ensure your context includes relevant AI rules and project settings for optimal Cursor integration',
-    });
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-      warnings,
-    };
-  }
-
-  private validateCursorAIConfig(aiConfig: any): ValidationResult {
-    const errors: ValidationError[] = [];
-    const warnings: ValidationWarning[] = [];
-
-    // Check for AI rules
-    if (aiConfig.rules && Array.isArray(aiConfig.rules)) {
-      for (const rule of aiConfig.rules) {
-        if (typeof rule !== 'string' || rule.trim().length === 0) {
-          errors.push({
-            field: 'ai.rules',
-            message: 'AI rules must be non-empty strings',
-            code: 'INVALID_TYPE',
-            severity: 'MEDIUM',
-          });
-        }
-      }
-
-      // Check for overly long rules
-      const longRules = aiConfig.rules.filter((rule: string) => rule.length > 1000);
-      if (longRules.length > 0) {
-        warnings.push({
-          field: 'ai.rules',
-          message: `${longRules.length} AI rules exceed 1000 characters`,
-          suggestion: 'Consider breaking down long rules into smaller, more specific ones',
-        });
-      }
-    }
-
-    // Check for AI context
-    if (aiConfig.context && typeof aiConfig.context !== 'string') {
-      errors.push({
-        field: 'ai.context',
-        message: 'AI context must be a string',
-        code: 'INVALID_TYPE',
-        severity: 'MEDIUM',
-      });
-    }
-
-    return { isValid: errors.length === 0, errors, warnings };
-  }
-
-  private validateCursorIDESettings(settings: any): ValidationResult {
-    const errors: ValidationError[] = [];
-    const warnings: ValidationWarning[] = [];
-
-    // Validate editor settings
-    if (settings.editor) {
-      if (settings.editor.fontSize && (typeof settings.editor.fontSize !== 'number' || settings.editor.fontSize < 8 || settings.editor.fontSize > 72)) {
-        errors.push({
-          field: 'ide.cursorIDE.editor.fontSize',
-          message: 'Font size must be a number between 8 and 72',
-          code: 'INVALID_RANGE',
-          severity: 'MEDIUM',
-        });
-      }
-
-      if (settings.editor.tabSize && (typeof settings.editor.tabSize !== 'number' || settings.editor.tabSize < 1 || settings.editor.tabSize > 8)) {
-        errors.push({
-          field: 'ide.cursorIDE.editor.tabSize',
-          message: 'Tab size must be a number between 1 and 8',
-          code: 'INVALID_RANGE',
-          severity: 'MEDIUM',
-        });
-      }
-    }
-
-    // Validate extensions if present
-    if (settings.extensions && !Array.isArray(settings.extensions)) {
-      errors.push({
-        field: 'ide.cursorIDE.extensions',
-        message: 'Extensions must be an array',
-        code: 'INVALID_TYPE',
-        severity: 'MEDIUM',
-      });
-    }
-
-    return { isValid: errors.length === 0, errors, warnings };
-  }
-
-  private validateCursorProjectSettings(projectSettings: any): ValidationResult {
-    const errors: ValidationError[] = [];
-    const warnings: ValidationWarning[] = [];
-
-    // Validate debug configuration
-    if (projectSettings.debug && Array.isArray(projectSettings.debug)) {
-      for (const config of projectSettings.debug) {
-        if (!config.name || typeof config.name !== 'string') {
-          errors.push({
-            field: 'project.debug.name',
-            message: 'Debug configuration name is required and must be a string',
-            code: 'REQUIRED_FIELD',
-            severity: 'MEDIUM',
-          });
-        }
-
-        if (!config.type || typeof config.type !== 'string') {
-          errors.push({
-            field: 'project.debug.type',
-            message: 'Debug configuration type is required and must be a string',
-            code: 'REQUIRED_FIELD',
-            severity: 'MEDIUM',
-          });
-        }
-      }
-    }
-
-    // Validate tasks configuration
-    if (projectSettings.tasks && Array.isArray(projectSettings.tasks)) {
-      for (const task of projectSettings.tasks) {
-        if (!task.label || typeof task.label !== 'string') {
-          errors.push({
-            field: 'project.tasks.label',
-            message: 'Task label is required and must be a string',
-            code: 'REQUIRED_FIELD',
-            severity: 'MEDIUM',
-          });
-        }
-
-        if (!task.command || typeof task.command !== 'string') {
-          errors.push({
-            field: 'project.tasks.command',
-            message: 'Task command is required and must be a string',
-            code: 'REQUIRED_FIELD',
-            severity: 'MEDIUM',
-          });
-        }
-      }
-    }
-
-    return { isValid: errors.length === 0, errors, warnings };
   }
 }

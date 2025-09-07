@@ -4,8 +4,3 @@ export * from './platform-config.interface';
 export * from './security-config.interface';
 export * from './merge-strategy.interface';
 export * from './kiro-deployment.interface';
-export * from './cursor-deployment.interface';
-export * from './cursor-config.interface';
-export * from './cursor-extensions.interface';
-export * from './cursor-debug-tasks.interface';
-export * from './cursor-snippets-workspace.interface';

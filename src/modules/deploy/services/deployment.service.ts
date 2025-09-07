@@ -11,7 +11,6 @@ import {
   ComponentType,
 } from '../interfaces/deploy-options.interface';
 import { DeploymentResult } from '../interfaces/deployment-result.interface';
-import { CursorDeploymentOptions, CursorDeploymentResult } from '../interfaces/cursor-deployment.interface';
 
 import { BackupService } from './backup.service';
 import { DiffService } from './diff.service';
@@ -19,7 +18,6 @@ import { ErrorRecoveryService } from './error-recovery.service';
 import { KiroComponentHandlerService } from './kiro-component-handler.service';
 import { KiroInstallationDetectorService } from './kiro-installation-detector.service';
 import { KiroTransformerService } from './kiro-transformer.service';
-import { CursorDeploymentService } from './cursor-deployment.service';
 import { LargeFileStreamerService } from './large-file-streamer.service';
 import { PerformanceMonitorService } from './performance-monitor.service';
 import { PlatformValidatorService } from './platform-validator.service';
@@ -38,7 +36,6 @@ export class DeploymentService {
     private readonly kiroTransformer: KiroTransformerService,
     private readonly kiroComponentHandler: KiroComponentHandlerService,
     private readonly kiroInstallationDetector: KiroInstallationDetectorService,
-    private readonly cursorDeploymentService: CursorDeploymentService,
   ) {}
 
   async deployToClaudeCode(
@@ -1417,112 +1414,5 @@ export class DeploymentService {
 
     // No existing Kiro config found, create empty backup
     return '';
-  }
-
-  /**
-   * Task 7.1: Deploy to Cursor IDE using the dedicated Cursor deployment service
-   */
-  async deployToCursor(
-    context: TaptikContext,
-    options: DeployOptions,
-  ): Promise<DeploymentResult> {
-    // Convert DeployOptions to CursorDeploymentOptions
-    const cursorOptions = this.convertToCursorDeploymentOptions(context, options);
-    
-    try {
-      // Use the dedicated Cursor deployment service
-      const cursorResult = await this.cursorDeploymentService.deploy(cursorOptions);
-      
-      // Convert CursorDeploymentResult to DeploymentResult
-      return this.convertFromCursorDeploymentResult(cursorResult);
-      
-    } catch (error) {
-      // Handle deployment error
-      return {
-        success: false,
-        platform: 'cursor-ide',
-        deployedComponents: [],
-        conflicts: [],
-        summary: {
-          filesDeployed: 0,
-          filesSkipped: 0,
-          conflictsResolved: 0,
-          backupCreated: false,
-        },
-        errors: [{
-          message: `Cursor deployment failed: ${(error as Error).message}`,
-          code: 'CURSOR_DEPLOYMENT_ERROR',
-          severity: 'HIGH',
-        }],
-        warnings: [],
-        metadata: {
-          deploymentId: `cursor-error-${Date.now()}`,
-          performanceReport: 'Cursor deployment failed',
-        },
-      };
-    }
-  }
-
-  /**
-   * Convert DeployOptions to CursorDeploymentOptions
-   */
-  private convertToCursorDeploymentOptions(
-    context: TaptikContext,
-    options: DeployOptions,
-  ): CursorDeploymentOptions {
-    const cursorPath = process.env.CURSOR_PATH;
-    const workspacePath = process.cwd(); // Default to current working directory
-
-    return {
-      platform: 'cursor' as const,
-      cursorPath,
-      workspacePath,
-      components: options.components as any[] || [],
-      skipComponents: options.skipComponents as any[] || [],
-      globalSettings: !options.skipComponents?.includes('settings'),
-      projectSettings: !options.skipComponents?.includes('project'),
-      aiConfig: true, // Default to true for AI config
-      skipExtensions: false,
-      skipDebugConfig: false,
-      skipTasks: false,
-      skipSnippets: false,
-      dryRun: options.dryRun,
-      conflictStrategy: options.conflictStrategy,
-      validateOnly: options.validateOnly,
-      context: context, // Pass the full context
-    };
-  }
-
-  /**
-   * Convert CursorDeploymentResult to DeploymentResult
-   */
-  private convertFromCursorDeploymentResult(
-    cursorResult: CursorDeploymentResult,
-  ): DeploymentResult {
-    return {
-      success: cursorResult.success,
-      platform: 'cursor-ide',
-      deployedComponents: cursorResult.deployedComponents,
-      conflicts: [], // Cursor service handles conflicts internally
-      summary: {
-        filesDeployed: cursorResult.deployedComponents.length,
-        filesSkipped: cursorResult.skippedComponents.length,
-        conflictsResolved: 0, // Could be extracted from cursorResult if needed
-        backupCreated: false, // Could be extracted from cursorResult if needed
-      },
-      errors: cursorResult.errors.map(error => ({
-        message: error.message,
-        code: 'CURSOR_ERROR',
-        severity: error.severity?.toUpperCase() as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' || 'HIGH',
-      })),
-      warnings: cursorResult.warnings.map(warning => ({
-        message: warning.message,
-        code: 'CURSOR_WARNING',
-      })),
-      metadata: {
-        deploymentId: `cursor-deployment-${Date.now()}`,
-        performanceReport: `Cursor deployment completed: ${cursorResult.deployedComponents.length} components deployed, ${cursorResult.skippedComponents.length} skipped`,
-      },
-    };
   }
 }

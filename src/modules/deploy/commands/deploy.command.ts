@@ -10,9 +10,6 @@ import {
 import { DeploymentResult } from '../interfaces/deployment-result.interface';
 import { DeploymentService } from '../services/deployment.service';
 import { ImportService } from '../services/import.service';
-import { HelpDocumentationService } from '../services/help-documentation.service';
-import { ErrorMessageHelperService } from '../services/error-message-helper.service';
-import { DeploymentReporterService } from '../services/deployment-reporter.service';
 
 interface DeployCommandOptions {
   platform?: SupportedPlatform;
@@ -23,39 +20,18 @@ interface DeployCommandOptions {
   components?: string[];
   skipComponents?: string[];
   force?: boolean;
-  // Task 7.2: Cursor-specific options
-  cursorPath?: string;
-  workspacePath?: string;
-  skipAiConfig?: boolean;
-  skipExtensions?: boolean;
-  skipDebugConfig?: boolean;
-  skipTasks?: boolean;
-  skipSnippets?: boolean;
-  // Task 12.1: Help and documentation options
-  help?: boolean;
-  helpPlatform?: string;
-  helpComponent?: string;
-  listComponents?: boolean;
-  // Task 12.2: Reporting options
-  generateReport?: boolean;
-  reportFormat?: 'console' | 'json' | 'html' | 'markdown';
-  reportVerbose?: boolean;
-  saveReport?: boolean;
-  reportPath?: string;
 }
 
 @Command({
   name: 'deploy',
-  description: 'Deploy Taptik context to target platform (Claude Code, Kiro IDE, Cursor IDE)',
+  description:
+    'Deploy Taptik context to target platform (Claude Code, Kiro IDE)',
 })
 @Injectable()
 export class DeployCommand extends CommandRunner {
   constructor(
     private readonly importService: ImportService,
     private readonly deploymentService: DeploymentService,
-    private readonly helpService: HelpDocumentationService,
-    private readonly errorHelper: ErrorMessageHelperService,
-    private readonly reporterService: DeploymentReporterService,
   ) {
     super();
   }
@@ -65,73 +41,17 @@ export class DeployCommand extends CommandRunner {
     options: DeployCommandOptions,
   ): Promise<void> {
     try {
-      // Task 12.1: Handle help and documentation requests
-      if (options.help) {
-        const helpContent = this.helpService.getDeployCommandHelp();
-        console.log(this.helpService.formatHelpForConsole(helpContent));
-        return;
-      }
-
-      if (options.helpPlatform) {
-        try {
-          const platformHelp = this.helpService.getPlatformHelp(options.helpPlatform as SupportedPlatform);
-          console.log(this.helpService.formatHelpForConsole(platformHelp));
-          return;
-        } catch (error) {
-          console.error(`❌ Unknown platform: ${options.helpPlatform}`);
-          console.log('📋 Available platforms: claude-code, kiro-ide, cursor-ide');
-          return;
-        }
-      }
-
-      if (options.helpComponent) {
-        const platform = options.platform || 'claude-code';
-        const componentHelp = this.helpService.getComponentHelp(options.helpComponent, platform);
-        if (componentHelp) {
-          console.log(this.helpService.formatComponentHelpForConsole(componentHelp));
-          return;
-        } else {
-          console.error(`❌ Component "${options.helpComponent}" not found for platform ${platform}`);
-          const suggestions = this.helpService.getComponentSuggestions(platform);
-          console.log(`📋 Available components for ${platform}: ${suggestions.join(', ')}`);
-          return;
-        }
-      }
-
-      if (options.listComponents) {
-        const platform = options.platform || 'claude-code';
-        const components = this.helpService.getComponentSuggestions(platform);
-        console.log(`📋 Available components for ${platform}:`);
-        components.forEach(component => {
-          const help = this.helpService.getComponentHelp(component, platform);
-          const description = help ? help.description : 'No description available';
-          console.log(`   • ${component}: ${description}`);
-        });
-        return;
-      }
-
       // Set default platform
       const platform = options.platform || 'claude-code';
 
-      if (platform !== 'claude-code' && platform !== 'kiro-ide' && platform !== 'cursor-ide') {
+      if (platform !== 'claude-code' && platform !== 'kiro-ide') {
         console.error(
-          `❌ Platform '${platform}' is not supported. Supported platforms: 'claude-code', 'kiro-ide', 'cursor-ide'`,
+          `❌ Platform '${platform}' is not supported. Supported platforms: 'claude-code', 'kiro-ide'`,
         );
         process.exit(1);
       }
 
-      // Task 7.2: Platform-specific deployment notes
-      if (platform === 'kiro-ide') {
-        // Note: Kiro deployment will show feature development status in results
-      } else if (platform === 'cursor-ide') {
-        console.log('💡 Cursor IDE deployment includes AI configuration, extensions, snippets, and workspace settings');
-        if (options.cursorPath) {
-          console.log(`📍 Using Cursor executable: ${options.cursorPath}`);
-        }
-        if (options.workspacePath) {
-          console.log(`📁 Target workspace: ${options.workspacePath}`);
-        }
-      }
+      // Note: Kiro deployment will show feature development status in results
 
       console.log(`🚀 Starting deployment to ${platform}...`);
 
@@ -150,35 +70,6 @@ export class DeployCommand extends CommandRunner {
         `✅ Context imported successfully: ${context.metadata?.title || 'Unnamed Context'}`,
       );
 
-      // Task 12.1: Validate component names and provide suggestions
-      if (options.components) {
-        for (const componentName of options.components) {
-          const suggestion = this.helpService.validateComponentName(componentName, platform);
-          if (suggestion.suggestions.length === 0 || suggestion.suggestions[0].confidence < 1.0) {
-            console.error(`❌ Invalid component: "${componentName}" for platform ${platform}`);
-            if (suggestion.didYouMean) {
-              console.log(`💡 Did you mean: "${suggestion.didYouMean}"?`);
-            }
-            if (suggestion.examples && suggestion.examples.length > 0) {
-              console.log(`📋 Valid components: ${suggestion.examples.join(', ')}`);
-            }
-            process.exit(1);
-          }
-        }
-      }
-
-      if (options.skipComponents) {
-        for (const componentName of options.skipComponents) {
-          const suggestion = this.helpService.validateComponentName(componentName, platform);
-          if (suggestion.suggestions.length === 0 || suggestion.suggestions[0].confidence < 1.0) {
-            console.warn(`⚠️  Warning: Invalid skip component: "${componentName}" for platform ${platform}`);
-            if (suggestion.didYouMean) {
-              console.log(`💡 Did you mean: "${suggestion.didYouMean}"?`);
-            }
-          }
-        }
-      }
-
       // Step 2: Prepare deployment options
       const deployOptions = {
         platform: platform as SupportedPlatform,
@@ -187,14 +78,6 @@ export class DeployCommand extends CommandRunner {
         conflictStrategy: options.conflictStrategy || 'prompt',
         components: options.components?.map((c) => c as ComponentType),
         skipComponents: options.skipComponents?.map((c) => c as ComponentType),
-        // Task 7.2: Add Cursor-specific options to deployOptions
-        cursorPath: options.cursorPath,
-        workspacePath: options.workspacePath,
-        skipAiConfig: options.skipAiConfig,
-        skipExtensions: options.skipExtensions,
-        skipDebugConfig: options.skipDebugConfig,
-        skipTasks: options.skipTasks,
-        skipSnippets: options.skipSnippets,
       };
 
       // Step 3: Deploy to target platform
@@ -203,12 +86,9 @@ export class DeployCommand extends CommandRunner {
       } else if (options.dryRun) {
         console.log('🧪 Running in dry-run mode...');
       } else {
-        const platformNames = {
-          'claude-code': 'Claude Code',
-          'kiro-ide': 'Kiro IDE',
-          'cursor-ide': 'Cursor IDE',
-        };
-        console.log(`🚀 Deploying to ${platformNames[platform as keyof typeof platformNames] || platform}...`);
+        console.log(
+          `🚀 Deploying to ${platform === 'claude-code' ? 'Claude Code' : 'Kiro IDE'}...`,
+        );
       }
 
       // Step 3: Route to appropriate deployment method based on platform
@@ -223,12 +103,6 @@ export class DeployCommand extends CommandRunner {
           context,
           deployOptions,
         );
-      } else if (platform === 'cursor-ide') {
-        // Task 7.2: Add Cursor IDE deployment routing
-        result = await this.deploymentService.deployToCursor(
-          context,
-          deployOptions,
-        );
       } else {
         console.error(
           `❌ Platform '${platform}' deployment is not implemented yet.`,
@@ -236,138 +110,57 @@ export class DeployCommand extends CommandRunner {
         process.exit(5); // Platform Error exit code
       }
 
-      // Step 4: Generate and display results
-      // Task 12.2: Enhanced reporting with detailed analysis
-      if (options.generateReport || options.reportFormat || options.saveReport) {
-        const reportOptions = {
-          includePerformance: true,
-          includeAnalysis: true,
-          includeArtifacts: options.saveReport || false,
-          exportFormat: options.reportFormat || 'console' as const,
-          saveToFile: options.saveReport || false,
-          outputPath: options.reportPath,
-          verboseLevel: options.reportVerbose ? 'detailed' as const : 'standard' as const,
-        };
-
-        const deploymentReport = await this.reporterService.generateDeploymentReport(
-          result,
-          platform,
-          context,
-          options.contextId || 'latest',
-          reportOptions,
+      // Step 4: Display results
+      if (result.success) {
+        console.log('\n✅ Deployment successful!');
+        console.log(
+          `📦 Components deployed: ${result.deployedComponents.join(', ')}`,
+        );
+        console.log(`📊 Summary:`);
+        console.log(`   - Files deployed: ${result.summary.filesDeployed}`);
+        console.log(`   - Files skipped: ${result.summary.filesSkipped}`);
+        console.log(
+          `   - Conflicts resolved: ${result.summary.conflictsResolved}`,
         );
 
-        if (options.reportFormat === 'console' || !options.reportFormat) {
-          console.log(this.reporterService.formatReportForConsole(deploymentReport, reportOptions.verboseLevel));
-        } else {
-          const exportPath = await this.reporterService.exportReport(
-            deploymentReport,
-            options.reportFormat,
-            options.reportPath,
-          );
-          console.log(`📄 Report exported to: ${exportPath}`);
+        if (result.summary.backupCreated) {
+          console.log(`   - Backup created: ✅`);
         }
 
-        // Display failure analysis if deployment failed
-        if (!result.success) {
-          const failureAnalysis = await this.reporterService.generateFailureAnalysis(
-            result,
-            platform,
-            { workspacePath: options.workspacePath, contextId: options.contextId },
-          );
-          console.log(this.reporterService.formatFailureAnalysisForConsole(failureAnalysis));
+        if (result.warnings.length > 0) {
+          console.log('\n⚠️  Warnings:');
+          result.warnings.forEach((warning) => {
+            console.log(`   - ${warning.message}`);
+          });
         }
       } else {
-        // Standard result display
-        if (result.success) {
-          console.log('\n✅ Deployment successful!');
-          console.log(
-            `📦 Components deployed: ${result.deployedComponents.join(', ')}`,
-          );
-          console.log(`📊 Summary:`);
-          console.log(`   - Files deployed: ${result.summary.filesDeployed}`);
-          console.log(`   - Files skipped: ${result.summary.filesSkipped}`);
-          console.log(
-            `   - Conflicts resolved: ${result.summary.conflictsResolved}`,
-          );
-
-          if (result.summary.backupCreated) {
-            console.log(`   - Backup created: ✅`);
-          }
-
-          // Task 7.2: Platform-specific result display
-          if (platform === 'cursor-ide') {
-            console.log('\n🎯 Cursor IDE specific information:');
-            console.log(`   - AI configuration applied: ${!options.skipAiConfig ? '✅' : '❌'}`);
-            console.log(`   - Extensions processed: ${!options.skipExtensions ? '✅' : '❌'}`);
-            console.log(`   - Debug config applied: ${!options.skipDebugConfig ? '✅' : '❌'}`);
-            console.log(`   - Tasks configured: ${!options.skipTasks ? '✅' : '❌'}`);
-            console.log(`   - Snippets deployed: ${!options.skipSnippets ? '✅' : '❌'}`);
-          }
-
-          if (result.warnings.length > 0) {
-            console.log('\n⚠️  Warnings:');
-            result.warnings.forEach((warning) => {
-              console.log(`   - ${warning.message}`);
-            });
-          }
-
-          // Task 12.2: Suggest generating detailed report
-          if (result.warnings.length > 0 || platform === 'cursor-ide') {
-            console.log('\n💡 For detailed analysis and recommendations, use:');
-            console.log(`   taptik deploy --generate-report --report-verbose`);
-          }
-        }
-      }
-
-      if (!result.success) {
         console.error('\n❌ Deployment failed!');
 
         if (result.errors.length > 0) {
           console.error('🚨 Errors:');
           result.errors.forEach((error) => {
-            // Task 12.1: Enhanced error reporting with solutions
-            const enhancedError = this.errorHelper.enhanceError(error, platform);
             console.error(`   - [${error.severity}] ${error.message}`);
-            
-            if (enhancedError.quickFix) {
-              console.error(`     💡 Quick fix: ${enhancedError.quickFix}`);
-            }
-            
-            if (enhancedError.solutions && enhancedError.solutions.length > 0) {
-              console.error(`     🔧 Solutions available: ${enhancedError.solutions.length}`);
-              console.error(`     💬 Run with --help-error ${enhancedError.errorCode || 'UNKNOWN'} for detailed solutions`);
-            }
           });
         }
 
         process.exit(1);
       }
     } catch (error) {
-      // Task 12.1: Enhanced error handling for unexpected errors
-      const deploymentError = {
-        component: 'deploy-command',
-        type: 'unexpected-error',
-        severity: 'high' as const,
-        message: (error as Error).message,
-        suggestion: 'Check logs and try again, or contact support if issue persists',
-      };
-
-      const enhanced = this.errorHelper.enhanceError(deploymentError, platform);
-      console.error('\n❌ Unexpected error during deployment:');
-      console.error(this.errorHelper.generateUserFriendlyMessage(deploymentError, platform, false));
-      
+      console.error(
+        '❌ Unexpected error during deployment:',
+        (error as Error).message,
+      );
       process.exit(1);
     }
   }
 
   @Option({
     flags: '-p, --platform <platform>',
-    description: 'Target platform ("claude-code", "kiro-ide", or "cursor-ide")',
+    description: 'Target platform ("claude-code" or "kiro-ide")',
     defaultValue: 'claude-code',
   })
   parsePlatform(value: string): SupportedPlatform {
-    const supportedPlatforms: SupportedPlatform[] = ['claude-code', 'kiro-ide', 'cursor-ide'];
+    const supportedPlatforms: SupportedPlatform[] = ['claude-code', 'kiro-ide'];
     if (!supportedPlatforms.includes(value as SupportedPlatform)) {
       throw new Error(
         `Unsupported platform: ${value}. Supported platforms: ${supportedPlatforms.join(', ')}`,
@@ -422,7 +215,7 @@ export class DeployCommand extends CommandRunner {
   @Option({
     flags: '--components <components...>',
     description:
-      'Specific components to deploy. Claude Code: (settings, agents, commands, project). Kiro IDE: (settings, steering, specs, hooks, agents, templates). Cursor IDE: (global-settings, project-settings, ai-config, extensions-config, debug-config, tasks-config, snippets-config, workspace-config)',
+      'Specific components to deploy (settings, agents, commands, project)',
   })
   parseComponents(value: string, previous: string[] = []): string[] {
     return [...previous, value];
@@ -442,140 +235,5 @@ export class DeployCommand extends CommandRunner {
   })
   parseForce(): boolean {
     return true;
-  }
-
-  // Task 7.2: Cursor-specific options
-  @Option({
-    flags: '--cursor-path <path>',
-    description: 'Path to Cursor IDE executable (for cursor-ide platform)',
-  })
-  parseCursorPath(value: string): string {
-    return value;
-  }
-
-  @Option({
-    flags: '--workspace-path <path>',
-    description: 'Workspace path for Cursor deployment (default: current directory)',
-  })
-  parseWorkspacePath(value: string): string {
-    return value;
-  }
-
-  @Option({
-    flags: '--skip-ai-config',
-    description: 'Skip AI configuration deployment (cursor-ide only)',
-  })
-  parseSkipAiConfig(): boolean {
-    return true;
-  }
-
-  @Option({
-    flags: '--skip-extensions',
-    description: 'Skip extensions configuration (cursor-ide only)',
-  })
-  parseSkipExtensions(): boolean {
-    return true;
-  }
-
-  @Option({
-    flags: '--skip-debug-config',
-    description: 'Skip debug configuration deployment (cursor-ide only)',
-  })
-  parseSkipDebugConfig(): boolean {
-    return true;
-  }
-
-  @Option({
-    flags: '--skip-tasks',
-    description: 'Skip tasks configuration deployment (cursor-ide only)',
-  })
-  parseSkipTasks(): boolean {
-    return true;
-  }
-
-  @Option({
-    flags: '--skip-snippets',
-    description: 'Skip snippets deployment (cursor-ide only)',
-  })
-  parseSkipSnippets(): boolean {
-    return true;
-  }
-
-  // Task 12.1: Help and documentation options
-  @Option({
-    flags: '-h, --help',
-    description: 'Show comprehensive help for deploy command',
-  })
-  parseHelp(): boolean {
-    return true;
-  }
-
-  @Option({
-    flags: '--help-platform <platform>',
-    description: 'Show help for specific platform (claude-code, kiro-ide, cursor-ide)',
-  })
-  parseHelpPlatform(value: string): string {
-    return value;
-  }
-
-  @Option({
-    flags: '--help-component <component>',
-    description: 'Show help for specific component',
-  })
-  parseHelpComponent(value: string): string {
-    return value;
-  }
-
-  @Option({
-    flags: '--list-components',
-    description: 'List all available components for the specified platform',
-  })
-  parseListComponents(): boolean {
-    return true;
-  }
-
-  // Task 12.2: Reporting and feedback options
-  @Option({
-    flags: '--generate-report',
-    description: 'Generate comprehensive deployment report',
-  })
-  parseGenerateReport(): boolean {
-    return true;
-  }
-
-  @Option({
-    flags: '--report-format <format>',
-    description: 'Report format: console, json, html, markdown',
-  })
-  parseReportFormat(value: string): 'console' | 'json' | 'html' | 'markdown' {
-    const validFormats = ['console', 'json', 'html', 'markdown'];
-    if (!validFormats.includes(value)) {
-      throw new Error(`Invalid report format: ${value}. Valid formats: ${validFormats.join(', ')}`);
-    }
-    return value as 'console' | 'json' | 'html' | 'markdown';
-  }
-
-  @Option({
-    flags: '--report-verbose',
-    description: 'Generate detailed verbose report with performance metrics',
-  })
-  parseReportVerbose(): boolean {
-    return true;
-  }
-
-  @Option({
-    flags: '--save-report',
-    description: 'Save report to file (automatically enabled for non-console formats)',
-  })
-  parseSaveReport(): boolean {
-    return true;
-  }
-
-  @Option({
-    flags: '--report-path <path>',
-    description: 'Custom path for saving reports',
-  })
-  parseReportPath(value: string): string {
-    return value;
   }
 }
