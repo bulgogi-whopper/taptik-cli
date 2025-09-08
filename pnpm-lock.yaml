@@ -102,24 +102,66 @@ importers:
       '@nestjs/testing':
         specifier: ^11.1.5
         version: 11.1.5(@nestjs/common@11.1.5(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.5)(@nestjs/platform-express@11.1.5)
+      '@types/body-parser':
+        specifier: ^1.19.6
+        version: 1.19.6
+      '@types/connect':
+        specifier: ^3.4.38
+        version: 3.4.38
+      '@types/cookiejar':
+        specifier: ^2.1.5
+        version: 2.1.5
+      '@types/eslint-scope':
+        specifier: ^8.3.2
+        version: 8.3.2
+      '@types/estree':
+        specifier: ^1.0.8
+        version: 1.0.8
       '@types/express':
         specifier: ^5.0.3
         version: 5.0.3
+      '@types/express-serve-static-core':
+        specifier: ^5.0.7
+        version: 5.0.7
+      '@types/http-errors':
+        specifier: ^2.0.5
+        version: 2.0.5
       '@types/js-yaml':
         specifier: ^4.0.9
         version: 4.0.9
+      '@types/json-schema':
+        specifier: ^7.0.15
+        version: 7.0.15
+      '@types/methods':
+        specifier: ^1.1.4
+        version: 1.1.4
       '@types/node':
         specifier: ^22.10.5
         version: 22.17.0
       '@types/prompts':
         specifier: ^2.4.9
         version: 2.4.9
+      '@types/range-parser':
+        specifier: ^1.2.7
+        version: 1.2.7
+      '@types/send':
+        specifier: ^0.17.5
+        version: 0.17.5
+      '@types/serve-static':
+        specifier: ^1.15.8
+        version: 1.15.8
       '@types/supertest':
         specifier: ^6.0.3
         version: 6.0.3
       '@types/tar':
         specifier: ^6.1.13
         version: 6.1.13
+      '@types/through':
+        specifier: ^0.0.33
+        version: 0.0.33
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.38.0
         version: 8.38.0(@typescript-eslint/parser@8.38.0(eslint@9.32.0)(typescript@5.8.3))(eslint@9.32.0)(typescript@5.8.3)
@@ -1288,8 +1330,14 @@ packages:
   '@types/eslint-scope@3.7.7':
     resolution: {integrity: sha512-MzMFlSLBqNF2gcHWO0G1vP/YQyfvrxZ0bF+u7mzUdZ1/xK4A4sru+nraZz5i3iEIk1l1uyicaDVTB4QbbEkAYg==}
 
+  '@types/eslint-scope@8.3.2':
+    resolution: {integrity: sha512-ygPtnKRQjbXB6LKQ+m6SLyZDMgFeQFVNCkjUK/HivS58Ce6JBjxpVzHbE1+RS6pC5fP4FQg4qh8lvVSm2oxYZw==}
+
   '@types/eslint@9.6.1':
     resolution: {integrity: sha512-FXx2pKgId/WyYo2jXw63kk7/+TY7u7AziEJxJAnSFzHlqTAS3Ync6SvgYAN/k4/PQpnnVuzoMuVnByKK2qp0ag==}
+
+  '@types/esrecurse@4.3.1':
+    resolution: {integrity: sha512-xJBAbDifo5hpffDBuHl0Y8ywswbiAp/Wi7Y/GtAgSlZyIABppyurxVueOPE8LUQOxdlgi6Zqce7uoEpqNTeiUw==}
 
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
@@ -5044,10 +5092,19 @@ snapshots:
       '@types/eslint': 9.6.1
       '@types/estree': 1.0.8
 
+  '@types/eslint-scope@8.3.2':
+    dependencies:
+      '@types/eslint': 9.6.1
+      '@types/esrecurse': 4.3.1
+      '@types/estree': 1.0.8
+      eslint-visitor-keys: 4.2.1
+
   '@types/eslint@9.6.1':
     dependencies:
       '@types/estree': 1.0.8
       '@types/json-schema': 7.0.15
+
+  '@types/esrecurse@4.3.1': {}
 
   '@types/estree@1.0.8': {}
 

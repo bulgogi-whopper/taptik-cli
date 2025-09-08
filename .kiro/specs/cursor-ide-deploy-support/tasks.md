@@ -182,19 +182,19 @@
   - 플랫폼별 검증 및 오류 처리
   - _요구사항: 1.2, 1.5_
 
-- [ ] 7. DeployCommand에 Cursor 지원 추가
+- [x] 7. DeployCommand에 Cursor 지원 추가
   - 기존 DeployCommand를 업데이트하여 cursor-ide 플랫폼 지원
   - 플랫폼 검증 로직 업데이트
   - 도움말 및 오류 메시지 업데이트
   - _요구사항: 1, 4, 8_
 
-- [ ] 7.1 DeployCommand 플랫폼 지원 확장
+- [x] 7.1 DeployCommand 플랫폼 지원 확장
   - `src/modules/deploy/commands/deploy.command.ts` 업데이트
   - cursor-ide 플랫폼 검증 로직 추가
   - 플랫폼별 성공/실패 메시지 업데이트
   - _요구사항: 1.1, 1.4, 1.5_
 
-- [ ] 7.2 CLI 옵션 및 도움말 업데이트
+- [x] 7.2 CLI 옵션 및 도움말 업데이트
   - parsePlatform() 메서드에 cursor-ide 지원 추가
   - 도움말 텍스트 업데이트
   - 컴포넌트 이름 검증 로직 업데이트
