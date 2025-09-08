@@ -1,1 +1,1 @@
-export type ConflictStrategy = 'prompt' | 'overwrite' | 'merge' | 'skip';
+export type ConflictStrategy = 'prompt' | 'overwrite' | 'merge' | 'skip' | 'backup';
