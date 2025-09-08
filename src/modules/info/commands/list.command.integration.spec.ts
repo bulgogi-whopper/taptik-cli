@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// Removed unused imports: AuthService, SupabaseService
+import { ListService } from '../services/list.service';
 
 import { ListCommand } from './list.command';
-import { ListService } from '../services/list.service';
-import { AuthService } from '../../auth/auth.service';
-import { SupabaseService } from '../../supabase/supabase.service';
 
 /**
  * Integration tests for ListCommand
@@ -18,7 +18,7 @@ describe('ListCommand Integration Tests', () => {
   let supabaseClient: SupabaseClient;
   let consoleLogSpy: any;
   let consoleErrorSpy: any;
-  let processExitSpy: any;
+  let _processExitSpy: any;
 
   // Test data for integration tests
   const testUser = {
@@ -56,7 +56,7 @@ describe('ListCommand Integration Tests', () => {
     // Mock console methods to capture output
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    processExitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
+    _processExitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
       throw new Error('process.exit called');
     });
   });

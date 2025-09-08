@@ -1,11 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
+
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
+import { InfoCommand } from './commands/info.command';
+import { ListCommand } from './commands/list.command';
 import { InfoModule } from './info.module';
 import { InfoService } from './services/info.service';
 import { ListService } from './services/list.service';
-import { InfoCommand } from './commands/info.command';
-import { ListCommand } from './commands/list.command';
 
 // Mock the dependencies that InfoModule imports
 vi.mock('../auth/auth.module', () => ({

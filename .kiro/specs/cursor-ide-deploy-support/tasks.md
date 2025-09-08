@@ -1,18 +1,18 @@
 # 구현 계획
 
-- [ ] 1. Cursor IDE 데이터 모델 및 인터페이스 정의
+- [x] 1. Cursor IDE 데이터 모델 및 인터페이스 정의
   - Cursor 설정 구조를 위한 TypeScript 인터페이스 생성
   - CursorConfiguration, CursorGlobalSettings, CursorProjectSettings 등 핵심 인터페이스 정의
   - Cursor 컴포넌트 타입 정의 (settings, extensions, snippets, ai-prompts, tasks, launch)
   - _요구사항: 1, 2, 9, 10_
 
-- [ ] 1.1 Cursor 설정 스키마 인터페이스 구현
+- [x] 1.1 Cursor 설정 스키마 인터페이스 구현
   - `src/modules/deploy/interfaces/cursor-config.interface.ts` 파일 생성
   - CursorGlobalSettings, CursorProjectSettings, CursorAIPrompts 인터페이스 정의
   - Cursor 컴포넌트 타입 열거형 정의
   - _요구사항: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7_
 
-- [ ] 1.2 Cursor 배포 옵션 인터페이스 확장
+- [x] 1.2 Cursor 배포 옵션 인터페이스 확장
   - `src/modules/deploy/interfaces/deploy-options.interface.ts` 업데이트
   - SupportedPlatform 타입에 'cursor-ide' 추가
   - Cursor별 배포 옵션 정의

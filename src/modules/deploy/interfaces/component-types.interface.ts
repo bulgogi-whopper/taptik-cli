@@ -11,7 +11,13 @@ export type KiroComponentType =
   | 'hooks'
   | 'agents'
   | 'templates';
-export type CursorComponentType = ComponentType;
+export type CursorComponentType =
+  | 'settings'
+  | 'extensions'
+  | 'snippets'
+  | 'ai-prompts'
+  | 'tasks'
+  | 'launch';
 
 // Platform-specific component mapping
 export type PlatformComponentType<T extends SupportedPlatform> =

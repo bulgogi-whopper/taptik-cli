@@ -1,3 +1,4 @@
+import { KiroComponentType } from './component-types.interface';
 import {
   ConflictStrategy,
   SupportedPlatform,
@@ -7,6 +8,9 @@ import {
   DeploymentError,
   DeploymentWarning,
 } from './deployment-result.interface';
+
+// Re-export KiroComponentType for backward compatibility
+export { KiroComponentType };
 
 /**
  * Kiro-specific deployment options
@@ -32,16 +36,7 @@ export interface KiroDeploymentOptions {
   mergeStrategy?: KiroMergeStrategy; // How to merge configuration files
 }
 
-/**
- * Kiro component types that can be deployed
- */
-export type KiroComponentType =
-  | 'settings'
-  | 'steering'
-  | 'specs'
-  | 'hooks'
-  | 'agents'
-  | 'templates';
+// KiroComponentType is imported from component-types.interface.ts
 
 /**
  * Kiro-specific conflict resolution strategies
