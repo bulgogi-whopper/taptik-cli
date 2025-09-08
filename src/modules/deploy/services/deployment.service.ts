@@ -13,6 +13,10 @@ import {
 import { DeploymentResult } from '../interfaces/deployment-result.interface';
 
 import { BackupService } from './backup.service';
+import { CursorComponentHandlerService } from './cursor-component-handler.service';
+import { CursorConflictResolverService } from './cursor-conflict-resolver.service';
+import { CursorTransformerService } from './cursor-transformer.service';
+import { CursorValidatorService } from './cursor-validator.service';
 import { DiffService } from './diff.service';
 import { ErrorRecoveryService } from './error-recovery.service';
 import { KiroComponentHandlerService } from './kiro-component-handler.service';
@@ -36,6 +40,10 @@ export class DeploymentService {
     private readonly kiroTransformer: KiroTransformerService,
     private readonly kiroComponentHandler: KiroComponentHandlerService,
     private readonly kiroInstallationDetector: KiroInstallationDetectorService,
+    private readonly cursorTransformer: CursorTransformerService,
+    private readonly cursorValidator: CursorValidatorService,
+    private readonly cursorComponentHandler: CursorComponentHandlerService,
+    private readonly cursorConflictResolver: CursorConflictResolverService,
   ) {}
 
   async deployToClaudeCode(
@@ -866,6 +874,261 @@ export class DeploymentService {
   }
 
   /**
+   * Deploy configuration to Cursor IDE
+   */
+  async deployToCursor(
+    context: TaptikContext,
+    options: DeployOptions,
+  ): Promise<DeploymentResult> {
+    // Generate unique deployment ID for performance tracking
+    const deploymentId = `cursor-deploy-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
+    // Start performance monitoring
+    this.performanceMonitor.startDeploymentTiming(deploymentId);
+    this.performanceMonitor.recordMemoryUsage(deploymentId, 'start');
+
+    const result: DeploymentResult = {
+      success: false,
+      platform: 'cursor-ide',
+      deployedComponents: [] as string[],
+      conflicts: [],
+      summary: {
+        filesDeployed: 0,
+        filesSkipped: 0,
+        conflictsResolved: 0,
+        backupCreated: false,
+      },
+      errors: [],
+      warnings: [],
+      metadata: {
+        deploymentId,
+        performanceReport: 'Cursor deployment initialized',
+      },
+    };
+
+    try {
+      // Step 1: Validate configuration for Cursor platform
+      this.performanceMonitor.recordMemoryUsage(
+        deploymentId,
+        'validation-start',
+      );
+      const validationResult = await this.cursorValidator.validate(context);
+      this.performanceMonitor.recordMemoryUsage(deploymentId, 'validation-end');
+
+      if (!validationResult.isValid) {
+        result.errors = validationResult.errors.map((error) => ({
+          message: error.message,
+          code: error.code || 'VALIDATION_ERROR',
+          severity: error.severity,
+        }));
+        this.performanceMonitor.endDeploymentTiming(deploymentId);
+        result.metadata!.performanceReport =
+          'Cursor deployment failed - validation errors';
+        return result;
+      }
+
+      // Add validation warnings
+      if (validationResult.warnings && validationResult.warnings.length > 0) {
+        result.warnings = validationResult.warnings.map((warn) => ({
+          message: warn.message,
+          code: warn.code || 'WARNING',
+        }));
+      }
+
+      // Step 2: Return early for validation-only mode
+      if (options.validateOnly) {
+        result.success = true;
+        result.metadata!.performanceReport =
+          'Cursor validation completed successfully';
+        this.performanceMonitor.endDeploymentTiming(deploymentId);
+        return result;
+      }
+
+      // Step 3: Security scan
+      this.performanceMonitor.recordMemoryUsage(deploymentId, 'security-start');
+      const securityResult = await this.securityService.scanContext(context);
+      this.performanceMonitor.recordMemoryUsage(deploymentId, 'security-end');
+
+      if (!securityResult.isSafe) {
+        result.errors = [
+          {
+            message: `Security check failed: ${securityResult.blockers?.join(', ') || 'Unknown security issue'}`,
+            code: 'CURSOR_SECURITY_CHECK_FAILED',
+            severity: 'HIGH',
+          },
+        ];
+        return result;
+      }
+
+      // Step 4: Transform context to Cursor configuration
+      this.performanceMonitor.recordMemoryUsage(
+        deploymentId,
+        'transformation-start',
+      );
+      const cursorConfig = await this.cursorTransformer.transform(context);
+      this.performanceMonitor.recordMemoryUsage(
+        deploymentId,
+        'transformation-end',
+      );
+
+      // Step 5: Handle backup strategy
+      if (options.conflictStrategy === 'backup') {
+        try {
+          const backupPath = await this.createCursorBackup();
+          result.summary.backupCreated = true;
+          result.backupPath = backupPath;
+          result.warnings.push({
+            message: `Backup created at: ${backupPath}`,
+            code: 'CURSOR_BACKUP_CREATED',
+          });
+        } catch (backupError) {
+          result.warnings.push({
+            message: `Failed to create backup: ${(backupError as Error).message}`,
+            code: 'CURSOR_BACKUP_FAILED',
+          });
+        }
+      }
+
+      // Step 6: Return early for dry-run mode
+      if (options.dryRun) {
+        result.success = true;
+        result.warnings.push({
+          message: 'Dry run mode - no files were actually written to disk',
+          code: 'CURSOR_DRY_RUN',
+        });
+        this.performanceMonitor.endDeploymentTiming(deploymentId);
+        result.metadata!.performanceReport =
+          'Cursor dry-run completed successfully';
+        return result;
+      }
+
+      // Step 7: Apply deployment options filtering
+      let componentsToProcess = [
+        'settings',
+        'extensions',
+        'snippets',
+        'ai-prompts',
+        'tasks',
+        'launch',
+      ];
+      if (options.components && options.components.length > 0) {
+        componentsToProcess = options.components.filter((c) =>
+          componentsToProcess.includes(c),
+        );
+      }
+      if (options.skipComponents && options.skipComponents.length > 0) {
+        componentsToProcess = componentsToProcess.filter(
+          (c) => !options.skipComponents!.includes(c as ComponentType),
+        );
+      }
+
+      // Step 8: Deploy components using component handler
+      this.performanceMonitor.recordMemoryUsage(
+        deploymentId,
+        'deployment-start',
+      );
+
+      const deployResult = await this.cursorComponentHandler.deploy(
+        cursorConfig,
+        {
+          platform: 'cursor-ide' as const,
+          conflictStrategy: options.conflictStrategy,
+          dryRun: options.dryRun,
+          validateOnly: options.validateOnly,
+          components: componentsToProcess,
+          skipComponents: options.skipComponents,
+          enableLargeFileStreaming: options.enableLargeFileStreaming,
+          onProgress: options.onProgress,
+        },
+      );
+
+      this.performanceMonitor.recordMemoryUsage(deploymentId, 'deployment-end');
+
+      // Step 9: Process deployment results
+      result.success = deployResult.success;
+      result.deployedComponents = deployResult.deployedComponents || [];
+      result.conflicts = deployResult.conflicts || [];
+      result.summary = {
+        ...result.summary,
+        ...deployResult.summary,
+      };
+      result.errors.push(...(deployResult.errors || []));
+      result.warnings.push(...(deployResult.warnings || []));
+
+      if (result.success) {
+        result.warnings.push({
+          message: `Successfully deployed ${result.summary.filesDeployed} files to Cursor IDE`,
+          code: 'CURSOR_DEPLOYMENT_SUCCESS',
+        });
+      } else {
+        result.warnings.push({
+          message: `Deployment completed with ${result.errors.length} errors`,
+          code: 'CURSOR_DEPLOYMENT_PARTIAL_SUCCESS',
+        });
+      }
+
+      // End performance monitoring
+      this.performanceMonitor.endDeploymentTiming(deploymentId);
+      result.metadata.performanceReport = `Cursor deployment completed: ${result.summary.filesDeployed} files deployed`;
+
+      return result;
+    } catch (error) {
+      // Add error to result
+      result.errors.push({
+        message: `Unexpected error during Cursor deployment: ${(error as Error).message}`,
+        code: 'CURSOR_UNEXPECTED_ERROR',
+        severity: 'HIGH',
+      });
+
+      // Attempt error recovery if backup was created
+      if (result.summary.backupCreated && result.backupPath) {
+        try {
+          const recoveryResult =
+            await this.errorRecoveryService.recoverFromFailure(result, {
+              platform: 'cursor-ide',
+              backupId: result.backupPath
+                ? path.basename(result.backupPath)
+                : undefined,
+              forceRecovery: true,
+            });
+
+          if (recoveryResult.success) {
+            result.warnings.push({
+              message:
+                'Deployment failed but was successfully recovered from backup',
+              code: 'CURSOR_RECOVERED_FROM_BACKUP',
+            });
+          } else {
+            result.errors.push({
+              message: 'Recovery from backup also failed',
+              code: 'CURSOR_RECOVERY_FAILED',
+              severity: 'CRITICAL',
+            });
+          }
+        } catch (recoveryError) {
+          result.errors.push({
+            message: `Recovery failed: ${(recoveryError as Error).message}`,
+            code: 'CURSOR_RECOVERY_ERROR',
+            severity: 'CRITICAL',
+          });
+        }
+      }
+
+      // End performance monitoring even on error
+      this.performanceMonitor.endDeploymentTiming(deploymentId);
+      result.metadata.performanceReport =
+        'Cursor deployment failed with error recovery attempted';
+
+      return result;
+    } finally {
+      // Clear metrics after a delay to allow for inspection
+      setTimeout(() => {
+        this.performanceMonitor.clearMetrics(deploymentId);
+      }, 60000); // Clear after 1 minute
+    }
+  }
+
+  /**
    * Deploy large configuration using streaming optimization
    */
   async deployLargeConfiguration(
@@ -1413,6 +1676,44 @@ export class DeploymentService {
     }
 
     // No existing Kiro config found, create empty backup
+    return '';
+  }
+
+  private async createCursorBackup(): Promise<string> {
+    // Create backup of existing Cursor configuration
+    const homeDirectory = os.homedir();
+    const projectDirectory = process.cwd();
+    const cursorPaths = [
+      path.join(homeDirectory, '.cursor', 'settings.json'),
+      path.join(homeDirectory, '.cursor', 'keybindings.json'),
+      path.join(homeDirectory, '.cursor', 'snippets'),
+      path.join(homeDirectory, '.cursor', 'extensions'),
+      path.join(homeDirectory, '.cursor', 'ai'),
+      path.join(projectDirectory, '.cursor', 'settings.json'),
+      path.join(projectDirectory, '.cursor', 'launch.json'),
+      path.join(projectDirectory, '.cursor', 'tasks.json'),
+      path.join(projectDirectory, '.cursor', 'extensions.json'),
+      path.join(projectDirectory, '.cursor', 'ai'),
+    ];
+
+    // Find the first existing path to use as backup base
+    const pathChecks = cursorPaths.map(async (cursorPath) => {
+      try {
+        await fs.access(cursorPath);
+        return { path: cursorPath, exists: true };
+      } catch {
+        return { path: cursorPath, exists: false };
+      }
+    });
+
+    const results = await Promise.all(pathChecks);
+    const existingPath = results.find((result) => result.exists);
+
+    if (existingPath) {
+      return await this.backupService.createBackup(existingPath.path);
+    }
+
+    // No existing Cursor config found, create empty backup
     return '';
   }
 }

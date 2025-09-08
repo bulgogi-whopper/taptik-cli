@@ -165,19 +165,19 @@
   - 사용자 인터랙션 처리
   - _요구사항: 5.2, 5.3, 5.4, 5.5, 5.6_
 
-- [ ] 6. DeploymentService에 Cursor 지원 추가
+- [x] 6. DeploymentService에 Cursor 지원 추가
   - 기존 DeploymentService를 확장하여 Cursor IDE 배포 지원
   - deployToCursor() 메서드 구현
   - 플랫폼별 라우팅 로직 업데이트
   - _요구사항: 1, 4_
 
-- [ ] 6.1 DeploymentService 확장
+- [x] 6.1 DeploymentService 확장
   - `src/modules/deploy/services/deployment.service.ts` 업데이트
   - deployToCursor() 메서드 추가
   - Cursor 배포 서비스 의존성 주입
   - _요구사항: 1.1, 1.4_
 
-- [ ] 6.2 플랫폼 라우팅 로직 업데이트
+- [x] 6.2 플랫폼 라우팅 로직 업데이트
   - 기존 배포 메서드에 cursor-ide 케이스 추가
   - 플랫폼별 검증 및 오류 처리
   - _요구사항: 1.2, 1.5_

@@ -84,16 +84,16 @@ export interface CursorProjectSettings {
   'editor.trimAutoWhitespace': boolean;
   
   // Language-specific settings
-  '[typescript]': {
+  '[typescript]'?: {
     'editor.defaultFormatter': string;
     'editor.formatOnSave': boolean;
     'editor.codeActionsOnSave': Record<string, boolean>;
   };
-  '[javascript]': {
+  '[javascript]'?: {
     'editor.defaultFormatter': string;
     'editor.formatOnSave': boolean;
   };
-  '[python]': {
+  '[python]'?: {
     'editor.defaultFormatter': string;
     'python.defaultInterpreterPath': string;
   };

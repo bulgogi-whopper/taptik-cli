@@ -25,7 +25,7 @@ interface DeployCommandOptions {
 @Command({
   name: 'deploy',
   description:
-    'Deploy Taptik context to target platform (Claude Code, Kiro IDE)',
+    'Deploy Taptik context to target platform (Claude Code, Kiro IDE, Cursor IDE)',
 })
 @Injectable()
 export class DeployCommand extends CommandRunner {
@@ -44,9 +44,9 @@ export class DeployCommand extends CommandRunner {
       // Set default platform
       const platform = options.platform || 'claude-code';
 
-      if (platform !== 'claude-code' && platform !== 'kiro-ide') {
+      if (platform !== 'claude-code' && platform !== 'kiro-ide' && platform !== 'cursor-ide') {
         console.error(
-          `❌ Platform '${platform}' is not supported. Supported platforms: 'claude-code', 'kiro-ide'`,
+          `❌ Platform '${platform}' is not supported. Supported platforms: 'claude-code', 'kiro-ide', 'cursor-ide'`,
         );
         process.exit(1);
       }
@@ -87,7 +87,7 @@ export class DeployCommand extends CommandRunner {
         console.log('🧪 Running in dry-run mode...');
       } else {
         console.log(
-          `🚀 Deploying to ${platform === 'claude-code' ? 'Claude Code' : 'Kiro IDE'}...`,
+          `🚀 Deploying to ${platform === 'claude-code' ? 'Claude Code' : platform === 'kiro-ide' ? 'Kiro IDE' : 'Cursor IDE'}...`,
         );
       }
 
@@ -100,6 +100,11 @@ export class DeployCommand extends CommandRunner {
         );
       } else if (platform === 'kiro-ide') {
         result = await this.deploymentService.deployToKiro(
+          context,
+          deployOptions,
+        );
+      } else if (platform === 'cursor-ide') {
+        result = await this.deploymentService.deployToCursor(
           context,
           deployOptions,
         );
@@ -156,11 +161,11 @@ export class DeployCommand extends CommandRunner {
 
   @Option({
     flags: '-p, --platform <platform>',
-    description: 'Target platform ("claude-code" or "kiro-ide")',
+    description: 'Target platform ("claude-code", "kiro-ide", or "cursor-ide")',
     defaultValue: 'claude-code',
   })
   parsePlatform(value: string): SupportedPlatform {
-    const supportedPlatforms: SupportedPlatform[] = ['claude-code', 'kiro-ide'];
+    const supportedPlatforms: SupportedPlatform[] = ['claude-code', 'kiro-ide', 'cursor-ide'];
     if (!supportedPlatforms.includes(value as SupportedPlatform)) {
       throw new Error(
         `Unsupported platform: ${value}. Supported platforms: ${supportedPlatforms.join(', ')}`,
