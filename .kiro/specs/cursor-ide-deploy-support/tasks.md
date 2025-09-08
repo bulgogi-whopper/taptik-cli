@@ -63,38 +63,38 @@
   - 디버그 설정 매핑
   - _요구사항: 10.5, 17.3_
 
-- [ ] 3. CursorValidatorService 구현
+- [x] 3. CursorValidatorService 구현
   - Cursor IDE 배포 전 설정 검증 서비스 구현
   - 기본 구조, 호환성, AI 설정, 파일 크기, 보안 검증 로직 구현
   - 상세한 오류 메시지 및 수정 제안 제공
   - _요구사항: 3, 11_
 
-- [ ] 3.1 기본 검증 서비스 구조 생성
+- [x] 3.1 기본 검증 서비스 구조 생성
   - `src/modules/deploy/services/cursor-validator.service.ts` 파일 생성
   - CursorValidatorService 클래스 기본 구조 구현
   - validate() 메서드 시그니처 정의
   - ValidationResult 인터페이스 정의
   - _요구사항: 3.1, 3.2, 3.3_
 
-- [ ] 3.2 기본 구조 검증 로직 구현
+- [x] 3.2 기본 구조 검증 로직 구현
   - validateBasicStructure() 메서드 구현
   - 필수 컨텍스트 존재 여부 확인
   - 버전 정보 검증
   - _요구사항: 11.1, 11.2_
 
-- [ ] 3.3 Cursor 호환성 검증 로직 구현
+- [x] 3.3 Cursor 호환성 검증 로직 구현
   - validateCursorCompatibility() 메서드 구현
   - AI 설정 범위 검증 (토큰 제한, 온도 등)
   - 확장 프로그램 호환성 검사
   - _요구사항: 3.2, 3.3, 11.3_
 
-- [ ] 3.4 AI 설정 및 파일 크기 검증 구현
+- [x] 3.4 AI 설정 및 파일 크기 검증 구현
   - validateAISettings() 및 validateFileSizes() 메서드 구현
   - 프롬프트 크기 제한 검증
   - AI 컨텍스트 파일 수 제한 검증
   - _요구사항: 11.4, 11.5_
 
-- [ ] 3.5 보안 검증 로직 구현
+- [x] 3.5 보안 검증 로직 구현
   - validateSecurity() 메서드 구현
   - 악성 패턴 감지
   - 민감한 정보 검사
