@@ -100,37 +100,37 @@
   - 민감한 정보 검사
   - _요구사항: 7.1, 7.2, 11.6_
 
-- [ ] 4. CursorComponentHandlerService 구현
+- [x] 4. CursorComponentHandlerService 구현
   - 개별 Cursor 컴포넌트 배포를 처리하는 서비스 구현
   - 설정, 확장 프로그램, 스니펫, AI 프롬프트, 작업, 디버그 설정 배포 로직
   - 파일 충돌 처리 및 백업 기능
   - _요구사항: 2, 10, 12_
 
-- [ ] 4.1 기본 컴포넌트 핸들러 구조 생성
+- [x] 4.1 기본 컴포넌트 핸들러 구조 생성
   - `src/modules/deploy/services/cursor-component-handler.service.ts` 파일 생성
   - CursorComponentHandlerService 클래스 기본 구조 구현
   - deploy() 메서드 시그니처 정의
   - _요구사항: 2.1, 2.2_
 
-- [ ] 4.2 설정 파일 배포 로직 구현
+- [x] 4.2 설정 파일 배포 로직 구현
   - deploySettings() 메서드 구현
   - 전역 및 프로젝트 설정 파일 작성
   - 기존 설정과의 병합 처리
   - _요구사항: 2.2, 10.1, 12.2_
 
-- [ ] 4.3 AI 프롬프트 배포 로직 구현
+- [x] 4.3 AI 프롬프트 배포 로직 구현
   - deployAIPrompts() 메서드 구현
   - 프롬프트 및 규칙 파일을 마크다운으로 작성
   - AI 컨텍스트 설정 파일 생성
   - _요구사항: 2.5, 10.4, 12.3_
 
-- [ ] 4.4 확장 프로그램 및 스니펫 배포 로직 구현
+- [x] 4.4 확장 프로그램 및 스니펫 배포 로직 구현
   - deployExtensions() 및 deploySnippets() 메서드 구현
   - 확장 프로그램 권장 목록 생성
   - 언어별 스니펫 파일 작성
   - _요구사항: 2.3, 2.4, 10.2, 10.3_
 
-- [ ] 4.5 작업 및 디버그 설정 배포 로직 구현
+- [x] 4.5 작업 및 디버그 설정 배포 로직 구현
   - deployTasks() 및 deployLaunch() 메서드 구현
   - 작업 설정 JSON 파일 생성
   - 디버그 설정 JSON 파일 생성
