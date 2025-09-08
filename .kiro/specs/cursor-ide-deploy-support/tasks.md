@@ -18,46 +18,46 @@
   - Cursor별 배포 옵션 정의
   - _요구사항: 1.1, 1.2, 1.3_
 
-- [ ] 2. CursorTransformerService 구현
+- [x] 2. CursorTransformerService 구현
   - Taptik 공통 형식을 Cursor IDE 형식으로 변환하는 핵심 서비스 구현
   - 개인 설정, 프로젝트 설정, AI 프롬프트, 확장 프로그램 변환 로직 구현
   - 데이터 매핑 및 기본값 처리 로직 구현
   - _요구사항: 9, 17_
 
-- [ ] 2.1 기본 변환 서비스 구조 생성
+- [x] 2.1 기본 변환 서비스 구조 생성
   - `src/modules/deploy/services/cursor-transformer.service.ts` 파일 생성
   - CursorTransformerService 클래스 기본 구조 구현
   - transform() 메서드 시그니처 정의
   - _요구사항: 9.1, 9.2, 9.3_
 
-- [ ] 2.2 전역 설정 변환 로직 구현
+- [x] 2.2 전역 설정 변환 로직 구현
   - transformGlobalSettings() 메서드 구현
   - 개인 선호도를 Cursor 전역 설정으로 매핑
   - 테마, 폰트, 에디터 설정 변환 로직
   - AI 설정 매핑 (모델, 온도, 토큰 제한)
   - _요구사항: 9.1, 17.1_
 
-- [ ] 2.3 프로젝트 설정 변환 로직 구현
+- [x] 2.3 프로젝트 설정 변환 로직 구현
   - transformProjectSettings() 메서드 구현
   - 프로젝트별 설정을 Cursor 프로젝트 설정으로 매핑
   - 언어별 설정 변환 (TypeScript, JavaScript, Python 등)
   - AI 컨텍스트 설정 매핑
   - _요구사항: 9.2, 17.4_
 
-- [ ] 2.4 AI 프롬프트 변환 로직 구현
+- [x] 2.4 AI 프롬프트 변환 로직 구현
   - transformAIPrompts() 메서드 구현
   - 개인 및 프로젝트 프롬프트를 Cursor AI 프롬프트로 변환
   - 스티어링 문서를 AI 규칙으로 변환
   - 프롬프트 템플릿 매핑
   - _요구사항: 9.3, 17.2, 17.5_
 
-- [ ] 2.5 확장 프로그램 및 스니펫 변환 로직 구현
+- [x] 2.5 확장 프로그램 및 스니펫 변환 로직 구현
   - transformExtensions() 및 transformSnippets() 메서드 구현
   - 확장 프로그램 호환성 매핑
   - 코드 스니펫 형식 변환
   - _요구사항: 10.2, 10.3_
 
-- [ ] 2.6 작업 및 디버그 설정 변환 로직 구현
+- [x] 2.6 작업 및 디버그 설정 변환 로직 구현
   - transformTasks() 및 transformLaunch() 메서드 구현
   - Claude Code 명령어를 Cursor 작업으로 변환
   - 디버그 설정 매핑
