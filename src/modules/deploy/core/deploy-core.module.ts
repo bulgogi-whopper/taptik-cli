@@ -5,6 +5,8 @@ import { DeployKiroModule } from '../kiro/deploy-kiro.module';
 import { BackupService } from '../services/backup.service';
 import { CursorComponentHandlerService } from '../services/cursor-component-handler.service';
 import { CursorConflictResolverService } from '../services/cursor-conflict-resolver.service';
+import { CursorParallelProcessorService } from '../services/cursor-parallel-processor.service';
+import { CursorPerformanceMonitorService } from '../services/cursor-performance-monitor.service';
 import { CursorTransformerService } from '../services/cursor-transformer.service';
 import { CursorValidatorService } from '../services/cursor-validator.service';
 import { DeploymentLoggerService } from '../services/deployment-logger.service';
@@ -47,6 +49,8 @@ import { DeployUtilsModule } from '../utils/deploy-utils.module';
     CursorValidatorService,
     CursorComponentHandlerService,
     CursorConflictResolverService,
+    CursorPerformanceMonitorService,
+    CursorParallelProcessorService,
   ],
   exports: [
     DeploymentService,
@@ -67,6 +71,8 @@ import { DeployUtilsModule } from '../utils/deploy-utils.module';
     CursorValidatorService,
     CursorComponentHandlerService,
     CursorConflictResolverService,
+    CursorPerformanceMonitorService,
+    CursorParallelProcessorService,
   ],
 })
 export class DeployCoreModule {}

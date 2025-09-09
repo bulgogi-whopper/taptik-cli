@@ -294,11 +294,13 @@ export class ErrorHandlerService {
     }
 
     if (this.hasWarnings()) {
+      // eslint-disable-next-line no-console
       console.log('\n✅ Build completed with warnings');
        
       process.exit(0);
     }
 
+    // eslint-disable-next-line no-console
     console.log('\n✅ Build completed successfully');
      
     process.exit(0);

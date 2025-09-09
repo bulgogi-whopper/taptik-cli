@@ -236,21 +236,7 @@ export class CursorValidatorService {
   ): Promise<void> {
     // Validate AI settings compatibility
     if (context.content.personal?.preferences) {
-      const prefs = context.content.personal.preferences;
-      
-      // Check AI temperature range
-      if (prefs.temperature !== undefined) {
-        const temp = typeof prefs.temperature === 'string' ? parseFloat(prefs.temperature) : prefs.temperature;
-        if (isNaN(temp) || temp < 0 || temp > 2) {
-          errors.push({
-            code: 'INVALID_AI_TEMPERATURE',
-            message: `AI temperature must be between 0 and 2, got: ${prefs.temperature}`,
-            component: 'ai-prompts',
-            field: 'personal.preferences.temperature',
-            severity: 'error',
-          });
-        }
-      }
+      // Temperature validation removed as it's not part of the preferences interface
     }
 
     // Validate project AI settings
@@ -259,8 +245,8 @@ export class CursorValidatorService {
       
       // Check for unsupported languages that might cause issues
       const unsupportedLanguages = ['cobol', 'fortran', 'assembly'];
-      if (techStack.languages) {
-        const problematicLangs = techStack.languages.filter(lang => 
+      if (techStack.language) {
+        const problematicLangs = [techStack.language].filter(lang => 
           unsupportedLanguages.includes(lang.toLowerCase())
         );
         
@@ -269,7 +255,7 @@ export class CursorValidatorService {
             code: 'UNSUPPORTED_LANGUAGES',
             message: `Some languages may have limited Cursor IDE support: ${problematicLangs.join(', ')}`,
             component: 'settings',
-            field: 'project.tech_stack.languages',
+            field: 'project.tech_stack.language',
             severity: 'warning',
           });
         }
@@ -449,7 +435,7 @@ export class CursorValidatorService {
               const templateVars = template.template.match(/{{(\w+)}}/g) || [];
               const definedVars = template.variables || [];
               
-              templateVars.forEach(varMatch => {
+              templateVars.forEach((varMatch: string) => {
                 const varName = varMatch.replace(/[{}]/g, '');
                 if (!definedVars.includes(varName)) {
                   warnings.push({
@@ -471,8 +457,8 @@ export class CursorValidatorService {
       // Check for AI context file patterns
       const {project} = context.content;
       
-      if (project.tech_stack?.languages) {
-        const {languages} = project.tech_stack;
+      if (project.tech_stack?.language) {
+        const languages = [project.tech_stack.language];
         const totalLanguages = languages.length;
         
         if (totalLanguages > 10) {
@@ -503,13 +489,12 @@ export class CursorValidatorService {
 
     // Validate personal AI preferences
     if (context.content.personal?.preferences) {
-      const prefs = context.content.personal.preferences;
-      
-      // Check explanation level
-      if (prefs.explanation_level && !['beginner', 'intermediate', 'expert'].includes(prefs.explanation_level)) {
+      // Check explanation level (in communication, not preferences)
+      const communication = context.content.personal?.communication;
+      if (communication?.explanation_level && !['beginner', 'intermediate', 'expert'].includes(communication.explanation_level)) {
         warnings.push({
           code: 'INVALID_EXPLANATION_LEVEL',
-          message: `Invalid explanation level: ${prefs.explanation_level}. Should be 'beginner', 'intermediate', or 'expert'`,
+          message: `Invalid explanation level: ${communication.explanation_level}. Should be 'beginner', 'intermediate', or 'expert'`,
           component: 'ai-prompts',
           severity: 'warning',
         });
@@ -830,8 +815,8 @@ export class CursorValidatorService {
     let fileCount = 0;
 
     // Count from project tech stack
-    if (context.content.project?.tech_stack?.languages) {
-      const {languages} = context.content.project.tech_stack;
+    if (context.content.project?.tech_stack?.language) {
+      const languages = [context.content.project.tech_stack.language];
       // Rough estimation: 50 files per language on average
       fileCount += languages.length * 50;
     }

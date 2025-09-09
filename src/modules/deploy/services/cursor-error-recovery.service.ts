@@ -1,12 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
 import { promises as fs } from 'fs';
-import { join, dirname } from 'path';
+import { dirname } from 'path';
+
+import { Injectable, Logger } from '@nestjs/common';
+
 import { 
   CursorDeploymentError, 
-  CursorDeploymentErrorCode, 
-  ErrorSeverity,
-  RecoverabilityLevel 
+  CursorDeploymentErrorCode
 } from '../errors/cursor-deploy.error';
+
 import { BackupService } from './backup.service';
 
 /**
@@ -273,7 +274,7 @@ class FileSystemRecoveryStrategy implements RecoveryStrategy {
         suggestions: ['Retry the deployment'],
         retryable: true,
       };
-    } catch (accessError) {
+    } catch (_accessError) {
       return {
         success: false,
         message: 'Directory is still not writable',
@@ -287,14 +288,16 @@ class FileSystemRecoveryStrategy implements RecoveryStrategy {
     }
   }
 
-  private async handleFileLocked(error: CursorDeploymentError, context: RecoveryContext): Promise<RecoveryResult> {
+  private async handleFileLocked(error: CursorDeploymentError, _context: RecoveryContext): Promise<RecoveryResult> {
     // 파일 잠금 해제 대기 (최대 30초)
     const maxWaitTime = 30000;
     const checkInterval = 1000;
     const filePath = error.details.path;
     
+     
     for (let waited = 0; waited < maxWaitTime; waited += checkInterval) {
       try {
+        // eslint-disable-next-line no-await-in-loop
         await fs.access(filePath, fs.constants.W_OK);
         return {
           success: true,
@@ -303,6 +306,7 @@ class FileSystemRecoveryStrategy implements RecoveryStrategy {
           retryable: true,
         };
       } catch {
+        // eslint-disable-next-line no-await-in-loop
         await new Promise(resolve => setTimeout(resolve, checkInterval));
       }
     }
@@ -322,7 +326,7 @@ class FileSystemRecoveryStrategy implements RecoveryStrategy {
   private async handleFileCorruption(error: CursorDeploymentError, context: RecoveryContext): Promise<RecoveryResult> {
     if (context.backupId) {
       try {
-        await this.backupService.restore(context.backupId);
+        await this.backupService.restore(context.backupId, 'cursor-ide');
         return {
           success: true,
           message: 'Restored from backup due to file corruption',
@@ -392,7 +396,7 @@ class PermissionRecoveryStrategy implements RecoveryStrategy {
           'Contact system administrator if needed',
         ],
       };
-    } catch (statError) {
+    } catch (_statError) {
       return {
         success: false,
         message: 'Permission denied - path may not exist',
@@ -417,7 +421,7 @@ class NetworkRecoveryStrategy implements RecoveryStrategy {
     return error.category === 'network';
   }
 
-  async recover(error: CursorDeploymentError, context: RecoveryContext): Promise<RecoveryResult> {
+  async recover(_error: CursorDeploymentError, _context: RecoveryContext): Promise<RecoveryResult> {
     // 네트워크 연결 테스트
     const isOnline = await this.checkNetworkConnectivity();
     
@@ -491,7 +495,7 @@ class TransformationRecoveryStrategy implements RecoveryStrategy {
     }
   }
 
-  private async handleUnsupportedFeature(error: CursorDeploymentError, context: RecoveryContext): Promise<RecoveryResult> {
+  private async handleUnsupportedFeature(_error: CursorDeploymentError, _context: RecoveryContext): Promise<RecoveryResult> {
     return {
       success: true,
       message: 'Skipped unsupported feature',
@@ -505,7 +509,7 @@ class TransformationRecoveryStrategy implements RecoveryStrategy {
     };
   }
 
-  private async handleMappingError(error: CursorDeploymentError, context: RecoveryContext): Promise<RecoveryResult> {
+  private async handleMappingError(_error: CursorDeploymentError, _context: RecoveryContext): Promise<RecoveryResult> {
     return {
       success: true,
       message: 'Applied default mapping for failed component',
@@ -530,7 +534,7 @@ class SecurityRecoveryStrategy implements RecoveryStrategy {
     return error.category === 'security';
   }
 
-  async recover(error: CursorDeploymentError, context: RecoveryContext): Promise<RecoveryResult> {
+  async recover(_error: CursorDeploymentError, _context: RecoveryContext): Promise<RecoveryResult> {
     // 보안 오류는 일반적으로 자동 복구하지 않음
     return {
       success: false,
@@ -582,7 +586,7 @@ class PerformanceRecoveryStrategy implements RecoveryStrategy {
     }
   }
 
-  private async handleTimeout(error: CursorDeploymentError, context: RecoveryContext): Promise<RecoveryResult> {
+  private async handleTimeout(_error: CursorDeploymentError, _context: RecoveryContext): Promise<RecoveryResult> {
     return {
       success: false,
       message: 'Operation timed out',
@@ -595,7 +599,7 @@ class PerformanceRecoveryStrategy implements RecoveryStrategy {
     };
   }
 
-  private async handleMemoryLimit(error: CursorDeploymentError, context: RecoveryContext): Promise<RecoveryResult> {
+  private async handleMemoryLimit(_error: CursorDeploymentError, _context: RecoveryContext): Promise<RecoveryResult> {
     return {
       success: false,
       message: 'Memory limit exceeded',
@@ -608,7 +612,7 @@ class PerformanceRecoveryStrategy implements RecoveryStrategy {
     };
   }
 
-  private async handleRateLimit(error: CursorDeploymentError, context: RecoveryContext): Promise<RecoveryResult> {
+  private async handleRateLimit(_error: CursorDeploymentError, _context: RecoveryContext): Promise<RecoveryResult> {
     const waitTime = 60000; // 1분 대기
     
     return {
@@ -654,7 +658,7 @@ class ConflictRecoveryStrategy implements RecoveryStrategy {
     }
   }
 
-  private async handleBackupFailed(error: CursorDeploymentError, context: RecoveryContext): Promise<RecoveryResult> {
+  private async handleBackupFailed(_error: CursorDeploymentError, _context: RecoveryContext): Promise<RecoveryResult> {
     return {
       success: false,
       message: 'Backup creation failed',
@@ -672,7 +676,7 @@ class ConflictRecoveryStrategy implements RecoveryStrategy {
     };
   }
 
-  private async handleRollbackFailed(error: CursorDeploymentError, context: RecoveryContext): Promise<RecoveryResult> {
+  private async handleRollbackFailed(_error: CursorDeploymentError, _context: RecoveryContext): Promise<RecoveryResult> {
     return {
       success: false,
       message: 'Automatic rollback failed - manual recovery required',
@@ -698,11 +702,11 @@ class ConflictRecoveryStrategy implements RecoveryStrategy {
 class GeneralRecoveryStrategy implements RecoveryStrategy {
   priority = 999; // 가장 낮은 우선순위
 
-  canHandle(error: CursorDeploymentError): boolean {
+  canHandle(_error: CursorDeploymentError): boolean {
     return true; // 모든 오류를 처리 (fallback)
   }
 
-  async recover(error: CursorDeploymentError, context: RecoveryContext): Promise<RecoveryResult> {
+  async recover(error: CursorDeploymentError, _context: RecoveryContext): Promise<RecoveryResult> {
     return {
       success: false,
       message: 'General error - manual intervention required',

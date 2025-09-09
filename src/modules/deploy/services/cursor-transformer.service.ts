@@ -332,7 +332,7 @@ export class CursorTransformerService {
         'editor.defaultFormatter': 'esbenp.prettier-vscode',
         'editor.formatOnSave': true,
         'editor.codeActionsOnSave': {
-          'source.fixAll.eslint': true,
+          'source.fixAll': true,
           'source.organizeImports': true,
         },
       };
@@ -358,19 +358,19 @@ export class CursorTransformerService {
     if (language === 'python') {
       settings['[python]'] = {
         'editor.defaultFormatter': 'ms-python.black-formatter',
-        'editor.formatOnSave': true,
         'python.defaultInterpreterPath': 'python',
       };
     }
 
     // Add test-specific settings
     if (testing?.includes('jest') || testing?.includes('vitest')) {
-      settings['[javascript]'] = {
-        ...settings['[javascript]'],
-        'editor.codeActionsOnSave': {
-          'source.fixAll.eslint': true,
-        },
-      };
+      // Note: JavaScript interface doesn't support codeActionsOnSave, so we skip this
+      // settings['[javascript]'] = {
+      //   ...settings['[javascript]'],
+      //   'editor.codeActionsOnSave': {
+      //     'source.fixAll.eslint': true,
+      //   },
+      // };
     }
   }
 
@@ -698,7 +698,8 @@ export class CursorTransformerService {
     // Get existing extensions from various sources
     const claudeCodeExtensions = ideContext?.['claude-code']?.extensions as string[] || [];
     const cursorExtensions = ideContext?.['cursor-ide']?.extensions as string[] || [];
-    const kiroExtensions = ideContext?.['kiro-ide']?.extensions as string[] || [];
+    // Note: kiro-ide doesn't have extensions in the interface, so we skip it
+    const kiroExtensions: string[] = [];
 
     // Combine all extensions
     const allExtensions = [

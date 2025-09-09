@@ -73,7 +73,7 @@ export interface CursorGlobalSettings {
   'security.workspace.trust.banner': 'always' | 'untilDismissed' | 'never';
   
   // Additional settings (extensible)
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // Project-specific Cursor settings (.cursor/settings.json)
@@ -114,7 +114,7 @@ export interface CursorProjectSettings {
   'cursor.ai.prompts': string[]; // Prompt file paths
   
   // Additional language-specific settings (extensible)
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // AI context configuration (.cursor/ai/context.json)

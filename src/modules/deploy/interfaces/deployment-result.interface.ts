@@ -15,6 +15,7 @@ export interface DeploymentResult {
     timestamp?: Date;
     deploymentId?: string;
     performanceReport?: string;
+    cursorPerformanceReport?: Record<string, unknown>; // CursorPerformanceReport from cursor-performance-monitor.service
     isLargeConfiguration?: boolean;
     streamingMetrics?: {
       chunksProcessed: number;
@@ -70,6 +71,14 @@ export interface DeploymentSummary {
   platform?: string;
   backupCreated?: boolean;
   totalComponents?: number;
+  performanceMetrics?: {
+    totalDuration: number; // milliseconds
+    peakMemoryUsage: number; // MB
+    averageMemoryUsage: number; // MB
+    componentCount: number;
+    streamingUsed?: boolean;
+    chunksProcessed?: number;
+  };
 }
 
 export interface DeploymentError {

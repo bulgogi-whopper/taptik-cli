@@ -15,6 +15,8 @@ import { DeploymentResult } from '../interfaces/deployment-result.interface';
 import { BackupService } from './backup.service';
 import { CursorComponentHandlerService } from './cursor-component-handler.service';
 import { CursorConflictResolverService } from './cursor-conflict-resolver.service';
+import { CursorParallelProcessorService } from './cursor-parallel-processor.service';
+import { CursorPerformanceMonitorService } from './cursor-performance-monitor.service';
 import { CursorTransformerService } from './cursor-transformer.service';
 import { CursorValidatorService } from './cursor-validator.service';
 import { DiffService } from './diff.service';
@@ -44,6 +46,8 @@ export class DeploymentService {
     private readonly cursorValidator: CursorValidatorService,
     private readonly cursorComponentHandler: CursorComponentHandlerService,
     private readonly cursorConflictResolver: CursorConflictResolverService,
+    private readonly cursorPerformanceMonitor: CursorPerformanceMonitorService,
+    private readonly cursorParallelProcessor: CursorParallelProcessorService,
   ) {}
 
   async deployToClaudeCode(
@@ -289,11 +293,60 @@ export class DeploymentService {
     } finally {
       // Ensure performance monitoring is cleaned up
       this.performanceMonitor.endDeploymentTiming(deploymentId);
+      this.cursorPerformanceMonitor.endCursorMonitoring(deploymentId);
       // Optional: Clear metrics after a delay to allow for inspection
       setTimeout(() => {
         this.performanceMonitor.clearMetrics(deploymentId);
       }, 60000); // Clear after 1 minute
     }
+  }
+
+  /**
+   * Get components to process based on options
+   */
+  private getComponentsToProcess(options: DeployOptions): string[] {
+    let componentsToProcess = [
+      'settings',
+      'extensions',
+      'snippets',
+      'ai-prompts',
+      'tasks',
+      'launch',
+    ];
+    
+    if (options.components && options.components.length > 0) {
+      componentsToProcess = options.components.filter((c) =>
+        componentsToProcess.includes(c),
+      );
+    }
+    
+    if (options.skipComponents && options.skipComponents.length > 0) {
+      componentsToProcess = componentsToProcess.filter(
+        (c) => !options.skipComponents!.includes(c as ComponentType),
+      );
+    }
+    
+    return componentsToProcess;
+  }
+
+  /**
+   * Create Cursor deployment context for parallel processing
+   */
+  private createCursorDeploymentContext(): any {
+    const homeDir = os.homedir();
+    const projectDir = process.cwd();
+    
+    return {
+      globalSettingsPath: path.join(homeDir, '.cursor', 'settings.json'),
+      projectSettingsPath: path.join(projectDir, '.cursor', 'settings.json'),
+      aiPromptsPath: path.join(projectDir, '.cursor', 'ai', 'prompts'),
+      aiRulesPath: path.join(projectDir, '.cursor', 'ai', 'rules'),
+      aiContextPath: path.join(projectDir, '.cursor', 'ai', 'context.json'),
+      extensionsPath: path.join(projectDir, '.cursor', 'extensions.json'),
+      snippetsPath: path.join(homeDir, '.cursor', 'snippets'),
+      tasksPath: path.join(projectDir, '.cursor', 'tasks.json'),
+      launchPath: path.join(projectDir, '.cursor', 'launch.json'),
+    };
   }
 
   async deployToKiro(
@@ -883,7 +936,15 @@ export class DeploymentService {
     // Generate unique deployment ID for performance tracking
     const deploymentId = `cursor-deploy-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 
-    // Start performance monitoring
+    // Start Cursor-specific performance monitoring
+    const componentsToProcess = this.getComponentsToProcess(options);
+    this.cursorPerformanceMonitor.startCursorMonitoring(
+      deploymentId,
+      await this.cursorTransformer.transform(context),
+      componentsToProcess as any[],
+    );
+
+    // Also start base performance monitoring for compatibility
     this.performanceMonitor.startDeploymentTiming(deploymentId);
     this.performanceMonitor.recordMemoryUsage(deploymentId, 'start');
 
@@ -965,11 +1026,28 @@ export class DeploymentService {
         deploymentId,
         'transformation-start',
       );
+      this.cursorPerformanceMonitor.recordCursorMemorySnapshot(deploymentId, 'transformation-start');
+      
       const cursorConfig = await this.cursorTransformer.transform(context);
+      
       this.performanceMonitor.recordMemoryUsage(
         deploymentId,
         'transformation-end',
       );
+      this.cursorPerformanceMonitor.recordCursorMemorySnapshot(deploymentId, 'transformation-end');
+
+      // Check if we should use streaming for large configurations
+      const configSize = JSON.stringify(cursorConfig).length;
+      const shouldUseStreaming = configSize > 10 * 1024 * 1024; // 10MB threshold
+      
+      if (shouldUseStreaming) {
+        this.cursorPerformanceMonitor.recordStreamingUsage(
+          deploymentId,
+          Math.ceil(configSize / (2 * 1024 * 1024)), // 2MB chunks
+          configSize,
+          0, // Will be updated after processing
+        );
+      }
 
       // Step 5: Handle backup strategy
       if (options.conflictStrategy === 'backup') {
@@ -1022,27 +1100,87 @@ export class DeploymentService {
         );
       }
 
-      // Step 8: Deploy components using component handler
+      // Step 8: Deploy components using component handler with performance optimization
       this.performanceMonitor.recordMemoryUsage(
         deploymentId,
         'deployment-start',
       );
+      this.cursorPerformanceMonitor.recordCursorMemorySnapshot(deploymentId, 'deployment-start');
 
-      const deployResult = await this.cursorComponentHandler.deploy(
-        cursorConfig,
-        {
-          platform: 'cursor-ide' as const,
-          conflictStrategy: options.conflictStrategy,
-          dryRun: options.dryRun,
-          validateOnly: options.validateOnly,
-          components: componentsToProcess,
-          skipComponents: options.skipComponents,
-          enableLargeFileStreaming: options.enableLargeFileStreaming,
-          onProgress: options.onProgress,
-        },
-      );
+      // Check if we should use parallel processing
+      const shouldUseParallel = componentsToProcess.length >= 3;
+      
+      let deployResult;
+      
+      if (shouldUseParallel) {
+        // Use parallel processing for multiple components
+        const parallelResult = await this.cursorParallelProcessor.processComponentsInParallel(
+          cursorConfig,
+          componentsToProcess as any[],
+          this.createCursorDeploymentContext(),
+          {
+            platform: 'cursor-ide' as const,
+            conflictStrategy: options.conflictStrategy,
+            dryRun: options.dryRun,
+            validateOnly: options.validateOnly,
+            components: componentsToProcess,
+            skipComponents: options.skipComponents,
+            enableLargeFileStreaming: options.enableLargeFileStreaming,
+            onProgress: options.onProgress,
+          },
+          deploymentId,
+          {
+            maxConcurrency: 3,
+            batchSize: 5,
+            enableFileSystemOptimization: true,
+            safetyChecks: true,
+          },
+        );
+
+        this.cursorPerformanceMonitor.recordParallelProcessingUsage(
+          deploymentId,
+          parallelResult.totalBatches,
+          3, // concurrency
+          parallelResult.totalProcessingTime,
+        );
+
+        // Convert parallel result to deployment result format
+        deployResult = {
+          success: parallelResult.success,
+          deployedComponents: componentsToProcess,
+          conflicts: [],
+          summary: {
+            filesDeployed: parallelResult.successfulFiles,
+            filesSkipped: parallelResult.failedFiles,
+            conflictsResolved: 0,
+            backupCreated: false,
+          },
+          errors: parallelResult.errors.map(error => ({
+            message: error,
+            code: 'PARALLEL_PROCESSING_ERROR',
+            severity: 'HIGH' as const,
+          })),
+          warnings: [],
+        };
+      } else {
+        // Use standard component handler for fewer components
+        deployResult = await this.cursorComponentHandler.deploy(
+          cursorConfig,
+          {
+            platform: 'cursor-ide' as const,
+            conflictStrategy: options.conflictStrategy,
+            dryRun: options.dryRun,
+            validateOnly: options.validateOnly,
+            components: componentsToProcess,
+            skipComponents: options.skipComponents,
+            enableLargeFileStreaming: options.enableLargeFileStreaming,
+            onProgress: options.onProgress,
+          },
+        );
+      }
 
       this.performanceMonitor.recordMemoryUsage(deploymentId, 'deployment-end');
+      this.cursorPerformanceMonitor.recordCursorMemorySnapshot(deploymentId, 'deployment-end');
 
       // Step 9: Process deployment results
       result.success = deployResult.success;
@@ -1067,9 +1205,28 @@ export class DeploymentService {
         });
       }
 
-      // End performance monitoring
+      // End performance monitoring and generate comprehensive report
       this.performanceMonitor.endDeploymentTiming(deploymentId);
-      result.metadata.performanceReport = `Cursor deployment completed: ${result.summary.filesDeployed} files deployed`;
+      this.cursorPerformanceMonitor.endCursorMonitoring(deploymentId);
+      
+      // Generate Cursor-specific performance report
+      const cursorPerformanceReport = this.cursorPerformanceMonitor.generateCursorPerformanceReport(deploymentId);
+      if (cursorPerformanceReport) {
+        result.metadata.cursorPerformanceReport = cursorPerformanceReport;
+        result.metadata.performanceReport = `Cursor deployment completed: ${result.summary.filesDeployed} files deployed. Performance: ${cursorPerformanceReport.summary.overallRating}`;
+        
+        // Add performance recommendations as warnings
+        for (const recommendation of cursorPerformanceReport.recommendations) {
+          if (recommendation.priority === 'high') {
+            result.warnings.push({
+              message: `Performance Recommendation: ${recommendation.title} - ${recommendation.description}`,
+              code: 'CURSOR_PERFORMANCE_RECOMMENDATION',
+            });
+          }
+        }
+      } else {
+        result.metadata.performanceReport = `Cursor deployment completed: ${result.summary.filesDeployed} files deployed`;
+      }
 
       return result;
     } catch (error) {

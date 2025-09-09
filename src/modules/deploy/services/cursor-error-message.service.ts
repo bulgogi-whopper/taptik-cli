@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
+
 import { 
   CursorDeploymentError, 
   CursorDeploymentErrorCode, 
   ErrorSeverity 
 } from '../errors/cursor-deploy.error';
+
 import { RecoveryResult } from './cursor-error-recovery.service';
 import { IntegrityCheckResult } from './cursor-rollback.service';
 
@@ -87,44 +89,44 @@ export class CursorErrorMessageService {
       sections: [],
     };
 
-    // 복원된 파일 정보
-    if (recoveryResult.restoredFiles.length > 0) {
+    // 복구 제안사항
+    if (recoveryResult.suggestions.length > 0) {
       template.sections.push({
-        type: 'success',
-        title: 'Successfully Restored Files',
-        content: recoveryResult.restoredFiles,
+        type: 'info',
+        title: 'Recovery Suggestions',
+        content: recoveryResult.suggestions,
         collapsible: true,
         expanded: false,
       });
     }
 
-    // 실패한 파일 정보
-    if (recoveryResult.failedFiles.length > 0) {
+    // 다음 단계
+    if (recoveryResult.nextSteps && recoveryResult.nextSteps.length > 0) {
       template.sections.push({
-        type: 'error',
-        title: 'Failed to Restore Files',
-        content: recoveryResult.failedFiles,
+        type: 'info',
+        title: 'Next Steps',
+        content: recoveryResult.nextSteps,
         collapsible: true,
         expanded: true,
       });
     }
 
-    // 경고 메시지
-    if (recoveryResult.warnings.length > 0) {
+    // 백업 복원 정보
+    if (recoveryResult.backupRestored) {
       template.sections.push({
-        type: 'warning',
-        title: 'Warnings',
-        content: recoveryResult.warnings,
+        type: 'success',
+        title: 'Backup Restored',
+        content: ['Configuration has been restored from backup'],
       });
     }
 
-    // 무결성 검사 결과
-    if (!recoveryResult.integrityCheck) {
+    // 롤백 수행 정보
+    if (recoveryResult.rollbackPerformed) {
       template.sections.push({
-        type: 'warning',
-        title: 'Integrity Check Failed',
+        type: 'success',
+        title: 'Rollback Performed',
         content: [
-          'Some configuration files may be corrupted or missing.',
+          'Changes have been rolled back to previous state.',
           'Please verify Cursor IDE functionality before proceeding.',
           'Consider running a manual integrity check.',
         ],
@@ -785,7 +787,7 @@ export class CursorErrorMessageService {
    */
   generateConsoleMessage(template: ErrorMessageTemplate): string {
     let message = `\n${template.icon} ${template.title}\n`;
-    message += '='.repeat(template.title.length + 3) + '\n\n';
+    message += `${'='.repeat(template.title.length + 3)  }\n\n`;
     message += `${template.description}\n\n`;
 
     for (const section of template.sections) {

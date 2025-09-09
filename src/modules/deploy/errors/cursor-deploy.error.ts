@@ -386,17 +386,17 @@ export const ERROR_METADATA: Record<CursorDeploymentErrorCode, ErrorMetadata> = 
 export class CursorDeploymentError extends Error {
   public readonly code: CursorDeploymentErrorCode;
   public readonly metadata: ErrorMetadata;
-  public readonly details: any;
+  public readonly details: Record<string, unknown>;
   public readonly timestamp: Date;
-  public readonly context: Record<string, any>;
+  public readonly context: Record<string, unknown>;
   public readonly suggestions: string[];
   public readonly recoveryActions: string[];
 
   constructor(
     code: CursorDeploymentErrorCode,
     message: string,
-    details?: any,
-    context?: Record<string, any>,
+    details?: Record<string, unknown>,
+    context?: Record<string, unknown>,
     suggestions?: string[],
     recoveryActions?: string[],
   ) {
@@ -559,7 +559,7 @@ export class CursorDeploymentError extends Error {
   /**
    * 오류 정보를 JSON 형태로 직렬화
    */
-  toJSON(): Record<string, any> {
+  toJSON(): Record<string, unknown> {
     return {
       name: this.name,
       code: this.code,
@@ -650,7 +650,7 @@ export class CursorDeploymentErrorFactory {
     );
   }
 
-  static securityThreatDetected(threatType: string, details: any): CursorDeploymentError {
+  static securityThreatDetected(threatType: string, details: Record<string, unknown>): CursorDeploymentError {
     return new CursorDeploymentError(
       CursorDeploymentErrorCode.SECURITY_THREAT_DETECTED,
       `Security threat detected: ${threatType}`,

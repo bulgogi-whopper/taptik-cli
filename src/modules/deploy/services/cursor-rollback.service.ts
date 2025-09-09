@@ -1,9 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
 import { promises as fs } from 'fs';
-import { join, dirname } from 'path';
 import * as os from 'os';
-import { BackupService, BackupManifest } from './backup.service';
+import { join, dirname } from 'path';
+
+import { Injectable, Logger } from '@nestjs/common';
+
 import { CursorDeploymentError, CursorDeploymentErrorCode } from '../errors/cursor-deploy.error';
+
+import { BackupService, BackupManifest } from './backup.service';
+
 
 /**
  * Cursor 배포 상태 인터페이스
@@ -256,11 +260,15 @@ export class CursorRollbackService {
       .filter(cp => cp.success && cp.backupPath)
       .reverse();
 
+    // Sequential processing required to maintain rollback order
+     
     for (const checkpoint of successfulCheckpoints) {
       try {
         if (checkpoint.backupPath) {
           // 백업에서 파일 복원
+          // eslint-disable-next-line no-await-in-loop
           const backupContent = await fs.readFile(checkpoint.backupPath);
+          // eslint-disable-next-line no-await-in-loop
           await fs.writeFile(checkpoint.filePath, backupContent);
           
           result.restoredFiles.push(checkpoint.filePath);
@@ -303,7 +311,7 @@ export class CursorRollbackService {
   /**
    * Cursor 설정 백업 생성
    */
-  private async createCursorBackup(targetPath: string, components: string[]): Promise<string> {
+  private async createCursorBackup(targetPath: string, _components: string[]): Promise<string> {
     const backupId = `cursor-${Date.now()}`;
     const backupDir = join(os.homedir(), '.taptik', 'backups', 'cursor-ide', backupId);
     
@@ -325,6 +333,7 @@ export class CursorRollbackService {
 
     for (const cursorPath of cursorPaths) {
       try {
+        // eslint-disable-next-line no-await-in-loop
         await this.backupDirectory(cursorPath, backupDir, manifest);
       } catch (error) {
         // 디렉토리가 존재하지 않는 경우는 무시
@@ -356,6 +365,7 @@ export class CursorRollbackService {
       
       for (const entry of entries) {
         const entryPath = join(sourcePath, entry);
+        // eslint-disable-next-line no-await-in-loop
         await this.backupDirectory(entryPath, backupDir, manifest);
       }
     } else if (stats.isFile()) {
@@ -399,7 +409,7 @@ export class CursorRollbackService {
   /**
    * 무결성 검증
    */
-  async verifyIntegrity(targetPath: string, components: string[]): Promise<IntegrityCheckResult> {
+  async verifyIntegrity(targetPath: string, _components: string[]): Promise<IntegrityCheckResult> {
     const result: IntegrityCheckResult = {
       valid: true,
       issues: [],
@@ -424,6 +434,7 @@ export class CursorRollbackService {
       result.summary.totalFiles++;
       
       try {
+        // eslint-disable-next-line no-await-in-loop
         const exists = await this.fileExists(filePath);
         if (!exists) {
           // 파일이 없는 것은 정상일 수 있음 (선택적 파일)
@@ -433,11 +444,13 @@ export class CursorRollbackService {
 
         // JSON 파일 형식 검증
         if (filePath.endsWith('.json')) {
+          // eslint-disable-next-line no-await-in-loop
           const content = await fs.readFile(filePath, 'utf8');
           JSON.parse(content); // JSON 파싱 테스트
         }
 
         // 권한 검증
+        // eslint-disable-next-line no-await-in-loop
         await fs.access(filePath, fs.constants.R_OK | fs.constants.W_OK);
         
         result.summary.validFiles++;
@@ -524,6 +537,7 @@ export class CursorRollbackService {
       for (const file of stateFiles) {
         try {
           const deploymentId = file.replace('.json', '');
+          // eslint-disable-next-line no-await-in-loop
           const state = await this.loadDeploymentState(deploymentId);
           if (state && state.status === 'in_progress') {
             states.push(state);
@@ -553,9 +567,11 @@ export class CursorRollbackService {
         if (!file.endsWith('.json')) continue;
         
         const filePath = join(this.stateDir, file);
+        // eslint-disable-next-line no-await-in-loop
         const stats = await fs.stat(filePath);
         
         if (now - stats.mtime.getTime() > retentionMs) {
+          // eslint-disable-next-line no-await-in-loop
           await fs.rm(filePath, { force: true });
           this.logger.debug(`Cleaned up old deployment state: ${file}`);
         }
@@ -638,7 +654,7 @@ export class CursorRollbackService {
     instructions.push('3. Restart Cursor IDE to verify functionality');
     instructions.push('4. Re-run deployment if needed');
     instructions.push('');
-    instructions.push('💡 Need help? Contact support with deployment ID: ' + deploymentId);
+    instructions.push(`💡 Need help? Contact support with deployment ID: ${  deploymentId}`);
 
     return instructions;
   }
