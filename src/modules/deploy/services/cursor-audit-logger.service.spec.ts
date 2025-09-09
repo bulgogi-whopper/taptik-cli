@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-import { AuditLoggerService, AuditEventType } from '../../push/services/audit-logger.service';
+import { AuditLoggerService } from '../../push/services/audit-logger.service';
 
 import { CursorAuditLoggerService, CursorAuditEventType, CursorDeploymentContext } from './cursor-audit-logger.service';
 import { CursorSecurityViolation } from './cursor-security-scanner.service';
@@ -351,7 +351,7 @@ describe('CursorAuditLoggerService', () => {
   describe('queryCursorLogs', () => {
     it('should query and filter Cursor-specific logs', async () => {
       // Mock the method to avoid dependency issues
-      const querySpy = vi.spyOn(service, 'queryCursorLogs').mockResolvedValue([
+      const _querySpy = vi.spyOn(service, 'queryCursorLogs').mockResolvedValue([
         {
           id: '1',
           timestamp: new Date(),

@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
-
-import { expect, it , describe , beforeEach  } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 
 import { ConflictStrategy } from '../interfaces/conflict-strategy.interface';
 

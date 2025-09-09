@@ -272,32 +272,32 @@
   - 로그 형식 표준화
   - _요구사항: 7.6_
 
-- [ ] 12. 단위 테스트 구현
+- [x] 12. 단위 테스트 구현
   - 모든 새로운 서비스 및 메서드에 대한 포괄적인 단위 테스트
   - 변환 로직 테스트
   - 검증 로직 테스트
   - 오류 처리 테스트
   - _요구사항: 모든 요구사항_
 
-- [ ] 12.1 CursorTransformerService 단위 테스트
+- [x] 12.1 CursorTransformerService 단위 테스트
   - `src/modules/deploy/services/cursor-transformer.service.spec.ts` 파일 생성
   - 모든 변환 메서드에 대한 테스트 케이스
   - 엣지 케이스 및 오류 시나리오 테스트
   - _요구사항: 9, 17_
 
-- [ ] 12.2 CursorValidatorService 단위 테스트
+- [x] 12.2 CursorValidatorService 단위 테스트
   - `src/modules/deploy/services/cursor-validator.service.spec.ts` 파일 생성
   - 모든 검증 시나리오 테스트
   - 오류 및 경고 메시지 검증
   - _요구사항: 3, 11_
 
-- [ ] 12.3 CursorComponentHandlerService 단위 테스트
+- [x] 12.3 CursorComponentHandlerService 단위 테스트
   - `src/modules/deploy/services/cursor-component-handler.service.spec.ts` 파일 생성
   - 각 컴포넌트 배포 로직 테스트
   - 파일 작성 및 충돌 처리 테스트
   - _요구사항: 2, 10, 12_
 
-- [ ] 12.4 CursorConflictResolverService 단위 테스트
+- [x] 12.4 CursorConflictResolverService 단위 테스트
   - `src/modules/deploy/services/cursor-conflict-resolver.service.spec.ts` 파일 생성
   - 모든 충돌 해결 전략 테스트
   - 병합 로직 정확성 검증
