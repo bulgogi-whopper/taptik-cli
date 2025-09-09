@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Deploy module provides comprehensive functionality for deploying Taptik configurations to various IDE platforms, with current support for Claude Code. It handles configuration import from Supabase, validation, deployment, backup, and rollback operations with robust error handling and logging.
+The Deploy module provides comprehensive functionality for deploying Taptik configurations to various IDE platforms, with current support for Claude Code and Cursor IDE. It handles configuration import from Supabase, validation, deployment, backup, and rollback operations with robust error handling and logging.
 
 ## Table of Contents
 
@@ -27,7 +27,7 @@ taptik deploy [options]
 
 | Flag                                 | Description                         | Default      | Example                         |
 | ------------------------------------ | ----------------------------------- | ------------ | ------------------------------- |
-| `-p, --platform <platform>`          | Target platform for deployment      | `claudeCode` | `--platform claudeCode`         |
+| `-p, --platform <platform>`          | Target platform for deployment      | `claudeCode` | `--platform cursor-ide`         |
 | `-c, --context-id <id>`              | Configuration ID to deploy          | `latest`     | `--context-id config-123`       |
 | `-d, --dry-run`                      | Simulate deployment without changes | `false`      | `--dry-run`                     |
 | `-v, --validate-only`                | Only validate configuration         | `false`      | `--validate-only`               |
@@ -46,10 +46,19 @@ taptik deploy [options]
 
 ### Component Types
 
+#### Claude Code Components
 - **settings**: Global Claude Code settings (~/.claude/settings.json)
 - **agents**: Custom agents (~/.claude/agents/)
 - **commands**: Custom commands (~/.claude/commands/)
 - **project**: Project-specific files (CLAUDE.md, .claude/settings.json)
+
+#### Cursor IDE Components
+- **settings**: Global and project settings (~/.cursor/settings.json, .cursor/settings.json)
+- **extensions**: Extension recommendations (.cursor/extensions.json)
+- **snippets**: Code snippets (~/.cursor/snippets/)
+- **ai-prompts**: AI prompts and rules (.cursor/ai/prompts/, .cursor/ai/rules/)
+- **tasks**: Task configurations (.cursor/tasks.json)
+- **launch**: Debug configurations (.cursor/launch.json)
 
 ## Usage Examples
 
@@ -87,10 +96,16 @@ taptik deploy --dry-run
 
 ### Selective Component Deployment
 
-Deploy only settings and agents:
+Deploy only settings and agents (Claude Code):
 
 ```bash
 taptik deploy --components settings agents
+```
+
+Deploy only settings and AI prompts (Cursor IDE):
+
+```bash
+taptik deploy --platform cursor-ide --components settings ai-prompts
 ```
 
 Skip commands during deployment:
@@ -121,6 +136,26 @@ Deploy without any confirmation prompts:
 taptik deploy --force --conflict-strategy overwrite
 ```
 
+### Cursor IDE Deployment
+
+Deploy to Cursor IDE with AI prompts:
+
+```bash
+taptik deploy --platform cursor-ide
+```
+
+Deploy only AI prompts and settings to Cursor IDE:
+
+```bash
+taptik deploy --platform cursor-ide --components ai-prompts settings
+```
+
+Merge existing Cursor settings:
+
+```bash
+taptik deploy --platform cursor-ide --conflict-strategy merge
+```
+
 ## Architecture
 
 ### Module Structure
@@ -139,7 +174,14 @@ src/modules/deploy/
 │   ├── locking.service.ts         # Deployment locking
 │   ├── security-scanner.service.ts # Security validation
 │   ├── error-handler.service.ts   # Error handling with retry
-│   └── deployment-logger.service.ts # Logging and audit
+│   ├── deployment-logger.service.ts # Logging and audit
+│   ├── cursor-transformer.service.ts # Cursor IDE transformation
+│   ├── cursor-validator.service.ts # Cursor IDE validation
+│   ├── cursor-component-handler.service.ts # Cursor component deployment
+│   ├── cursor-conflict-resolver.service.ts # Cursor conflict resolution
+│   ├── cursor-security-scanner.service.ts # Cursor security scanning
+│   ├── cursor-performance-monitor.service.ts # Cursor performance monitoring
+│   └── cursor-audit-logger.service.ts # Cursor audit logging
 ├── interfaces/         # TypeScript interfaces
 ├── constants/          # Constants and configurations
 ├── errors/            # Custom error classes
@@ -173,6 +215,7 @@ Main orchestrator for deployment operations.
 ```typescript
 class DeploymentService {
   async deployToClaudeCode(context: TaptikContext, options: DeployOptions): Promise<DeploymentResult>;
+  async deployToCursor(context: TaptikContext, options: DeployOptions): Promise<DeploymentResult>;
 }
 ```
 
@@ -554,7 +597,7 @@ async deployToKiro(
 
 ```typescript
 // src/modules/deploy/interfaces/component-types.interface.ts
-export type SupportedPlatform = 'claudeCode' | 'kiroIde' | 'cursorIde';
+export type SupportedPlatform = 'claudeCode' | 'kiroIde' | 'cursor-ide';
 ```
 
 #### 5. Update CLI Command
@@ -582,11 +625,13 @@ Each platform may have unique features that require special handling:
 - Steering configurations
 - Hook scripts
 
-#### Cursor IDE (Future)
+#### Cursor IDE
 
 - AI model configurations
-- Custom prompts
-- Extension settings
+- Custom prompts and rules
+- Extension recommendations
+- Code snippets
+- Task and debug configurations
 
 ## API Reference
 
