@@ -1212,7 +1212,7 @@ export class DeploymentService {
       // Generate Cursor-specific performance report
       const cursorPerformanceReport = this.cursorPerformanceMonitor.generateCursorPerformanceReport(deploymentId);
       if (cursorPerformanceReport) {
-        result.metadata.cursorPerformanceReport = cursorPerformanceReport;
+        // result.metadata.cursorPerformanceReport = cursorPerformanceReport;
         result.metadata.performanceReport = `Cursor deployment completed: ${result.summary.filesDeployed} files deployed. Performance: ${cursorPerformanceReport.summary.overallRating}`;
         
         // Add performance recommendations as warnings
