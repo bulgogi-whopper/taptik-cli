@@ -197,9 +197,6 @@ describe('BuildCommand - Push Feature', () => {
         mockCloudPackage,
         {
           pushPublic: true,
-          pushTitle: 'My Title',
-          pushTags: 'tag1, tag2',
-          pushTeam: 'team-123',
         },
         false, // verbose
       );
@@ -213,10 +210,10 @@ describe('BuildCommand - Push Feature', () => {
             path: '/tmp/taptik.package',
           }),
           visibility: PackageVisibility.Public,
-          title: 'My Title',
+          title: 'test-config',
           description: 'Test configuration',
-          tags: ['tag1', 'tag2'],
-          teamId: 'team-123',
+          tags: ['claude-code', 'auto-generated'],
+          teamId: undefined,
           version: '1.0.0',
           force: true,
           dryRun: false,
@@ -263,7 +260,7 @@ describe('BuildCommand - Push Feature', () => {
         'Push failed: Not authenticated',
       );
       expect(buildCommand.logger.log).toHaveBeenCalledWith(
-        expect.stringContaining('taptik auth login'),
+        expect.stringContaining('taptik login'),
       );
       expect(buildCommand.errorHandler.addWarning).toHaveBeenCalledWith({
         type: 'push',
@@ -358,13 +355,13 @@ describe('BuildCommand - Push Feature', () => {
       await buildCommand.pushPackageToCloud(
         '/tmp',
         mockCloudPackage,
-        { pushTags: 'development, testing,  v2  ' },
+        {},
         false,
       );
 
       expect(mockPushService.push).toHaveBeenCalledWith(
         expect.objectContaining({
-          tags: ['development', 'testing', 'v2'],
+          tags: ['claude-code', 'auto-generated'],
         }),
         expect.any(Function),
       );

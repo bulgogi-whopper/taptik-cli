@@ -67,27 +67,11 @@ export class BuildCommand extends CommandRunner {
   }
 
   @Option({
-    flags: '--dry-run',
-    description: 'Preview what would be built without creating actual files',
-  })
-  parseDryRun(): boolean {
-    return true;
-  }
-
-  @Option({
     flags: '--output <path>',
     description: 'Specify custom output directory path',
   })
   parseOutputPath(value: string): string {
     return value;
-  }
-
-  @Option({
-    flags: '--verbose',
-    description: 'Show detailed progress and debugging information',
-  })
-  parseVerbose(): boolean {
-    return true;
   }
 
   @Option({
@@ -115,14 +99,6 @@ export class BuildCommand extends CommandRunner {
   }
 
   @Option({
-    flags: '--quiet',
-    description: 'Suppress non-essential output (opposite of --verbose)',
-  })
-  parseQuiet(): boolean {
-    return true;
-  }
-
-  @Option({
     flags: '--push',
     description:
       'Automatically push the built package to the cloud after successful build',
@@ -140,67 +116,28 @@ export class BuildCommand extends CommandRunner {
     return true;
   }
 
-  @Option({
-    flags: '--push-title <title>',
-    description: 'Title for the pushed package (use with --push)',
-  })
-  parsePushTitle(value: string): string {
-    return value;
-  }
-
-  @Option({
-    flags: '--push-tags <tags>',
-    description:
-      'Comma-separated tags for the pushed package (use with --push)',
-  })
-  parsePushTags(value: string): string {
-    return value;
-  }
-
-  @Option({
-    flags: '--push-team <team-id>',
-    description: 'Team ID to share the pushed package with (use with --push)',
-  })
-  parsePushTeam(value: string): string {
-    return value;
-  }
+  // removed: --push-team
 
   async run(
     _passedParameters: string[],
     options?: Record<string, unknown>,
   ): Promise<void> {
     const startTime = Date.now();
-    const isDryRun = options?.dryRun as boolean;
+    const isDryRun = false;
     const customOutputPath = options?.output as string;
-    const isVerbose = options?.verbose as boolean;
-    const isQuiet = options?.quiet as boolean;
+    const isVerbose = false;
+    const isQuiet = false;
     const presetPlatform = options?.platform as BuildPlatform;
     const presetCategories = options?.categories as string[];
 
     // Push-related options
     const shouldPush = options?.push as boolean;
     const pushPublic = options?.pushPublic as boolean;
-    const pushTitle = options?.pushTitle as string;
-    const pushTags = options?.pushTags as string;
     const pushTeam = options?.pushTeam as string;
 
     try {
       // Configure logging based on options
-      if (isVerbose) {
-        this.logger.log(
-          '🔍 Verbose mode enabled - showing detailed information',
-        );
-        this.logger.log(`CLI options: ${JSON.stringify(options, null, 2)}`);
-      }
-
-      if (isDryRun) {
-        this.logger.log('🔍 Dry run mode - no files will be created');
-      }
-
-      if (isQuiet) {
-        // Suppress non-essential logger output
-        this.logger.log = () => {}; // Override log method for quiet mode
-      }
+      // verbose/quiet/dry-run removed
 
       // Check for interruption before starting
       if (this.errorHandler.isProcessInterrupted()) {
@@ -489,17 +426,6 @@ export class BuildCommand extends CommandRunner {
       // Step 8 (or 4 for non-Claude Code): Output generation
       this.progressService.startStep('Output generation');
 
-      if (isDryRun) {
-        this.logger.log('📋 Dry run - showing what would be generated:');
-        this.previewBuildOutput(transformedData, buildConfig);
-        this.progressService.completeStep('Output generation');
-
-        // Skip actual file generation and completion for dry run
-        this.progressService.startStep('Build completion');
-        this.logger.log('✅ Dry run completed successfully');
-        this.progressService.completeStep('Build completion');
-        return;
-      }
 
       let outputPath;
       if (buildConfig.platform === BuildPlatform.CLAUDE_CODE && cloudPackage) {
@@ -531,14 +457,12 @@ export class BuildCommand extends CommandRunner {
         validationResult?.cloudCompatible
       ) {
         // If --push flag is set, automatically upload
-        if (shouldPush && !isDryRun) {
+        if (shouldPush) {
           await this.pushPackageToCloud(
             outputPath,
             cloudPackage,
             {
               pushPublic,
-              pushTitle,
-              pushTags,
               pushTeam,
             },
             isVerbose,
@@ -1754,9 +1678,6 @@ export class BuildCommand extends CommandRunner {
     cloudPackage: TaptikPackage,
     pushOptions: {
       pushPublic?: boolean;
-      pushTitle?: string;
-      pushTags?: string;
-      pushTeam?: string;
     },
     isVerbose: boolean,
   ): Promise<void> {
@@ -1786,16 +1707,9 @@ export class BuildCommand extends CommandRunner {
         return;
       }
 
-      // Parse tags if provided
-      const tags = pushOptions.pushTags
-        ? pushOptions.pushTags.split(',').map((t) => t.trim())
-        : ['claude-code', 'auto-generated'];
-
-      // Generate title from metadata if not provided
-      const title =
-        pushOptions.pushTitle ||
-        cloudPackage.metadata?.title ||
-        'Claude Code Configuration';
+      // Use defaults from package metadata or sensible fallbacks
+      const tags = ['claude-code', 'auto-generated'];
+      const title = cloudPackage.metadata?.title || 'Claude Code Configuration';
 
       // Build push options
       const pushOpts: PushOptions = {
@@ -1813,7 +1727,7 @@ export class BuildCommand extends CommandRunner {
           cloudPackage.metadata?.description ||
           'Configuration package built with taptik build command',
         tags,
-        teamId: pushOptions.pushTeam,
+        teamId: undefined,
         version: cloudPackage.metadata?.version || '1.0.0',
         autoBump: true, // Auto-increment version if conflict
         force: true, // Skip confirmation since build already confirmed
