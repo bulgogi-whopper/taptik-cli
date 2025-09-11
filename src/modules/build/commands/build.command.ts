@@ -133,7 +133,7 @@ export class BuildCommand extends CommandRunner {
     // Push-related options
     const shouldPush = options?.push as boolean;
     const pushPublic = options?.pushPublic as boolean;
-    const pushTeam = options?.pushTeam as string;
+    // pushTeam removed
 
     try {
       // Configure logging based on options
@@ -463,7 +463,6 @@ export class BuildCommand extends CommandRunner {
             cloudPackage,
             {
               pushPublic,
-              pushTeam,
             },
             isVerbose,
           );

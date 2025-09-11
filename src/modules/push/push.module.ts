@@ -8,7 +8,6 @@ import { SupabaseModule } from '../supabase/supabase.module';
 // Commands
 import { DeleteCommand } from './commands/delete.command';
 import { ListCommand } from './commands/list.command';
-import { PushCommand } from './commands/push.command';
 import { StatsCommand } from './commands/stats.command';
 import { UpdateCommand } from './commands/update.command';
 import { VisibilityCommand } from './commands/visibility.command';
@@ -31,7 +30,6 @@ import { SignedUrlService } from './services/signed-url.service';
 @Module({
   imports: [SupabaseModule, AuthModule, DeployCoreModule],
   providers: [
-    PushCommand,
     ListCommand,
     UpdateCommand,
     DeleteCommand,

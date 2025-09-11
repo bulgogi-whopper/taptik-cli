@@ -10,10 +10,7 @@ interface OAuthCallbackOptions {
 }
 
 @Injectable()
-@Command({
-  name: 'oauth-callback',
-  description: 'Process OAuth callback URL after authentication',
-})
+// Command intentionally unregistered from module; file retained for history.
 export class OAuthCallbackCommand extends CommandRunner {
   constructor(private readonly authService: AuthService) {
     super();
