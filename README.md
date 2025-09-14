@@ -27,49 +27,24 @@ npx taptik-cli --help
 
 ```bash
 # Check CLI health and available commands
-npm run cli -- --help
+taptik --help
 
-# Build taptik-compatible files from your current Kiro setup
-npm run build:kiro
+# Check application health
+taptik health
 
-# Interactive build with all options
-npm run cli -- build
-
-# Build with specific options
-npm run cli -- build --platform kiro --categories personal,project --verbose
-
-# Build your current configuration (interactive)
+# Build configuration packages
 taptik build
 
-# Build from Claude Code platform
-taptik build --platform=claude-code
+# Authentication commands
+taptik login
+taptik logout
 
-# Build from Kiro platform
-taptik build --platform=kiro
-
-# Preview build without creating files (dry run)
-npm run cli -- build --dry-run
-
-# Build with custom output directory
-npm run cli -- build --output ./my-taptik-config
-
-# Build specific categories only
-npm run cli -- build --categories personal,project
-
-# Silent build (suppress non-essential output)
-npm run cli -- build --quiet
-
-# Push configuration to cloud
-taptik push --name "My Setup" --description "Full stack dev config"
-
-# Pull someone else's configuration
-taptik pull --id abc123
-
-# List available configurations
+# Information commands
+taptik info
 taptik list
 
-# Check your current status
-taptik info
+# Deploy configurations
+taptik deploy
 ```
 
 ## 📋 Features
@@ -85,7 +60,7 @@ taptik info
 - **Build** - Package your current AI tool settings into a shareable format
 - **Push** - Upload configurations to cloud storage
 - **Pull** - Download and apply configurations from the community
-- **Sync** - Keep settings synchronized across multiple tools
+- **Deploy** - Apply configurations to target platforms
 
 ### 🔧 Supported Configuration Items
 
@@ -103,15 +78,38 @@ taptik info
 
 ## 🛠️ Commands
 
+### Available Commands
+
+```bash
+# Core functionality
+taptik health                              # Check application health
+taptik login                               # OAuth login
+taptik logout                              # Logout
+taptik info                                # Show current status
+
+# Configuration management
+taptik build                               # Build configurations
+taptik deploy                              # Deploy to platforms
+taptik list                                # List configurations
+
+# Cloud management
+taptik push --name "My Setup"              # Upload configuration
+taptik pull --id abc123                    # Download configuration
+taptik update <config-id>                  # Update package metadata
+taptik delete <config-id>                  # Delete package
+taptik visibility <config-id>              # Change visibility
+taptik stats <config-id>                   # View statistics
+```
+
 ### Build Command
 
-The `build` command converts your Kiro configuration files into taptik-compatible format for use with various AI development tools.
+The `build` command converts your current IDE configuration files into taptik-compatible format for use with various AI development tools.
 
 #### Interactive Mode (Default)
 
 ```bash
 # Run interactive build with prompts
-npm run cli -- build
+taptik build
 ```
 
 The interactive mode will guide you through:
@@ -126,109 +124,27 @@ The interactive mode will guide you through:
 
 ```bash
 # Dry run - preview what would be built without creating files
-npm run cli -- build --dry-run
+taptik build --dry-run
 
 # Specify custom output directory
-npm run cli -- build --output ./my-custom-path
+taptik build --output ./my-custom-path
 
 # Skip platform selection (use Kiro)
-npm run cli -- build --platform kiro
+taptik build --platform kiro
 
 # Build specific categories only
-npm run cli -- build --categories personal,project
-npm run cli -- build --categories prompts
+taptik build --categories personal,project
+taptik build --categories prompts
 
 # Show detailed progress information
-npm run cli -- build --verbose
+taptik build --verbose
 
 # Suppress non-essential output
-npm run cli -- build --quiet
+taptik build --quiet
 
 # Combine multiple options
-npm run cli -- build --platform kiro --categories personal --output ./output --dry-run
+taptik build --platform kiro --categories personal --output ./output --dry-run
 ```
-
-#### Build Options Reference
-
-| Option                  | Description                          | Example                         |
-| ----------------------- | ------------------------------------ | ------------------------------- |
-| `--dry-run`             | Preview build without creating files | `--dry-run`                     |
-| `--output <path>`       | Custom output directory path         | `--output ./my-config`          |
-| `--platform <platform>` | Skip platform selection              | `--platform kiro`               |
-| `--categories <list>`   | Comma-separated category list        | `--categories personal,project` |
-| `--verbose`             | Show detailed progress info          | `--verbose`                     |
-| `--quiet`               | Suppress non-essential output        | `--quiet`                       |
-
-#### Output Structure
-
-The build command creates a timestamped directory with the following structure:
-
-```
-taptik-build-20240115-103000/
-├── personal-context.json    # User preferences and environment
-├── project-context.json     # Project info and guidelines
-├── prompt-templates.json    # Reusable prompt templates
-└── manifest.json           # Build metadata and file info
-```
-
-#### Supported Categories
-
-- **Personal Context**: Development environment, coding preferences, workflow practices, AI interaction preferences
-- **Project Context**: Technical stack, architecture patterns, development guidelines, security requirements
-- **Prompt Templates**: Code review templates, debugging guides, architecture reviews, performance analysis
-
-#### Examples
-
-```bash
-# Build everything interactively
-npm run cli -- build
-
-# Quick build for personal context only
-npm run cli -- build --platform kiro --categories personal --quiet
-
-# Preview full build
-npm run cli -- build --dry-run --verbose
-
-# Build for specific output location
-npm run cli -- build --output ~/my-taptik-configs/project-x
-```
-
-### Claude Code Support
-
-Taptik provides comprehensive support for Claude Code configurations with cloud-ready packaging:
-
-#### Features
-
-- **Complete Configuration Collection**: Settings, agents, commands, MCP servers, steering files
-- **Security-First Approach**: Automatic sanitization of sensitive data before cloud upload
-- **Cloud-Ready Packages**: Generate `.taptik` packages ready for Supabase cloud platform
-- **Rich Metadata**: Auto-tagging and search optimization for community discovery
-
-#### Quick Start
-
-```bash
-# Build Claude Code configuration with cloud features
-taptik build --platform=claude-code
-
-# Build and upload to cloud
-taptik build --platform=claude-code --upload --public --title="My Setup"
-
-# Build specific categories only
-taptik build --platform=claude-code --categories=project-context,prompt-templates
-```
-
-#### Configuration Sources
-
-- **Global Settings**: `~/.claude/settings.json`, agents, commands, MCP config
-- **Project Settings**: `.claude/` directory, `CLAUDE.md`, `.mcp.json`
-- **Steering Files**: `.claude/steering/*.md` for AI behavior customization
-
-#### Documentation
-
-- [Claude Code Build Guide](./docs/claude-code-build-guide.md) - Complete usage guide
-- [Troubleshooting](./docs/claude-code-troubleshooting.md) - Common issues and solutions
-- [Security Guide](./docs/claude-code-security.md) - Best practices for secure sharing
-- [API Reference](./docs/claude-code-api-reference.md) - Developer documentation
 
 ### Authentication
 
@@ -287,36 +203,6 @@ taptik list --limit 50     # Show up to 50 results (max: 100)
 # Combine options for precise discovery
 taptik list --filter "react" --sort name --limit 20
 ```
-
-#### Subcommands
-
-```bash
-# List configurations you've liked (requires authentication)
-taptik list liked
-taptik list liked --sort date --limit 10
-```
-
-#### Command Options
-
-| Option | Description | Default | Valid Values |
-|--------|-------------|---------|--------------|
-| `--filter <query>` | Filter by configuration title | None | Any string |
-| `--sort <field>` | Sort results | `date` | `date`, `name` |
-| `--limit <n>` | Limit number of results | `20` | 1-100 |
-
-#### Output Format
-
-Results are displayed in a clean table format showing:
-- **ID**: Short identifier for the configuration
-- **Title**: Configuration name/title
-- **Created**: When the configuration was created (relative time)
-- **Size**: File size of the configuration package
-- **Access**: Whether the configuration is Public or Private
-
-#### Authentication
-
-- **Public listings**: No authentication required
-- **Liked configurations**: Requires login with `taptik login`
 
 ### Information & Discovery
 
