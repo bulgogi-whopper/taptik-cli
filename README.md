@@ -43,8 +43,10 @@ taptik logout
 taptik info
 taptik list
 
-# Deploy configurations
+# Deploy configurations  
 taptik deploy
+taptik deploy --platform claude-code
+taptik deploy --dry-run  # Preview without applying
 ```
 
 ## 📋 Features
@@ -58,9 +60,9 @@ taptik deploy
 ### 📦 Configuration Management
 
 - **Build** - Package your current AI tool settings into a shareable format
-- **Push** - Upload configurations to cloud storage
-- **Pull** - Download and apply configurations from the community
 - **Deploy** - Apply configurations to target platforms
+- **Update** - Modify metadata of uploaded packages
+- **Delete** - Remove packages from cloud storage
 
 ### 🔧 Supported Configuration Items
 
@@ -78,148 +80,73 @@ taptik deploy
 
 ## 🛠️ Commands
 
-### Available Commands
+### Core Commands
 
 ```bash
-# Core functionality
-taptik health                              # Check application health
-taptik login                               # OAuth login
-taptik logout                              # Logout
-taptik info                                # Show current status
+# Application health and info
+taptik health [--verbose] [--format json|text]   # Check application health
+taptik info                                      # Show auth status and info
+taptik --version                                 # Show version
 
-# Configuration management
-taptik build                               # Build configurations
-taptik deploy                              # Deploy to platforms
-taptik list                                # List configurations
-
-# Cloud management
-taptik push --name "My Setup"              # Upload configuration
-taptik pull --id abc123                    # Download configuration
-taptik update <config-id>                  # Update package metadata
-taptik delete <config-id>                  # Delete package
-taptik visibility <config-id>              # Change visibility
-taptik stats <config-id>                   # View statistics
+# Authentication
+taptik login [--provider google|github]         # OAuth login
+taptik logout                                   # Logout
 ```
+
+### Configuration Commands  
+
+```bash
+# Build configurations
+taptik build [--output <path>] [--platform <platform>] 
+             [--categories <list>] [--push] [--push-public]
+
+# Deploy to platforms
+taptik deploy [--platform <platform>] [--context-id <id>] 
+              [--dry-run] [--validate-only] [--force]
+
+# List configurations
+taptik list [--filter <query>] [--sort <field>] [--limit <n>]
+```
+
+### Cloud Management Commands
+
+```bash
+# Manage uploaded packages
+taptik update <config-id> [--title <title>] [--description <desc>] [--tags <tags>] [--yes]
+taptik delete <config-id> [--yes] [--force]
+taptik visibility <config-id> [--public|--private] [--yes]
+taptik stats <config-id> [--format table|json|simple] [--detailed]
+```
+
+## ℹ️ Command Details
 
 ### Build Command
 
-The `build` command converts your current IDE configuration files into taptik-compatible format for use with various AI development tools.
-
-#### Interactive Mode (Default)
+The `build` command converts your IDE configuration files into shareable format. Run interactively or with specific options:
 
 ```bash
-# Run interactive build with prompts
+# Interactive mode (recommended for first-time users)
 taptik build
+
+# Examples with options
+taptik build --platform claude-code --output ./my-config
+taptik build --categories personal,project --push
 ```
 
-The interactive mode will guide you through:
+**Available platforms**: `kiro`, `claude-code`, `cursor`  
+**Available categories**: `personal`, `project`, `prompts`
 
-1. **Platform Selection**: Choose your source platform (Kiro, Cursor, Claude Code)
-2. **Category Selection**: Select which types of context to build:
-   - **Personal Context**: User preferences, development environment, coding style
-   - **Project Context**: Project info, tech stack, architecture patterns, guidelines
-   - **Prompt Templates**: Reusable prompt templates for various development tasks
+### Deploy Command  
 
-#### Command-Line Options
+Deploy configurations to target IDE platforms:
 
 ```bash
-# Dry run - preview what would be built without creating files
-taptik build --dry-run
-
-# Specify custom output directory
-taptik build --output ./my-custom-path
-
-# Skip platform selection (use Kiro)
-taptik build --platform kiro
-
-# Build specific categories only
-taptik build --categories personal,project
-taptik build --categories prompts
-
-# Show detailed progress information
-taptik build --verbose
-
-# Suppress non-essential output
-taptik build --quiet
-
-# Combine multiple options
-taptik build --platform kiro --categories personal --output ./output --dry-run
+# Deploy with options
+taptik deploy --platform claude-code --dry-run  # Preview first
+taptik deploy --context-id abc123 --force       # Deploy specific config
 ```
 
-### Authentication
-
-```bash
-# Login with provider selection
-taptik login
-taptik login --provider google
-taptik login --provider github
-
-# Logout
-taptik logout
-taptik logout --all
-```
-
-### Configuration Management
-
-```bash
-# Build configuration from current tool
-taptik build
-taptik build --source cursor --output ./my-config.json
-taptik build --include "themes,snippets" --exclude "extensions"
-
-# Push to cloud
-taptik push --name "Backend Dev Setup"
-taptik push --description "Node.js + TypeScript config" --private
-taptik push --force  # Overwrite existing
-
-# Pull from cloud
-taptik pull --id abc123
-taptik pull --latest --target cursor
-taptik pull --dry-run  # Preview without applying
-```
-
-### List Command
-
-The `list` command helps you discover and explore configuration packages available in the Taptik cloud.
-
-#### Basic Usage
-
-```bash
-# List all public configurations
-taptik list
-
-# Filter configurations by title
-taptik list --filter "frontend"
-taptik list --filter "typescript setup"
-
-# Sort configurations
-taptik list --sort date    # Sort by creation date (default)
-taptik list --sort name    # Sort alphabetically by title
-
-# Limit number of results
-taptik list --limit 10     # Show 10 results
-taptik list --limit 50     # Show up to 50 results (max: 100)
-
-# Combine options for precise discovery
-taptik list --filter "react" --sort name --limit 20
-```
-
-### Information & Discovery
-
-```bash
-# Show current status
-taptik info
-
-# List available configurations
-taptik list                              # List all public configurations
-taptik list --filter "typescript"       # Filter by title
-taptik list --sort name --limit 10       # Sort alphabetically, limit results
-taptik list liked                        # List your liked configurations (requires auth)
-
-# Version information
-taptik --version
-taptik -vv  # Detailed version info
-```
+**Supported platforms**: `claude-code` (default), `kiro-ide`, `cursor-ide`
 
 ## 🏗️ Development
 
