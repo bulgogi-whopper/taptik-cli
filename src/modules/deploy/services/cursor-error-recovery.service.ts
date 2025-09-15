@@ -235,7 +235,7 @@ class FileSystemRecoveryStrategy implements RecoveryStrategy {
   }
 
   private async handlePathNotFound(error: CursorDeploymentError, context: RecoveryContext): Promise<RecoveryResult> {
-    const targetPath = error.details.path || context.targetPath;
+    const targetPath: any = error.details.path || context.targetPath;
     
     try {
       // 디렉토리 자동 생성 시도
@@ -262,7 +262,7 @@ class FileSystemRecoveryStrategy implements RecoveryStrategy {
   }
 
   private async handleDirectoryNotWritable(error: CursorDeploymentError, context: RecoveryContext): Promise<RecoveryResult> {
-    const targetPath = error.details.path || context.targetPath;
+    const targetPath: any = error.details.path || context.targetPath;
     
     try {
       // 권한 확인
@@ -292,7 +292,7 @@ class FileSystemRecoveryStrategy implements RecoveryStrategy {
     // 파일 잠금 해제 대기 (최대 30초)
     const maxWaitTime = 30000;
     const checkInterval = 1000;
-    const filePath = error.details.path;
+    const filePath: any = error.details.path;
     
      
     for (let waited = 0; waited < maxWaitTime; waited += checkInterval) {
@@ -372,7 +372,7 @@ class PermissionRecoveryStrategy implements RecoveryStrategy {
   }
 
   async recover(error: CursorDeploymentError, context: RecoveryContext): Promise<RecoveryResult> {
-    const targetPath = error.details.path || context.targetPath;
+    const targetPath: any = error.details.path || context.targetPath;
     
     // 권한 확인 및 가이드 제공
     try {

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { AuditLoggerService, AuditEventType, SecurityContext } from '../../push/services/audit-logger.service';
+import { AuditLoggerService, AuditEventType, SecurityContext, AuditLogEntry } from '../../push/services/audit-logger.service';
 
 import { CursorSecurityViolation } from './cursor-security-scanner.service';
 
@@ -706,16 +706,16 @@ export class CursorAuditLoggerService {
   /**
    * Convert main audit log entry to Cursor format
    */
-  private convertToCursorLogEntry(log: unknown): CursorAuditLogEntry {
+  private convertToCursorLogEntry(log: AuditLogEntry): CursorAuditLogEntry {
     return {
       id: log.id,
       timestamp: new Date(log.timestamp),
-      eventType: log.metadata?.cursorEventType || CursorAuditEventType.CURSOR_DEPLOYMENT_STARTED,
+      eventType: log.metadata?.cursorEventType as any || CursorAuditEventType.CURSOR_DEPLOYMENT_STARTED,
       userId: log.userId,
       configId: log.configId,
-      deploymentId: log.metadata?.deploymentId,
-      componentType: log.metadata?.componentType,
-      componentName: log.metadata?.componentName,
+      deploymentId: log.metadata?.deploymentId as any,
+      componentType: log.metadata?.componentType as any,
+      componentName: log.metadata?.componentName as any,
       ipAddress: log.ipAddress,
       userAgent: log.userAgent,
       metadata: log.metadata,

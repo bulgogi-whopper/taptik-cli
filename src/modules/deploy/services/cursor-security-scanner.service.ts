@@ -459,7 +459,7 @@ export class CursorSecurityScannerService {
     } else if (typeof aiPrompts === 'object' && aiPrompts !== null) {
       // Handle object format
       for (const [name, promptData] of Object.entries(aiPrompts as Record<string, unknown>)) {
-        const promptObj = { name, ...promptData } as CursorAIPrompt;
+        const promptObj = { name, ...(promptData as Record<string, unknown>) } as CursorAIPrompt;
         violations.push(...this.scanSingleAIPrompt(promptObj));
       }
     }
